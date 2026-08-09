@@ -1,0 +1,183 @@
+/**
+ * Chord parsing, suffix normalisation, transposition and formatting.
+ *
+ * Two rules govern spelling, and they are not the same rule:
+ *
+ * 1. Untransposed, a chord keeps the spelling the source wrote. A `Bb` in a
+ *    song in C stays `Bb` — respelling it as `A#` because C major "uses sharps"
+ *    would be wrong, since a borrowed flat chord is always written flat.
+ * 2. Transposed, the target key decides. Moving that song up ten semitones puts
+ *    it in Bb, where accidentals are flats, so `Ab` and never `G#`.
+ *
+ * Everything formats from the *canonical* suffix, never from the raw text of the
+ * source. Without that step the claim "in international notation the display
+ * matches the source" would only hold for files written consistently: a
+ * hand-typed `Cmin7` would render as-is and would never map to `Do-7`.
+ */
+
+import {
+  type Key,
+  type PitchClass,
+  mod12,
+  noteToItalian,
+  noteToPitchClass,
+  spellPitchClass,
+} from './notes'
+
+export type Notation = 'it' | 'int'
+
+export interface Chord {
+  root: PitchClass
+  /** Spelling to display, e.g. `Bb`. Set from the source, or from the target key when transposed. */
+  rootName: string
+  /** Canonical suffix: '', 'm', 'm7', 'maj7', 'dim', 'aug', 'm7b5', 'sus4', … */
+  suffix: string
+  bass: PitchClass | null
+  bassName: string | null
+}
+
+/**
+ * Ordered alias rules, applied to the *start* of the suffix only. The first
+ * match wins, so the specific patterns have to come before the general ones:
+ * `m7b5` before `m`, and the whole major-seventh family before `m`, because
+ * `maj7` also starts with an `m`.
+ */
+const SUFFIX_ALIASES: [RegExp, string][] = [
+  [/^(?:ø7|ø|m7b5|min7b5|-7b5|m7-5|mi7b5)/, 'm7b5'],
+  [/^(?:maj|Maj|MAJ|M|Δ|△|ma|j)(?=\d)/, 'maj'],
+  [/^(?:maj|Maj|Δ|△)(?![a-z0-9])/, ''],
+  [/^(?:dim|°|o)(?=7|$)/, 'dim'],
+  [/^(?:aug|\+)(?![a-z0-9])/, 'aug'],
+  [/^(?:min|mi|m|-)/, 'm'],
+]
+
+/** Reduces equivalent spellings of a suffix to one canonical form. */
+export function normalizeSuffix(raw: string): string {
+  const suffix = raw.trim()
+  if (suffix === '') return ''
+
+  for (const [pattern, replacement] of SUFFIX_ALIASES) {
+    const match = pattern.exec(suffix)
+    if (match) return replacement + suffix.slice(match[0].length)
+  }
+  return suffix
+}
+
+/**
+ * The characters and tokens a real chord suffix is built from. This is the
+ * second of two defences against reading an annotation as a chord: without it,
+ * `[assolo]` parses as A plus a suffix of `ssolo`, and the word disappears from
+ * the lyrics into a bogus chord.
+ */
+const VALID_SUFFIX =
+  /^(?:maj|Maj|MAJ|M|Δ|△|ma|j|min|mi|m|-|dim|°|o|aug|\+|ø|sus|add|alt|[#b()\d,^/]|\s)*$/
+
+/**
+ * Parses a chord token as it appears between square brackets. Returns null for
+ * anything that is not a chord, so annotations like `[x2]` or `[assolo]` pass
+ * through the renderer as text instead of being mangled into a chord.
+ *
+ * The root must be an uppercase letter: chord names are written that way, and
+ * accepting lowercase would let ordinary words in brackets parse as chords.
+ */
+export function parseChord(raw: string): Chord | null {
+  const token = raw.trim()
+  if (token === '') return null
+
+  const head = /^([A-G][#b]*)(.*)$/.exec(token)
+  if (!head) return null
+
+  const root = noteToPitchClass(head[1])
+  if (root === null) return null
+
+  // A trailing `/X` is a slash bass only when X is a note; `C6/9` is a suffix.
+  const slash = /^(.*)\/([A-G][#b]*)$/.exec(head[2])
+  const rawSuffix = slash ? slash[1] : head[2]
+  const bassName = slash ? slash[2] : null
+
+  if (!VALID_SUFFIX.test(rawSuffix)) return null
+
+  return {
+    root,
+    rootName: head[1],
+    suffix: normalizeSuffix(rawSuffix),
+    bass: bassName === null ? null : noteToPitchClass(bassName),
+    bassName,
+  }
+}
+
+/**
+ * Moves a chord by a number of semitones, respelling it for the key it lands
+ * in. At zero semitones the chord is returned untouched, so the source spelling
+ * survives when the reader has not transposed anything.
+ */
+export function transposeChord(chord: Chord, semitones: number, targetKey: Key): Chord {
+  if (semitones === 0) return chord
+
+  const root = mod12(chord.root + semitones)
+  const bass = chord.bass === null ? null : mod12(chord.bass + semitones)
+
+  return {
+    root,
+    rootName: spellPitchClass(root, targetKey.flats),
+    suffix: chord.suffix,
+    bass,
+    bassName: bass === null ? null : spellPitchClass(bass, targetKey.flats),
+  }
+}
+
+/**
+ * Italian practice here follows the jazz convention chosen for this app: a dash
+ * for minor and a triangle for major seventh. International practice uses the
+ * standard suffixes, so in that notation the display matches the source.
+ */
+const ITALIAN_SUFFIX: [RegExp, string][] = [
+  [/^m7b5/, '-7b5'],
+  [/^maj/, '△'],
+  [/^dim/, '°'],
+  [/^aug/, '+'],
+  [/^m/, '-'],
+]
+
+function formatSuffix(suffix: string, notation: Notation): string {
+  if (notation === 'int') return suffix
+
+  for (const [pattern, replacement] of ITALIAN_SUFFIX) {
+    const match = pattern.exec(suffix)
+    if (match) return replacement + suffix.slice(match[0].length)
+  }
+  return suffix
+}
+
+function formatNote(name: string, notation: Notation): string {
+  return notation === 'it' ? noteToItalian(name) : name
+}
+
+export function formatChord(chord: Chord, notation: Notation): string {
+  const root = formatNote(chord.rootName, notation)
+  const suffix = formatSuffix(chord.suffix, notation)
+  const bass = chord.bassName === null ? '' : `/${formatNote(chord.bassName, notation)}`
+  return root + suffix + bass
+}
+
+/** Formats a key name itself, e.g. `Bb` as `Sib` or `Am` as `La-`. */
+export function formatKey(key: Key, notation: Notation): string {
+  const root = formatNote(key.name.replace(/m$/, ''), notation)
+  if (key.mode === 'major') return root
+  return root + formatSuffix('m', notation)
+}
+
+/**
+ * Convenience for the common path: parse, transpose and format in one go.
+ * `targetKey` is the key the song is in *after* transposition.
+ */
+export function renderChord(
+  raw: string,
+  semitones: number,
+  notation: Notation,
+  targetKey: Key,
+): string {
+  const chord = parseChord(raw)
+  if (!chord) return raw
+  return formatChord(transposeChord(chord, semitones, targetKey), notation)
+}

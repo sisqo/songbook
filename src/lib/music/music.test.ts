@@ -1,0 +1,259 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import {
+  formatChord,
+  formatKey,
+  normalizeSuffix,
+  parseChord,
+  renderChord,
+  transposeChord,
+} from './chord'
+import { keyFor, parseKey, transposeKey } from './notes'
+
+const C = keyFor(0, 'major')
+
+describe('normalizeSuffix', () => {
+  const cases: [string, string][] = [
+    ['', ''],
+    ['m', 'm'],
+    ['min', 'm'],
+    ['mi', 'm'],
+    ['-', 'm'],
+    ['m7', 'm7'],
+    ['min7', 'm7'],
+    ['-7', 'm7'],
+    ['maj7', 'maj7'],
+    ['M7', 'maj7'],
+    ['Δ7', 'maj7'],
+    ['△7', 'maj7'],
+    ['ma7', 'maj7'],
+    ['maj9', 'maj9'],
+    ['maj', ''],
+    ['dim', 'dim'],
+    ['°', 'dim'],
+    ['dim7', 'dim7'],
+    ['°7', 'dim7'],
+    ['aug', 'aug'],
+    ['+', 'aug'],
+    ['m7b5', 'm7b5'],
+    ['-7b5', 'm7b5'],
+    ['ø', 'm7b5'],
+    ['ø7', 'm7b5'],
+    ['sus4', 'sus4'],
+    ['7', '7'],
+    ['add9', 'add9'],
+    ['6', '6'],
+  ]
+
+  for (const [raw, expected] of cases) {
+    it(`maps ${raw || '(empty)'} to ${expected || '(empty)'}`, () => {
+      assert.equal(normalizeSuffix(raw), expected)
+    })
+  }
+})
+
+describe('parseChord', () => {
+  it('reads root, suffix and slash bass', () => {
+    assert.deepEqual(parseChord('C'), {
+      root: 0,
+      rootName: 'C',
+      suffix: '',
+      bass: null,
+      bassName: null,
+    })
+    assert.deepEqual(parseChord('Bb'), {
+      root: 10,
+      rootName: 'Bb',
+      suffix: '',
+      bass: null,
+      bassName: null,
+    })
+    assert.deepEqual(parseChord('Am7/G'), {
+      root: 9,
+      rootName: 'A',
+      suffix: 'm7',
+      bass: 7,
+      bassName: 'G',
+    })
+  })
+
+  it('normalises the suffix while parsing', () => {
+    assert.equal(parseChord('Cmin7')?.suffix, 'm7')
+    assert.equal(parseChord('CM7')?.suffix, 'maj7')
+  })
+
+  it('reads a slash only as a bass note, so C6/9 stays one suffix', () => {
+    const sixNine = parseChord('C6/9')
+    assert.equal(sixNine?.suffix, '6/9')
+    assert.equal(sixNine?.bass, null)
+    assert.equal(parseChord('C/E')?.bass, 4)
+  })
+
+  it('rejects tokens that are not chords, so annotations survive as text', () => {
+    assert.equal(parseChord('x2'), null)
+    assert.equal(parseChord('assolo'), null)
+    assert.equal(parseChord('Assolo'), null)
+    assert.equal(parseChord('Ritornello'), null)
+    assert.equal(parseChord('am'), null)
+    assert.equal(parseChord(''), null)
+  })
+
+  it('still accepts the suffixes that real chord charts use', () => {
+    for (const token of [
+      'C',
+      'Cm',
+      'Cm7',
+      'Cmaj7',
+      'C7',
+      'Csus4',
+      'Cadd9',
+      'C7b5',
+      'C13',
+      'Cdim7',
+      'Cm7b5',
+      'C6/9',
+      'C(9)',
+      'Caug',
+      'C#m7/G#',
+    ]) {
+      assert.notEqual(parseChord(token), null, `${token} should parse`)
+    }
+  })
+})
+
+describe('transposeChord', () => {
+  it('moves root and bass together', () => {
+    const chord = transposeChord(parseChord('C/E')!, 2, transposeKey(C, 2))
+    assert.equal(chord.root, 2)
+    assert.equal(chord.bass, 6)
+    assert.equal(formatChord(chord, 'int'), 'D/F#')
+  })
+
+  it('wraps around the octave', () => {
+    assert.equal(transposeChord(parseChord('B')!, 1, transposeKey(C, 1)).root, 0)
+    assert.equal(transposeChord(parseChord('C')!, -1, transposeKey(C, -1)).root, 11)
+  })
+
+  it('leaves the suffix untouched', () => {
+    assert.equal(transposeChord(parseChord('Cmaj7')!, 5, transposeKey(C, 5)).suffix, 'maj7')
+  })
+
+  it('keeps the source spelling when nothing is transposed', () => {
+    // A borrowed Bb in a song in C is written Bb, never A#.
+    assert.equal(renderChord('Bb', 0, 'int', C), 'Bb')
+    assert.equal(renderChord('A#', 0, 'int', C), 'A#')
+    assert.equal(renderChord('Gb', 0, 'int', C), 'Gb')
+  })
+})
+
+describe('enharmonic spelling follows the target key', () => {
+  it('writes flats in flat keys', () => {
+    const target = transposeKey(C, 10)
+    assert.equal(target.name, 'Bb')
+    assert.equal(renderChord('C', 10, 'int', target), 'Bb')
+    assert.equal(renderChord('D', 10, 'int', target), 'C')
+    assert.equal(renderChord('F', 10, 'int', target), 'Eb')
+    // The same pitch class a sharp key would spell F#.
+    assert.equal(renderChord('G#', 10, 'int', target), 'Gb')
+  })
+
+  it('writes sharps in sharp keys', () => {
+    const target = transposeKey(C, 2)
+    assert.equal(target.name, 'D')
+    assert.equal(renderChord('C', 2, 'int', target), 'D')
+    assert.equal(renderChord('A', 2, 'int', target), 'B')
+    assert.equal(renderChord('C#', 2, 'int', target), 'D#')
+  })
+
+  it('picks the key spelling with fewest accidentals', () => {
+    assert.equal(transposeKey(C, 1).name, 'Db')
+    assert.equal(transposeKey(C, 3).name, 'Eb')
+    assert.equal(transposeKey(C, 6).name, 'F#')
+    assert.equal(transposeKey(C, 8).name, 'Ab')
+  })
+
+  it('treats minor keys by their own signatures', () => {
+    const am = parseKey('Am')!
+    assert.equal(am.name, 'Am')
+    assert.equal(transposeKey(am, 1).name, 'Bbm')
+    assert.equal(transposeKey(am, 2).name, 'Bm')
+    assert.equal(transposeKey(am, 3).name, 'Cm')
+  })
+})
+
+describe('parseKey', () => {
+  it('reads major and minor keys', () => {
+    assert.equal(parseKey('C')?.name, 'C')
+    assert.equal(parseKey('Am')?.name, 'Am')
+    assert.equal(parseKey('Bb')?.name, 'Bb')
+    assert.equal(parseKey('F#m')?.name, 'F#m')
+    assert.equal(parseKey('  Gm  ')?.name, 'Gm')
+  })
+
+  it('returns null for nonsense instead of guessing', () => {
+    assert.equal(parseKey('H'), null)
+    assert.equal(parseKey('banana'), null)
+    assert.equal(parseKey(null), null)
+    assert.equal(parseKey(''), null)
+  })
+})
+
+describe('Italian notation', () => {
+  const cases: [string, string][] = [
+    ['C', 'Do'],
+    ['Cm', 'Do-'],
+    ['Cm7', 'Do-7'],
+    ['Cmaj7', 'Do△7'],
+    ['Cdim', 'Do°'],
+    ['Caug', 'Do+'],
+    ['Cm7b5', 'Do-7b5'],
+    ['Csus4', 'Dosus4'],
+    ['C7', 'Do7'],
+    ['Bb', 'Sib'],
+    ['F#m', 'Fa#-'],
+    ['C/E', 'Do/Mi'],
+    ['G', 'Sol'],
+    ['A', 'La'],
+    ['B', 'Si'],
+    ['Cmin7', 'Do-7'],
+    ['CM7', 'Do△7'],
+  ]
+
+  for (const [source, expected] of cases) {
+    it(`renders ${source} as ${expected}`, () => {
+      assert.equal(renderChord(source, 0, 'it', C), expected)
+    })
+  }
+})
+
+describe('international notation', () => {
+  it('matches the source once the suffix is canonical', () => {
+    for (const source of ['C', 'Cm', 'Cm7', 'Cmaj7', 'Cdim', 'Caug', 'Csus4', 'C7', 'C/E']) {
+      assert.equal(renderChord(source, 0, 'int', C), source)
+    }
+  })
+
+  it('normalises inconsistent sources to the canonical form', () => {
+    assert.equal(renderChord('Cmin7', 0, 'int', C), 'Cm7')
+    assert.equal(renderChord('C-7', 0, 'int', C), 'Cm7')
+    assert.equal(renderChord('CΔ7', 0, 'int', C), 'Cmaj7')
+  })
+})
+
+describe('formatKey', () => {
+  it('names the current key in both notations', () => {
+    assert.equal(formatKey(C, 'it'), 'Do')
+    assert.equal(formatKey(C, 'int'), 'C')
+    assert.equal(formatKey(parseKey('Bb')!, 'it'), 'Sib')
+    assert.equal(formatKey(parseKey('Am')!, 'it'), 'La-')
+    assert.equal(formatKey(parseKey('Am')!, 'int'), 'Am')
+    assert.equal(formatKey(parseKey('F#m')!, 'int'), 'F#m')
+  })
+})
+
+describe('renderChord', () => {
+  it('passes non-chord tokens through unchanged', () => {
+    assert.equal(renderChord('x2', 2, 'it', C), 'x2')
+  })
+})
