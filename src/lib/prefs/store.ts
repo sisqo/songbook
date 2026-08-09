@@ -28,7 +28,7 @@ import {
 const GLOBAL_KEY = 'songs:prefs'
 const SONG_KEY_PREFIX = 'songs:song:'
 
-function read<T>(key: string): unknown {
+function read(key: string): unknown {
   if (typeof window === 'undefined') return null
   try {
     const raw = window.localStorage.getItem(key)

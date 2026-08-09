@@ -18,6 +18,11 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // Generated at build time by Serwist and the precache route script.
+      "public/sw.js",
+      "public/sw.js.map",
+      "public/swe-worker-*.js",
+      "generated/**",
     ],
   },
 ];

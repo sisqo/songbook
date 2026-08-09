@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/precache-routes.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --test $(find src scripts -name '*.test.ts' 2>/dev/null)",
@@ -13,11 +13,13 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@serwist/next": "^9.5.12",
     "drizzle-orm": "^0.45.2",
     "next": "15.5.19",
     "postgres": "^3.4.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "serwist": "^9.5.12",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
