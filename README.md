@@ -42,21 +42,38 @@ degli slug. In v1 sono in sola lettura: cambiarle richiede un commit.
 
 I brani in `content/` sono testi segnaposto originali, non repertorio reale.
 
-## Attivare il database
+## Il database
 
-L'ordine conta. Il build genera le pagine dei brani leggendo il database quando
-`DATABASE_URL` esiste: **se la variabile arriva su Vercel prima del seed, il build
-trova la tabella vuota e pubblica zero canzoni**, con una lista di precache vuota.
+Postgres su Neon, provisionato via marketplace Vercel (progetto `songs-db`), già
+migrato e popolato. Il build legge da lì; senza `DATABASE_URL` legge da `content/`.
 
-1. Crea il database Neon dalla dashboard Vercel del progetto (Storage → Neon)
-2. `vercel env pull .env.local` — porta `DATABASE_URL` in locale
-3. `npm run db:migrate` — applica le migrazioni
-4. `npm run seed` — carica `content/` nel database
-5. **Solo adesso** aggiungi `DATABASE_URL` all'ambiente Production su Vercel
-6. Redeploy
+Dopo una modifica ai contenuti: `npm run seed` e poi un deploy. Il seed è
+idempotente (upsert per slug) e rimuove le righe il cui file non esiste più, perché
+in v1 la sorgente di verità sono i file.
 
-Il seed è idempotente (upsert per slug) e rimuove le righe il cui file non esiste
-più, perché in v1 la sorgente di verità sono i file.
+### Se va rifatto da zero
+
+**L'ordine conta.** Il build genera le pagine dei brani dai dati che trova: se
+`DATABASE_URL` arriva su Vercel prima del seed, il build legge una tabella vuota e
+pubblica **zero canzoni**, con una lista di precache vuota — un'app che sembra sana
+e non ha contenuti.
+
+1. Crea il database, collegandolo **solo a development** per non anticipare la
+   variabile in produzione:
+   `vercel integration add neon -e development --name songs-db --scope sisqoz`
+   (la prima volta va accettati i termini marketplace nel browser)
+2. `npm run db:migrate` — applica le migrazioni
+3. `npm run seed` — carica `content/` nel database
+4. Verifica che il build dica `Precache routes (database)` e non `(files)`
+5. **Solo adesso** aggiungi `DATABASE_URL` a Production e fai un redeploy
+
+Due dettagli che costano tempo se non si sanno:
+
+- `vercel env pull` **sovrascrive** `.env.local`, e scarica un solo ambiente. Le
+  variabili di auth sono anche in `development` proprio per sopravvivere al pull.
+- Le migrazioni girano sulla connessione **diretta** (`DATABASE_URL_UNPOOLED`), non
+  su quella con PgBouncer: `scripts/migrate.ts` la preferisce da sé quando esiste.
+  Il runtime invece usa l'endpoint pooled, con `prepare: false` nel client.
 
 ## Variabili d'ambiente
 

@@ -7,6 +7,15 @@ import { loadEnv } from './load-env'
 async function main() {
   loadEnv()
 
+  /**
+   * Migrations run over the direct connection when one is available. Neon's
+   * default URL points at a pooled endpoint running PgBouncer, which is fine for
+   * ordinary queries but the wrong place to be issuing schema changes.
+   */
+  if (process.env.DATABASE_URL_UNPOOLED) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL_UNPOOLED
+  }
+
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
 
   if (!hasDatabase) {
