@@ -44,7 +44,10 @@ runtime    lettura  ──▶ pagina statica (o cache del service worker)
 ```
 
 Le pagine dei brani sono generate al build leggendo Neon, quindi a runtime la lettura non
-paga né latenza di database né cold start. Il DB viene scritto solo per le preferenze.
+paga né latenza di database né cold start. Il DB viene scritto solo per le preferenze — e
+sono quelle scritture, non le letture, a pagare l'autosuspend di Neon: il primo `+1` dopo un
+periodo di inattività attende il risveglio del database. La coda di scrittura rende
+l'attesa invisibile sullo schermo, ma esiste.
 Dopo una modifica ai contenuti serve una rivalidazione: in v1 la fa il deploy che segue il
 seed, in v2 la farà `revalidatePath()` al salvataggio dall'editor.
 
@@ -100,6 +103,15 @@ duplica nulla. In v2 il DB diventa la fonte di verità e i file restano solo boo
 
 - Serwist con precache degli asset e delle pagine dei brani generate al build:
   installata sulla home del tablet, l'app apre istantaneamente e a rete assente.
+- **Il punto più fragile di tutto il piano, da verificare prima di dichiarare l'offline
+  funzionante.** Il precache del service worker fa richieste HTTP vere, che passano dal
+  middleware di autenticazione: se il service worker si installa senza una sessione valida,
+  quelle richieste vengono reindirizzate a `/login` e finiscono in cache **sotto gli URL dei
+  brani**. Il risultato è la modalità di errore peggiore possibile, perché la cache sembra
+  piena: offline ogni brano mostra una schermata di login. Va garantito che il precache parta
+  solo dopo l'autenticazione, e va verificato che una pagina precachata renda offline con il
+  cookie di sessione assente. Da controllare anche che venga messo in cache il payload RSC
+  insieme all'HTML: con App Router è la parte che si rompe più facilmente.
 - `manifest.json`, icone, `display: standalone`, tema coerente con la UI.
 - Le preferenze scritte offline finiscono in una **coda in memoria** svuotata all'evento
   `online`; un indicatore discreto mostra che c'è una modifica non ancora salvata.
@@ -123,6 +135,14 @@ ChordPro, con accordi inline tra parentesi quadre. Direttive supportate in v1:
 Tutto il resto dello standard viene ignorato senza errori. Il parser produce un AST
 (sezioni → righe → coppie accordo/testo) riusato da rendering, trasposizione e indice di
 ricerca.
+
+**Normalizzazione dei suffissi.** Il parser riduce le grafie equivalenti a una forma
+canonica interna prima di qualunque altra cosa: `m` / `min` / `-` → `m`, `maj` / `ma` / `△`
+→ `maj`, `dim` / `°` → `dim`, `aug` / `+` → `aug`. Entrambe le tabelle di notazione
+formattano **a partire da quella forma canonica**, mai dal testo grezzo del file. Senza
+questo passaggio l'affermazione "in internazionale il display coincide col sorgente" vale
+solo per i file scritti in modo coerente: un `Cmin7` scritto a mano finirebbe a schermo
+così com'è e non verrebbe mappato in `Do-7`.
 
 ## Motore musicale
 
@@ -311,5 +331,10 @@ già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
 5. **Font di lettura** — non ancora scelto, e la scelta interagisce con due cose: la
    disponibilità dei glifi `△` e `°` e la leggibilità a distanza di leggìo. Da definire in
    `DESIGN.md`.
-6. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
+6. **Tema chiaro e scuro** — non ancora deciso, ed è una lacuna vera per un'app che si legge
+   su un tablet in penombra: il tema scuro non è una variante estetica ma la modalità d'uso
+   probabile, mentre in una sala prove illuminata serve il chiaro. Da decidere in `DESIGN.md`
+   se il default è scuro, se il chiaro è progettato con la stessa cura (come in `ai-signal`)
+   e se serve un toggle manuale oltre a `prefers-color-scheme`.
+7. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
    — ignorate in v1, da valutare quando emergono su brani reali.
