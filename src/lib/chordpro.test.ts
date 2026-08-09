@@ -117,7 +117,17 @@ describe('parseChordPro', () => {
     const bare = parseChordPro('[C]solo accordi')
     assert.equal(bare.title, null)
     assert.equal(bare.key, null)
+    assert.deepEqual(bare.tags, [])
     assert.equal(bare.sections.length, 1)
+  })
+
+  it('reads tags as a comma separated list', () => {
+    assert.deepEqual(parseChordPro('{tags: rock, ita , da imparare}').tags, [
+      'rock',
+      'ita',
+      'da imparare',
+    ])
+    assert.deepEqual(parseChordPro('{tags: }').tags, [])
   })
 })
 

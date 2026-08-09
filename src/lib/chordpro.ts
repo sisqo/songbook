@@ -34,6 +34,7 @@ export interface ParsedSong {
   title: string | null
   artist: string | null
   key: string | null
+  tags: string[]
   sections: Section[]
 }
 
@@ -47,6 +48,8 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   subtitle: 'artist',
   artist: 'artist',
   key: 'key',
+  tags: 'tags',
+  tag: 'tags',
   c: 'comment',
   comment: 'comment',
   soc: 'start_of_chorus',
@@ -60,7 +63,7 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
 }
 
 export function parseChordPro(source: string): ParsedSong {
-  const song: ParsedSong = { title: null, artist: null, key: null, sections: [] }
+  const song: ParsedSong = { title: null, artist: null, key: null, tags: [], sections: [] }
 
   let section: Section | null = null
   let forcedKind: SectionKind | null = null
@@ -88,6 +91,12 @@ export function parseChordPro(source: string): ParsedSong {
           break
         case 'key':
           song.key = value || null
+          break
+        case 'tags':
+          song.tags = value
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== '')
           break
         case 'comment':
           section ??= openSection(forcedKind ?? 'verse')
