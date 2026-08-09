@@ -13,14 +13,7 @@ import {
 
 import type { Notation } from '@/lib/music/chord'
 import { loadPrefs, saveGlobalPrefs, saveSongPrefs } from '@/lib/prefs/actions'
-import {
-  enqueueGlobal,
-  enqueueSong,
-  hasPending,
-  setQueueHandlers,
-  subscribeToQueue,
-  watchConnection,
-} from '@/lib/prefs/queue'
+import { prefsQueue } from '@/lib/prefs/queue'
 import {
   readGlobalPrefs,
   readSongPrefs,
@@ -81,9 +74,9 @@ export function PrefsProvider({
   }, [songSlug])
 
   useEffect(() => {
-    setQueueHandlers({ saveGlobal: saveGlobalPrefs, saveSong: saveSongPrefs })
-    watchConnection()
-    return subscribeToQueue(setPending)
+    prefsQueue.setHandlers({ saveGlobal: saveGlobalPrefs, saveSong: saveSongPrefs })
+    prefsQueue.watchConnection()
+    return prefsQueue.subscribe(setPending)
   }, [])
 
   useEffect(() => {
@@ -93,11 +86,11 @@ export function PrefsProvider({
       .then((stored) => {
         if (cancelled) return
 
-        if (stored.global !== null && !hasPending('global')) {
+        if (stored.global !== null && !prefsQueue.hasPending('global')) {
           setGlobal(stored.global)
           writeGlobalPrefs(stored.global)
         }
-        if (stored.song !== null && songSlug !== null && !hasPending(`song:${songSlug}`)) {
+        if (stored.song !== null && songSlug !== null && !prefsQueue.hasPending(`song:${songSlug}`)) {
           setSong(stored.song)
           writeSongPrefs(songSlug, stored.song)
         }
@@ -114,7 +107,7 @@ export function PrefsProvider({
   const updateGlobal = useCallback((next: GlobalPrefs) => {
     setGlobal(next)
     writeGlobalPrefs(next)
-    enqueueGlobal(next)
+    prefsQueue.enqueueGlobal(next)
   }, [])
 
   const updateSong = useCallback(
@@ -122,7 +115,7 @@ export function PrefsProvider({
       setSong(next)
       if (songSlug === null) return
       writeSongPrefs(songSlug, next)
-      enqueueSong(songSlug, next)
+      prefsQueue.enqueueSong(songSlug, next)
     },
     [songSlug],
   )

@@ -14,110 +14,153 @@
  * indicator in the control bar exists — a pending write is visible.
  */
 
+import type { SaveResult } from './actions'
 import type { GlobalPrefs, SongPrefs } from './types'
 
 type Pending =
   | { kind: 'global'; prefs: GlobalPrefs }
   | { kind: 'song'; slug: string; prefs: SongPrefs }
 
+export type QueueKey = 'global' | `song:${string}`
+
 const DEBOUNCE_MS = 2000
-
-/**
- * At most one pending write per target: only the latest value matters, so a
- * reader tapping +1 five times produces one save, not five.
- */
-const pending = new Map<string, Pending>()
-
-let timer: ReturnType<typeof setTimeout> | null = null
-let flushing = false
-
-type Listener = (count: number) => void
-const listeners = new Set<Listener>()
-
-function notify() {
-  for (const listener of listeners) listener(pending.size)
-}
-
-export function subscribeToQueue(listener: Listener): () => void {
-  listeners.add(listener)
-  listener(pending.size)
-  return () => listeners.delete(listener)
-}
+/** Longer than the debounce: a failing server should not be hammered. */
+const RETRY_MS = 15000
 
 export interface QueueHandlers {
-  saveGlobal: (prefs: GlobalPrefs) => Promise<boolean>
-  saveSong: (slug: string, prefs: SongPrefs) => Promise<boolean>
+  saveGlobal: (prefs: GlobalPrefs) => Promise<SaveResult>
+  saveSong: (slug: string, prefs: SongPrefs) => Promise<SaveResult>
 }
 
-let handlers: QueueHandlers | null = null
+/**
+ * Built as a factory rather than module-level state so it can be tested without
+ * a backdoor to reset globals.
+ */
+export function createPrefsQueue(options: { debounceMs?: number; retryMs?: number } = {}) {
+  const debounceMs = options.debounceMs ?? DEBOUNCE_MS
+  const retryMs = options.retryMs ?? RETRY_MS
 
-export function setQueueHandlers(next: QueueHandlers): void {
-  handlers = next
-}
+  /**
+   * At most one pending write per target: only the latest value matters, so a
+   * reader tapping +1 five times produces one save, not five.
+   */
+  const pending = new Map<QueueKey, Pending>()
+  const listeners = new Set<(count: number) => void>()
 
-export function enqueueGlobal(prefs: GlobalPrefs): void {
-  pending.set('global', { kind: 'global', prefs })
-  notify()
-  schedule()
-}
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let flushing = false
+  let handlers: QueueHandlers | null = null
+  let wired = false
 
-export function enqueueSong(slug: string, prefs: SongPrefs): void {
-  pending.set(`song:${slug}`, { kind: 'song', slug, prefs })
-  notify()
-  schedule()
-}
+  function notify() {
+    for (const listener of listeners) listener(pending.size)
+  }
 
-/** True while a change for this scope has not reached the server yet. */
-export function hasPending(key: 'global' | `song:${string}`): boolean {
-  return pending.has(key)
-}
+  function schedule(delay: number) {
+    if (timer !== null) clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = null
+      void flush()
+    }, delay)
 
-function schedule() {
-  if (timer !== null) clearTimeout(timer)
-  timer = setTimeout(() => {
-    timer = null
-    void flush()
-  }, DEBOUNCE_MS)
-}
+    // In Node the timer would otherwise hold the event loop open, which hangs
+    // the test run. Browsers return a plain number and are unaffected.
+    if (typeof timer === 'object' && typeof timer.unref === 'function') timer.unref()
+  }
 
-export async function flush(): Promise<void> {
-  if (flushing || handlers === null || pending.size === 0) return
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  async function flush(): Promise<void> {
+    if (flushing || handlers === null || pending.size === 0) return
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
 
-  flushing = true
-  try {
-    // Snapshot the keys: an entry replaced while we are away must not be
-    // dropped, so only the exact value we sent is removed.
-    for (const [key, entry] of [...pending.entries()]) {
-      try {
-        const saved =
-          entry.kind === 'global'
-            ? await handlers.saveGlobal(entry.prefs)
-            : await handlers.saveSong(entry.slug, entry.prefs)
+    flushing = true
+    let retry = false
 
-        if (saved && pending.get(key) === entry) {
+    try {
+      // Snapshot the keys: an entry replaced while we were away must not be
+      // dropped, so only the exact value we sent is removed.
+      for (const [key, entry] of [...pending.entries()]) {
+        let result: SaveResult
+        try {
+          result =
+            entry.kind === 'global'
+              ? await handlers.saveGlobal(entry.prefs)
+              : await handlers.saveSong(entry.slug, entry.prefs)
+        } catch {
+          // Offline, or the request never arrived.
+          retry = true
+          break
+        }
+
+        if (result === 'failed') {
+          retry = true
+          break
+        }
+
+        /**
+         * Both 'saved' and 'no-destination' clear the entry. Without the second
+         * case the queue would never empty when there is nobody signed in or no
+         * database configured — and the indicator that exists to promise
+         * "nothing is lost in silence" would sit there lying.
+         */
+        if (pending.get(key) === entry) {
           pending.delete(key)
           notify()
         }
-      } catch {
-        // Offline, or the server refused: keep it queued and try again later.
-        break
       }
+    } finally {
+      flushing = false
     }
-  } finally {
-    flushing = false
+
+    // A failure needs its own retry: otherwise the write waits for the app to be
+    // backgrounded or the connection to drop and return.
+    if (retry) schedule(retryMs)
+  }
+
+  return {
+    setHandlers(next: QueueHandlers) {
+      handlers = next
+    },
+
+    subscribe(listener: (count: number) => void): () => void {
+      listeners.add(listener)
+      listener(pending.size)
+      return () => listeners.delete(listener)
+    },
+
+    enqueueGlobal(prefs: GlobalPrefs) {
+      pending.set('global', { kind: 'global', prefs })
+      notify()
+      schedule(debounceMs)
+    },
+
+    enqueueSong(slug: string, prefs: SongPrefs) {
+      pending.set(`song:${slug}`, { kind: 'song', slug, prefs })
+      notify()
+      schedule(debounceMs)
+    },
+
+    /** True while a change for this scope has not reached the server yet. */
+    hasPending(key: QueueKey): boolean {
+      return pending.has(key)
+    },
+
+    size(): number {
+      return pending.size
+    },
+
+    flush,
+
+    /** Drains the queue when the connection comes back. */
+    watchConnection() {
+      if (wired || typeof window === 'undefined') return
+      wired = true
+
+      window.addEventListener('online', () => void flush())
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void flush()
+      })
+    },
   }
 }
 
-let wired = false
-
-/** Drains the queue when the connection comes back. */
-export function watchConnection(): void {
-  if (wired || typeof window === 'undefined') return
-  wired = true
-
-  window.addEventListener('online', () => void flush())
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void flush()
-  })
-}
+export const prefsQueue = createPrefsQueue()
