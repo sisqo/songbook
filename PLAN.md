@@ -297,6 +297,11 @@ già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
   candidati a rompersi**, da provare per primi.
 - Il build interroga Neon: se il database non è raggiungibile **il deploy fallisce**. È un
   compromesso accettato in cambio di pagine statiche, ma va saputo.
+- **L'ordine di attivazione del database non è indifferente.** Il build genera le pagine dai
+  dati che trova: se `DATABASE_URL` arriva su Vercel prima del seed, il build legge una
+  tabella vuota e pubblica zero canzoni con una lista di precache vuota — un'app che sembra
+  funzionante e non ha contenuti. La sequenza corretta è in `README.md`: crea Neon, `env
+  pull`, migrate, seed, e **solo dopo** aggiungi la variabile in produzione.
 
 ## Scostamenti dal piano, emersi in implementazione
 
