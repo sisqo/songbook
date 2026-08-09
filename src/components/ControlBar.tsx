@@ -17,7 +17,8 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * small departure from the plan — one tap and no popover to manage.
  */
 export function ControlBar({ originalKey }: { originalKey: string | null }) {
-  const { global, song, setZoomStep, setNotation, setSemitones, setScrollSpeed } = usePrefs()
+  const { global, song, pending, setZoomStep, setNotation, setSemitones, setScrollSpeed } =
+    usePrefs()
   const { running, toggle } = useAutoScroll(song.scrollSpeed)
 
   const keys = useMemo(() => {
@@ -149,6 +150,16 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
       >
         <span aria-hidden>{global.notation === 'it' ? 'Do' : 'C'}</span>
       </button>
+
+      {/* A queued change is visible, so nothing is ever lost in silence. */}
+      {pending > 0 && (
+        <span
+          className="pending-dot"
+          role="status"
+          aria-label="Modifica non ancora salvata: verrà salvata al ritorno della rete"
+          title="Non salvato"
+        />
+      )}
     </nav>
   )
 }

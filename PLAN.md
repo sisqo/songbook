@@ -27,7 +27,7 @@ costruisce da qui.
 | Framework | Next.js 15 App Router, React 19, TypeScript |
 | Stili | Tailwind v3 (v4 impossibile in locale, vedi *Vincoli d'ambiente*) |
 | Database | Postgres su **Neon via Vercel Marketplace** |
-| Accesso dati | **Drizzle ORM** + `@neondatabase/serverless` |
+| Accesso dati | **Drizzle ORM** + `postgres.js` (vedi *Scostamenti*) |
 | Auth | **Auth.js v5** (`next-auth@5`), provider Google, sessioni JWT |
 | PWA | **Serwist** (successore mantenuto di `next-pwa`) |
 | Lingua UI | Italiano, testi in chiaro nel codice — nessun framework i18n |
@@ -152,10 +152,17 @@ Ogni accordo viene scomposto in `{ fondamentale, suffisso, basso }`. La fondamen
 diventa una classe di altezza 0–11, la trasposizione è `(pc + n) mod 12`, e anche il basso
 degli accordi con slash viene trasposto.
 
-La scelta enarmonica **non** è fissa: la grafia segue la tonalità d'arrivo secondo il
-circolo delle quinte — tonalità con diesis usano i diesis, tonalità con bemolli usano i
-bemolli. Così trasponendo in Sib si legge `Sib`, non `La#`. La tonalità d'arrivo si calcola
-dalla `original_key` del brano più i semitoni.
+Due regole distinte, non una:
+
+1. **Senza trasposizione la grafia della sorgente si conserva.** Un `Bb` in un brano in Do
+   resta `Bb`: riscriverlo `La#` perché "Do usa i diesis" sarebbe sbagliato, dato che un
+   accordo prestato in bemolle si scrive sempre in bemolle. Questo caso è emerso da un test
+   in implementazione, non era previsto nella prima stesura del piano.
+2. **Trasponendo decide la tonalità d'arrivo**, secondo il circolo delle quinte: tonalità con
+   diesis usano i diesis, con bemolli i bemolli. Alzando quel brano di dieci semitoni si
+   arriva in Sib, dove si legge `Ab` e mai `Sol#`.
+
+La tonalità d'arrivo si calcola dalla `original_key` del brano più i semitoni.
 
 Il capotasto non è in v1 (vedi *Domande aperte*).
 
@@ -291,6 +298,38 @@ già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
 - Il build interroga Neon: se il database non è raggiungibile **il deploy fallisce**. È un
   compromesso accettato in cambio di pagine statiche, ma va saputo.
 
+## Scostamenti dal piano, emersi in implementazione
+
+Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
+
+1. **Chiave naturale `slug` invece di un id surrogato.** Un file su disco ha uno slug e
+   nient'altro: è questo che rende le due implementazioni del repository interscambiabili e
+   permette di indicizzare le preferenze allo stesso modo in entrambe. Costo: rinominare uno
+   slug orfana la trasposizione salvata di quel brano.
+2. **`postgres.js` invece di `@neondatabase/serverless`.** Nulla tocca il database dall'edge —
+   le sessioni sono JWT e l'allowlist è una variabile d'ambiente — quindi il driver HTTP non
+   porta vantaggi, e la sua versione 1 richiede Node ≥ 19 mentre qui c'è 18.
+3. **Cache di lettura locale per le preferenze.** Il piano diceva "solo DB". Ma una lettura di
+   rete non può concludersi prima del primo paint, e offline non c'è alcun database da
+   leggere: ogni brano si aprirebbe in tonalità originale senza memoria. Il DB resta l'unica
+   fonte di verità e vince sempre in caso di conflitto; questa è una cache, e la coda di
+   scrittura in memoria resta come deciso.
+4. **Leggere dentro una scaletta è una rotta a sé** (`/scalette/[scaletta]/[brano]`) invece di
+   un query param. Costo: una pagina statica per coppia. Vantaggi: precedente e successiva
+   note al build, e URL di precache identiche a quelle richieste — un query param non farebbe
+   parte della voce precachata.
+5. **Toggle notazione inline nella barra** invece che dietro il menù `⋯`: un tap invece di
+   due, e nessun popover da gestire.
+6. **L'indice di ricerca viaggia nel payload della pagina** invece di essere un JSON separato:
+   nessuna chiamata di rete e funziona offline per costruzione.
+7. **Tema chiaro e scuro implementati subito**, chiudendo una domanda aperta: per un tablet
+   letto in penombra non era rinviabile.
+8. **Il precache deve includere a mano la scansione di `public/`**: `@serwist/next` la esegue
+   solo se `additionalPrecacheEntries` è assente, e un array vuoto basta a saltarla. Passare
+   le rotte delle pagine avrebbe silenziosamente smesso di precachare le icone.
+9. **Gli script usano un `main()`**: `tsx` qui compila in CJS, dove il top-level await è un
+   errore di build.
+
 ## Decisioni
 
 | Decisione | Scelta | Perché |
@@ -331,10 +370,12 @@ già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
 5. **Font di lettura** — non ancora scelto, e la scelta interagisce con due cose: la
    disponibilità dei glifi `△` e `°` e la leggibilità a distanza di leggìo. Da definire in
    `DESIGN.md`.
-6. **Tema chiaro e scuro** — non ancora deciso, ed è una lacuna vera per un'app che si legge
-   su un tablet in penombra: il tema scuro non è una variante estetica ma la modalità d'uso
-   probabile, mentre in una sala prove illuminata serve il chiaro. Da decidere in `DESIGN.md`
-   se il default è scuro, se il chiaro è progettato con la stessa cura (come in `ai-signal`)
-   e se serve un toggle manuale oltre a `prefers-color-scheme`.
-7. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
+6. **Verifiche che richiedono un dispositivo reale** — in questo ambiente non c'è browser,
+   quindi tre cose restano confermate solo per ispezione e non per uso: il comportamento
+   offline effettivo dopo l'installazione della PWA, il round trip OAuth con Google, e la resa
+   visiva dei glifi `△` e `°` nel font scelto. Sono le prime cose da provare su tablet.
+7. **Toggle manuale del tema** — chiaro e scuro seguono `prefers-color-scheme`; resta da
+   decidere se serve anche un interruttore in-app, utile se la penombra non coincide con
+   l'orario di sistema.
+8. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
    — ignorate in v1, da valutare quando emergono su brani reali.
