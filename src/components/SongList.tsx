@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { usePrefs } from '@/components/PrefsProvider'
-import { IconSearch } from '@/components/icons'
+import { IconChevronRight, IconSearch } from '@/components/icons'
 import { formatKey } from '@/lib/music/chord'
 import { parseKey } from '@/lib/music/notes'
 
@@ -27,51 +27,33 @@ function formatKeyLabel(raw: string, notation: 'it' | 'int'): string {
 }
 
 /**
- * The song list with instant search and a canzoniere filter.
+ * The song list with instant search, and the canzonieri as a way in.
  *
  * The index travels with the page rather than being fetched, so searching costs
  * no network at all and keeps working offline — which for a precached page is the
- * only way it could work. Search always covers every song: the filter narrows
- * what is listed, not what is searched.
+ * only way it could work.
  *
- * The selected canzoniere is mirrored into `?c=` with `history.replaceState`
- * rather than `useSearchParams` and a router push. Reading search params through
- * the Next hook would opt this page out of static rendering, and the page has to
- * stay static to be precached.
+ * A canzoniere is a link to its first song rather than a filter: picking one is
+ * how a rehearsal starts, and the destination is a page that is already
+ * precached. "First" is the order the list itself is in.
  */
 export function SongList({ songs }: { songs: SongIndexEntry[] }) {
   const { global } = usePrefs()
   const { canzonieri, assignments, nameOf } = useCanzonieri()
 
   const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<string | null>(null)
   const deferred = useDeferredValue(query)
-
-  // Read the initial selection from the URL so a filtered link is shareable.
-  useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('c')
-    if (fromUrl !== null) setSelected(fromUrl)
-  }, [])
-
-  const choose = (slug: string | null) => {
-    setSelected(slug)
-
-    const url = new URL(window.location.href)
-    if (slug === null) url.searchParams.delete('c')
-    else url.searchParams.set('c', slug)
-    window.history.replaceState(null, '', url)
-  }
 
   const results = useMemo(() => {
     const needle = deferred.trim().toLowerCase()
-
     const terms = needle === '' ? [] : needle.split(/\s+/)
-    return songs.filter((song) => {
-      if (selected !== null && assignments[song.slug] !== selected) return false
-      // Every term must appear somewhere, so "certe notti" and "notti certe" match.
-      return terms.every((term) => song.haystack.includes(term))
-    })
-  }, [songs, deferred, selected, assignments])
+
+    // Every term must appear somewhere, so "certe notti" and "notti certe" match.
+    return songs.filter((song) => terms.every((term) => song.haystack.includes(term)))
+  }, [songs, deferred])
+
+  const firstSongOf = (canzoniereSlug: string) =>
+    songs.find((song) => assignments[song.slug] === canzoniereSlug)?.slug ?? null
 
   return (
     <div>
@@ -88,31 +70,33 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
         />
       </label>
 
-      {canzonieri.length > 1 && (
-        <div className="chip-row mt-3" role="group" aria-label="Filtra per canzoniere">
-          <button
-            type="button"
-            className={selected === null ? 'chip is-on' : 'chip'}
-            aria-pressed={selected === null}
-            onClick={() => choose(null)}
-          >
-            Tutti
-          </button>
-          {canzonieri.map((canzoniere) => (
-            <button
-              key={canzoniere.slug}
-              type="button"
-              className={selected === canzoniere.slug ? 'chip is-on' : 'chip'}
-              aria-pressed={selected === canzoniere.slug}
-              onClick={() => choose(canzoniere.slug)}
-            >
-              {canzoniere.name}
-            </button>
-          ))}
-        </div>
+      {canzonieri.length > 0 && (
+        <nav className="mt-5" aria-label="Canzonieri">
+          <p className="mb-2 px-1 text-xs text-faint">Apri un canzoniere dalla prima canzone</p>
+          <div className="chip-row">
+            {canzonieri.map((canzoniere) => {
+              const first = firstSongOf(canzoniere.slug)
+
+              return first === null ? (
+                <span
+                  key={canzoniere.slug}
+                  className="chip is-empty"
+                  title={`${canzoniere.name} non contiene brani`}
+                >
+                  {canzoniere.name}
+                </span>
+              ) : (
+                <Link key={canzoniere.slug} href={`/canzoni/${first}`} className="chip">
+                  {canzoniere.name}
+                  <IconChevronRight size={13} />
+                </Link>
+              )
+            })}
+          </div>
+        </nav>
       )}
 
-      <p className="mb-1 mt-4 px-1 text-xs text-faint" aria-live="polite">
+      <p className="mb-1 mt-6 px-1 text-xs text-faint" aria-live="polite">
         {results.length === songs.length
           ? `${songs.length} ${songs.length === 1 ? 'canzone' : 'canzoni'}`
           : `${results.length} di ${songs.length}`}
@@ -123,7 +107,7 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
       ) : (
         <ul className="row-list">
           {results.map((song) => {
-            const canzoniere = selected === null ? nameOf(assignments[song.slug]) : null
+            const canzoniere = nameOf(assignments[song.slug])
 
             return (
               <li key={song.slug}>

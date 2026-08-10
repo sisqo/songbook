@@ -17,9 +17,11 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * lives here as a plain toggle rather than behind an overflow menu, which is a
  * small departure from the plan — one tap and no popover to manage.
  *
- * The four clusters wrap onto a second line below ~480px rather than scrolling
+ * The clusters wrap onto a second line below ~480px rather than scrolling
  * sideways: on a phone in one hand, a control that has scrolled out of view is a
- * control you cannot reach.
+ * control you cannot reach. Their order decides where the line breaks — scroll,
+ * speed and key stay together on the first row, because those are the ones
+ * touched while playing; zoom and notation, set once and left alone, drop below.
  */
 export function ControlBar({ originalKey }: { originalKey: string | null }) {
   const { global, song, pending, setZoomStep, setNotation, setSemitones, setScrollSpeed } =
@@ -88,42 +90,6 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
           <button
             type="button"
             className="control-button"
-            onClick={() => setZoomStep(global.zoomStep - 1)}
-            disabled={global.zoomStep === 0}
-            aria-label="Riduci il testo"
-          >
-            <span aria-hidden>A−</span>
-          </button>
-          <button
-            type="button"
-            className="control-button"
-            onClick={() => setZoomStep(global.zoomStep + 1)}
-            disabled={global.zoomStep === ZOOM_STEPS.length - 1}
-            aria-label="Ingrandisci il testo"
-          >
-            <span aria-hidden>A+</span>
-          </button>
-        </div>
-
-        <button
-          type="button"
-          className="control-button"
-          onClick={() => setNotation(global.notation === 'it' ? 'int' : 'it')}
-          aria-label={
-            global.notation === 'it'
-              ? 'Notazione italiana, passa a internazionale'
-              : 'Notazione internazionale, passa a italiana'
-          }
-        >
-          <span aria-hidden>{global.notation === 'it' ? 'Do' : 'C'}</span>
-        </button>
-      </div>
-
-      <div className="control-cluster">
-        <div className="segment">
-          <button
-            type="button"
-            className="control-button"
             onClick={() => setSemitones(song.semitones - 1)}
             aria-label="Abbassa di un semitono"
           >
@@ -164,6 +130,42 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
             title="Non salvato"
           />
         )}
+      </div>
+
+      <div className="control-cluster">
+        <div className="segment">
+          <button
+            type="button"
+            className="control-button"
+            onClick={() => setZoomStep(global.zoomStep - 1)}
+            disabled={global.zoomStep === 0}
+            aria-label="Riduci il testo"
+          >
+            <span aria-hidden>A−</span>
+          </button>
+          <button
+            type="button"
+            className="control-button"
+            onClick={() => setZoomStep(global.zoomStep + 1)}
+            disabled={global.zoomStep === ZOOM_STEPS.length - 1}
+            aria-label="Ingrandisci il testo"
+          >
+            <span aria-hidden>A+</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="control-button"
+          onClick={() => setNotation(global.notation === 'it' ? 'int' : 'it')}
+          aria-label={
+            global.notation === 'it'
+              ? 'Notazione italiana, passa a internazionale'
+              : 'Notazione internazionale, passa a italiana'
+          }
+        >
+          <span aria-hidden>{global.notation === 'it' ? 'Do' : 'C'}</span>
+        </button>
       </div>
     </nav>
   )

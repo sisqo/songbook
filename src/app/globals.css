@@ -187,7 +187,7 @@
   }
 
   .btn:disabled {
-    opacity: 0.45;
+    opacity: 0.5;
     cursor: default;
   }
 
@@ -196,6 +196,19 @@
     background: var(--accent);
     color: var(--on-accent);
     box-shadow: var(--shadow-1);
+  }
+
+  /*
+   * A disabled primary drops the fill instead of fading it. "Analizza" and "Crea"
+   * spend most of their life disabled, and a 50%-opacity accent reads as a button
+   * that is nearly ready rather than one that is inert.
+   */
+  .btn-primary:disabled {
+    border-color: var(--line);
+    background: var(--surface-2);
+    color: var(--faint);
+    box-shadow: none;
+    opacity: 1;
   }
 
   .btn-quiet {
@@ -302,10 +315,15 @@
 
   /* ---- Top bar -------------------------------------------------------- */
 
+  /*
+   * Above the control bar's z-index, not below it: the menu panel lives inside
+   * this header, so the header's stacking context is what decides whether an open
+   * menu is painted over the reading controls or under them.
+   */
   .top-bar {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 40;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
@@ -364,6 +382,75 @@
       background: var(--surface-2);
       color: var(--ink);
     }
+  }
+
+  /* ---- Menu ----------------------------------------------------------- */
+
+  .menu {
+    position: relative;
+    flex: none;
+  }
+
+  /*
+   * Covers the page so the next tap anywhere closes the panel. Transparent: the
+   * point is to dismiss, not to dim the song underneath.
+   */
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+  }
+
+  .menu-panel {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    inset-inline-end: 0;
+    z-index: 40;
+    min-width: 13rem;
+    padding: 0.35rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    min-height: 2.6rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--r-sm);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    text-align: start;
+  }
+
+  .menu-item.is-on {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .menu-item svg {
+    flex: none;
+    color: var(--faint);
+  }
+
+  .menu-item.is-on svg {
+    color: var(--accent);
+  }
+
+  @media (hover: hover) {
+    .menu-item:hover {
+      background: var(--surface-2);
+    }
+  }
+
+  .menu-divider {
+    height: 1px;
+    margin: 0.35rem 0.2rem;
+    background: var(--line);
   }
 
   .back-link {
@@ -639,6 +726,9 @@
   }
 
   .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     flex: none;
     min-height: 2.25rem;
     padding: 0.35rem 0.8rem;
@@ -656,6 +746,27 @@
     border-color: var(--accent);
     background: var(--accent-soft);
     color: var(--accent);
+  }
+
+  /* A canzoniere with nothing in it: shown, so it does not look lost, but dead. */
+  .chip.is-empty {
+    color: var(--faint);
+    border-style: dashed;
+  }
+
+  .chip svg {
+    color: var(--faint);
+  }
+
+  @media (hover: hover) {
+    a.chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    a.chip:hover svg {
+      color: var(--accent);
+    }
   }
 
   .pending-dot {

@@ -10,9 +10,9 @@ export function SignOutButton() {
         await signOut({ redirectTo: '/login' })
       }}
     >
-      <button type="submit" className="nav-link" title="Esci">
-        <IconExit />
-        <span className="sr-only">Esci</span>
+      <button type="submit" className="menu-item w-full" role="menuitem">
+        <IconExit size={17} />
+        Esci
       </button>
     </form>
   )

@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Canzonieri' }
  * There is deliberately no `/canzonieri/[slug]` page. One created in the app
  * would not exist among the routes generated at build time, so it would not be
  * precached and would be missing offline; and a rename would move the route.
- * Viewing a canzoniere is the filtered song list at `/?c=slug` instead.
+ * Opening a canzoniere means opening its first song, from the home list.
  */
 export default async function CanzonieriPage() {
   const [songs, canzonieri, setlists] = await Promise.all([

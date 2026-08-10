@@ -80,9 +80,15 @@ database.
 
 Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
 rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
-la rotta. La vista di un canzoniere è la lista filtrata su `/?c=slug`, il che
-richiede `c` in `ignoreURLParametersMatching` di Serwist perché un link filtrato
-trovi la home in cache anche offline.
+la rotta. In home, sotto la ricerca, ogni canzoniere è invece un **collegamento
+alla sua prima canzone**: si sceglie il canzoniere e si è già sullo spartito, che è
+una pagina precachata. Un canzoniere vuoto è mostrato ma spento.
+
+Non esiste più una vista "solo i brani di questo canzoniere": la lista in home è
+sempre tutta, con il nome del canzoniere sotto ogni titolo, e la ricerca copre
+tutto. Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia;
+la regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché
+un vecchio segnalibro continui a trovare la home in cache.
 
 Lo slug di un canzoniere è immutabile: rinominare cambia solo il nome, così nessuna
 chiave esterna, URL o voce di precache si muove. Senza rete la gestione è
