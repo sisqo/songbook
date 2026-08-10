@@ -23,6 +23,9 @@ const BLANK = ' '
  * the box the span carried: no padding of its own, no border, and the font
  * inherited rather than the one browsers give buttons — anything else would move
  * where the lines wrap.
+ *
+ * In a song with chords, every line keeps the chord row above it whether it has
+ * chords or not, so the spacing between lines is even.
  */
 export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey: string | null }) {
   const { global, song: songPrefs } = usePrefs()
@@ -31,6 +34,23 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
   const currentKey = useMemo(
     () => transposeKey(parseKey(originalKey) ?? C_MAJOR, songPrefs.semitones),
     [originalKey, songPrefs.semitones],
+  )
+
+  /**
+   * Whether to leave room for chords above every line, decided for the whole song
+   * rather than line by line.
+   *
+   * Per line, the lines without chords closed up against the ones above them and
+   * the spacing came out ragged. Per song, every line in a song that has chords
+   * sits on the same rhythm — and a song with no chords at all stays compact
+   * instead of carrying an empty row above each line for nothing.
+   */
+  const roomForChords = useMemo(
+    () =>
+      song.sections.some((section) =>
+        section.lines.some((line) => line.kind === 'lyrics' && line.hasChords),
+      ),
+    [song],
   )
 
   return (
@@ -45,6 +65,7 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
                 semitones={songPrefs.semitones}
                 notation={global.notation}
                 currentKey={currentKey}
+                roomForChords={roomForChords}
                 onPick={setShown}
               />
             ))}
@@ -64,12 +85,14 @@ function SheetLine({
   semitones,
   notation,
   currentKey,
+  roomForChords,
   onPick,
 }: {
   line: Line
   semitones: number
   notation: Notation
   currentKey: Key
+  roomForChords: boolean
   onPick: (chord: Chord) => void
 }) {
   if (line.kind === 'comment') {
@@ -85,7 +108,7 @@ function SheetLine({
           <span className="sheet-word">
             {word.parts.map((part, partIndex) => (
               <span key={partIndex} className="sheet-part">
-                {line.hasChords && (
+                {roomForChords && (
                   <SheetChord
                     raw={part.chord}
                     semitones={semitones}
