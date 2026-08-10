@@ -1,10 +1,9 @@
 # songs — Piano di implementazione
 
 > **Stato:** v1 e **v1.1 — canzonieri** sono consegnate e in produzione su
-> https://songs.sisqo.dev. Questo documento descrive anche la **v1.2 — import e
-> modifica**, decisa e non ancora implementata: vedi la sezione omonima e la fase
-> corrispondente. La v1.2 cambia chi possiede un brano, quindi va letta prima di
-> toccare il seed.
+> https://songs.sisqo.dev, e con esse la **v1.2 — import e modifica**. La v1.2 ha
+> cambiato chi possiede un brano: il database, non i file. Va letta prima di toccare
+> il seed.
 
 ## Cosa è
 
@@ -571,7 +570,7 @@ nominavano il vecchio canzoniere.
 
 ### v1.2 — import e modifica
 
-Il cambio di regime: il database diventa il padrone dei brani.
+Consegnata. Il cambio di regime: il database diventa il padrone dei brani.
 
 1. Tabella `builds` e timbro scritto dal build, per sapere cosa è in attesa
 2. Seed a solo inserimento: nessun pruning, nessun aggiornamento dei brani
@@ -582,7 +581,12 @@ Il cambio di regime: il database diventa il padrone dei brani.
 7. Modifica e cancellazione di un brano esistente, dallo stesso form
 8. Elenco «in attesa» e azione Pubblica via deploy hook
 9. Export «Scarica tutto» e ripristino documentato tramite seed
-10. Rimozione dei quattro file segnaposto quando entra il repertorio vero
+10. Rimozione dei quattro file segnaposto quando entra il repertorio vero *(in attesa
+    del repertorio: i segnaposto sono ancora l'unico contenuto)*
+
+Verificato end to end e non assunto: una correzione applicata al database e un brano
+esistente solo lì sono sopravvissuti a `npm run seed`; l'elenco «in attesa» è vuoto
+subito dopo un build e nomina esattamente il brano toccato dopo.
 
 ### v2 — il resto
 

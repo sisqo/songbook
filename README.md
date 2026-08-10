@@ -22,6 +22,23 @@ normale di lavorare in locale: non serve un database per vedere l'app funzionare
 
 ## Aggiungere una canzone
 
+Dall'app, in `/importa`: incolli il brano, l'app riconosce se è già ChordPro o se
+sono accordi sopra il testo e converte, deduce titolo, artista e tonalità, e mostra
+una preview prima di salvare. Correggere e cancellare si fanno dalla pagina del
+brano, sotto lo spartito.
+
+Un brano salvato **non è ancora visibile**: lista, ricerca, pagine e precache si
+generano al build. La schermata elenca i brani in attesa e il pulsante **Pubblica**
+lancia una ricostruzione per tutto il gruppo. Serve `DEPLOY_HOOK_URL`, un deploy
+hook creato su Vercel in Settings → Git → Deploy Hooks.
+
+Il database è la sorgente di verità dei brani, quindi **non c'è cronologia git**: il
+pulsante *Scarica tutto* produce un archivio dei `.chopro` da conservare. Per
+ripristinarlo, rimetti i file in `content/` e lancia `npm run seed`, che inserisce
+solo ciò che manca.
+
+### Via file, come bootstrap
+
 Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 
 ```
@@ -42,6 +59,12 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 all'inserimento, o quando la colonna è ancora vuota, e da lì in poi comanda il
 database. Un file senza la direttiva finisce in "Da ordinare". Rinominare o
 spostare si fa dall'app, e un `npm run seed` successivo non lo disfa.
+
+Il seed è di **solo inserimento**: carica ciò che manca e non aggiorna né cancella
+mai un brano, perché una riga esistente può portare una correzione fatta dall'app.
+Effetto da conoscere: se cancelli un brano dall'app e il suo file è ancora in
+`content/`, il prossimo seed lo **reinserisce**. Quando entrerà il repertorio vero,
+i quattro segnaposto vanno rimossi dal repo.
 
 Le scalette sono file YAML in `content/setlists/` con un nome e l'elenco ordinato
 degli slug, e restano **trasversali**: possono mescolare brani di canzonieri
@@ -109,6 +132,7 @@ Due dettagli che costano tempo se non si sanno:
 | `ALLOWED_EMAILS` | Indirizzi ammessi, separati da virgola. Vuota nega tutti |
 | `AUTH_URL` | Su Vercel: `https://songs.sisqo.dev`, così il callback OAuth combacia |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
+| `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |
 
 ## Note
 
