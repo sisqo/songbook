@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 
 import { SongSheet } from '@/components/SongSheet'
+import { IconTrash } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import type { Canzoniere } from '@/lib/data/types'
 import { SAVE_MESSAGE, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
@@ -87,20 +88,14 @@ export function SongForm({
   return (
     <div>
       {error !== null && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          role="alert"
-        >
+        <p className="notice notice-error mb-4" role="alert">
           {error}
         </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Titolo
-          </span>
+          <span className="field-label">Titolo</span>
           <input
             value={values.title}
             onChange={(event) => set('title', event.target.value)}
@@ -109,9 +104,7 @@ export function SongForm({
         </label>
 
         <label className="block">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Artista
-          </span>
+          <span className="field-label">Artista</span>
           <input
             value={values.artist}
             onChange={(event) => set('artist', event.target.value)}
@@ -120,10 +113,10 @@ export function SongForm({
         </label>
 
         <label className="block">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
+          <span className="field-label">
             Tonalità{' '}
             {keyIsGuess && values.originalKey === initial.originalKey && (
-              <em style={{ color: 'var(--accent)' }}>stimata</em>
+              <em className="not-italic text-accent">stimata</em>
             )}
           </span>
           <input
@@ -135,9 +128,7 @@ export function SongForm({
         </label>
 
         <label className="block">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Canzoniere
-          </span>
+          <span className="field-label">Canzoniere</span>
           <select
             value={values.canzoniereSlug}
             onChange={(event) => set('canzoniereSlug', event.target.value)}
@@ -152,9 +143,7 @@ export function SongForm({
         </label>
 
         <label className="block sm:col-span-2">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Tag, separati da virgola
-          </span>
+          <span className="field-label">Tag, separati da virgola</span>
           <input
             value={values.tags}
             onChange={(event) => set('tags', event.target.value)}
@@ -163,11 +152,9 @@ export function SongForm({
         </label>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
         <label className="block">
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Corpo ChordPro
-          </span>
+          <span className="field-label">Corpo ChordPro</span>
           <textarea
             value={values.body}
             onChange={(event) => set('body', event.target.value)}
@@ -178,32 +165,23 @@ export function SongForm({
         </label>
 
         <div>
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>
-            Come apparirà
-          </span>
-          <div
-            className="mt-1 max-h-[26rem] overflow-auto rounded-lg border p-3"
-            style={{ background: 'var(--surface)', borderColor: 'var(--line)' }}
-          >
+          <span className="field-label">Come apparirà</span>
+          <div className="card max-h-[26rem] overflow-auto p-3">
             <SongSheet song={parsed} originalKey={values.originalKey || null} />
           </div>
         </div>
       </div>
 
       {duplicate !== null && (
-        <div
-          className="mt-4 rounded-lg p-3 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          role="alert"
-        >
+        <div className="notice-accent mt-4 rounded-lg p-3 text-sm" role="alert">
           <p>
             Esiste già «{duplicate.title}»
             {duplicate.artist !== null && ` di ${duplicate.artist}`}.
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              className="control-button"
+              className="btn btn-primary btn-sm"
               disabled={busy}
               onClick={() => void save('replace')}
             >
@@ -211,27 +189,27 @@ export function SongForm({
             </button>
             <button
               type="button"
-              className="control-button"
+              className="btn btn-sm"
               disabled={busy}
               onClick={() => void save('add')}
             >
               Aggiungi comunque
             </button>
-            <button type="button" className="control-button" onClick={() => setDuplicate(null)}>
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setDuplicate(null)}>
               Annulla
             </button>
           </div>
-          <p className="mt-2 text-xs">
+          <p className="mt-3 text-xs">
             Sostituire conserva lo slug, quindi la trasposizione e la velocità che avevi salvato
             per quel brano restano.
           </p>
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
         <button
           type="button"
-          className="control-button"
+          className="btn btn-primary"
           disabled={busy || values.title.trim() === '' || values.body.trim() === ''}
           onClick={() => void save()}
         >
@@ -243,12 +221,10 @@ export function SongForm({
             <span className="flex-1" />
             {confirmDelete ? (
               <>
-                <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Eliminare questo brano?
-                </span>
+                <span className="text-sm text-muted">Eliminare questo brano?</span>
                 <button
                   type="button"
-                  className="control-button"
+                  className="btn btn-danger"
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true)
@@ -258,20 +234,13 @@ export function SongForm({
                 >
                   Elimina
                 </button>
-                <button
-                  type="button"
-                  className="control-button"
-                  onClick={() => setConfirmDelete(false)}
-                >
+                <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(false)}>
                   Annulla
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className="control-button"
-                onClick={() => setConfirmDelete(true)}
-              >
+              <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(true)}>
+                <IconTrash size={16} />
                 Elimina
               </button>
             )}

@@ -6,6 +6,7 @@ import { ControlBar } from '@/components/ControlBar'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongEditor } from '@/components/SongEditor'
 import { SongSheet } from '@/components/SongSheet'
+import { IconChevronLeft, IconChevronRight } from '@/components/icons'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
@@ -25,6 +26,10 @@ export interface SetlistContext {
  *
  * The ChordPro is parsed here, on the server, so the parse happens once at build
  * time and the client only ever formats an already-structured song.
+ *
+ * Bare of a TopBar on purpose: vertical space here is the product, and the back
+ * link is contextual — "‹ Nome scaletta · 2 di 12" inside a setlist — which a
+ * shared bar could not express.
  */
 export async function SongReader({
   song,
@@ -44,66 +49,69 @@ export async function SongReader({
   return (
     <PrefsProvider songSlug={song.slug}>
       <CanzoniereProvider initial={initial} refreshOnMount={false}>
-      <main className="mx-auto max-w-3xl px-4 pt-4">
-        <header className="mb-5 border-b pb-3" style={{ borderColor: 'var(--line)' }}>
-          <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
+        <main className="mx-auto max-w-3xl px-4 pt-4">
+          <header className="mb-5 border-b pb-4" style={{ borderColor: 'var(--line)' }}>
             {setlist ? (
-              <Link href={`/scalette/${setlist.slug}`} className="underline-offset-2 hover:underline">
-                ‹ {setlist.name} · {setlist.position} di {setlist.total}
+              <Link href={`/scalette/${setlist.slug}`} className="back-link">
+                <IconChevronLeft size={16} />
+                {setlist.name} · {setlist.position} di {setlist.total}
               </Link>
             ) : (
-              <Link href="/" className="underline-offset-2 hover:underline">
-                ‹ Tutte le canzoni
+              <Link href="/" className="back-link">
+                <IconChevronLeft size={16} />
+                Tutte le canzoni
               </Link>
             )}
-          </nav>
 
-          <h1 className="text-2xl font-semibold tracking-tight">{song.title}</h1>
-          <p className="flex flex-wrap items-baseline gap-2 text-sm" style={{ color: 'var(--muted)' }}>
-            {song.artist !== null && <span>{song.artist}</span>}
-            <CanzonierePicker songSlug={song.slug} />
-          </p>
-        </header>
+            <h1 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight">
+              {song.title}
+            </h1>
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted">
+              {song.artist !== null && <span>{song.artist}</span>}
+              <CanzonierePicker songSlug={song.slug} />
+            </p>
+          </header>
 
-        <SongSheet song={parsed} originalKey={song.originalKey} />
+          <SongSheet song={parsed} originalKey={song.originalKey} />
 
-        {setlist && (
-          <nav
-            className="mt-10 flex items-stretch justify-between gap-3 border-t pt-4 text-sm"
-            style={{ borderColor: 'var(--line)' }}
-            aria-label="Navigazione nella scaletta"
-          >
-            {setlist.previous ? (
-              <Link
-                href={`/scalette/${setlist.slug}/${setlist.previous.slug}`}
-                className="flex-1 rounded-lg px-3 py-3"
-                style={{ background: 'var(--surface)' }}
-              >
-                <span style={{ color: 'var(--faint)' }}>‹ Precedente</span>
-                <br />
-                {setlist.previous.title}
-              </Link>
-            ) : (
-              <span className="flex-1" />
-            )}
+          {setlist && (
+            <nav
+              className="mt-10 flex items-stretch justify-between gap-3 border-t pt-4 text-sm"
+              style={{ borderColor: 'var(--line)' }}
+              aria-label="Navigazione nella scaletta"
+            >
+              {setlist.previous ? (
+                <Link href={`/scalette/${setlist.slug}/${setlist.previous.slug}`} className="card flex-1 px-4 py-3">
+                  <span className="flex items-center gap-1 text-faint">
+                    <IconChevronLeft size={14} />
+                    Precedente
+                  </span>
+                  <span className="mt-0.5 block font-medium">{setlist.previous.title}</span>
+                </Link>
+              ) : (
+                <span className="flex-1" />
+              )}
 
-            {setlist.next ? (
-              <Link
-                href={`/scalette/${setlist.slug}/${setlist.next.slug}`}
-                className="flex-1 rounded-lg px-3 py-3 text-right"
-                style={{ background: 'var(--surface)' }}
-              >
-                <span style={{ color: 'var(--faint)' }}>Successiva ›</span>
-                <br />
-                {setlist.next.title}
-              </Link>
-            ) : (
-              <span className="flex-1" />
-            )}
-          </nav>
-        )}
+              {setlist.next ? (
+                <Link
+                  href={`/scalette/${setlist.slug}/${setlist.next.slug}`}
+                  className="card flex-1 px-4 py-3 text-end"
+                >
+                  <span className="flex items-center justify-end gap-1 text-faint">
+                    Successiva
+                    <IconChevronRight size={14} />
+                  </span>
+                  <span className="mt-0.5 block font-medium">{setlist.next.title}</span>
+                </Link>
+              ) : (
+                <span className="flex-1" />
+              )}
+            </nav>
+          )}
 
-        <SongEditor song={song} canzonieri={canzonieri} />
+          <SongEditor song={song} canzonieri={canzonieri} />
+
+          <div className="bar-spacer" />
         </main>
 
         <ControlBar originalKey={song.originalKey} />

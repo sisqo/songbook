@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 import { CanzoniereManager } from '@/components/CanzoniereManager'
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
+import { TopBar } from '@/components/TopBar'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { repository } from '@/lib/data'
 
@@ -17,9 +17,10 @@ export const metadata: Metadata = { title: 'Canzonieri' }
  * Viewing a canzoniere is the filtered song list at `/?c=slug` instead.
  */
 export default async function CanzonieriPage() {
-  const [songs, canzonieri] = await Promise.all([
+  const [songs, canzonieri, setlists] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
+    repository.listSetlists(),
   ])
 
   const initial: CanzoniereState = {
@@ -33,15 +34,14 @@ export default async function CanzonieriPage() {
 
   return (
     <CanzoniereProvider initial={initial}>
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <TopBar current="canzonieri" showSetlists={setlists.length > 0} />
+
+      <main className="mx-auto max-w-3xl px-4 pb-12 pt-5">
         <header className="mb-5">
-          <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
-            <Link href="/" className="underline-offset-2 hover:underline">
-              ‹ Tutte le canzoni
-            </Link>
-          </nav>
-          <h1 className="text-2xl font-semibold tracking-tight">Canzonieri</h1>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+          <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">
+            Canzonieri
+          </h1>
+          <p className="mt-1 text-sm text-muted">
             Ogni brano appartiene a un canzoniere. Le scalette sono un&apos;altra cosa e possono
             mescolarli.
           </p>

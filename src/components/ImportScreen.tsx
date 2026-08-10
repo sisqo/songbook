@@ -4,6 +4,7 @@ import { zipSync, strToU8 } from 'fflate'
 import { useEffect, useState } from 'react'
 
 import { type FormValues, SongForm } from '@/components/SongForm'
+import { IconCheck, IconDownload, IconInfo, IconOffline, IconPublish } from '@/components/icons'
 import type { Canzoniere } from '@/lib/data/types'
 import { exportAll, loadPending, publish, saveSong } from '@/lib/import/actions'
 import { convert } from '@/lib/import/convert'
@@ -115,26 +116,24 @@ export function ImportScreen({
   return (
     <div>
       {!online && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          role="status"
-        >
+        <p className="notice notice-accent mb-4">
+          <IconOffline />
           Senza connessione non si può importare: salvare richiede il database e pubblicare
           richiede un deploy.
         </p>
       )}
 
       {notice !== null && (
-        <p className="mb-4 rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--surface)' }} role="status">
+        <p className="notice mb-4" role="status">
+          <IconInfo />
           {notice}
         </p>
       )}
 
       {prepared === null ? (
-        <div>
+        <div className="card p-4 sm:p-5">
           <label className="block">
-            <span className="text-xs" style={{ color: 'var(--muted)' }}>
+            <span className="mb-2 block text-sm text-muted">
               Incolla il brano. Se ha gli accordi fra parentesi quadre è già ChordPro; altrimenti
               si tenta la conversione da accordi sopra il testo.
             </span>
@@ -150,7 +149,7 @@ export function ImportScreen({
 
           <button
             type="button"
-            className="control-button mt-3"
+            className="btn btn-primary mt-3"
             disabled={!online || pasted.trim() === ''}
             onClick={prepare}
           >
@@ -158,14 +157,10 @@ export function ImportScreen({
           </button>
         </div>
       ) : (
-        <div>
-          <p className="mb-3 text-xs" style={{ color: 'var(--muted)' }}>
+        <div className="card p-4 sm:p-5">
+          <p className="mb-4 text-xs text-muted">
             {FORMAT_LABEL[prepared.format] ?? prepared.format} ·{' '}
-            <button
-              type="button"
-              className="underline underline-offset-2"
-              onClick={() => setPrepared(null)}
-            >
+            <button type="button" className="underline underline-offset-2" onClick={() => setPrepared(null)}>
               incolla un altro brano
             </button>
           </p>
@@ -188,29 +183,26 @@ export function ImportScreen({
         </div>
       )}
 
-      <section className="mt-8 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+      <section className="mt-8 border-t pt-5" style={{ borderColor: 'var(--line)' }}>
         <h2 className="text-lg font-semibold tracking-tight">In attesa di pubblicazione</h2>
-        <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+        <p className="mt-1 text-sm text-muted">
           Lista, ricerca e pagine si generano al build, quindi un brano è visibile solo dopo una
           ricostruzione. Puoi importarne diversi e pubblicarli in un colpo.
         </p>
 
         {pending.length === 0 ? (
-          <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
-            Nulla in attesa.
-          </p>
+          <p className="mt-4 text-sm text-muted">Nulla in attesa.</p>
         ) : (
-          <ul className="mt-3">
+          <ul className="row-list card mt-4">
             {pending.map((song) => (
-              <li
-                key={song.slug}
-                className="border-t py-2 text-sm"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <span className="font-medium">{song.title}</span>
-                {song.artist !== null && (
-                  <span style={{ color: 'var(--muted)' }}> · {song.artist}</span>
-                )}
+              <li key={song.slug} className="row">
+                <span className="count-badge" aria-hidden>
+                  <IconCheck size={13} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium">{song.title}</span>
+                  {song.artist !== null && <span className="text-muted"> · {song.artist}</span>}
+                </span>
               </li>
             ))}
           </ul>
@@ -219,7 +211,7 @@ export function ImportScreen({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            className="control-button"
+            className="btn btn-primary"
             disabled={!online || busy || pending.length === 0}
             onClick={async () => {
               setBusy(true)
@@ -233,15 +225,17 @@ export function ImportScreen({
               setBusy(false)
             }}
           >
+            <IconPublish size={16} />
             Pubblica
           </button>
 
           <button
             type="button"
-            className="control-button"
+            className="btn"
             disabled={!online || busy}
             onClick={() => void download()}
           >
+            <IconDownload size={16} />
             Scarica tutto
           </button>
         </div>

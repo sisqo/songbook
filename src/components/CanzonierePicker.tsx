@@ -27,11 +27,11 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
 
   // Offline the name is still worth showing; only changing it is unavailable.
   if (!online || canzonieri.length === 1) {
-    return name === null ? null : <span style={{ color: 'var(--faint)' }}>{name}</span>
+    return name === null ? null : <span className="text-faint">{name}</span>
   }
 
   return (
-    <span className="inline-flex items-baseline gap-1">
+    <span className="inline-flex items-baseline gap-2">
       <label>
         <span className="sr-only">Canzoniere di questo brano</span>
         <select
@@ -50,9 +50,12 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
               setBusy(false)
             }
           }}
-          className="rounded-md border px-1 py-0.5 text-sm"
+          className="rounded-md border px-2 py-1"
           style={{
-            background: 'var(--surface)',
+            // 16px: smaller makes iOS zoom the viewport on focus, the exact thing
+            // the 44px targets elsewhere exist to avoid.
+            fontSize: '1rem',
+            background: 'var(--surface-2)',
             borderColor: 'var(--line)',
             color: 'var(--muted)',
           }}
@@ -66,7 +69,7 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
         </select>
       </label>
       {error !== null && (
-        <span className="text-xs" style={{ color: 'var(--accent)' }} role="alert">
+        <span className="text-xs text-danger" role="alert">
           {error}
         </span>
       )}

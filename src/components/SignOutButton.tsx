@@ -1,5 +1,7 @@
 import { signOut } from '@/auth'
 
+import { IconExit } from '@/components/icons'
+
 export function SignOutButton() {
   return (
     <form
@@ -8,8 +10,9 @@ export function SignOutButton() {
         await signOut({ redirectTo: '/login' })
       }}
     >
-      <button type="submit" className="text-sm underline-offset-2 hover:underline">
-        Esci
+      <button type="submit" className="nav-link" title="Esci">
+        <IconExit />
+        <span className="sr-only">Esci</span>
       </button>
     </form>
   )

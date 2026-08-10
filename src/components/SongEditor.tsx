@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { SongForm } from '@/components/SongForm'
+import { IconPencil } from '@/components/icons'
 import type { Canzoniere, Song } from '@/lib/data/types'
 import { deleteSong, saveSong } from '@/lib/import/actions'
 
@@ -27,11 +28,12 @@ export function SongEditor({ song, canzonieri }: { song: Song; canzonieri: Canzo
     return (
       <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
         {notice !== null && (
-          <p className="mb-3 text-sm" style={{ color: 'var(--muted)' }} role="status">
+          <p className="mb-3 text-sm text-muted" role="status">
             {notice}
           </p>
         )}
-        <button type="button" className="control-button" onClick={() => setOpen(true)}>
+        <button type="button" className="btn" onClick={() => setOpen(true)}>
+          <IconPencil size={16} />
           Modifica
         </button>
       </div>
@@ -40,13 +42,9 @@ export function SongEditor({ song, canzonieri }: { song: Song; canzonieri: Canzo
 
   return (
     <section className="mt-10 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
-      <div className="mb-3 flex items-baseline justify-between gap-3">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
         <h2 className="text-lg font-semibold tracking-tight">Modifica</h2>
-        <button
-          type="button"
-          className="text-sm underline underline-offset-2"
-          onClick={() => setOpen(false)}
-        >
+        <button type="button" className="btn btn-quiet btn-sm" onClick={() => setOpen(false)}>
           Chiudi
         </button>
       </div>

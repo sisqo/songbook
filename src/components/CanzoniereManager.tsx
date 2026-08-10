@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { IconOffline, IconPencil, IconPlus, IconTrash } from '@/components/icons'
 import { WRITE_MESSAGE, type WriteResult, countBySlug } from '@/lib/canzonieri/types'
 
 /**
@@ -46,35 +47,28 @@ export function CanzoniereManager() {
   return (
     <div>
       {!online && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          role="status"
-        >
+        <p className="notice notice-accent mb-4">
+          <IconOffline />
           Senza connessione i canzonieri si possono solo consultare. Sono una struttura
           condivisa, quindi le modifiche richiedono la rete.
         </p>
       )}
 
       {error !== null && (
-        <p
-          className="mb-4 rounded-lg px-3 py-2 text-sm"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          role="alert"
-        >
+        <p className="notice notice-error mb-4" role="alert">
           {error}
         </p>
       )}
 
-      <ul>
+      <ul className="row-list card">
         {canzonieri.map((canzoniere) => {
           const count = counts[canzoniere.slug] ?? 0
           const isRenaming = renaming === canzoniere.slug
           const isRemoving = removing === canzoniere.slug
 
           return (
-            <li key={canzoniere.slug} className="border-t" style={{ borderColor: 'var(--line)' }}>
-              <div className="flex items-center gap-2 py-3">
+            <li key={canzoniere.slug}>
+              <div className="row">
                 {isRenaming ? (
                   <>
                     <input
@@ -85,16 +79,11 @@ export function CanzoniereManager() {
                         if (event.key === 'Escape') setRenaming(null)
                       }}
                       aria-label={`Nuovo nome per ${canzoniere.name}`}
-                      className="flex-1 rounded-lg border px-3 py-2"
-                      style={{
-                        background: 'var(--surface)',
-                        borderColor: 'var(--line)',
-                        color: 'var(--ink)',
-                      }}
+                      className="form-field flex-1"
                     />
                     <button
                       type="button"
-                      className="control-button"
+                      className="btn btn-primary btn-sm"
                       disabled={busy || draft.trim() === ''}
                       onClick={async () => {
                         if (await run(() => state.rename(canzoniere.slug, draft))) {
@@ -106,7 +95,7 @@ export function CanzoniereManager() {
                     </button>
                     <button
                       type="button"
-                      className="control-button"
+                      className="btn btn-quiet btn-sm"
                       onClick={() => setRenaming(null)}
                     >
                       Annulla
@@ -114,15 +103,15 @@ export function CanzoniereManager() {
                   </>
                 ) : (
                   <>
-                    <span className="flex-1">
-                      <span className="font-medium">{canzoniere.name}</span>
-                      <span className="block text-xs" style={{ color: 'var(--faint)' }}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{canzoniere.name}</span>
+                      <span className="count-badge mt-1">
                         {count} {count === 1 ? 'brano' : 'brani'}
                       </span>
                     </span>
                     <button
                       type="button"
-                      className="control-button"
+                      className="btn btn-quiet btn-sm"
                       disabled={!online || busy}
                       onClick={() => {
                         setRenaming(canzoniere.slug)
@@ -130,12 +119,14 @@ export function CanzoniereManager() {
                         setRemoving(null)
                         setError(null)
                       }}
+                      aria-label={`Rinomina ${canzoniere.name}`}
                     >
-                      Rinomina
+                      <IconPencil size={16} />
+                      <span className="hidden sm:inline">Rinomina</span>
                     </button>
                     <button
                       type="button"
-                      className="control-button"
+                      className="btn btn-quiet btn-sm"
                       disabled={!online || busy}
                       onClick={() => {
                         setRemoving(isRemoving ? null : canzoniere.slug)
@@ -143,26 +134,24 @@ export function CanzoniereManager() {
                         setRenaming(null)
                         setError(null)
                       }}
+                      aria-label={`Rimuovi ${canzoniere.name}`}
+                      aria-expanded={isRemoving}
                     >
-                      Rimuovi
+                      <IconTrash size={16} />
+                      <span className="hidden sm:inline">Rimuovi</span>
                     </button>
                   </>
                 )}
               </div>
 
               {isRemoving && (
-                <div
-                  className="mb-3 rounded-lg p-3 text-sm"
-                  style={{ background: 'var(--surface)' }}
-                >
+                <div className="panel mx-3 mb-3 p-3 text-sm">
                   {count === 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex-1">
-                        Rimuovere «{canzoniere.name}»? È vuoto.
-                      </span>
+                      <span className="flex-1">Rimuovere «{canzoniere.name}»? È vuoto.</span>
                       <button
                         type="button"
-                        className="control-button"
+                        className="btn btn-danger btn-sm"
                         disabled={busy}
                         onClick={async () => {
                           if (await run(() => state.remove(canzoniere.slug, null))) {
@@ -174,7 +163,7 @@ export function CanzoniereManager() {
                       </button>
                       <button
                         type="button"
-                        className="control-button"
+                        className="btn btn-quiet btn-sm"
                         onClick={() => setRemoving(null)}
                       >
                         Annulla
@@ -195,12 +184,7 @@ export function CanzoniereManager() {
                         <select
                           value={destination}
                           onChange={(event) => setDestination(event.target.value)}
-                          className="rounded-lg border px-2 py-2"
-                          style={{
-                            background: 'var(--bg)',
-                            borderColor: 'var(--line)',
-                            color: 'var(--ink)',
-                          }}
+                          className="form-field w-auto"
                         >
                           {others(canzoniere.slug).map((entry) => (
                             <option key={entry.slug} value={entry.slug}>
@@ -211,7 +195,7 @@ export function CanzoniereManager() {
                       </label>
                       <button
                         type="button"
-                        className="control-button"
+                        className="btn btn-danger btn-sm"
                         disabled={busy || destination === ''}
                         onClick={async () => {
                           if (await run(() => state.remove(canzoniere.slug, destination))) {
@@ -223,7 +207,7 @@ export function CanzoniereManager() {
                       </button>
                       <button
                         type="button"
-                        className="control-button"
+                        className="btn btn-quiet btn-sm"
                         onClick={() => setRemoving(null)}
                       >
                         Annulla
@@ -238,8 +222,7 @@ export function CanzoniereManager() {
       </ul>
 
       <form
-        className="mt-6 flex gap-2 border-t pt-4"
-        style={{ borderColor: 'var(--line)' }}
+        className="mt-4 flex gap-2"
         onSubmit={async (event) => {
           event.preventDefault()
           if (await run(() => state.create(newName))) setNewName('')
@@ -251,19 +234,15 @@ export function CanzoniereManager() {
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
             placeholder="Nuovo canzoniere"
-            className="w-full rounded-lg border px-3 py-2"
-            style={{
-              background: 'var(--surface)',
-              borderColor: 'var(--line)',
-              color: 'var(--ink)',
-            }}
+            className="form-field"
           />
         </label>
         <button
           type="submit"
-          className="control-button"
+          className="btn btn-primary"
           disabled={!online || busy || newName.trim() === ''}
         >
+          <IconPlus size={16} />
           Crea
         </button>
       </form>

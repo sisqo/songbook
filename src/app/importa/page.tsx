@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 
 import { ImportScreen } from '@/components/ImportScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
+import { TopBar } from '@/components/TopBar'
 import { UNFILED, repository } from '@/lib/data'
 
 export const metadata: Metadata = { title: 'Importa' }
@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: 'Importa' }
  * is read at runtime, so the page itself never needs regenerating to be correct.
  */
 export default async function ImportPage() {
-  const canzonieri = await repository.listCanzonieri()
+  const [canzonieri, setlists] = await Promise.all([
+    repository.listCanzonieri(),
+    repository.listSetlists(),
+  ])
 
   const preferred =
     canzonieri.find((entry) => entry.slug === UNFILED.slug)?.slug ??
@@ -22,15 +25,12 @@ export default async function ImportPage() {
   return (
     // The preview renders a real sheet, which reads zoom and notation from here.
     <PrefsProvider songSlug={null}>
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <header className="mb-5">
-          <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
-            <Link href="/" className="underline-offset-2 hover:underline">
-              ‹ Tutte le canzoni
-            </Link>
-          </nav>
-          <h1 className="text-2xl font-semibold tracking-tight">Importa</h1>
-        </header>
+      <TopBar current="importa" showSetlists={setlists.length > 0} />
+
+      <main className="mx-auto max-w-5xl px-4 pb-12 pt-5">
+        <h1 className="mb-5 text-[1.75rem] font-semibold leading-tight tracking-tight">
+          Importa
+        </h1>
 
         <ImportScreen canzonieri={canzonieri} defaultCanzoniere={preferred} />
       </main>

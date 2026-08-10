@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { IconChevronLeft } from '@/components/icons'
 import { repository } from '@/lib/data'
 
 interface Props {
@@ -27,35 +28,30 @@ export default async function SetlistPage({ params }: Props) {
   const songs = await Promise.all(setlist.songs.map((songSlug) => repository.getSong(songSlug)))
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
+    <main className="mx-auto max-w-3xl px-4 pb-12 pt-4">
       <header className="mb-5">
-        <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
-          <Link href="/scalette" className="underline-offset-2 hover:underline">
-            ‹ Scalette
-          </Link>
-        </nav>
-        <h1 className="text-2xl font-semibold tracking-tight">{setlist.name}</h1>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+        <Link href="/scalette" className="back-link">
+          <IconChevronLeft size={16} />
+          Scalette
+        </Link>
+        <h1 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight">
+          {setlist.name}
+        </h1>
+        <p className="mt-1 text-sm text-muted">
           {setlist.songs.length} {setlist.songs.length === 1 ? 'brano' : 'brani'}
         </p>
       </header>
 
-      <ol>
+      <ol className="row-list card">
         {songs.map((song, index) =>
           song === null ? null : (
-            <li key={song.slug} className="border-t" style={{ borderColor: 'var(--line)' }}>
-              <Link
-                href={`/scalette/${setlist.slug}/${song.slug}`}
-                className="flex items-baseline gap-3 py-3"
-              >
-                <span className="w-6 flex-none text-sm tabular-nums" style={{ color: 'var(--faint)' }}>
-                  {index + 1}
-                </span>
-                <span className="flex-1">
-                  <span className="font-medium">{song.title}</span>
+            <li key={song.slug}>
+              <Link href={`/scalette/${setlist.slug}/${song.slug}`} className="row">
+                <span className="w-6 flex-none text-sm tabular-nums text-faint">{index + 1}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{song.title}</span>
                   {song.artist !== null && (
-                    <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {' · '}
+                    <span className="block truncate text-[0.8125rem] text-muted">
                       {song.artist}
                     </span>
                   )}

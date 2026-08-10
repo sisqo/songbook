@@ -5,6 +5,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { usePrefs } from '@/components/PrefsProvider'
+import { IconSearch } from '@/components/icons'
 import { formatKey } from '@/lib/music/chord'
 import { parseKey } from '@/lib/music/notes'
 
@@ -74,25 +75,21 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
 
   return (
     <div>
-      <label className="block">
+      <label className="search-field block">
         <span className="sr-only">Cerca fra le canzoni</span>
+        <IconSearch />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Cerca titolo, artista o testo"
           autoComplete="off"
-          className="w-full rounded-xl border px-4 py-3 text-base"
-          style={{
-            background: 'var(--surface)',
-            borderColor: 'var(--line)',
-            color: 'var(--ink)',
-          }}
+          className="form-field"
         />
       </label>
 
       {canzonieri.length > 1 && (
-        <div className="chip-row" role="group" aria-label="Filtra per canzoniere">
+        <div className="chip-row mt-3" role="group" aria-label="Filtra per canzoniere">
           <button
             type="button"
             className={selected === null ? 'chip is-on' : 'chip'}
@@ -115,46 +112,44 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
         </div>
       )}
 
-      <p className="mt-3 text-xs" style={{ color: 'var(--faint)' }} aria-live="polite">
+      <p className="mb-1 mt-4 px-1 text-xs text-faint" aria-live="polite">
         {results.length === songs.length
           ? `${songs.length} ${songs.length === 1 ? 'canzone' : 'canzoni'}`
           : `${results.length} di ${songs.length}`}
       </p>
 
       {results.length === 0 ? (
-        <p className="mt-8 text-sm" style={{ color: 'var(--muted)' }}>
-          Nessuna canzone trovata.
-        </p>
+        <p className="mt-8 text-center text-sm text-muted">Nessuna canzone trovata.</p>
       ) : (
-        <ul className="mt-2">
-          {results.map((song) => (
-            <li key={song.slug} className="border-t" style={{ borderColor: 'var(--line)' }}>
-              <Link
-                href={`/canzoni/${song.slug}`}
-                className="flex items-baseline justify-between gap-3 py-3"
-              >
-                <span>
-                  <span className="font-medium">{song.title}</span>
-                  {song.artist !== null && (
-                    <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                      {' · '}
-                      {song.artist}
-                    </span>
-                  )}
-                  {selected === null && nameOf(assignments[song.slug]) !== null && (
-                    <span className="block text-xs" style={{ color: 'var(--faint)' }}>
-                      {nameOf(assignments[song.slug])}
-                    </span>
-                  )}
-                </span>
-                {song.originalKey !== null && (
-                  <span className="flex-none text-sm" style={{ color: 'var(--accent)' }}>
-                    {formatKeyLabel(song.originalKey, global.notation)}
+        <ul className="row-list">
+          {results.map((song) => {
+            const canzoniere = selected === null ? nameOf(assignments[song.slug]) : null
+
+            return (
+              <li key={song.slug}>
+                <Link href={`/canzoni/${song.slug}`} className="row">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{song.title}</span>
+                    {(song.artist !== null || canzoniere !== null) && (
+                      <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
+                        {song.artist}
+                        {song.artist !== null && canzoniere !== null && (
+                          <span className="text-faint"> · </span>
+                        )}
+                        {canzoniere !== null && <span className="text-faint">{canzoniere}</span>}
+                      </span>
+                    )}
                   </span>
-                )}
-              </Link>
-            </li>
-          ))}
+
+                  {song.originalKey !== null && (
+                    <span className="badge">
+                      {formatKeyLabel(song.originalKey, global.notation)}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

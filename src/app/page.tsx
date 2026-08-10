@@ -1,9 +1,7 @@
-import Link from 'next/link'
-
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { PrefsProvider } from '@/components/PrefsProvider'
-import { SignOutButton } from '@/components/SignOutButton'
 import { SongList } from '@/components/SongList'
+import { TopBar } from '@/components/TopBar'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { repository } from '@/lib/data'
 import { toIndexEntry } from '@/lib/search-index'
@@ -29,24 +27,12 @@ export default async function Home() {
   return (
     <PrefsProvider songSlug={null}>
       <CanzoniereProvider initial={initial}>
-        <main className="mx-auto max-w-3xl px-4 py-6">
-          <header className="mb-5 flex items-baseline justify-between gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Canzoni</h1>
-            <div className="flex items-baseline gap-4" style={{ color: 'var(--muted)' }}>
-              <Link href="/importa" className="text-sm underline-offset-2 hover:underline">
-                Importa
-              </Link>
-              <Link href="/canzonieri" className="text-sm underline-offset-2 hover:underline">
-                Canzonieri
-              </Link>
-              {setlists.length > 0 && (
-                <Link href="/scalette" className="text-sm underline-offset-2 hover:underline">
-                  Scalette
-                </Link>
-              )}
-              <SignOutButton />
-            </div>
-          </header>
+        <TopBar current="canzoni" showSetlists={setlists.length > 0} />
+
+        <main className="mx-auto max-w-3xl px-4 pb-12 pt-5">
+          <h1 className="mb-4 text-[1.75rem] font-semibold leading-tight tracking-tight">
+            Canzoni
+          </h1>
 
           <SongList songs={songs.map(toIndexEntry)} />
         </main>
