@@ -11,6 +11,7 @@
 import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 
 import { auth } from '@/auth'
+import { UNFILED } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { builds, canzonieri, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
@@ -28,6 +29,36 @@ async function authorized(): Promise<boolean> {
   if (!hasDatabase) return false
   const session = await auth()
   return Boolean(session?.user?.email)
+}
+
+/**
+ * A canzoniere slug that certainly exists.
+ *
+ * `songs.canzoniere_slug` is a foreign key, so an empty or unknown value would
+ * fail the insert and surface as a generic "could not save" with nothing to act
+ * on. Falling back to the unfiled canzoniere — creating it if this database has
+ * never had one — turns that into a song that simply needs filing.
+ */
+async function resolveCanzoniere(slug: string): Promise<string> {
+  const database = db()
+  const wanted = slug.trim()
+
+  if (wanted !== '') {
+    const found = await database
+      .select({ slug: canzonieri.slug })
+      .from(canzonieri)
+      .where(eq(canzonieri.slug, wanted))
+      .limit(1)
+
+    if (found.length > 0) return found[0].slug
+  }
+
+  await database
+    .insert(canzonieri)
+    .values({ slug: UNFILED.slug, name: UNFILED.name })
+    .onConflictDoNothing({ target: canzonieri.slug })
+
+  return UNFILED.slug
 }
 
 /** Same title and artist, ignoring case and surrounding space. */
@@ -48,19 +79,21 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
   if (title === '') return { ok: false, reason: 'invalid-title' }
   if (input.body.trim() === '') return { ok: false, reason: 'empty-body' }
 
-  const values = {
-    title,
-    artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
-    originalKey:
-      input.originalKey === null || input.originalKey.trim() === '' ? null : input.originalKey.trim(),
-    tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
-    canzoniereSlug: input.canzoniereSlug,
-    body: input.body,
-    updatedAt: new Date(),
-  }
-
   try {
     const database = db()
+
+    const values = {
+      title,
+      artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
+      originalKey:
+        input.originalKey === null || input.originalKey.trim() === ''
+          ? null
+          : input.originalKey.trim(),
+      tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
+      canzoniereSlug: await resolveCanzoniere(input.canzoniereSlug),
+      body: input.body,
+      updatedAt: new Date(),
+    }
 
     // Editing a known song: update in place and keep the slug, which is what
     // keeps that song's saved transposition and speed attached to it.

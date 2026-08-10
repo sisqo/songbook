@@ -55,11 +55,20 @@ async function main() {
    */
   if (hasDatabase) {
     const builtAt = new Date()
-    await db()
-      .insert(builds)
-      .values({ id: 'last', builtAt })
-      .onConflictDoUpdate({ target: builds.id, set: { builtAt } })
-    console.log(`Build stamped at ${builtAt.toISOString()}`)
+    try {
+      await db()
+        .insert(builds)
+        .values({ id: 'last', builtAt })
+        .onConflictDoUpdate({ target: builds.id, set: { builtAt } })
+      console.log(`Build stamped at ${builtAt.toISOString()}`)
+    } catch (error) {
+      /**
+       * The stamp is not load-bearing for generating pages: without it the import
+       * screen shows a stale pending list, which is a nuisance. Letting it fail
+       * the build would take the whole site down instead.
+       */
+      console.warn(`Could not stamp the build; the pending list will be stale: ${error}`)
+    }
   }
 
   await closeDatabase()
