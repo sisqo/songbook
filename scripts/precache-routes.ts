@@ -17,7 +17,8 @@ async function main() {
   loadEnv()
 
   const { repository, repositoryKind } = await import('../src/lib/data')
-  const { closeDatabase } = await import('../src/lib/db/client')
+  const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
+  const { builds } = await import('../src/lib/db/schema')
 
   const [songs, setlists] = await Promise.all([
     repository.listSongs(),
@@ -42,6 +43,24 @@ async function main() {
   await writeFile(output, `${JSON.stringify(routes, null, 2)}\n`, 'utf8')
 
   console.log(`Precache routes (${repositoryKind}): ${routes.length}`)
+
+  /**
+   * Stamp the build.
+   *
+   * Done here rather than after `next build` because this script runs before the
+   * pages are generated and therefore knows exactly which songs they will
+   * contain: anything written to the database after this moment is genuinely not
+   * in the build, and the import screen should keep listing it as pending.
+   */
+  if (hasDatabase) {
+    const builtAt = new Date()
+    await db()
+      .insert(builds)
+      .values({ id: 'last', builtAt })
+      .onConflictDoUpdate({ target: builds.id, set: { builtAt } })
+    console.log(`Build stamped at ${builtAt.toISOString()}`)
+  }
+
   await closeDatabase()
 }
 

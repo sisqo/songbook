@@ -15,6 +15,13 @@
       "when": 1786345721823,
       "tag": "0001_petite_inertia",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786362786686,
+      "tag": "0002_complete_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

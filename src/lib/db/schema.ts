@@ -67,6 +67,19 @@ export const setlistSongs = pgTable(
   (table) => [primaryKey({ columns: [table.setlistSlug, table.position] })],
 )
 
+/**
+ * One row, stamped by the build.
+ *
+ * It answers "which songs are still waiting to be published": those whose
+ * `updated_at` is newer than this stamp. Deriving it from what the build
+ * actually saw is the only honest answer — a flag set by a publish action would
+ * claim success even if the deploy failed.
+ */
+export const builds = pgTable('builds', {
+  id: text('id').primaryKey().default('last'),
+  builtAt: timestamp('built_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 /** Global preferences: one row per person. */
 export const userPrefs = pgTable('user_prefs', {
   userEmail: text('user_email').primaryKey(),
