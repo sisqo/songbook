@@ -1,8 +1,7 @@
 # songs — Piano di implementazione
 
-> **Stato:** la v1 è consegnata e in produzione su https://songs.sisqo.dev. Questo documento
-> descrive anche la **v1.1 — canzonieri**, decisa e non ancora implementata: vedi la sezione
-> *Canzonieri* e la fase corrispondente.
+> **Stato:** v1 e **v1.1 — canzonieri** sono consegnate e in produzione su
+> https://songs.sisqo.dev.
 
 ## Cosa è
 
@@ -424,8 +423,8 @@ Consegnata e in produzione.
 
 ### v1.1 — canzonieri
 
-La prima scrittura dall'app, deliberatamente su una superficie minima: nomi e appartenenza,
-non i brani.
+Consegnata. La prima scrittura dall'app, deliberatamente su una superficie minima: nomi e
+appartenenza, non i brani.
 
 1. Migrazione: tabella `canzonieri`, colonna `songs.canzoniere_slug` con
    `on delete restrict`. La colonna nasce nullable, così il backfill è il seed stesso; una
@@ -439,6 +438,10 @@ non i brani.
 7. `/canzonieri`: crea, rinomina, rimuovi con spostamento obbligato se non vuoto
 8. Selettore di canzoniere nella testata del brano
 9. Disabilitazione dei controlli di gestione quando offline
+
+La garanzia centrale è verificata end to end e non assunta: una rinomina e uno spostamento
+applicati al database sono sopravvissuti a un `npm run seed` che rileggeva file che ancora
+nominavano il vecchio canzoniere.
 
 ### v2 — scrittura
 

@@ -28,7 +28,8 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {title: Titolo}
 {artist: Autore}
 {key: Bb}
-{tags: lento, repertorio}
+{tags: lento}
+{canzoniere: Repertorio}
 
 [Bb]Prima [Eb]riga del [F]testo
 
@@ -37,8 +38,32 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {end_of_chorus}
 ```
 
+`{canzoniere}` dice **soltanto dove il brano nasce**: il seed lo applica
+all'inserimento, o quando la colonna è ancora vuota, e da lì in poi comanda il
+database. Un file senza la direttiva finisce in "Da ordinare". Rinominare o
+spostare si fa dall'app, e un `npm run seed` successivo non lo disfa.
+
 Le scalette sono file YAML in `content/setlists/` con un nome e l'elenco ordinato
-degli slug. In v1 sono in sola lettura: cambiarle richiede un commit.
+degli slug, e restano **trasversali**: possono mescolare brani di canzonieri
+diversi. In v1 sono in sola lettura: cambiarle richiede un commit.
+
+## Canzonieri
+
+Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da
+`/canzonieri`; lo spostamento di un singolo brano si fa dal selettore nella testata
+del brano. La rimozione di un canzoniere non vuoto chiede prima dove spostare i
+brani — e il vincolo `on delete restrict` la impedisce comunque a livello di
+database.
+
+Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
+rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
+la rotta. La vista di un canzoniere è la lista filtrata su `/?c=slug`, il che
+richiede `c` in `ignoreURLParametersMatching` di Serwist perché un link filtrato
+trovi la home in cache anche offline.
+
+Lo slug di un canzoniere è immutabile: rinominare cambia solo il nome, così nessuna
+chiave esterna, URL o voce di precache si muove. Senza rete la gestione è
+disabilitata — è struttura condivisa fra account — mentre la lettura non cambia.
 
 I brani in `content/` sono testi segnaposto originali, non repertorio reale.
 
