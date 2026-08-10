@@ -780,8 +780,20 @@
   }
 
   .control-readout span {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
     color: var(--faint);
     font-size: 0.625rem;
+  }
+
+  /*
+   * Away from the original key. The accent marks the one control on the bar whose
+   * state differs from how the song was written, and it is the same colour as the
+   * chords it is changing.
+   */
+  .control-readout.is-changed span {
+    color: var(--accent);
   }
 
   .speed-dots {

@@ -64,6 +64,16 @@ export function IconChevronDown(props: IconProps) {
   )
 }
 
+/** Back to where it started: a counterclockwise arrow. */
+export function IconUndo(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 12a8 8 0 1 0 2.5-5.8" />
+      <path d="M4 4v3.5h3.5" />
+    </Icon>
+  )
+}
+
 /** Rebuild: a circling arrow. */
 export function IconRebuild(props: IconProps) {
   return (

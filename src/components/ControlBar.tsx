@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 
 import { usePrefs } from '@/components/PrefsProvider'
-import { IconPause, IconPlay } from '@/components/icons'
+import { IconPause, IconPlay, IconUndo } from '@/components/icons'
 import { formatKey } from '@/lib/music/chord'
 import { C_MAJOR, parseKey, transposeKey } from '@/lib/music/notes'
 import { SCROLL_SPEEDS, ZOOM_STEPS } from '@/lib/prefs/types'
@@ -96,9 +96,18 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
             <span aria-hidden>−1</span>
           </button>
 
+          {/*
+           * The readout is also the way back. Transposed, it drops the word and
+           * shows the arrow instead: a symbol says "this is a button that undoes
+           * something" where "orig. Re" only reported a fact.
+           */}
           <button
             type="button"
-            className="control-button control-readout"
+            className={
+              song.semitones === 0
+                ? 'control-button control-readout'
+                : 'control-button control-readout is-changed'
+            }
             onClick={() => setSemitones(0)}
             disabled={song.semitones === 0}
             aria-label={
@@ -106,9 +115,19 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
                 ? `Tonalità ${keys.current}, originale`
                 : `Tonalità ${keys.current}, originale ${keys.original}. Torna all'originale`
             }
+            title={song.semitones === 0 ? undefined : `Torna a ${keys.original}`}
           >
             <strong>{keys.current}</strong>
-            <span>{song.semitones === 0 ? 'originale' : `orig. ${keys.original}`}</span>
+            <span>
+              {song.semitones === 0 ? (
+                'originale'
+              ) : (
+                <>
+                  <IconUndo size={11} />
+                  {keys.original}
+                </>
+              )}
+            </span>
           </button>
 
           <button
