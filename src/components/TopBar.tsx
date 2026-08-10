@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
-import { IconChevronLeft, IconNote } from '@/components/icons'
+import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 
 export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'scalette'
 
@@ -25,10 +25,13 @@ export function TopBar({
   current,
   showSetlists = true,
   back,
+  steps,
 }: {
   current: Section
   showSetlists?: boolean
   back?: { href: string; label: string }
+  /** Previous and next song, when this screen is part of a sequence. */
+  steps?: { previous: string | null; next: string | null }
 }) {
   return (
     <header className="top-bar">
@@ -49,10 +52,47 @@ export function TopBar({
 
         <span className="flex-1" />
 
+        {/*
+         * Both arrows keep their place even with nowhere to go, so the buttons
+         * next to them do not shift between the first song and the second.
+         */}
+        {steps !== undefined && (
+          <div className="flex items-center">
+            <Step href={steps.previous} label="Canzone precedente" direction="previous" />
+            <Step href={steps.next} label="Canzone successiva" direction="next" />
+          </div>
+        )}
+
         <NavMenu current={current} showSetlists={showSetlists}>
           <SignOutButton />
         </NavMenu>
       </div>
     </header>
+  )
+}
+
+function Step({
+  href,
+  label,
+  direction,
+}: {
+  href: string | null
+  label: string
+  direction: 'previous' | 'next'
+}) {
+  const icon = direction === 'previous' ? <IconChevronLeft size={20} /> : <IconChevronRight size={20} />
+
+  if (href === null) {
+    return (
+      <span className="nav-link is-off" aria-hidden>
+        {icon}
+      </span>
+    )
+  }
+
+  return (
+    <Link href={href} className="nav-link" title={label} aria-label={label}>
+      {icon}
+    </Link>
   )
 }

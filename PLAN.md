@@ -331,11 +331,16 @@ facciamo, e la ragione è che due delle funzioni richieste la renderebbero fragi
 - una **rinomina** sposterebbe la rotta, se lo slug seguisse il nome — e se non lo segue, la
   URL resta legata a un nome vecchio, che è peggio.
 
-La vista di un canzoniere è quindi la lista brani filtrata, con lo slug in un parametro:
-`/?c=repertorio`. Resta linkabile, non crea rotte, non cambia mai, e funziona offline.
-Perché il service worker riconosca `/?c=…` come la home già in cache, `c` va aggiunto a
-`ignoreURLParametersMatching` di Serwist: senza quello un link filtrato andrebbe in miss e
-offline non aprirebbe.
+Il canzoniere non ha quindi una vista propria: **aprirlo vuol dire aprire la sua prima
+canzone**, e da lì le frecce nell'header scorrono le altre. La home offre i canzonieri in
+riga sotto la ricerca e non elenca brani; i brani compaiono solo come risultati di ricerca.
+L'ordine su cui scorrono le frecce è quello del build, come tutto il resto della pagina: se
+un brano cambia canzoniere nel database, i vicini restano quelli vecchi fino alla
+pubblicazione successiva.
+
+Storicamente la vista era la lista filtrata su `/?c=repertorio`. Non c'è più nulla che
+produca quel parametro, ma `c` resta in `ignoreURLParametersMatching` di Serwist perché un
+vecchio segnalibro continui a trovare la home in cache anche offline.
 
 Una sola rotta nuova, statica e precachata: **`/canzonieri`**, la schermata di gestione.
 
@@ -708,8 +713,16 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 
 1. **Capotasto** — escluso dalla v1 (lo stepper a semitoni copre il bisogno principale).
    Da riprendere se suonando emerge la necessità delle forme aperte.
-2. **Diagrammi degli accordi** — non richiesti, ma `@tombatossals/chords-db` è già usato in
-   `easy-guitar-tuner` e sarebbe riusabile a costo basso. Da valutare in v2.
+2. **Diagrammi degli accordi** — fatti: ogni accordo sullo spartito è un bottone che apre la
+   forma per chitarra in accordatura standard. Le diteggiature stanno in
+   `src/lib/music/shapes.ts` e non vengono da `@tombatossals/chords-db`: sono una tabella
+   corta di forme in posizione aperta più due forme mobili con la fondamentale sulla sesta o
+   sulla quinta corda, così le dodici tonalità sono coperte senza portarsi dietro un
+   database. Ogni voce è verificata dai test contro le note dell'accordo che dichiara di
+   essere — nessuna nota estranea, e presenti quelle che fanno l'accordo. Restano fuori: una
+   sola forma per accordo (nessuna alternativa), nessun capotasto, e le alterazioni della
+   quinta (`7b5`, `7#5`) che non si possono semplificare senza suonare una nota sbagliata,
+   per cui il popup mostra solo i nomi delle note.
 3. **Quanti brani** — il piano regge fino a qualche centinaio: oltre, l'indice di ricerca
    client-side e la generazione statica completa vanno riconsiderati (ricerca full-text su
    Postgres, paginazione).

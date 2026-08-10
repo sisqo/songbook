@@ -81,14 +81,36 @@ database.
 Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
 rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
 la rotta. In home, sotto la ricerca, ogni canzoniere è invece un **collegamento
-alla sua prima canzone**: si sceglie il canzoniere e si è già sullo spartito, che è
-una pagina precachata. Un canzoniere vuoto è mostrato ma spento.
+alla sua prima canzone**, e dalla pagina del brano le frecce nell'header scorrono
+le altre del canzoniere. Un canzoniere vuoto è mostrato ma spento.
 
-Non esiste più una vista "solo i brani di questo canzoniere": la lista in home è
-sempre tutta, con il nome del canzoniere sotto ogni titolo, e la ricerca copre
-tutto. Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia;
-la regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché
-un vecchio segnalibro continui a trovare la home in cache.
+La home non elenca brani: i brani compaiono solo cercando. Due casi potrebbero
+altrimenti rendere un brano irraggiungibile, e sono coperti: un brano senza
+canzoniere finisce sotto una voce «Senza canzoniere», e un database senza
+canzonieri fa ricomparire la lista completa.
+
+L'ordine su cui scorrono le frecce è quello del build. Se sposti un brano di
+canzoniere, i suoi vicini restano quelli vecchi fino alla pubblicazione successiva
+— la stessa staleness del resto del sito.
+
+Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia; la
+regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché un
+vecchio segnalibro continui a trovare la home in cache.
+
+## Forme degli accordi
+
+Ogni accordo sullo spartito è un bottone: aprirlo mostra la forma per chitarra in
+accordatura standard, trasposta e nella notazione che stai leggendo. Le diteggiature
+sono in `src/lib/music/shapes.ts`: una tabella corta di forme in posizione aperta,
+più due forme mobili con la fondamentale sulla sesta o sulla quinta corda che
+coprono le dodici tonalità. Ogni forma è verificata dai test contro le note
+dell'accordo — nessuna nota estranea, e presenti quelle che fanno l'accordo.
+
+Quando il cifrato chiede qualcosa che la tabella non ha, la forma mostrata può
+**omettere** una nota ma non contraddirla: un accordo di tredicesima si disegna come
+la settima che ci sta sotto, e il popup lo dichiara. Le alterazioni della quinta
+(`7b5`, `7#5`) non si possono semplificare così, quindi lì non c'è forma e restano i
+nomi delle note.
 
 Lo slug di un canzoniere è immutabile: rinominare cambia solo il nome, così nessuna
 chiave esterna, URL o voce di precache si muove. Senza rete la gestione è

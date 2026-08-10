@@ -138,15 +138,47 @@
     display: inline-block;
   }
 
+  /*
+   * A chord is a button — tapping it shows its shape — and the reset here is
+   * load-bearing, not tidiness. Browsers give a button their own font, padding,
+   * border and text alignment; any of them surviving would change the width of
+   * this box, and the width of this box is where the line decides to wrap.
+   */
   .sheet-chord {
     display: block;
-    color: var(--accent);
-    font-size: 0.72em;
-    font-weight: 600;
-    line-height: 1.4;
+    appearance: none;
+    margin: 0;
+    padding: 0;
     /* Keeps adjacent chords from touching when they are wider than the syllable. */
     padding-inline-end: 0.45em;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: inherit;
+    line-height: 1.4;
+    text-align: start;
     white-space: pre;
+  }
+
+  button.sheet-chord {
+    cursor: pointer;
+    /* No 300ms tap delay on a control this small. */
+    touch-action: manipulation;
+  }
+
+  /*
+   * The affordance is hover only. On the sheet itself nothing is underlined or
+   * boxed, because the one thing that must stay unmistakable on this screen is
+   * the difference between a chord and a lyric.
+   */
+  @media (hover: hover) {
+    button.sheet-chord:hover {
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
+    }
   }
 
   .sheet-lyric {
@@ -159,6 +191,106 @@
     font-size: 0.8em;
     font-style: italic;
     margin: 0.6em 0 0.3em;
+  }
+
+  /* ---- The chord shape ------------------------------------------------ */
+
+  /*
+   * Above the control bar and the header, both of which are fixed or sticky: this
+   * is the one thing on the reading screen that is meant to sit over everything.
+   */
+  .chord-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .chord-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(10 11 14 / 45%);
+  }
+
+  .chord-card {
+    position: relative;
+    width: 100%;
+    max-width: 15rem;
+    padding: 1.25rem 1rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-2);
+    text-align: center;
+  }
+
+  .chord-close {
+    position: absolute;
+    top: 0.35rem;
+    inset-inline-end: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    color: var(--faint);
+  }
+
+  @media (hover: hover) {
+    .chord-close:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+  }
+
+  .chord-name {
+    color: var(--accent);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  /*
+   * The grid is drawn from the ink rather than from --line: a border colour that
+   * reads well as a one-pixel edge between two panels disappears as a lattice of
+   * thin lines with nothing behind it.
+   */
+  .chord-diagram {
+    display: block;
+    width: 8.5rem;
+    margin: 0.75rem auto 0;
+    stroke: color-mix(in srgb, var(--ink) 28%, transparent);
+    color: var(--muted);
+  }
+
+  .chord-diagram-dot {
+    fill: var(--accent);
+  }
+
+  .chord-diagram-open {
+    stroke: var(--muted);
+  }
+
+  .chord-diagram-mute {
+    stroke: var(--faint);
+  }
+
+  .chord-diagram-fret {
+    fill: var(--muted);
+    stroke: none;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chord-notes {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---- Buttons -------------------------------------------------------- */
@@ -375,6 +507,11 @@
   .nav-link.is-on {
     background: var(--accent-soft);
     color: var(--accent);
+  }
+
+  /* An arrow with nowhere to go: holds its place, takes no taps. */
+  .nav-link.is-off {
+    color: var(--line);
   }
 
   @media (hover: hover) {

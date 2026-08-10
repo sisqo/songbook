@@ -27,15 +27,21 @@ function formatKeyLabel(raw: string, notation: 'it' | 'int'): string {
 }
 
 /**
- * The song list with instant search, and the canzonieri as a way in.
+ * Search, and the canzonieri as the way in.
+ *
+ * The home page lists no songs: it offers the canzonieri, each a link to its
+ * first song, and from there the reading page steps through the rest. Songs
+ * appear here only as search results, which is what keeps the search box from
+ * being a control with nowhere to put its answer.
  *
  * The index travels with the page rather than being fetched, so searching costs
  * no network at all and keeps working offline — which for a precached page is the
  * only way it could work.
  *
- * A canzoniere is a link to its first song rather than a filter: picking one is
- * how a rehearsal starts, and the destination is a page that is already
- * precached. "First" is the order the list itself is in.
+ * Two things could otherwise strand a song. One with no canzoniere at all gets a
+ * "Senza canzoniere" entry, and a database with no canzonieri falls back to
+ * listing everything, because otherwise this page would be a search box and
+ * nothing else.
  */
 export function SongList({ songs }: { songs: SongIndexEntry[] }) {
   const { global } = usePrefs()
@@ -52,8 +58,13 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
     return songs.filter((song) => terms.every((term) => song.haystack.includes(term)))
   }, [songs, deferred])
 
-  const firstSongOf = (canzoniereSlug: string) =>
+  const firstSongOf = (canzoniereSlug: string | undefined) =>
     songs.find((song) => assignments[song.slug] === canzoniereSlug)?.slug ?? null
+
+  const orphan = firstSongOf(undefined)
+  const searching = deferred.trim() !== ''
+  // With no canzonieri to offer, the list is the only way to reach anything.
+  const showList = searching || canzonieri.length === 0
 
   return (
     <div>
@@ -92,49 +103,62 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
                 </Link>
               )
             })}
+
+            {orphan !== null && (
+              <Link href={`/canzoni/${orphan}`} className="chip">
+                Senza canzoniere
+                <IconChevronRight size={13} />
+              </Link>
+            )}
           </div>
         </nav>
       )}
 
-      <p className="mb-1 mt-6 px-1 text-xs text-faint" aria-live="polite">
-        {results.length === songs.length
-          ? `${songs.length} ${songs.length === 1 ? 'canzone' : 'canzoni'}`
-          : `${results.length} di ${songs.length}`}
-      </p>
+      {!showList ? null : (
+        <>
+          <p className="mb-1 mt-6 px-1 text-xs text-faint" aria-live="polite">
+            {results.length === songs.length
+              ? `${songs.length} ${songs.length === 1 ? 'canzone' : 'canzoni'}`
+              : `${results.length} di ${songs.length}`}
+          </p>
 
-      {results.length === 0 ? (
-        <p className="mt-8 text-center text-sm text-muted">Nessuna canzone trovata.</p>
-      ) : (
-        <ul className="row-list">
-          {results.map((song) => {
-            const canzoniere = nameOf(assignments[song.slug])
+          {results.length === 0 ? (
+            <p className="mt-8 text-center text-sm text-muted">Nessuna canzone trovata.</p>
+          ) : (
+            <ul className="row-list">
+              {results.map((song) => {
+                const canzoniere = nameOf(assignments[song.slug])
 
-            return (
-              <li key={song.slug}>
-                <Link href={`/canzoni/${song.slug}`} className="row">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{song.title}</span>
-                    {(song.artist !== null || canzoniere !== null) && (
-                      <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
-                        {song.artist}
-                        {song.artist !== null && canzoniere !== null && (
-                          <span className="text-faint"> · </span>
+                return (
+                  <li key={song.slug}>
+                    <Link href={`/canzoni/${song.slug}`} className="row">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{song.title}</span>
+                        {(song.artist !== null || canzoniere !== null) && (
+                          <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
+                            {song.artist}
+                            {song.artist !== null && canzoniere !== null && (
+                              <span className="text-faint"> · </span>
+                            )}
+                            {canzoniere !== null && (
+                              <span className="text-faint">{canzoniere}</span>
+                            )}
+                          </span>
                         )}
-                        {canzoniere !== null && <span className="text-faint">{canzoniere}</span>}
                       </span>
-                    )}
-                  </span>
 
-                  {song.originalKey !== null && (
-                    <span className="badge">
-                      {formatKeyLabel(song.originalKey, global.notation)}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+                      {song.originalKey !== null && (
+                        <span className="badge">
+                          {formatKeyLabel(song.originalKey, global.notation)}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </>
       )}
     </div>
   )
