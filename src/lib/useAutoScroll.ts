@@ -111,25 +111,44 @@ export function useAutoScroll(speedStep: number) {
    * A manual gesture pauses, so correcting position by hand never fights the
    * animation. Only user-initiated events are watched — listening to `scroll`
    * would catch our own scrolling and stop immediately.
+   *
+   * Touches on the app's own fixed controls are not such a gesture. A tap fires
+   * `touchstart` on window wherever it lands, so without this exclusion pressing
+   * the speed buttons stopped the scroll instead of speeding it up, which is the
+   * one thing those buttons exist to do while a song is playing.
+   *
+   * `wheel` is deliberately not excluded: a wheel anywhere, the control bar
+   * included, really does scroll the page, so pausing is the right answer.
    */
   useEffect(() => {
     if (!running) return
 
-    const onGesture = () => setRunning(false)
+    const fromControls = (target: EventTarget | null) =>
+      target instanceof Element && target.closest('.control-bar, .top-bar') !== null
+
+    const onWheel = () => setRunning(false)
+
+    const onTouch = (event: TouchEvent) => {
+      if (fromControls(event.target)) return
+      setRunning(false)
+    }
 
     const onKey = (event: KeyboardEvent) => {
+      // Space on one of our buttons presses it; it does not scroll the page.
+      if (event.key === ' ' && fromControls(event.target)) return
+
       if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) {
         setRunning(false)
       }
     }
 
-    window.addEventListener('wheel', onGesture, { passive: true })
-    window.addEventListener('touchstart', onGesture, { passive: true })
+    window.addEventListener('wheel', onWheel, { passive: true })
+    window.addEventListener('touchstart', onTouch, { passive: true })
     window.addEventListener('keydown', onKey)
 
     return () => {
-      window.removeEventListener('wheel', onGesture)
-      window.removeEventListener('touchstart', onGesture)
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouch)
       window.removeEventListener('keydown', onKey)
     }
   }, [running])
