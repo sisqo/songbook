@@ -1,5 +1,9 @@
 # songs — Piano di implementazione
 
+> **Stato:** la v1 è consegnata e in produzione su https://songs.sisqo.dev. Questo documento
+> descrive anche la **v1.1 — canzonieri**, decisa e non ancora implementata: vedi la sezione
+> *Canzonieri* e la fase corrispondente.
+
 ## Cosa è
 
 Un'applicazione web privata per leggere testi e accordi del proprio repertorio, pensata
@@ -7,6 +11,10 @@ prima per tablet e telefono e poi per il computer. Il compito dell'app è una so
 fatta bene: **tenere il testo leggibile e le mani libere mentre si suona**. Da qui
 derivano zoom, auto-scroll, cambio di tonalità e cambio di notazione — non come
 impostazioni in un menù, ma come controlli a portata di pollice.
+
+Il materiale è organizzato in **canzonieri**: ogni brano appartiene a un canzoniere, come un
+file a una cartella. Le **scalette** sono un'altra cosa e restano trasversali — il programma
+di una serata, che può pescare da canzonieri diversi.
 
 Non è un archivio pubblico né un social di accordi: l'accesso è riservato a una lista di
 email autorizzate.
@@ -60,16 +68,32 @@ in un `useLayoutEffect` prima del paint.
 ### Modello dati
 
 ```sql
-songs(id, slug unique, title, artist, original_key, body, tags[], created_at, updated_at)
-setlists(id, slug unique, name, position, created_at)
-setlist_songs(setlist_id, song_id, position, primary key (setlist_id, position))
+canzonieri(slug primary key, name, created_at, updated_at)
+
+songs(slug primary key, title, artist, original_key, body, tags[],
+      canzoniere_slug references canzonieri(slug) on delete restrict,
+      created_at, updated_at)
+
+setlists(slug primary key, name, position, created_at)
+setlist_songs(setlist_slug, song_slug, position,
+              primary key (setlist_slug, position))
 
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
-user_song_prefs(user_email, song_id, semitones, scroll_speed,        -- per brano
-                updated_at, primary key (user_email, song_id))
+user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
+                updated_at, primary key (user_email, song_slug))
 ```
 
 `user_email` come chiave: con sessioni JWT e allowlist non serve una tabella utenti.
+Lo `slug` come chiave naturale al posto di un id surrogato: vedi *Scostamenti*.
+
+**Lo slug di un canzoniere è immutabile.** Si genera una volta dal nome iniziale e non
+cambia mai più: rinominare tocca solo `name`. È questo che rende una rinomina gratuita —
+nessuna chiave esterna da aggiornare, nessuna URL che si sposta, nessuna voce di precache
+da rigenerare.
+
+L'`on delete restrict` è la regola "rifiuta se non è vuoto" scritta nel database, non solo
+nella UI: nessun percorso, nemmeno un errore di programmazione, può cancellare un
+canzoniere lasciando brani orfani.
 
 ### Contenuti e seed
 
@@ -86,6 +110,21 @@ scripts/seed.ts             # npm run seed → upsert per slug
 
 Lo script è idempotente (upsert per `slug`), così rilanciarlo dopo una correzione non
 duplica nulla. In v2 il DB diventa la fonte di verità e i file restano solo bootstrap.
+
+**Il canzoniere è l'eccezione a questa regola, e va capita bene.** La direttiva
+`{canzoniere: Repertorio}` in un `.chopro` dice dove il brano *nasce*, e il seed la applica
+soltanto all'inserimento — o quando la colonna è ancora vuota, che è come i brani già
+esistenti ricevono il loro canzoniere senza uno script separato. In aggiornamento la
+direttiva viene **ignorata**: da quel momento comanda il database, altrimenti il primo
+`npm run seed` cancellerebbe ogni rinomina e ogni spostamento fatto dall'app.
+
+Ne segue una seconda eccezione: il seed **non fa pruning dei canzonieri**. Sono creati
+dall'app, quindi esistono legittimamente righe che nessun file ha mai dichiarato — la
+regola "cancella ciò che non ha un file" vale per brani e scalette, non per loro.
+
+Un file senza la direttiva finisce in **Da ordinare**, un canzoniere creato al bisogno.
+Serve perché ogni brano deve appartenere a uno, e il nome è deliberatamente un promemoria:
+ciò che non è archiviato si vede a colpo d'occhio.
 
 ### Autenticazione
 
@@ -126,6 +165,8 @@ ChordPro, con accordi inline tra parentesi quadre. Direttive supportate in v1:
 {title: Certe notti}
 {artist: Ligabue}
 {key: C}
+{tags: lento, acustico}
+{canzoniere: Repertorio}     ← solo il valore iniziale, vedi Contenuti e seed
 {start_of_chorus} … {end_of_chorus}
 {comment: assolo}
 
@@ -246,13 +287,109 @@ scroll orizzontale. Il pinch-zoom nativo del browser non viene disabilitato (nes
 
 ## Navigazione, ricerca, scalette
 
-- **Lista brani**: titolo, artista e tonalità, ordinabile per titolo o artista.
+- **Lista brani**: titolo, artista, canzoniere e tonalità, ordinabile per titolo o artista.
 - **Ricerca istantanea** lato client su titolo, artista, tag e testo (accordi esclusi),
-  contro un indice JSON generato al build. Nessuna chiamata di rete mentre si scrive.
-- **Scalette**: definite nei file di seed e in sola lettura in v1. Una scaletta apre in
+  contro un indice JSON generato al build. Nessuna chiamata di rete mentre si scrive. La
+  ricerca lavora sempre su **tutti** i brani, anche con un filtro canzoniere attivo: il
+  filtro restringe la lista, non il campo d'azione della ricerca.
+- **Filtro canzoniere**: una riga di chip sotto la ricerca (`tutti`, poi un chip per
+  canzoniere). Così la strada più breve per arrivare a un brano non si allunga di un tap,
+  che è il punto dell'app.
+- **Scalette**: definite nei file di seed e in sola lettura in v1. Restano **trasversali** —
+  una serata può mescolare brani di canzonieri diversi, ed è l'unica forma che funziona per
+  quello che una scaletta è: un ordine di esecuzione, non una libreria. Una scaletta apre in
   sequenza con `‹ prec` / `succ ›` in fondo al brano, così durante la serata non si torna
-  mai alla lista. Cambiarne una richiede commit e deploy: sono repertori curati, non liste
-  improvvisate.
+  mai alla lista. Cambiarne una richiede commit e deploy.
+
+## Canzonieri
+
+Un canzoniere è una **libreria**: ogni brano appartiene a uno e uno solo, come un file in
+una cartella. È un concetto diverso dalla scaletta, che è un programma, e diverso dai tag,
+che restano descrizioni libere e sovrapponibili (`lento`, `acustico`).
+
+Si possono **creare, rinominare, spostare brani fra l'uno e l'altro e rimuovere**, e tutto
+questo dall'app, non dai file.
+
+### Perché il canzoniere non ha una rotta propria
+
+Sembrerebbe naturale dare a ogni canzoniere una pagina come `/canzonieri/repertorio`. Non lo
+facciamo, e la ragione è che due delle funzioni richieste la renderebbero fragile:
+
+- un canzoniere **creato dall'app** non esisterebbe fra le rotte generate al build, quindi
+  non sarebbe precachato e offline non esisterebbe fino al deploy successivo;
+- una **rinomina** sposterebbe la rotta, se lo slug seguisse il nome — e se non lo segue, la
+  URL resta legata a un nome vecchio, che è peggio.
+
+La vista di un canzoniere è quindi la lista brani filtrata, con lo slug in un parametro:
+`/?c=repertorio`. Resta linkabile, non crea rotte, non cambia mai, e funziona offline.
+Perché il service worker riconosca `/?c=…` come la home già in cache, `c` va aggiunto a
+`ignoreURLParametersMatching` di Serwist: senza quello un link filtrato andrebbe in miss e
+offline non aprirebbe.
+
+Una sola rotta nuova, statica e precachata: **`/canzonieri`**, la schermata di gestione.
+
+### Guscio statico, dato mutabile
+
+Le pagine restano statiche e precachate. Nomi dei canzonieri e assegnazione dei brani sono
+invece dati che cambiano a runtime, quindi vivono in uno strato separato che l'app legge
+dopo il mount e conserva in cache locale — lo stesso meccanismo già usato per le
+preferenze, non uno nuovo:
+
+```
+statico (build)   brani, titoli, testi, accordi, indice di ricerca
+runtime (server)  { canzonieri: [{slug, name, count}],
+                    assegnazioni: { songSlug → canzoniereSlug } }
+                  ↓ cache locale
+```
+
+Una rinomina si vede subito; offline si vede l'ultimo stato conosciuto. Il payload è
+minuscolo, dell'ordine di poche centinaia di byte per canzoniere.
+
+`revalidatePath()` sarebbe la risposta standard di Next e **qui non funzionerebbe**: il
+service worker serve quelle pagine cache-first, quindi una rigenerazione lato server
+resterebbe invisibile al dispositivo fino al build successivo.
+
+### Gestione
+
+`/canzonieri` elenca i canzonieri con il conteggio dei brani e permette di crearne,
+rinominarne e rimuoverne. Lo spostamento di un singolo brano si fa da dove serve: nella
+testata della pagina del brano il canzoniere è un controllo che apre un selettore.
+
+La rimozione **rifiuta** un canzoniere non vuoto e propone prima dove spostare i brani:
+
+```
+[ Rimuovi "Da imparare" ]
+→ contiene 2 brani
+  Sposta in: [ Repertorio ▾ ]
+  [ Sposta e rimuovi ]   [ Annulla ]
+```
+
+Ne segue che l'ultimo canzoniere non è rimovibile finché esistono brani, che è corretto dato
+il vincolo di appartenenza. L'ordinamento è alfabetico.
+
+Le scritture passano da server action che richiedono una sessione autorizzata, come le
+preferenze. A differenza delle preferenze, però, **non c'è coda offline**: senza rete i
+pulsanti di gestione si disabilitano con una spiegazione. La ragione è che i canzonieri sono
+una struttura condivisa fra gli account in allowlist, dove un last-write-wins fra dispositivi
+non è innocuo come su una trasposizione personale — e rinominare un canzoniere non è
+qualcosa che si fa sul palco senza segnale.
+
+### Stato iniziale
+
+I canzonieri di partenza si ricavano dai tag già usati, che contenevano di fatto questa
+categorizzazione. Le direttive vengono scritte nei quattro file, così un database ricreato da
+zero riproduce lo stesso risultato senza script una tantum:
+
+| Brano | Canzoniere | Tag residui |
+|---|---|---|
+| `ferma-il-tram` | Repertorio | `veloce` |
+| `le-luci-di-via-ostiense` | Repertorio | `lento` |
+| `novembre-in-cortile` | Da imparare | `lento` |
+| `quasi-domenica` | Da imparare | — |
+
+I tag `repertorio` e `da imparare` vengono rimossi: ora sono canzonieri, e tenerli in
+entrambi i posti creerebbe due verità sulla stessa cosa. `lento` e `veloce` restano tag,
+che è il loro ruolo giusto.
 
 ## Preferenze
 
@@ -283,11 +420,35 @@ sopra. Scritture debounced (2s) via server action per non generare una query a o
 11. PWA: manifest, icone, Serwist, precache
 12. `PRODUCT.md` e `DESIGN.md` secondo la convenzione dei progetti fratelli
 
+Consegnata e in produzione.
+
+### v1.1 — canzonieri
+
+La prima scrittura dall'app, deliberatamente su una superficie minima: nomi e appartenenza,
+non i brani.
+
+1. Migrazione: tabella `canzonieri`, colonna `songs.canzoniere_slug` con
+   `on delete restrict`. La colonna nasce nullable, così il backfill è il seed stesso; una
+   migrazione successiva la stringe a `not null` quando è tutto popolato
+2. Direttiva `{canzoniere: …}` nel parser, con test
+3. Seed: applica la direttiva su insert **o quando la colonna è vuota**, la ignora in
+   aggiornamento, crea i canzonieri mancanti, **non fa pruning** dei canzonieri
+4. Direttive nei quattro file esistenti e rimozione dei tag ora promossi a canzoniere
+5. Strato mutabile: server action di lettura + cache locale, sul modello delle preferenze
+6. Filtro a chip nella lista, con `?c=` e `c` in `ignoreURLParametersMatching`
+7. `/canzonieri`: crea, rinomina, rimuovi con spostamento obbligato se non vuoto
+8. Selettore di canzoniere nella testata del brano
+9. Disabilitazione dei controlli di gestione quando offline
+
 ### v2 — scrittura
 
 `/admin` con CRUD brani e scalette, preview live, `revalidatePath()` al salvataggio,
 allowlist spostata su tabella, import da file. Il layer di accesso dati della v1 va scritto
 già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
+
+Nota che la v1.1 arriva prima e su un pezzo scelto per essere piccolo: nessun editor di
+testi, nessuna preview, nessuna rivalidazione. Serve anche come banco di prova del percorso
+di scrittura che la v2 userà su scala molto maggiore.
 
 ## Vincoli d'ambiente
 
@@ -361,6 +522,24 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Database | Neon via Vercel Marketplace | Variabili iniettate, zero configurazione manuale |
 | Lingua UI | Solo italiano | Un utente, nessun bisogno di i18n |
 
+### Canzonieri (v1.1)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Cardinalità | Contenitore: un brano, un canzoniere | Lettura letterale del requisito; appartenenza sempre certa e rimozione con un significato ovvio |
+| Rapporto con le scalette | Scalette trasversali | Una serata può mescolare repertori; la scaletta è un ordine, non una libreria |
+| Proprietà | Il file dà il valore iniziale, poi comanda il DB | Senza questa regola il primo seed cancellerebbe ogni rinomina fatta dall'app |
+| Slug del canzoniere | Immutabile, generato una volta | Rinominare non tocca chiavi esterne, URL né voci di precache |
+| Rimozione | Rifiutata se non vuoto, con spostamento obbligato | Nessuna perdita possibile; `on delete restrict` la impone nel database |
+| Cascata | Esclusa | Si annullerebbe da sola: i file esistono ancora e il primo seed farebbe risorgere i brani |
+| URL dei brani | Invariata, canzoniere come filtro `?c=` | Rinomine e spostamenti non rompono segnalibri, precache né preferenze |
+| Rotta per canzoniere | Nessuna | Un canzoniere creato dall'app non sarebbe precachato, e una rinomina sposterebbe la rotta |
+| Freschezza | Guscio statico + strato mutabile a runtime | Con precache cache-first un `revalidatePath` non arriverebbe mai al dispositivo |
+| Home | Elenco piatto con chip di filtro | La strada più breve verso un brano non si allunga di un tap |
+| Gestione offline | Disabilitata | Struttura condivisa fra account: un last-write-wins non è innocuo come su una trasposizione personale |
+| Stato iniziale | Ricavato dai tag esistenti | I tag contenevano già questa categorizzazione |
+| Pruning dei canzonieri | Escluso dal seed | Esistono legittimamente canzonieri che nessun file ha mai dichiarato |
+
 ## Domande aperte
 
 1. **Capotasto** — escluso dalla v1 (lo stepper a semitoni copre il bisogno principale).
@@ -384,3 +563,12 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
    l'orario di sistema.
 8. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
    — ignorate in v1, da valutare quando emergono su brani reali.
+9. **Ordinamento dei canzonieri** — alfabetico. Se in pratica serve un ordine tuo (il
+   repertorio attivo per primo, l'archivio in fondo) va aggiunta una colonna `position` e
+   un riordino a trascinamento, come già hanno le scalette.
+10. **Canzonieri condivisi o per utente** — sono struttura della libreria, quindi condivisi
+    fra gli account in allowlist, come i brani. Va riconsiderato solo se entrasse qualcuno
+    che vuole un proprio ordinamento del materiale comune.
+11. **Rinominare uno slug di brano** — resta un'operazione da file, e orfana le preferenze
+    salvate di quel brano. Se lo spostamento fra canzonieri rendesse frequente il bisogno
+    di rinominare anche gli slug, servirebbe una tabella di alias.
