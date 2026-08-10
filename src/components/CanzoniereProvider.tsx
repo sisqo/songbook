@@ -44,10 +44,19 @@ const CanzoniereContext = createContext<CanzoniereContextValue | null>(null)
  */
 export function CanzoniereProvider({
   initial,
+  refreshOnMount = true,
   children,
 }: {
   /** Snapshot from build time, so the first paint is already right. */
   initial: CanzoniereState
+  /**
+   * False on the reading pages. A song page needs the list and this song's
+   * assignment, both already baked in, so fetching on mount would put a server
+   * round trip on the reading path — exactly what static pages plus precache
+   * exist to avoid. A write still refreshes, because then there is something new
+   * to learn.
+   */
+  refreshOnMount?: boolean
   children: ReactNode
 }) {
   const [state, setState] = useState<CanzoniereState>(initial)
@@ -71,8 +80,8 @@ export function CanzoniereProvider({
   }, [])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    if (refreshOnMount) void refresh()
+  }, [refresh, refreshOnMount])
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)

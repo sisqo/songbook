@@ -14,7 +14,13 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const current = assignments[songSlug] ?? ''
+  /**
+   * Kept as undefined when the song has no assignment, rather than coerced to an
+   * empty string: `nameOf('')` would look for a canzoniere whose slug is empty,
+   * find none, and hide the name — including on the offline path, where showing
+   * it is the whole point.
+   */
+  const current = assignments[songSlug]
   const name = nameOf(current)
 
   if (canzonieri.length === 0) return null
@@ -29,7 +35,7 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
       <label>
         <span className="sr-only">Canzoniere di questo brano</span>
         <select
-          value={current}
+          value={current ?? ''}
           disabled={busy}
           onChange={async (event) => {
             const next = event.target.value
@@ -51,7 +57,7 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
             color: 'var(--muted)',
           }}
         >
-          {current === '' && <option value="">Senza canzoniere</option>}
+          {current === undefined && <option value="">Senza canzoniere</option>}
           {canzonieri.map((canzoniere) => (
             <option key={canzoniere.slug} value={canzoniere.slug}>
               {canzoniere.name}

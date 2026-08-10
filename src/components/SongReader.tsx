@@ -42,7 +42,7 @@ export async function SongReader({
 
   return (
     <PrefsProvider songSlug={song.slug}>
-      <CanzoniereProvider initial={initial}>
+      <CanzoniereProvider initial={initial} refreshOnMount={false}>
       <main className="mx-auto max-w-3xl px-4 pt-4">
         <header className="mb-5 border-b pb-3" style={{ borderColor: 'var(--line)' }}>
           <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
