@@ -10,23 +10,30 @@
  * authoritative and rows will exist that never had a file.
  */
 
-import { inArray, notInArray } from 'drizzle-orm'
+import { inArray, notInArray, sql } from 'drizzle-orm'
 
 import { loadEnv } from './load-env'
 
 async function main() {
   loadEnv()
 
-  const { readSetlistFiles, readSongFiles } = await import('../src/lib/data/files')
+  const { readCanzoniereFiles, readSetlistFiles, readSongFiles } = await import(
+    '../src/lib/data/files'
+  )
+  const { UNFILED } = await import('../src/lib/data/types')
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
-  const { setlistSongs, setlists, songs } = await import('../src/lib/db/schema')
+  const { canzonieri, setlistSongs, setlists, songs } = await import('../src/lib/db/schema')
 
   if (!hasDatabase) {
     console.error('DATABASE_URL is not set. Run `vercel env pull .env.local` first.')
     process.exit(1)
   }
 
-  const [songFiles, setlistFiles] = await Promise.all([readSongFiles(), readSetlistFiles()])
+  const [songFiles, setlistFiles, canzoniereFiles] = await Promise.all([
+    readSongFiles(),
+    readSetlistFiles(),
+    readCanzoniereFiles(),
+  ])
 
   if (songFiles.length === 0) {
     console.error('No .chopro files found in content/ — refusing to prune the whole table.')
@@ -35,6 +42,23 @@ async function main() {
 
   const songSlugs = new Set(songFiles.map((song) => song.slug))
   const database = db()
+
+  /**
+   * Canzonieri named by the files, plus the unfiled one, created if missing.
+   *
+   * `doNothing` on conflict, not an update: a canzoniere renamed in the app must
+   * keep its new name. The directive only ever decides where a song is born.
+   * And unlike songs and setlists, canzonieri are never pruned — they can be
+   * created in the app, so rows legitimately exist that no file ever declared.
+   */
+  const declared = [...canzoniereFiles, UNFILED]
+  for (const canzoniere of declared) {
+    await database
+      .insert(canzonieri)
+      .values({ slug: canzoniere.slug, name: canzoniere.name })
+      .onConflictDoNothing({ target: canzonieri.slug })
+  }
+  console.log(`Canzonieri present (created if missing): ${declared.length}`)
 
   for (const song of songFiles) {
     await database
@@ -45,6 +69,7 @@ async function main() {
         artist: song.artist,
         originalKey: song.originalKey,
         tags: song.tags,
+        canzoniereSlug: song.canzoniereSlug,
         body: song.body,
       })
       .onConflictDoUpdate({
@@ -55,6 +80,13 @@ async function main() {
           originalKey: song.originalKey,
           tags: song.tags,
           body: song.body,
+          /**
+           * The one field the file does not own after creation. Filled only
+           * while still empty, which is how rows that predate the column get a
+           * canzoniere without a one-off backfill; otherwise left alone, or a
+           * reseed would undo every move made in the app.
+           */
+          canzoniereSlug: sql`coalesce(${songs.canzoniereSlug}, ${song.canzoniereSlug})`,
           updatedAt: new Date(),
         },
       })

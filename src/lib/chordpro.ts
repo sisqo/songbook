@@ -35,6 +35,13 @@ export interface ParsedSong {
   artist: string | null
   key: string | null
   tags: string[]
+  /**
+   * Name of the canzoniere this song *starts* in. Only ever an initial value:
+   * the seed applies it on insert, or when the column is still empty, and
+   * ignores it afterwards. From then on the database owns the assignment, or a
+   * reseed would wipe every rename and move made in the app.
+   */
+  canzoniere: string | null
   sections: Section[]
 }
 
@@ -50,6 +57,8 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   key: 'key',
   tags: 'tags',
   tag: 'tags',
+  canzoniere: 'canzoniere',
+  songbook: 'canzoniere',
   c: 'comment',
   comment: 'comment',
   soc: 'start_of_chorus',
@@ -63,7 +72,14 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
 }
 
 export function parseChordPro(source: string): ParsedSong {
-  const song: ParsedSong = { title: null, artist: null, key: null, tags: [], sections: [] }
+  const song: ParsedSong = {
+    title: null,
+    artist: null,
+    key: null,
+    tags: [],
+    canzoniere: null,
+    sections: [],
+  }
 
   let section: Section | null = null
   let forcedKind: SectionKind | null = null
@@ -97,6 +113,9 @@ export function parseChordPro(source: string): ParsedSong {
             .split(',')
             .map((tag) => tag.trim())
             .filter((tag) => tag !== '')
+          break
+        case 'canzoniere':
+          song.canzoniere = value || null
           break
         case 'comment':
           section ??= openSection(forcedKind ?? 'verse')

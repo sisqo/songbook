@@ -32,6 +32,14 @@ function connect() {
     prepare: false,
     max: 1,
     idle_timeout: 20,
+    /**
+     * Notices are informational — "relation already exists, skipping" from an
+     * IF NOT EXISTS — but postgres.js dumps the whole object, which reads like a
+     * crash in the middle of a migration. Keep the information, lose the alarm.
+     */
+    onnotice: (notice) => {
+      console.log(`postgres notice: ${notice.message}`)
+    },
   })
 
   cachedSql = sql

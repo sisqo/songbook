@@ -6,6 +6,12 @@
  * derived shape that could drift from the source.
  */
 
+export interface Canzoniere {
+  /** Generated once from the initial name and then frozen. */
+  slug: string
+  name: string
+}
+
 export interface Song {
   slug: string
   title: string
@@ -13,6 +19,12 @@ export interface Song {
   /** Key as written in the source, e.g. `Bb` or `F#m`. */
   originalKey: string | null
   tags: string[]
+  /**
+   * The canzoniere at build time. A snapshot, not the truth: names and
+   * assignments can change at runtime, so the client refreshes this from the
+   * mutable layer. Baking it in means the first paint is already right.
+   */
+  canzoniereSlug: string | null
   body: string
 }
 
@@ -30,4 +42,8 @@ export interface SongRepository {
   getSong(slug: string): Promise<Song | null>
   listSetlists(): Promise<Setlist[]>
   getSetlist(slug: string): Promise<Setlist | null>
+  listCanzonieri(): Promise<Canzoniere[]>
 }
+
+/** The canzoniere a song lands in when its file does not say. */
+export const UNFILED = { slug: 'da-ordinare', name: 'Da ordinare' } as const

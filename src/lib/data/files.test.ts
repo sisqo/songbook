@@ -15,7 +15,8 @@ describe('fileRepository', () => {
     assert.equal(song?.title, 'Le luci di via Ostiense')
     assert.equal(song?.artist, 'Placeholder')
     assert.equal(song?.originalKey, 'Bb')
-    assert.deepEqual(song?.tags, ['lento', 'repertorio'])
+    assert.deepEqual(song?.tags, ['lento'])
+    assert.equal(song?.canzoniereSlug, 'repertorio')
   })
 
   it('returns null for an unknown slug', async () => {
@@ -42,6 +43,45 @@ describe('fileRepository', () => {
       for (const slug of setlist.songs) {
         assert.ok(slugs.has(slug), `${setlist.slug} references missing song ${slug}`)
       }
+    }
+  })
+})
+
+describe('canzonieri from the files', () => {
+  it('derives one entry per distinct directive', async () => {
+    const list = await fileRepository.listCanzonieri()
+    assert.deepEqual(
+      list.map((entry) => entry.slug),
+      ['da-imparare', 'repertorio'],
+    )
+    assert.deepEqual(
+      list.map((entry) => entry.name),
+      ['Da imparare', 'Repertorio'],
+    )
+  })
+
+  it('assigns every song to a canzoniere', async () => {
+    const known = new Set((await fileRepository.listCanzonieri()).map((entry) => entry.slug))
+    for (const song of await fileRepository.listSongs()) {
+      assert.ok(song.canzoniereSlug, `${song.slug} has no canzoniere`)
+      assert.ok(known.has(song.canzoniereSlug!), `${song.slug} points outside the list`)
+    }
+  })
+
+  it('splits the fixtures the way the tags did', async () => {
+    const songs = await fileRepository.listSongs()
+    const bySlug = new Map(songs.map((song) => [song.slug, song.canzoniereSlug]))
+
+    assert.equal(bySlug.get('ferma-il-tram'), 'repertorio')
+    assert.equal(bySlug.get('le-luci-di-via-ostiense'), 'repertorio')
+    assert.equal(bySlug.get('novembre-in-cortile'), 'da-imparare')
+    assert.equal(bySlug.get('quasi-domenica'), 'da-imparare')
+  })
+
+  it('no longer carries the tags that became canzonieri', async () => {
+    for (const song of await fileRepository.listSongs()) {
+      assert.ok(!song.tags.includes('repertorio'), `${song.slug} still tagged repertorio`)
+      assert.ok(!song.tags.includes('da imparare'), `${song.slug} still tagged da imparare`)
     }
   })
 })

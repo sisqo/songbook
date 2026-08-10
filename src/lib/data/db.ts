@@ -6,8 +6,8 @@
 import { asc, eq } from 'drizzle-orm'
 
 import { db } from '../db/client'
-import { setlistSongs, setlists, songs } from '../db/schema'
-import type { Setlist, Song, SongRepository } from './types'
+import { canzonieri, setlistSongs, setlists, songs } from '../db/schema'
+import type { Canzoniere, Setlist, Song, SongRepository } from './types'
 
 function toSong(row: typeof songs.$inferSelect): Song {
   return {
@@ -16,6 +16,7 @@ function toSong(row: typeof songs.$inferSelect): Song {
     artist: row.artist,
     originalKey: row.originalKey,
     tags: row.tags,
+    canzoniereSlug: row.canzoniereSlug,
     body: row.body,
   }
 }
@@ -68,5 +69,14 @@ export const dbRepository: SongRepository = {
       position: row.position,
       songs: await songsOf(row.slug),
     } satisfies Setlist
+  },
+
+  async listCanzonieri() {
+    const rows = await db()
+      .select({ slug: canzonieri.slug, name: canzonieri.name })
+      .from(canzonieri)
+      .orderBy(asc(canzonieri.name))
+
+    return rows satisfies Canzoniere[]
   },
 }

@@ -11,6 +11,20 @@
 
 import { integer, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
 
+/**
+ * A canzoniere is a container: every song belongs to exactly one.
+ *
+ * The slug is generated once from the initial name and never changes — renaming
+ * touches `name` only. That is what makes a rename free: no foreign key to
+ * update, no URL that moves, no precache entry to regenerate.
+ */
+export const canzonieri = pgTable('canzonieri', {
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const songs = pgTable('songs', {
   slug: text('slug').primaryKey(),
   title: text('title').notNull(),
@@ -18,6 +32,16 @@ export const songs = pgTable('songs', {
   originalKey: text('original_key'),
   tags: text('tags').array().notNull().default([]),
   body: text('body').notNull(),
+  /**
+   * Nullable only so the column can be added to a populated table: the seed
+   * fills it on insert *or when it is still empty*, which is how existing rows
+   * get their canzoniere without a one-off backfill script. `restrict` puts the
+   * "refuse to delete a non-empty canzoniere" rule in the database rather than
+   * only in the UI, so no code path can orphan a song.
+   */
+  canzoniereSlug: text('canzoniere_slug').references(() => canzonieri.slug, {
+    onDelete: 'restrict',
+  }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

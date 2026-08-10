@@ -121,6 +121,18 @@ describe('parseChordPro', () => {
     assert.equal(bare.sections.length, 1)
   })
 
+  it('reads the canzoniere directive', () => {
+    assert.equal(parseChordPro('{canzoniere: Repertorio}').canzoniere, 'Repertorio')
+    assert.equal(parseChordPro('{songbook: Repertorio}').canzoniere, 'Repertorio')
+    assert.equal(parseChordPro('{canzoniere: }').canzoniere, null)
+    assert.equal(parseChordPro('[C]niente').canzoniere, null)
+  })
+
+  it('keeps the canzoniere name verbatim, spaces and case included', () => {
+    // The name is what the reader sees; slugging happens once, elsewhere.
+    assert.equal(parseChordPro('{canzoniere: Da imparare}').canzoniere, 'Da imparare')
+  })
+
   it('reads tags as a comma separated list', () => {
     assert.deepEqual(parseChordPro('{tags: rock, ita , da imparare}').tags, [
       'rock',
