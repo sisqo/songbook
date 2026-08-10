@@ -1,7 +1,10 @@
 # songs — Piano di implementazione
 
 > **Stato:** v1 e **v1.1 — canzonieri** sono consegnate e in produzione su
-> https://songs.sisqo.dev.
+> https://songs.sisqo.dev. Questo documento descrive anche la **v1.2 — import e
+> modifica**, decisa e non ancora implementata: vedi la sezione omonima e la fase
+> corrispondente. La v1.2 cambia chi possiede un brano, quindi va letta prima di
+> toccare il seed.
 
 ## Cosa è
 
@@ -80,7 +83,14 @@ setlist_songs(setlist_slug, song_slug, position,
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
 user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
                 updated_at, primary key (user_email, song_slug))
+
+builds(id primary key default 'last', built_at)                      -- v1.2
 ```
+
+La riga singola in `builds` viene timbrata dal build. Serve a sapere quali brani
+sono ancora *in attesa di pubblicazione*: sono quelli con `updated_at` più recente
+dell'ultimo build. È l'unico modo onesto di rispondere, perché riflette ciò che il
+build ha effettivamente visto invece di ciò che l'app crede di aver pubblicato.
 
 `user_email` come chiave: con sessioni JWT e allowlist non serve una tabella utenti.
 Lo `slug` come chiave naturale al posto di un id surrogato: vedi *Scostamenti*.
@@ -108,7 +118,10 @@ scripts/seed.ts             # npm run seed → upsert per slug
 ```
 
 Lo script è idempotente (upsert per `slug`), così rilanciarlo dopo una correzione non
-duplica nulla. In v2 il DB diventa la fonte di verità e i file restano solo bootstrap.
+duplica nulla.
+
+**Con la v1.2 questo regime cambia:** il database diventa il padrone dei brani e il seed
+diventa di solo inserimento. Vedi *Import e modifica*.
 
 **Il canzoniere è l'eccezione a questa regola, e va capita bene.** La direttiva
 `{canzoniere: Repertorio}` in un `.chopro` dice dove il brano *nasce*, e il seed la applica
@@ -390,6 +403,119 @@ I tag `repertorio` e `da imparare` vengono rimossi: ora sono canzonieri, e tener
 entrambi i posti creerebbe due verità sulla stessa cosa. `lento` e `veloce` restano tag,
 che è il loro ruolo giusto.
 
+## Import e modifica
+
+Una sezione per far entrare brani nuovi incollando testo, più la possibilità di correggerli
+e rimuoverli. È il passo che sostituisce l'editor `/admin` immaginato per la v2, ristretto a
+ciò che serve davvero.
+
+### Cambio di regime: il database diventa il padrone
+
+Fino alla v1.1 i file in `content/` erano la sorgente di verità dei brani e il seed li
+imponeva al database. Dalla v1.2 non è più così: un brano importato nasce nel database e non
+ha alcun file. Tre conseguenze, tutte obbligate:
+
+1. **Il seed non può più fare pruning dei brani.** Cancellava le righe senza file: quelle
+   sono ora esattamente i brani importati.
+2. **Il seed non può più aggiornare i brani.** Sovrascriverebbe con la versione del file una
+   correzione fatta dall'app.
+3. **La cancellazione deve esistere nell'app.** Senza un file da eliminare, un brano
+   importato per errore non avrebbe altrimenti nessun modo di andarsene.
+
+Il seed diventa dunque di **solo inserimento** (`on conflict do nothing`): carica ciò che
+manca e non tocca ciò che c'è. Perde il ruolo di padrone e ne acquista uno nuovo — è la via
+di ripristino dell'export (vedi sotto).
+
+### Cosa si incolla
+
+Un solo campo di testo, e il formato viene riconosciuto:
+
+- se il testo contiene accordi fra parentesi quadre è già ChordPro e passa così com'è;
+- altrimenti si tenta la conversione da **accordi sopra il testo**, che è la forma in cui gli
+  accordi si trovano quasi sempre in giro.
+
+```
+INCOLLATO                    CONVERTITO
+Am        F                  [Am]Certe [F]notti la
+Certe notti la               [C]macchina...
+```
+
+La conversione riconosce una riga di accordi quando **tutti** i suoi token si leggono come
+accordi, riusando `parseChord` — che già rifiuta le parole normali e le annotazioni, quindi
+una riga come `Ritornello` o `x2` non viene confusa. Gli accordi si abbinano poi alla riga
+di testo successiva per posizione di colonna.
+
+È un'euristica e sbaglierà su qualche sorgente. Per questo il salvataggio avviene **dopo una
+preview** dello spartito reso, e il corpo ChordPro resta modificabile a mano nello stesso
+form: la via d'uscita è sempre visibile.
+
+### Il form
+
+Titolo e artista si deducono dalle direttive se ci sono, altrimenti dalle prime righe. La
+tonalità si stima dagli accordi ed è **mostrata come stima**, perché da essa dipendono
+l'etichetta «originale» e la grafia enarmonica quando trasponi. Il canzoniere è un menù che
+parte da «Da ordinare». Lo slug si genera dal titolo con `uniqueSlug`, lo stesso già usato
+per i canzonieri.
+
+```
+Titolo     [ Certe notti          ]
+Artista    [ Ligabue              ]
+Tonalità   [ Do ▾ ] stimata
+Canzoniere [ Da ordinare ▾        ]
+┌─ corpo ChordPro ─┬─ preview ────┐
+│ [Am]Certe notti  │  Do      Fa  │
+│ ...              │  Certe notti │
+└──────────────────┴──────────────┘
+```
+
+### Duplicati
+
+Se titolo e artista coincidono con un brano esistente, l'import lo dice prima di salvare e
+offre tre strade: **sostituire** il corpo di quello esistente, **aggiungere comunque** come
+brano separato con slug numerato, o annullare. Sostituire è spesso l'intento reale — hai
+trovato una versione migliore — e conserva lo slug, quindi le preferenze salvate di quel
+brano sopravvivono.
+
+### Pubblicazione
+
+Un brano nel database non è ancora visibile: lista, indice di ricerca, pagine e precache sono
+tutti generati al build. Quindi l'import **mette in attesa** e la schermata elenca i brani
+non ancora pubblicati; un'azione **Pubblica** chiama un deploy hook di Vercel e un solo build
+li rende tutti pagine statiche, ricercabili e precachate.
+
+Un modello unico e coerente — i contenuti cambiano, si ricostruisce — che evita di dover
+costruire strati mutabili anche per la lista e per l'indice. E permette di importare cinque
+brani pagando un solo deploy.
+
+Lo stato «in attesa» non è una colonna: è il confronto fra `songs.updated_at` e il timbro in
+`builds`. Ne segue che un deploy fatto per altri motivi, per esempio un push di codice,
+pubblica anche i brani in attesa. È corretto e coerente: la lista si svuota perché quei brani
+sono davvero diventati statici.
+
+### Export e ripristino
+
+I file non sono più la rete di sicurezza, quindi ne serve un'altra: un pulsante **Scarica
+tutto** produce un archivio dei `.chopro`, direttive `{canzoniere:}` comprese, da conservare
+dove si vuole. Nessun token e nessuna infrastruttura; la copia dipende da chi se ne ricorda,
+ed è un compromesso accettato consapevolmente.
+
+Il ripristino è il seed di solo inserimento: si rimettono i file in `content/`, si lancia
+`npm run seed`, e torna tutto ciò che manca senza toccare ciò che c'è.
+
+### Ciò che può risorgere
+
+Un effetto da conoscere, non un difetto da correggere: se cancelli un brano dall'app e il suo
+file è ancora in `content/`, il prossimo `npm run seed` lo **reinserisce**. È il comportamento
+giusto per un comando che significa «carica ciò che manca», ma va saputo. In pratica: quando
+entrerà il repertorio vero, i quattro file segnaposto vanno rimossi dal repo, altrimenti
+resteranno a risorgere a ogni ripristino.
+
+### Accesso
+
+Le scritture passano da server action con sessione autorizzata, come per i canzonieri. Senza
+rete la sezione è disabilitata: salvare richiede il database e pubblicare richiede un deploy,
+quindi non c'è nulla che possa funzionare offline e nulla da mettere in coda.
+
 ## Preferenze
 
 | Preferenza | Granularità | Dove |
@@ -443,15 +569,29 @@ La garanzia centrale è verificata end to end e non assunta: una rinomina e uno 
 applicati al database sono sopravvissuti a un `npm run seed` che rileggeva file che ancora
 nominavano il vecchio canzoniere.
 
-### v2 — scrittura
+### v1.2 — import e modifica
 
-`/admin` con CRUD brani e scalette, preview live, `revalidatePath()` al salvataggio,
-allowlist spostata su tabella, import da file. Il layer di accesso dati della v1 va scritto
-già pensando a questo, così l'editor non obbliga a toccare la UI di lettura.
+Il cambio di regime: il database diventa il padrone dei brani.
 
-Nota che la v1.1 arriva prima e su un pezzo scelto per essere piccolo: nessun editor di
-testi, nessuna preview, nessuna rivalidazione. Serve anche come banco di prova del percorso
-di scrittura che la v2 userà su scala molto maggiore.
+1. Tabella `builds` e timbro scritto dal build, per sapere cosa è in attesa
+2. Seed a solo inserimento: nessun pruning, nessun aggiornamento dei brani
+3. Convertitore «accordi sopra il testo» → ChordPro, con test sui casi che sbagliano
+4. Riconoscimento del formato incollato e stima della tonalità dagli accordi
+5. `/importa`: campo di testo, form dedotto, preview dello spartito, salvataggio
+6. Rilevamento duplicati con sostituisci / aggiungi comunque / annulla
+7. Modifica e cancellazione di un brano esistente, dallo stesso form
+8. Elenco «in attesa» e azione Pubblica via deploy hook
+9. Export «Scarica tutto» e ripristino documentato tramite seed
+10. Rimozione dei quattro file segnaposto quando entra il repertorio vero
+
+### v2 — il resto
+
+Scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei canzonieri.
+Dopo la v1.2 restano queste, non l'editor: quello sarà già fatto.
+
+Nota la progressione deliberata: la v1.1 ha aperto il percorso di scrittura su una superficie
+minima — nomi e appartenenza — e la v1.2 lo estende al contenuto. Ogni passo ha portato una
+regola nuova su chi possiede cosa, ed è la parte da rileggere prima di toccare il seed.
 
 ## Vincoli d'ambiente
 
@@ -543,6 +683,23 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Stato iniziale | Ricavato dai tag esistenti | I tag contenevano già questa categorizzazione |
 | Pruning dei canzonieri | Escluso dal seed | Esistono legittimamente canzonieri che nessun file ha mai dichiarato |
 
+### Import e modifica (v1.2)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Proprietà dei brani | Il database, non i file | Scelta esplicita dell'utente; l'import scrive una riga e non committa nulla |
+| Seed | Solo inserimento | Non può più aggiornare senza sovrascrivere le correzioni, né fare pruning senza cancellare gli import |
+| Ingresso | Solo testo incollato | È come si trovano gli accordi; upload e URL scartati come poco usati o fragili |
+| Formato | Riconosciuto da sé | ChordPro passa, il resto si converte: nessun formato da conoscere |
+| Conversione | Euristica con preview obbligatoria | Sbaglierà su qualche sorgente, e la preview più il corpo modificabile sono la via d'uscita |
+| Metadati | Dedotti e correggibili | Nel caso comune non si tocca nulla; la tonalità è marcata come stima perché ne dipende l'enarmonia |
+| Scope | Import, modifica e cancellazione | La cancellazione è obbligata: senza file da eliminare un errore sarebbe permanente |
+| Duplicati | Avviso con sostituisci / aggiungi / annulla | Sostituire conserva lo slug, quindi le preferenze del brano sopravvivono |
+| Pubblicazione | Esplicita, un build per gruppo | Lista, ricerca e precache si generano al build: un solo modello, e cinque brani costano un deploy |
+| Stato «in attesa» | Confronto con il timbro del build | Riflette ciò che il build ha visto, non ciò che l'app crede di aver pubblicato |
+| Backup | Export manuale scaricabile | Scelta esplicita dell'utente, senza token; il rischio di dimenticarlo è accettato |
+| Ripristino | Il seed di solo inserimento | Dà all'export una via di rientro senza toccare ciò che esiste |
+
 ## Domande aperte
 
 1. **Capotasto** — escluso dalla v1 (lo stepper a semitoni copre il bisogno principale).
@@ -572,6 +729,17 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 10. **Canzonieri condivisi o per utente** — sono struttura della libreria, quindi condivisi
     fra gli account in allowlist, come i brani. Va riconsiderato solo se entrasse qualcuno
     che vuole un proprio ordinamento del materiale comune.
-11. **Rinominare uno slug di brano** — resta un'operazione da file, e orfana le preferenze
-    salvate di quel brano. Se lo spostamento fra canzonieri rendesse frequente il bisogno
-    di rinominare anche gli slug, servirebbe una tabella di alias.
+11. **Rinominare uno slug di brano** — non previsto nemmeno dall'import: lo slug si genera
+    dal titolo alla creazione e poi resta. Cambiarlo orfanerebbe le preferenze salvate di
+    quel brano, quindi servirebbe una tabella di alias.
+12. **Come si produce l'archivio dell'export** — un `.chopro` per brano dentro uno zip
+    richiede una libreria (`fflate` è piccola e senza dipendenze, da verificare su Node 18).
+    L'alternativa senza dipendenze è un unico file JSON, che però il seed dovrebbe imparare a
+    leggere e che non è più un archivio di `.chopro`. Da decidere in implementazione.
+13. **Qualità della conversione** — l'euristica «accordi sopra il testo» fallirà su sorgenti
+    con tabulazioni, etichette di sezione in mezzo, o accordi e testo sulla stessa riga. La
+    preview e il corpo modificabile sono la mitigazione; se in pratica sbaglia troppo spesso
+    su un sito che usi davvero, conviene aggiungere casi di test presi da lì.
+14. **Brani in attesa non leggibili** — prima della pubblicazione un brano si vede solo nella
+    preview dell'import. Se capiterà di volerlo provare a suonare subito, l'alternativa è una
+    pagina di lettura dinamica per i soli brani in attesa, fuori dal precache.
