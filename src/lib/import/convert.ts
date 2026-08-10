@@ -35,18 +35,35 @@ function tokens(line: string): Token[] {
   return found
 }
 
+/** A word that is just an Italian note name, with no accidental and no suffix. */
+const BARE_ITALIAN = /^(?:do|re|mi|fa|sol|la|si)[,.;:!?]*$/i
+
 /**
  * True when every token on the line reads as a chord.
  *
  * `parseChord` already refuses ordinary words and annotations, so `Ritornello`
  * and `x2` are not mistaken for music. Requiring *all* tokens to be chords is
- * what keeps a lyric line that happens to start with the word "La" from being
- * read as a chord line.
+ * most of what keeps a lyric line from being read as a chord line.
+ *
+ * It is not enough on its own, because chords are also readable in Italian: `la
+ * la la la` is a line of lyrics in which every token is a valid chord. For a line
+ * made *only* of bare note words, the tiebreaker is spacing — a chord line is
+ * positioned above syllables, so it has a gap of two or more spaces somewhere,
+ * while sung `la la la` does not.
+ *
+ * The bias is deliberate: a chord line mistaken for lyrics shows up as a stray
+ * line the editor can fix, while lyrics mistaken for chords take the words out of
+ * the song and hide them above an unrelated line.
  */
 export function isChordLine(line: string): boolean {
   const found = tokens(line)
   if (found.length === 0) return false
-  return found.every((token) => parseChord(token.text) !== null)
+  if (!found.every((token) => parseChord(token.text) !== null)) return false
+
+  const allBareNotes = found.every((token) => BARE_ITALIAN.test(token.text))
+  if (allBareNotes && !/\S {2,}\S/.test(line)) return false
+
+  return true
 }
 
 /** A bracketed or colon-terminated label, e.g. `[Verse 1]` or `Ritornello:`. */

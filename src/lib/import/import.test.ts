@@ -12,9 +12,23 @@ describe('isChordLine', () => {
   })
 
   it('rejects a lyric line, even one starting with a note name', () => {
-    // "La" and "Do" are Italian note names but not chord tokens in the source.
     assert.equal(isChordLine('La macchina sembra una donna'), false)
     assert.equal(isChordLine('Certe notti'), false)
+  })
+
+  it('rejects sung note words, which are all valid Italian chords', () => {
+    // Every token here parses as a chord. Spacing is what says these are lyrics.
+    assert.equal(isChordLine('la la la la'), false)
+    assert.equal(isChordLine('La la la, la la'), false)
+    assert.equal(isChordLine('do re mi fa sol'), false)
+  })
+
+  it('accepts a positioned line of Italian chords', () => {
+    assert.equal(isChordLine('La      Sol      Re'), true)
+    assert.equal(isChordLine('re    la    mi'), true)
+    // A suffix or an accidental is enough on its own: nobody sings "la7".
+    assert.equal(isChordLine('la7 mi si-'), true)
+    assert.equal(isChordLine('sib fa'), true)
   })
 
   it('rejects a mixed line', () => {

@@ -13,14 +13,20 @@
  * source. Without that step the claim "in international notation the display
  * matches the source" would only hold for files written consistently: a
  * hand-typed `Cmin7` would render as-is and would never map to `Do-7`.
+ *
+ * The root is read in either notation — `[re]` and `[D]` are the same chord — and
+ * stored international, so the two rules above are about spelling the accidental,
+ * not about which language the source used.
  */
 
 import {
   type Key,
   type PitchClass,
+  type RootRead,
   mod12,
   noteToItalian,
   noteToPitchClass,
+  readRoots,
   spellPitchClass,
 } from './notes'
 
@@ -84,22 +90,47 @@ export function parseChord(raw: string): Chord | null {
   const token = raw.trim()
   if (token === '') return null
 
-  const head = /^([A-G][#b]*)(.*)$/.exec(token)
-  if (!head) return null
+  // Italian first, then international; see readRoots for why both, and why in
+  // that order.
+  for (const root of readRoots(token)) {
+    const chord = build(root)
+    if (chord !== null) return chord
+  }
 
-  const root = noteToPitchClass(head[1])
-  if (root === null) return null
+  return null
+}
+
+/** Completes one reading of a token, or rejects it so the next can be tried. */
+function build(root: RootRead): Chord | null {
+  const pc = noteToPitchClass(root.name)
+  if (pc === null) return null
 
   // A trailing `/X` is a slash bass only when X is a note; `C6/9` is a suffix.
-  const slash = /^(.*)\/([A-G][#b]*)$/.exec(head[2])
-  const rawSuffix = slash ? slash[1] : head[2]
-  const bassName = slash ? slash[2] : null
+  let rawSuffix = root.rest
+  let bassName: string | null = null
+
+  const cut = root.rest.lastIndexOf('/')
+  if (cut !== -1) {
+    const bass = readRoots(root.rest.slice(cut + 1)).find((read) => read.rest === '')
+    if (bass !== undefined) {
+      rawSuffix = root.rest.slice(0, cut)
+      bassName = bass.name
+    }
+  }
+
+  /**
+   * `[solo]`, `[mio]`, `[fallo]`: an Italian root followed by the bare `o` that
+   * also means diminished. The alias is real, but these are words, and a word read
+   * as a chord vanishes from the lyrics — the same failure `[assolo]` once caused.
+   * Anyone who means it writes `sol°` or `soldim`.
+   */
+  if (root.italian && /^o7?$/i.test(rawSuffix)) return null
 
   if (!VALID_SUFFIX.test(rawSuffix)) return null
 
   return {
-    root,
-    rootName: head[1],
+    root: pc,
+    rootName: root.name,
     suffix: normalizeSuffix(rawSuffix),
     bass: bassName === null ? null : noteToPitchClass(bassName),
     bassName,

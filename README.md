@@ -55,6 +55,21 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {end_of_chorus}
 ```
 
+Gli accordi si possono scrivere in **entrambe le notazioni**: `[Bb]` e `[sib]`, `[D]`
+e `[re]`, `[Em7]` e `[mi-7]`. Vengono letti allo stesso modo e mostrati nella
+notazione scelta da chi legge, quindi un brano preso da una fonte italiana si
+traspone e mostra i diagrammi come uno scritto in internazionale.
+
+Due dettagli di questa lettura, entrambi coperti dai test:
+
+- `Do` è **C**, non un Re diminuito scritto con l'alias `o`. Chi intende il
+  diminuito scrive `sol°` o `soldim`.
+- Le parole italiane che finiscono in `o` e iniziano con un nome di nota —
+  `[solo]`, `[mio]` — **non** sono accordi: resterebbero fuori dal testo. Vale
+  anche nell'import, dove una riga come `la la la la` è testo cantato e non una
+  riga di accordi: a distinguerla è la spaziatura, perché una riga di accordi è
+  allineata sulle sillabe e ha spazi larghi.
+
 `{canzoniere}` dice **soltanto dove il brano nasce**: il seed lo applica
 all'inserimento, o quando la colonna è ancora vuota, e da lì in poi comanda il
 database. Un file senza la direttiva finisce in "Da ordinare". Rinominare o

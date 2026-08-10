@@ -73,6 +73,73 @@ const MINOR_KEYS: { name: string; flats: boolean }[] = [
   { name: 'Bm', flats: false },
 ]
 
+/** Italian note names, mapped to the letter they are the same note as. */
+const ITALIAN_LETTER: Record<string, string> = {
+  do: 'C',
+  re: 'D',
+  mi: 'E',
+  fa: 'F',
+  sol: 'G',
+  la: 'A',
+  si: 'B',
+}
+
+/** `sol` before `si` so the longer name is not cut short by the shorter one. */
+const ITALIAN_ROOT = /^(sol|do|re|mi|fa|la|si)([#b]*)/i
+
+export interface RootRead {
+  /** The root in international spelling, e.g. `Bb`, whatever the source wrote. */
+  name: string
+  /** What follows the root: the suffix, and any slash bass. */
+  rest: string
+  /** Whether the source wrote this root in Italian. */
+  italian: boolean
+}
+
+/**
+ * How the start of a chord token could be read, best guess first.
+ *
+ * Sources are Italian, and Italian sources write `[re]` and `[mi7]`, so both
+ * notations have to be readable — the alternative is a repertoire whose chords
+ * are inert text that cannot be transposed, respelled or drawn.
+ *
+ * Italian comes first, and that settles the one ambiguous token: `Do` is C, not a
+ * D diminished spelled with the `o` alias. Italian charts write diminished as `°`
+ * or `dim`, so this reading is the one that is nearly always meant.
+ *
+ * Both readings are returned because the first may not survive the suffix check:
+ * `Fadd9` begins with `fa`, and `dd9` is not a suffix, so it has to fall back to
+ * F plus `add9`.
+ *
+ * International roots stay uppercase-only — that is what keeps `[assolo]` from
+ * parsing as A plus nonsense. Italian roots have to allow lowercase, because that
+ * is how the sources write them, which does let words in: see the guard in
+ * `parseChord`.
+ */
+export function readRoots(token: string): RootRead[] {
+  const reads: RootRead[] = []
+
+  const italian = ITALIAN_ROOT.exec(token)
+  if (italian !== null) {
+    reads.push({
+      name: ITALIAN_LETTER[italian[1].toLowerCase()] + italian[2].toLowerCase(),
+      rest: token.slice(italian[0].length),
+      italian: true,
+    })
+  }
+
+  const international = /^([A-G][#b]*)/.exec(token)
+  if (international !== null) {
+    reads.push({
+      name: international[1],
+      rest: token.slice(international[0].length),
+      italian: false,
+    })
+  }
+
+  return reads
+}
+
 /** Parses a note name such as `C`, `F#`, `Bbb` into a pitch class. */
 export function noteToPitchClass(name: string): PitchClass | null {
   const match = /^([A-Ga-g])([#b]*)$/.exec(name.trim())
@@ -119,14 +186,22 @@ export interface Key {
 export function parseKey(raw: string | null | undefined): Key | null {
   if (!raw) return null
 
-  const match = /^([A-Ga-g][#b]*)\s*(m|min|minor|-)?$/.exec(raw.trim())
-  if (!match) return null
+  const token = raw.trim()
+  // Capitalised so a lowercase international key such as `bb` still reads, while
+  // the uppercase rule that protects chord parsing stays where it matters.
+  const candidates = readRoots(token.charAt(0).toUpperCase() + token.slice(1))
 
-  const pc = noteToPitchClass(match[1])
-  if (pc === null) return null
+  for (const root of candidates) {
+    const tail = /^\s*(m|min|minor|-)?$/i.exec(root.rest)
+    if (tail === null) continue
 
-  const mode: Mode = match[2] ? 'minor' : 'major'
-  return keyFor(pc, mode)
+    const pc = noteToPitchClass(root.name)
+    if (pc === null) continue
+
+    return keyFor(pc, tail[1] ? 'minor' : 'major')
+  }
+
+  return null
 }
 
 /** The canonical key for a pitch class and mode. */

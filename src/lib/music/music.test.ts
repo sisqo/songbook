@@ -122,6 +122,111 @@ describe('parseChord', () => {
   })
 })
 
+describe('chords written in Italian', () => {
+  it('reads the note names the sources actually use', () => {
+    assert.equal(parseChord('do')?.root, 0)
+    assert.equal(parseChord('re')?.root, 2)
+    assert.equal(parseChord('mi')?.root, 4)
+    assert.equal(parseChord('fa')?.root, 5)
+    assert.equal(parseChord('sol')?.root, 7)
+    assert.equal(parseChord('la')?.root, 9)
+    assert.equal(parseChord('si')?.root, 11)
+  })
+
+  it('reads them capitalised too', () => {
+    assert.equal(parseChord('Re')?.root, 2)
+    assert.equal(parseChord('Sol')?.root, 7)
+  })
+
+  it('keeps the accidental the source wrote', () => {
+    assert.equal(parseChord('sib')?.rootName, 'Bb')
+    assert.equal(parseChord('mib')?.rootName, 'Eb')
+    assert.equal(parseChord('do#')?.rootName, 'C#')
+    assert.equal(parseChord('fa#')?.rootName, 'F#')
+  })
+
+  it('reads the suffixes alongside them', () => {
+    assert.equal(parseChord('la7')?.suffix, '7')
+    assert.equal(parseChord('mi7')?.suffix, '7')
+    assert.equal(parseChord('si-')?.suffix, 'm')
+    assert.equal(parseChord('lam')?.suffix, 'm')
+    assert.equal(parseChord('re-7')?.suffix, 'm7')
+    assert.equal(parseChord('sol△7')?.suffix, 'maj7')
+  })
+
+  it('reads a slash bass in either notation', () => {
+    assert.deepEqual(parseChord('re/fa#'), {
+      root: 2,
+      rootName: 'D',
+      suffix: '',
+      bass: 6,
+      bassName: 'F#',
+    })
+    assert.equal(parseChord('la-7/sol')?.bassName, 'G')
+    assert.equal(parseChord('la/G')?.bassName, 'G')
+  })
+
+  it('reads Do as C rather than as a D diminished', () => {
+    // The `o` alias for diminished is real, but Italian charts write `°` or `dim`,
+    // and `Do` is overwhelmingly the note.
+    assert.equal(parseChord('Do')?.root, 0)
+    assert.equal(parseChord('Do')?.suffix, '')
+    assert.equal(parseChord('Do7')?.suffix, '7')
+    // Written unambiguously, a diminished still parses as one.
+    assert.equal(parseChord('sol°')?.suffix, 'dim')
+    assert.equal(parseChord('D°')?.suffix, 'dim')
+  })
+
+  it('refuses the Italian words that a bare o would turn into chords', () => {
+    for (const word of ['solo', 'mio', 'fallo', 'lodo', 'Solo']) {
+      assert.equal(parseChord(word), null, `${word} should not be a chord`)
+    }
+  })
+
+  it('still refuses the annotations it refused before', () => {
+    assert.equal(parseChord('assolo'), null)
+    assert.equal(parseChord('Ritornello'), null)
+    assert.equal(parseChord('strumentale'), null)
+    assert.equal(parseChord('finale'), null)
+    assert.equal(parseChord('x2'), null)
+  })
+
+  it('falls back to the international reading when the Italian one does not hold', () => {
+    // `Fadd9` starts with `fa`, but `dd9` is not a suffix.
+    assert.equal(parseChord('Fadd9')?.root, 5)
+    assert.equal(parseChord('Fadd9')?.suffix, 'add9')
+    // `Fm` starts with `fa`? No — but `F` does, and this must stay F minor.
+    assert.equal(parseChord('Fm')?.suffix, 'm')
+  })
+
+  it('displays an Italian source in whichever notation is asked for', () => {
+    const key = keyFor(2, 'major')
+    assert.equal(renderChord('re', 0, 'it', key), 'Re')
+    assert.equal(renderChord('re', 0, 'int', key), 'D')
+    assert.equal(renderChord('mi7', 0, 'it', key), 'Mi7')
+    assert.equal(renderChord('mi7', 0, 'int', key), 'E7')
+    assert.equal(renderChord('si-', 0, 'int', key), 'Bm')
+  })
+
+  it('transposes a chord the source wrote in Italian', () => {
+    // Up two semitones from D lands in E, which writes sharps.
+    assert.equal(renderChord('re', 2, 'int', keyFor(4, 'major')), 'E')
+    assert.equal(renderChord('la', 2, 'int', keyFor(4, 'major')), 'B')
+    assert.equal(renderChord('sol', 2, 'it', keyFor(4, 'major')), 'La')
+  })
+
+  it('reads a key directive written in Italian', () => {
+    assert.equal(parseKey('Re')?.name, 'D')
+    assert.equal(parseKey('la-')?.name, 'Am')
+    assert.equal(parseKey('sib')?.name, 'Bb')
+    assert.equal(parseKey('fa#m')?.name, 'F#m')
+    // The international spellings keep working, lowercase included.
+    assert.equal(parseKey('bb')?.name, 'Bb')
+    assert.equal(parseKey('Am')?.name, 'Am')
+    assert.equal(parseKey('C')?.name, 'C')
+  })
+})
+
 describe('transposeChord', () => {
   it('moves root and bass together', () => {
     const chord = transposeChord(parseChord('C/E')!, 2, transposeKey(C, 2))
