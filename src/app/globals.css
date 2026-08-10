@@ -217,6 +217,39 @@
     background: var(--accent);
   }
 
+  /* ---- Chips ---------------------------------------------------------- */
+
+  .chip-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    overflow-x: auto;
+    /* The row scrolls sideways on a phone rather than wrapping into two lines. */
+    scrollbar-width: none;
+    padding-bottom: 0.1rem;
+  }
+
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .chip.is-on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
   .pending-dot {
     flex: none;
     width: 0.45rem;

@@ -1,10 +1,13 @@
 import Link from 'next/link'
 
+import { CanzoniereProvider } from '@/components/CanzoniereProvider'
+import { CanzonierePicker } from '@/components/CanzonierePicker'
 import { ControlBar } from '@/components/ControlBar'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
+import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { parseChordPro } from '@/lib/chordpro'
-import type { Song } from '@/lib/data'
+import { type Song, repository } from '@/lib/data'
 
 export interface SetlistContext {
   slug: string
@@ -22,7 +25,7 @@ export interface SetlistContext {
  * The ChordPro is parsed here, on the server, so the parse happens once at build
  * time and the client only ever formats an already-structured song.
  */
-export function SongReader({
+export async function SongReader({
   song,
   setlist,
 }: {
@@ -30,9 +33,16 @@ export function SongReader({
   setlist?: SetlistContext | null
 }) {
   const parsed = parseChordPro(song.body)
+  const canzonieri = await repository.listCanzonieri()
+
+  const initial: CanzoniereState = {
+    canzonieri,
+    assignments: song.canzoniereSlug === null ? {} : { [song.slug]: song.canzoniereSlug },
+  }
 
   return (
     <PrefsProvider songSlug={song.slug}>
+      <CanzoniereProvider initial={initial}>
       <main className="mx-auto max-w-3xl px-4 pt-4">
         <header className="mb-5 border-b pb-3" style={{ borderColor: 'var(--line)' }}>
           <nav className="mb-2 text-sm" style={{ color: 'var(--muted)' }}>
@@ -48,11 +58,10 @@ export function SongReader({
           </nav>
 
           <h1 className="text-2xl font-semibold tracking-tight">{song.title}</h1>
-          {song.artist !== null && (
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {song.artist}
-            </p>
-          )}
+          <p className="flex flex-wrap items-baseline gap-2 text-sm" style={{ color: 'var(--muted)' }}>
+            {song.artist !== null && <span>{song.artist}</span>}
+            <CanzonierePicker songSlug={song.slug} />
+          </p>
         </header>
 
         <SongSheet song={parsed} originalKey={song.originalKey} />
@@ -92,9 +101,10 @@ export function SongReader({
             )}
           </nav>
         )}
-      </main>
+        </main>
 
-      <ControlBar originalKey={song.originalKey} />
+        <ControlBar originalKey={song.originalKey} />
+      </CanzoniereProvider>
     </PrefsProvider>
   )
 }

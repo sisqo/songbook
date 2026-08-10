@@ -40,7 +40,15 @@ const rejectUnauthenticated = {
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
-  precacheOptions: { plugins: [rejectUnauthenticated] },
+  precacheOptions: {
+    plugins: [rejectUnauthenticated],
+    /**
+     * `c` selects a canzoniere on the song list: `/?c=repertorio` must resolve to
+     * the precached `/`, or a filtered link would miss the cache and fail to open
+     * offline. The two defaults are restated because setting this replaces them.
+     */
+    ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^c$/],
+  },
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
