@@ -4,7 +4,14 @@ import { zipSync, strToU8 } from 'fflate'
 import { useEffect, useState } from 'react'
 
 import { type FormValues, SongForm } from '@/components/SongForm'
-import { IconCheck, IconDownload, IconInfo, IconOffline, IconPublish } from '@/components/icons'
+import {
+  IconCheck,
+  IconDownload,
+  IconInfo,
+  IconOffline,
+  IconPublish,
+  IconRebuild,
+} from '@/components/icons'
 import type { Canzoniere } from '@/lib/data/types'
 import { exportAll, loadPending, publish, saveSong } from '@/lib/import/actions'
 import { convert } from '@/lib/import/convert'
@@ -83,6 +90,15 @@ export function ImportScreen({
         body: found.body,
       },
     })
+  }
+
+  /** Triggers the deploy hook and reports what happened. */
+  const rebuild = async (done: string) => {
+    setBusy(true)
+    setNotice(null)
+    const result = await publish()
+    setNotice(result.ok ? done : PUBLISH_MESSAGE[result.reason])
+    setBusy(false)
   }
 
   const download = async () => {
@@ -213,20 +229,26 @@ export function ImportScreen({
             type="button"
             className="btn btn-primary"
             disabled={!online || busy || pending.length === 0}
-            onClick={async () => {
-              setBusy(true)
-              setNotice(null)
-              const result = await publish()
-              setNotice(
-                result.ok
-                  ? 'Ricostruzione avviata. Fra un minuto i brani sono sul sito.'
-                  : PUBLISH_MESSAGE[result.reason],
-              )
-              setBusy(false)
-            }}
+            onClick={() => void rebuild('Ricostruzione avviata. Fra un minuto i brani sono sul sito.')}
           >
             <IconPublish size={16} />
             Pubblica
+          </button>
+
+          {/*
+           * The same deploy hook as Pubblica, without the condition. Renaming a
+           * canzoniere changes what the pages say without touching any song, so
+           * nothing shows up as pending and Pubblica stays disabled — and the site
+           * would keep the old name until the next unrelated publish.
+           */}
+          <button
+            type="button"
+            className="btn"
+            disabled={!online || busy}
+            onClick={() => void rebuild('Ricostruzione avviata. Fra un minuto il sito è aggiornato.')}
+          >
+            <IconRebuild size={16} />
+            Ricostruisci ora
           </button>
 
           <button
@@ -239,6 +261,12 @@ export function ImportScreen({
             Scarica tutto
           </button>
         </div>
+
+        <p className="mt-3 text-xs text-faint">
+          «Ricostruisci ora» rigenera il sito anche senza brani in attesa: serve dopo aver
+          rinominato un canzoniere o spostato dei brani, perché quelle modifiche non compaiono
+          nella lista qui sopra.
+        </p>
       </section>
     </div>
   )

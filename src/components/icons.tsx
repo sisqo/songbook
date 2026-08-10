@@ -56,6 +56,24 @@ export function IconChevronRight(props: IconProps) {
   )
 }
 
+export function IconChevronDown(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m6 10 6 6 6-6" />
+    </Icon>
+  )
+}
+
+/** Rebuild: a circling arrow. */
+export function IconRebuild(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12a8 8 0 1 1-2.5-5.8" />
+      <path d="M20 4v3.5h-3.5" />
+    </Icon>
+  )
+}
+
 export function IconPlus(props: IconProps) {
   return (
     <Icon {...props}>
