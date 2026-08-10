@@ -4,6 +4,7 @@ import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { CanzonierePicker } from '@/components/CanzonierePicker'
 import { ControlBar } from '@/components/ControlBar'
 import { PrefsProvider } from '@/components/PrefsProvider'
+import { SongEditor } from '@/components/SongEditor'
 import { SongSheet } from '@/components/SongSheet'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { parseChordPro } from '@/lib/chordpro'
@@ -101,6 +102,8 @@ export async function SongReader({
             )}
           </nav>
         )}
+
+        <SongEditor song={song} canzonieri={canzonieri} />
         </main>
 
         <ControlBar originalKey={song.originalKey} />

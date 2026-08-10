@@ -29,6 +29,7 @@ async function main() {
     '/',
     '/scalette',
     '/canzonieri',
+    '/importa',
     // A metadata route, not a file in public/, so it has to be listed here.
     '/manifest.webmanifest',
     ...songs.map((song) => `/canzoni/${song.slug}`),

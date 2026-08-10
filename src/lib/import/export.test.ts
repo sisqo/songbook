@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import { parseChordPro } from '../chordpro'
+import type { Song } from '../data/types'
+import { choproFilename, toChoproFile } from './export'
+
+const song: Song = {
+  slug: 'certe-notti',
+  title: 'Certe notti',
+  artist: 'Ligabue',
+  originalKey: 'C',
+  tags: ['lento'],
+  canzoniereSlug: 'repertorio',
+  body: '{title: Vecchio titolo}\n{key: G}\n\n[Am]Certe notti',
+}
+
+describe('toChoproFile', () => {
+  it('writes the directives from the columns, not from the body', () => {
+    const file = toChoproFile(song, 'Repertorio')
+
+    assert.ok(file.startsWith('{title: Certe notti}\n'))
+    assert.ok(file.includes('{artist: Ligabue}'))
+    assert.ok(file.includes('{key: C}'))
+    assert.ok(file.includes('{tags: lento}'))
+    assert.ok(file.includes('{canzoniere: Repertorio}'))
+  })
+
+  it('drops the stale directives that were in the body', () => {
+    const file = toChoproFile(song, 'Repertorio')
+    assert.ok(!file.includes('Vecchio titolo'), 'old title survived')
+    assert.ok(!file.includes('{key: G}'), 'old key survived')
+  })
+
+  it('keeps the music', () => {
+    assert.ok(toChoproFile(song, 'Repertorio').includes('[Am]Certe notti'))
+  })
+
+  it('omits directives with nothing to say', () => {
+    const bare = toChoproFile(
+      { ...song, artist: null, originalKey: null, tags: [] },
+      null,
+    )
+    assert.ok(!bare.includes('{artist:'))
+    assert.ok(!bare.includes('{key:'))
+    assert.ok(!bare.includes('{tags:'))
+    assert.ok(!bare.includes('{canzoniere:'))
+  })
+
+  it('round trips: the parser reads back what the columns said', () => {
+    const parsed = parseChordPro(toChoproFile(song, 'Repertorio'))
+
+    assert.equal(parsed.title, 'Certe notti')
+    assert.equal(parsed.artist, 'Ligabue')
+    assert.equal(parsed.key, 'C')
+    assert.deepEqual(parsed.tags, ['lento'])
+    assert.equal(parsed.canzoniere, 'Repertorio')
+    assert.equal(parsed.sections.length, 1)
+  })
+})
+
+describe('choproFilename', () => {
+  it('names the file after the slug, which is how the seed reads it back', () => {
+    assert.equal(choproFilename('certe-notti'), 'certe-notti.chopro')
+  })
+})

@@ -33,6 +33,9 @@ export default async function Home() {
           <header className="mb-5 flex items-baseline justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight">Canzoni</h1>
             <div className="flex items-baseline gap-4" style={{ color: 'var(--muted)' }}>
+              <Link href="/importa" className="text-sm underline-offset-2 hover:underline">
+                Importa
+              </Link>
               <Link href="/canzonieri" className="text-sm underline-offset-2 hover:underline">
                 Canzonieri
               </Link>
