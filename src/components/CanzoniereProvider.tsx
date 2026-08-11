@@ -19,7 +19,7 @@ import {
   renameCanzoniere,
 } from '@/lib/canzonieri/actions'
 import { readCanzoniereCache, writeCanzoniereCache } from '@/lib/canzonieri/store'
-import type { CanzoniereState, WriteResult } from '@/lib/canzonieri/types'
+import type { CanzoniereState, CreateResult, WriteResult } from '@/lib/canzonieri/types'
 
 interface CanzoniereContextValue extends CanzoniereState {
   /** False while the browser reports no connection: management is disabled. */
@@ -27,7 +27,7 @@ interface CanzoniereContextValue extends CanzoniereState {
   /** Re-reads the layer. Exposed because saving a song can change its canzoniere. */
   refresh: () => Promise<void>
 
-  create: (name: string) => Promise<WriteResult>
+  create: (name: string) => Promise<CreateResult>
   rename: (slug: string, name: string) => Promise<WriteResult>
   remove: (slug: string, moveTo: string | null) => Promise<WriteResult>
   move: (songSlug: string, canzoniereSlug: string) => Promise<WriteResult>
@@ -110,7 +110,8 @@ export function CanzoniereProvider({
    * as it is on one reader's transposition.
    */
   const afterWrite = useCallback(
-    async (result: WriteResult) => {
+    // Generic so a create can carry its new slug back out through here.
+    async <T extends WriteResult | CreateResult>(result: T): Promise<T> => {
       if (result.ok) await refresh()
       return result
     },

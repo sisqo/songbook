@@ -25,6 +25,16 @@ export type WriteFailure =
 
 export type WriteResult = { ok: true } | { ok: false; reason: WriteFailure }
 
+/**
+ * Creating one answers with its slug.
+ *
+ * The name is not enough to find it again: `uniqueSlug` may have had to number it,
+ * and a caller that wants to *use* what it just made — the import screen files a
+ * paste into it — would otherwise have to guess how. Assignable to `WriteResult`,
+ * so callers that only care whether it worked need no change.
+ */
+export type CreateResult = { ok: true; slug: string } | { ok: false; reason: WriteFailure }
+
 export const WRITE_MESSAGE: Record<WriteFailure, string> = {
   'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
   'no-database': 'Nessun database configurato: le modifiche non possono essere salvate.',

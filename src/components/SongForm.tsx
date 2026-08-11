@@ -24,6 +24,7 @@ export function SongForm({
   initial,
   canzonieri,
   keyIsGuess = false,
+  showCanzoniere = true,
   slug,
   onSave,
   onDelete,
@@ -32,6 +33,8 @@ export function SongForm({
   canzonieri: Canzoniere[]
   /** Shows the key as an estimate, since a wrong key changes the transposed spelling. */
   keyIsGuess?: boolean
+  /** False when the screen around this form already asked which canzoniere. */
+  showCanzoniere?: boolean
   /** Set when editing an existing song. */
   slug?: string
   onSave: (input: SongInput, decision?: Decision) => Promise<SaveResult>
@@ -93,6 +96,7 @@ export function SongForm({
         values={values}
         canzonieri={canzonieri}
         keyIsGuess={keyIsGuess && values.originalKey === initial.originalKey}
+        showCanzoniere={showCanzoniere}
         onChange={set}
       />
 

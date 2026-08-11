@@ -444,7 +444,9 @@ di ripristino dell'export (vedi sotto).
 
 ### Cosa si incolla
 
-Un solo campo di testo, e il formato viene riconosciuto:
+Prima **dove**, poi **cosa**: il canzoniere di destinazione è il primo campo della
+schermata, vale per tutto ciò che si incolla, e vince su un `{canzoniere: …}` nel testo. Poi
+un solo campo di testo, e il formato viene riconosciuto:
 
 - se il testo contiene accordi fra parentesi quadre è già ChordPro e passa così com'è;
 - altrimenti si tenta la conversione da **accordi sopra il testo**, che è la forma in cui gli
@@ -465,19 +467,43 @@ di testo successiva per posizione di colonna.
 preview** dello spartito reso, e il corpo ChordPro resta modificabile a mano nello stesso
 form: la via d'uscita è sempre visibile.
 
-### Il form
+### Più brani in una pasta
 
-Titolo e artista si deducono dalle direttive se ci sono, altrimenti dalle prime righe. La
-tonalità si stima dagli accordi ed è **mostrata come stima**, perché da essa dipendono
-l'etichetta «originale» e la grafia enarmonica quando trasponi. Il canzoniere è un menù che
-parte da «Da ordinare». Lo slug si genera dal titolo con `uniqueSlug`, lo stesso già usato
-per i canzonieri.
+Lo stesso campo accetta **più brani**, divisi solo su segni espliciti: una riga di `---`
+(o `===`, `***`, `___`), il `{ns}`/`{new_song}` di ChordPro, un secondo `{title:}`, un salto
+pagina. Una riga vuota non divide niente — fra le strofe ce ne sono a decine. Senza segni è
+un brano solo.
+
+Trovati più brani, al posto del form arriva una riga per brano: titolo e artista
+modificabili, formato e tonalità in chiaro, il testo dentro un `details`. Si scrive solo
+premendo *Importa*, in sequenza, e ogni riga dice come è finita — salvato, già in archivio,
+oppure l'errore. Ripremere riprova solo ciò che manca.
 
 ```
-Titolo     [ Certe notti          ]
-Artista    [ Ligabue              ]
-Tonalità   [ Do ▾ ] stimata
-Canzoniere [ Da ordinare ▾        ]
+3 brani in questo testo                      incolla altro
+┌───────────────────────────────────────────────────────┐
+│ ① [ Certe notti        ] [ Ligabue      ]           × │
+│   accordi sopra il testo, convertiti   Fa (stimata)   │
+│   ▸ Testo e accordi                                   │
+├───────────────────────────────────────────────────────┤
+│ ② [ Albachiara         ] [ Vasco Rossi  ]  ✓ salvato  │
+└───────────────────────────────────────────────────────┘
+Se un brano è già in archivio [ salta quelli già presenti ▾ ]
+[ Importa 3 brani ]
+```
+
+### Il form
+
+Per un brano solo. Titolo e artista si deducono dalle direttive se ci sono, altrimenti dalle
+prime righe. La tonalità si stima dagli accordi ed è **mostrata come stima**, perché da essa
+dipendono l'etichetta «originale» e la grafia enarmonica quando trasponi. Il canzoniere non
+è fra i campi: l'ha già chiesto la schermata, sopra. Lo slug si genera dal titolo con
+`uniqueSlug`, lo stesso già usato per i canzonieri.
+
+```
+Titolo   [ Certe notti          ]
+Artista  [ Ligabue              ]
+Tonalità [ Do ▾ ] stimata
 ┌─ corpo ChordPro ─┬─ preview ────┐
 │ [Am]Certe notti  │  Do      Fa  │
 │ ...              │  Certe notti │
@@ -730,6 +756,70 @@ salvava neanche prima, ma potevi almeno guardare il form.
 
 Resta fuori l'import: un brano nuovo si crea ancora dal form di `/importa`, e le tre modalità
 valgono per i brani che esistono.
+
+### v1.5 — l'header sempre uguale, e l'import di più brani
+
+Consegnata.
+
+1. Il marchio non lascia più l'header: entrando in un brano restavano solo un `‹` e un
+   testo attenuato
+2. `/importa` chiede **per prima cosa** in quale canzoniere, e lì se ne può creare uno
+3. Un testo con più brani diventa più brani, uno per riga, controllabili prima di salvare
+
+**Il marchio se ne andava proprio dove serve.** L'header sostituiva icona e nome con il link
+di ritorno, per stare su una riga sola: sulla pagina del brano lo spazio verticale è il
+prodotto. Ma quella è anche la pagina dove si sta più tempo, in standalone, senza nessuna
+cornice del browser attorno: l'unica cosa che dice quale app sia questa spariva esattamente
+lì. Ora il marchio c'è sempre e il link di ritorno è qualcosa che l'header *aggiunge* — e
+solo quando porta altrove: per un brano letto da solo il marchio va già alla lista, quindi
+un «‹ Tutte le canzoni» accanto sarebbe lo stesso posto scritto due volte.
+
+Misurato a 320, 360 e 430 px su cinque pagine: niente straborda, e il nome resta intero.
+Ma la misura ha anche mostrato il prezzo — dentro una scaletta la pastiglia veniva tagliata
+a «Sabato in canti…», e quello che si perdeva era il `· 1 di 12`, cioè l'unica informazione
+che serve mentre si suona. La posizione è quindi scesa sotto il titolo, dove non viene
+abbreviata, e siccome lì accanto c'è già il canzoniere si dice per intero di cosa è la
+posizione: «1 di 2 in Sabato in cantina».
+
+**La destinazione prima del testo.** Il canzoniere era il quarto campo di un form che
+compariva *dopo* l'analisi: un momento strano per chiedere dove stai mettendo una cosa, e
+impossibile da rispondere una volta per venti brani. Ora è il primo campo, vale per tutta
+la pasta, e vince su un eventuale `{canzoniere: …}` nel testo — che la riga segnala, perché
+reimportare un export significa portarsi dietro la vecchia archiviazione e sovrascriverla in
+silenzio sarebbe una sorpresa. Nel form del brano singolo il campo è sparito: due controlli
+per una decisione, senza sapere quale vince, è il problema di prima al contrario.
+
+L'elenco delle destinazioni arriva dal database e non dal build, per lo stesso motivo per cui
+ci arrivano le parole di un brano: un canzoniere creato un minuto prima esiste, e una
+schermata che non lo offre è una schermata vecchia. Crearne uno da qui lo rende subito la
+destinazione — farlo qui significa volerci importare dentro.
+
+**Dove tagliare, e dove no.** Dividere una pasta in più brani si fa solo su segni messi da
+una persona: una riga di `---`, il `{ns}` di ChordPro, un secondo `{title:}`, un salto
+pagina. L'euristica allettante — riga vuota e poi una riga che sembra un titolo — è
+esattamente sbagliata su questo materiale: le canzoni sono piene di righe vuote fra le
+strofe, e la prima riga di una strofa somiglia a un titolo quanto un titolo. Sbagliare lì
+spezza un brano in cinque, e chi incolla non lo vede finché non sono salvati. Senza segni è
+un brano solo: è il modo giusto di sbagliare, perché uno in meno è una ripetuta e uno in più
+è da ripulire.
+
+**La lista è il punto, non il salvataggio.** Tre guessi in fila — dove tagliare, cosa sono
+accordi, quali righe sono un'intestazione — e l'unica difesa vera per un'euristica non è
+avere ragione sempre, è **essere visibile quando sbaglia**. Quindi ogni brano arriva con
+titolo e artista modificabili, il testo a un tocco, e niente scritto finché non lo chiedi.
+
+**Uno alla volta, e ognuno dice come è finito.** I salvataggi sono in sequenza: lo slug si
+ricava leggendo quelli già presi, e due scritture in parallelo lo leggerebbero entrambe
+prima che l'altra abbia scritto, chiedendo lo stesso. In cambio ogni riga può dire cos'è
+successo a sé, che è ciò che rende un fallimento parziale — quattro salvati, uno già
+presente, uno rifiutato — una cosa su cui agire invece di una riga di riassunto. Ripremere
+non riscrive quelli riusciti, e le righe già scritte smettono di accettare modifiche: la
+canzone esiste, e da quel momento si cambia nell'editor.
+
+Verificato contro il database, non contro l'avviso a schermo: tre brani da una pasta in un
+canzoniere creato sul momento, l'artista corretto a mano che arriva nella riga giusta, e
+la seconda passata che riconosce i due identici. Il terzo, di cui avevo cambiato l'artista,
+viene salvato di nuovo — ed è giusto: stesso titolo con artista diverso è una cover.
 
 ### v2 — il resto
 

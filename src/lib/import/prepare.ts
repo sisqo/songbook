@@ -1,0 +1,54 @@
+/**
+ * Turns one paste into the songs it holds, ready for the screen to show.
+ *
+ * The three guesses — where the songs are cut, what is chords and what is words,
+ * which lines are a heading — happen here, once, and everything after this point
+ * works on the result rather than on the text. That is what lets the screen show
+ * what it understood *before* anything is saved, which is the only real defence
+ * against a heuristic: not being right every time, but being visible when wrong.
+ */
+
+import { type InputFormat, convert } from './convert'
+import { deduce } from './deduce'
+import { splitSongs } from './split'
+
+export interface PreparedSong {
+  /** Stable through edits and removals, so React keeps each row's own state. */
+  id: number
+  title: string
+  artist: string
+  /** International spelling, or empty when nothing said and nothing could be guessed. */
+  originalKey: string
+  keyIsGuess: boolean
+  /** Comma-separated, as the fields hold them. */
+  tags: string
+  body: string
+  format: InputFormat
+  /**
+   * The canzoniere the source claims, when it claims one.
+   *
+   * Not obeyed — the destination chosen on the screen is — but worth saying out
+   * loud: re-importing an export means every song carries the filing it had, and
+   * silently overruling all of it would be a surprise the next morning.
+   */
+  declares: string | null
+}
+
+export function prepareSongs(text: string): PreparedSong[] {
+  return splitSongs(text).map((piece, index) => {
+    const converted = convert(piece)
+    const found = deduce(converted.body)
+
+    return {
+      id: index,
+      title: found.title,
+      artist: found.artist ?? '',
+      originalKey: found.key ?? '',
+      keyIsGuess: found.keyIsGuess,
+      tags: found.tags.join(', '),
+      body: found.body,
+      format: converted.format,
+      declares: found.canzoniere,
+    }
+  })
+}

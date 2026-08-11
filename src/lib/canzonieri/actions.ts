@@ -15,7 +15,7 @@ import { db, hasDatabase } from '@/lib/db/client'
 import { canzonieri, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
-import type { CanzoniereState, WriteResult } from './types'
+import type { CanzoniereState, CreateResult, WriteResult } from './types'
 
 async function authorized(): Promise<boolean> {
   if (!hasDatabase) return false
@@ -45,7 +45,7 @@ export async function loadCanzonieri(): Promise<CanzoniereState | null> {
   return { canzonieri: entries, assignments }
 }
 
-export async function createCanzoniere(name: string): Promise<WriteResult> {
+export async function createCanzoniere(name: string): Promise<CreateResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
   if (!(await authorized())) return { ok: false, reason: 'no-session' }
 
@@ -63,7 +63,7 @@ export async function createCanzoniere(name: string): Promise<WriteResult> {
     )
 
     await database.insert(canzonieri).values({ slug, name: trimmed })
-    return { ok: true }
+    return { ok: true, slug }
   } catch (error) {
     console.error('createCanzoniere failed', error)
     return { ok: false, reason: 'failed' }

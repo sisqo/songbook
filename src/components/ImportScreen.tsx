@@ -3,19 +3,21 @@
 import { zipSync, strToU8 } from 'fflate'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { type FormValues, SongForm } from '@/components/SongForm'
+import { ImportBatch } from '@/components/ImportBatch'
+import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { SongForm } from '@/components/SongForm'
 import {
   IconCheck,
   IconDownload,
   IconInfo,
   IconOffline,
+  IconPlus,
   IconPublish,
   IconRebuild,
 } from '@/components/icons'
-import type { Canzoniere } from '@/lib/data/types'
+import { WRITE_MESSAGE } from '@/lib/canzonieri/types'
 import { exportAll, loadPending, publish, saveSong } from '@/lib/import/actions'
-import { convert } from '@/lib/import/convert'
-import { deduce } from '@/lib/import/deduce'
+import { type PreparedSong, prepareSongs } from '@/lib/import/prepare'
 import { PUBLISH_MESSAGE, type PendingSong } from '@/lib/import/types'
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -25,33 +27,49 @@ const FORMAT_LABEL: Record<string, string> = {
 }
 
 /**
- * Paste, check, save. Plus the list of songs waiting to be published, the
+ * Where the songs come in. Plus the list of songs waiting to be published, the
  * publish action, and the export.
  *
- * Two steps rather than one live-converting field: the conversion is a guess, so
- * it happens once on demand and then the result is yours to correct.
+ * Three steps, in this order and numbered: where they go, the text, then what was
+ * understood. The destination comes first because it is the one answer that holds
+ * for the whole paste — and because it used to be the fourth field of a form that
+ * appeared only after the text had been analysed, which is a strange moment to be
+ * asked where you are putting something.
+ *
+ * The analysis is a guess and stays visible before anything is written: one song
+ * gets the full form with a live preview, several get a row each. Neither saves
+ * until it is asked to.
  */
-export function ImportScreen({
-  canzonieri,
-  defaultCanzoniere,
-}: {
-  canzonieri: Canzoniere[]
-  defaultCanzoniere: string
-}) {
+export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string }) {
+  const { canzonieri, online, create, refresh: refreshCanzonieri } = useCanzonieri()
+
+  const [destination, setDestination] = useState(defaultCanzoniere)
+  const [naming, setNaming] = useState(false)
+  const [newName, setNewName] = useState('')
+
   const [pasted, setPasted] = useState('')
-  const [prepared, setPrepared] = useState<{
-    values: FormValues
-    keyIsGuess: boolean
-    format: string
-  } | null>(null)
+  const [prepared, setPrepared] = useState<PreparedSong[] | null>(null)
 
   const [pending, setPending] = useState<PendingSong[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [online, setOnline] = useState(true)
   /** Set when this screen goes away, so the watch below stops with it. */
   const gone = useRef(false)
+
+  /*
+   * The chosen canzoniere, checked against the ones that exist.
+   *
+   * The default is baked into this page at build time, and the live list arrives a
+   * moment later: a canzoniere removed since the build would leave the select with
+   * a value none of its options carry, which browsers render as blank. Resolving it
+   * at render rather than in an effect means there is no frame where that is true.
+   */
+  const chosen = canzonieri.some((entry) => entry.slug === destination)
+    ? destination
+    : (canzonieri[0]?.slug ?? '')
+  const chosenName = canzonieri.find((entry) => entry.slug === chosen)?.name ?? 'Senza canzoniere'
 
   /** Null when the list could not be read, which is not the same as an empty one. */
   const refreshPending = useCallback(async (): Promise<PendingSong[] | null> => {
@@ -77,34 +95,37 @@ export function ImportScreen({
     }
   }, [refreshPending])
 
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine)
-    update()
-    window.addEventListener('online', update)
-    window.addEventListener('offline', update)
-    return () => {
-      window.removeEventListener('online', update)
-      window.removeEventListener('offline', update)
+  const addCanzoniere = async () => {
+    setError(null)
+    const result = await create(newName)
+
+    if (!result.ok) {
+      setError(WRITE_MESSAGE[result.reason])
+      return
     }
-  }, [])
 
-  const prepare = () => {
-    const converted = convert(pasted)
-    const found = deduce(converted.body)
+    // Chosen straight away: making one here means wanting to import into it.
+    setDestination(result.slug)
+    setNewName('')
+    setNaming(false)
+  }
 
-    setPrepared({
-      format: converted.format,
-      keyIsGuess: found.keyIsGuess,
-      values: {
-        title: found.title,
-        artist: found.artist ?? '',
-        originalKey: found.key ?? '',
-        tags: found.tags.join(', '),
-        canzoniereSlug:
-          canzonieri.find((entry) => entry.name === found.canzoniere)?.slug ?? defaultCanzoniere,
-        body: found.body,
-      },
-    })
+  const analyse = () => {
+    const found = prepareSongs(pasted)
+    setError(null)
+
+    if (found.length === 0) {
+      setNotice('Non ho trovato nessun brano in questo testo.')
+      return
+    }
+
+    setNotice(null)
+    setPrepared(found)
+  }
+
+  const startOver = () => {
+    setPrepared(null)
+    setPasted('')
   }
 
   /** Triggers the deploy hook and reports what happened. */
@@ -184,6 +205,8 @@ export function ImportScreen({
     }
   }
 
+  const single = prepared !== null && prepared.length === 1 ? prepared[0] : null
+
   return (
     <div>
       {!online && (
@@ -194,6 +217,12 @@ export function ImportScreen({
         </p>
       )}
 
+      {error !== null && (
+        <p className="notice notice-error mb-4" role="alert">
+          {error}
+        </p>
+      )}
+
       {notice !== null && (
         <p className="notice mb-4" role="status">
           <IconInfo />
@@ -201,55 +230,149 @@ export function ImportScreen({
         </p>
       )}
 
-      {prepared === null ? (
-        <div className="card p-4 sm:p-5">
+      <div className="card p-4 sm:p-5">
+        <label className="block">
+          <span className="field-label">1. In quale canzoniere</span>
+          <select
+            value={chosen}
+            onChange={(event) => setDestination(event.target.value)}
+            className="form-field"
+          >
+            {canzonieri.map((canzoniere) => (
+              <option key={canzoniere.slug} value={canzoniere.slug}>
+                {canzoniere.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {naming ? (
+          <form
+            className="mt-2 flex flex-wrap gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void addCanzoniere()
+            }}
+          >
+            <label className="min-w-[12rem] flex-1">
+              <span className="sr-only">Nome del nuovo canzoniere</span>
+              <input
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                placeholder="Nome del nuovo canzoniere"
+                autoFocus
+                className="form-field"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={!online || newName.trim() === ''}>
+              Crea
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm"
+              onClick={() => {
+                setNaming(false)
+                setNewName('')
+              }}
+            >
+              Annulla
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm mt-2"
+            disabled={!online}
+            onClick={() => setNaming(true)}
+          >
+            <IconPlus size={15} />
+            Nuovo canzoniere
+          </button>
+        )}
+      </div>
+
+      {prepared === null && (
+        <div className="card mt-3 p-4 sm:p-5">
           <label className="block">
-            <span className="mb-2 block text-sm text-muted">
-              Incolla il brano. Se ha gli accordi fra parentesi quadre è già ChordPro; altrimenti
-              si tenta la conversione da accordi sopra il testo.
-            </span>
+            <span className="field-label">2. Incolla i brani</span>
             <textarea
               value={pasted}
               onChange={(event) => setPasted(event.target.value)}
               rows={14}
               spellCheck={false}
-              placeholder={'Certe notti\nLigabue\n\nAm        F\nCerte notti la macchina'}
+              placeholder={'Certe notti\nLigabue\n\nAm        F\nCerte notti la macchina\n\n---\n\nAlbachiara\nVasco Rossi'}
               className="form-field font-mono text-sm"
             />
           </label>
+
+          <p className="mt-2 text-xs text-faint">
+            Se ha gli accordi fra parentesi quadre è già ChordPro; altrimenti si tenta la
+            conversione da accordi sopra il testo. Più brani in una volta: separali con una riga
+            di <code>---</code>, oppure incolla un export ChordPro — i suoi{' '}
+            <code>{'{title}'}</code> bastano.
+          </p>
 
           <button
             type="button"
             className="btn btn-primary mt-3"
             disabled={!online || pasted.trim() === ''}
-            onClick={prepare}
+            onClick={analyse}
           >
             Analizza
           </button>
         </div>
-      ) : (
-        <div className="card p-4 sm:p-5">
+      )}
+
+      {single !== null && (
+        <div className="card mt-3 p-4 sm:p-5">
           <p className="mb-4 text-xs text-muted">
-            {FORMAT_LABEL[prepared.format] ?? prepared.format} ·{' '}
-            <button type="button" className="underline underline-offset-2" onClick={() => setPrepared(null)}>
+            {FORMAT_LABEL[single.format] ?? single.format} · va in {chosenName}
+            {single.declares !== null && single.declares !== chosenName && (
+              <> · il testo dice «{single.declares}»</>
+            )}
+            {' · '}
+            <button type="button" className="underline underline-offset-2" onClick={startOver}>
               incolla un altro brano
             </button>
           </p>
 
           <SongForm
-            initial={prepared.values}
+            initial={{
+              title: single.title,
+              artist: single.artist,
+              originalKey: single.originalKey,
+              tags: single.tags,
+              canzoniereSlug: chosen,
+              body: single.body,
+            }}
             canzonieri={canzonieri}
-            keyIsGuess={prepared.keyIsGuess}
+            keyIsGuess={single.keyIsGuess}
+            showCanzoniere={false}
             onSave={async (input, decision) => {
-              const result = await saveSong(input, decision)
+              // The select above is the answer, even if it changed after the analysis.
+              const result = await saveSong({ ...input, canzoniereSlug: chosen }, decision)
               if (result.ok) {
-                setPrepared(null)
-                setPasted('')
+                startOver()
                 setNotice('Salvato. È già nell’elenco; pubblica per averlo anche senza connessione.')
-                await refreshPending()
+                await Promise.all([refreshPending(), refreshCanzonieri()])
               }
               return result
             }}
+          />
+        </div>
+      )}
+
+      {prepared !== null && prepared.length > 1 && (
+        <div className="mt-3">
+          <ImportBatch
+            songs={prepared}
+            canzoniereSlug={chosen}
+            canzoniereName={chosenName}
+            online={online}
+            onDone={async () => {
+              await Promise.all([refreshPending(), refreshCanzonieri()])
+            }}
+            onReset={startOver}
           />
         </div>
       )}

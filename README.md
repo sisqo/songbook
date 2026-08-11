@@ -22,9 +22,38 @@ normale di lavorare in locale: non serve un database per vedere l'app funzionare
 
 ## Aggiungere una canzone
 
-Dall'app, in `/importa`: incolli il brano, l'app riconosce se è già ChordPro o se
-sono accordi sopra il testo e converte, deduce titolo, artista e tonalità, e mostra
-una preview prima di salvare.
+Dall'app, in `/importa`, in due passi: **prima scegli il canzoniere** dove finiranno
+i brani — è il primo campo della schermata, e da lì si può anche crearne uno nuovo —
+poi incolli il testo. L'app riconosce se è già ChordPro o se sono accordi sopra il
+testo e converte, deduce titolo, artista e tonalità, e mostra il risultato prima di
+salvare.
+
+Il canzoniere scelto **vince** su quello che dice il testo: se un brano porta un
+`{canzoniere: …}` — succede reimportando un export — la riga lo segnala e lo ignora.
+
+### Più brani in un colpo
+
+Se nel testo incollato ci sono più brani, l'app li divide e ne mostra uno per riga,
+con titolo e artista modificabili e il testo a un tocco di distanza. Nulla viene
+scritto finché non premi *Importa*; poi ogni riga dice cos'è successo a sé, e i brani
+si salvano uno alla volta, in ordine.
+
+I brani vanno separati da uno di questi segni, e solo da questi:
+
+| Segno | Da dove arriva |
+|---|---|
+| Una riga di `---` (o `===`, `***`, `___`) | quello che si scrive a mano incollando due brani |
+| `{ns}` o `{new_song}` | il separatore di ChordPro per i file multi-brano |
+| Un secondo `{title: …}` | un export: la riga del titolo resta al brano che apre |
+| Un salto pagina (`\f`) | testo estratto da un PDF |
+
+Una riga vuota **non** separa: le canzoni sono piene di righe vuote fra le strofe, e
+indovinare lì significa spezzare un brano in cinque. Senza segni è un brano solo —
+che è il modo giusto di sbagliare, perché si vede prima di salvare.
+
+Se due brani hanno lo stesso titolo *e* artista di uno già in archivio, decidi una
+volta per tutto il gruppo: saltarli, sostituirli o aggiungerli comunque. Stesso
+titolo con artista diverso è una cover, quindi passa.
 
 Correggere e cancellare si fanno **nell'editor**, `/canzoni/<slug>/modifica`, che si
 apre dal pulsante *Modifica* sotto lo spartito.
@@ -155,12 +184,17 @@ una composizione più semplice invece di rimpicciolirsi in una macchia.
 ## Canzonieri
 
 Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da
-`/canzonieri`. **Spostare un brano** si fa da due posti: la pastiglia col nome del
-canzoniere nella testata del brano, sotto il titolo — si apre e si sceglie — e il
-campo *Canzoniere* nell'editor. La prima non ha un salva: cambiare la voce sposta il
-brano. La rimozione di un canzoniere non vuoto chiede prima dove spostare i
-brani — e il vincolo `on delete restrict` la impedisce comunque a livello di
-database.
+`/canzonieri`, e se ne crea uno anche in `/importa`, dove serve — appena creato è già
+la destinazione dell'import. **Spostare un brano** si fa da due posti: la pastiglia
+col nome del canzoniere nella testata del brano, sotto il titolo — si apre e si
+sceglie — e il campo *Canzoniere* nell'editor. La prima non ha un salva: cambiare la
+voce sposta il brano. La rimozione di un canzoniere non vuoto chiede prima dove
+spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a livello
+di database.
+
+L'elenco dei canzonieri che `/importa` offre è quello del database, non quello del
+build: uno creato un minuto prima da `/canzonieri` non ha una pagina da aspettare, e
+una destinazione mancante all'appello sarebbe la stessa cosa di un brano vecchio.
 
 Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
 rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
