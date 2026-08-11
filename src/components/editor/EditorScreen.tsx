@@ -10,7 +10,22 @@ import { SongSheet } from '@/components/SongSheet'
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { type Caret, GraphicEditor } from '@/components/editor/GraphicEditor'
 import { UnsavedGuard } from '@/components/editor/UnsavedGuard'
-import { IconChevronLeft, IconInfo, IconTrash, IconUndo } from '@/components/icons'
+import {
+  IconBridge,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChorus,
+  IconCode,
+  IconComment,
+  IconEye,
+  IconInfo,
+  IconPencil,
+  IconPlus,
+  IconRemoveLine,
+  IconTrash,
+  IconUndo,
+} from '@/components/icons'
 import { chordTokens, parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
 import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
@@ -21,10 +36,41 @@ import { dropEdit, writeEdit } from '@/lib/library/store'
 
 type Mode = 'graphic' | 'source' | 'preview'
 
-const MODES: { mode: Mode; label: string }[] = [
-  { mode: 'graphic', label: 'Grafico' },
-  { mode: 'source', label: 'Sorgente' },
-  { mode: 'preview', label: 'Anteprima' },
+const MODES: { mode: Mode; label: string; icon: typeof IconPencil }[] = [
+  { mode: 'graphic', label: 'Grafico', icon: IconPencil },
+  { mode: 'source', label: 'Sorgente', icon: IconCode },
+  { mode: 'preview', label: 'Anteprima', icon: IconEye },
+]
+
+/**
+ * The commands that act on the line the cursor is in, in the order they are used:
+ * mark a chorus, mark a bridge, turn the line into a comment, take the line out.
+ *
+ * A table rather than five buttons written out, because they now differ only in an
+ * icon, a name and one call — and five copies of the same markup is where a label and
+ * an action drift apart.
+ */
+const COMMANDS: {
+  label: string
+  icon: typeof IconPencil
+  act: (line: number) => (document: SongDocument) => SongDocument
+}[] = [
+  {
+    label: 'Ritornello',
+    icon: IconChorus,
+    act: (line) => (document) => toggleSection(document, line, 'chorus'),
+  },
+  {
+    label: 'Ponte',
+    icon: IconBridge,
+    act: (line) => (document) => toggleSection(document, line, 'bridge'),
+  },
+  { label: 'Commento', icon: IconComment, act: (line) => (document) => toggleComment(document, line) },
+  {
+    label: 'Elimina riga',
+    icon: IconRemoveLine,
+    act: (line) => (document) => removeLine(document, line),
+  },
 ]
 
 /** Where a raw offset in the source falls, in line-and-letter terms. */
@@ -205,38 +251,36 @@ export function EditorScreen({ song }: { song: Song }) {
       <UnsavedGuard when={dirty} />
 
       <div className="editor-head">
+        {/*
+          * Where you are, and the two things you do to what you changed.
+          *
+          * The title is here because the header above says "songs" and nothing else
+          * on this screen says which song is open — in the graphic mode the words are
+          * the song, and its name is not among them.
+          */}
         <div className="editor-bar">
-          {/* Icon alone: the row has to stay one row, and the label is still read out. */}
           <Link
             href={`/canzoni/${song.slug}`}
             className="icon-button"
             title="Torna al brano"
             aria-label="Torna al brano"
           >
-            <IconChevronLeft size={18} />
+            <IconChevronLeft size={20} />
           </Link>
 
-          {/*
-            * The app's segmented control, the same one the reading panel uses. The
-            * extra inline padding is this one's own: the panel's buttons hold "Do" or
-            * "A+" and are sized by hand, while these hold words.
-            */}
-          <div className="segment" role="tablist" aria-label="Modalità di modifica">
-            {MODES.map((entry) => (
-              <button
-                key={entry.mode}
-                type="button"
-                role="tab"
-                aria-selected={mode === entry.mode}
-                className={`segment-button px-3 ${mode === entry.mode ? 'is-on' : ''}`}
-                onClick={() => setMode(entry.mode)}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </div>
+          <span className="editor-title">{fields.title.trim() === '' ? 'senza titolo' : fields.title}</span>
 
-          <span className="flex-1" />
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            disabled={history.length === 0}
+            onClick={undo}
+            title="Annulla l'ultima modifica"
+            aria-label="Annulla l'ultima modifica"
+          >
+            <IconUndo size={15} />
+            Annulla
+          </button>
 
           {/* Enabled means there is something unsaved: no second label for it. */}
           <button
@@ -245,56 +289,64 @@ export function EditorScreen({ song }: { song: Song }) {
             disabled={busy || !dirty || fields.title.trim() === ''}
             onClick={() => void save()}
           >
+            <IconCheck size={14} />
             Salva
           </button>
+        </div>
+
+        {/*
+          * Three ways of looking at the same song, as icons.
+          *
+          * Words here cost the row: "Grafico · Sorgente · Anteprima" filled it on its
+          * own, which is what pushed the title and the commands onto lines of their
+          * own and made the whole block too tall to keep in place. Each still carries
+          * its name for a pointer and for a screen reader.
+          */}
+        <div className="editor-modes" role="tablist" aria-label="Modalità di modifica">
+          <div className="segment">
+            {MODES.map((entry) => (
+              <button
+                key={entry.mode}
+                type="button"
+                role="tab"
+                aria-selected={mode === entry.mode}
+                title={entry.label}
+                aria-label={entry.label}
+                className={`segment-button segment-wide ${mode === entry.mode ? 'is-on' : ''}`}
+                onClick={() => setMode(entry.mode)}
+              >
+                <entry.icon size={17} />
+              </button>
+            ))}
+          </div>
         </div>
 
         {mode !== 'preview' && (
           <div className="editor-tools">
             <div className="editor-tools-scroll">
-              <button type="button" className="btn btn-sm" onClick={insertChord}>
+              {/*
+                * Only this one keeps its word. It is the command reached for most, it
+                * is the one whose icon — a plus — says least on its own, and one label
+                * in the row is what tells you the rest are commands too.
+                */}
+              <button type="button" className="btn btn-inset btn-sm" onClick={insertChord}>
+                <IconPlus size={15} />
                 Accordo
               </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => command((document) => toggleSection(document, caret.line, 'chorus'))}
-              >
-                Ritornello
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => command((document) => toggleSection(document, caret.line, 'bridge'))}
-              >
-                Ponte
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => command((document) => toggleComment(document, caret.line))}
-              >
-                Commento
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => command((document) => removeLine(document, caret.line))}
-              >
-                Elimina riga
-              </button>
-            </div>
 
-            <button
-              type="button"
-              className="btn btn-quiet btn-sm"
-              disabled={history.length === 0}
-              onClick={undo}
-              aria-label="Annulla l'ultima modifica"
-            >
-              <IconUndo size={16} />
-              Annulla
-            </button>
+              {COMMANDS.map((entry) => (
+                <button
+                  key={entry.label}
+                  type="button"
+                  className="btn btn-inset btn-sm btn-square"
+                  title={entry.label}
+                  aria-label={entry.label}
+                  onClick={() => command(entry.act(caret.line))}
+                >
+                  <entry.icon size={16} />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -312,14 +364,21 @@ export function EditorScreen({ song }: { song: Song }) {
         </p>
       )}
 
-      <details className="card mt-4 p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Dati del brano
-          <span className="text-muted">
-            {' — '}
-            {fields.title || 'senza titolo'}
-            {fields.artist !== '' && ` · ${fields.artist}`}
-            {fields.originalKey !== '' && ` · ${fields.originalKey}`}
+      {/*
+        * The chevron replaces the triangle the browser draws, which was the one thing
+        * on this screen not in the app's own hand. It turns when the card opens.
+        */}
+      <details className="card editor-data mt-4 p-4">
+        <summary>
+          <IconChevronRight size={14} className="editor-data-arrow" />
+          <span className="text-sm font-medium">
+            Dati del brano
+            <span className="text-muted">
+              {' — '}
+              {fields.title || 'senza titolo'}
+              {fields.artist !== '' && ` · ${fields.artist}`}
+              {fields.originalKey !== '' && ` · ${fields.originalKey}`}
+            </span>
           </span>
         </summary>
 
@@ -384,7 +443,12 @@ export function EditorScreen({ song }: { song: Song }) {
             </button>
           </>
         ) : (
-          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirming(true)}>
+          /*
+           * Ink rather than quiet. It deletes the song, and the design says so by
+           * making it the one solid dark thing on the screen — with the confirmation
+           * still between it and the deletion.
+           */
+          <button type="button" className="btn btn-ink btn-sm" onClick={() => setConfirming(true)}>
             <IconTrash size={16} />
             Elimina
           </button>

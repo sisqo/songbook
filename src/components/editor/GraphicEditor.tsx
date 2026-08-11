@@ -419,6 +419,56 @@ function ChordRow({
     </span>,
   )
 
+  /*
+   * A line with no words: an intro, a solo, a turnaround.
+   *
+   * Written `[re] [la] [re] [sol]`, so its "words" are single spaces — and a space is
+   * four pixels wide while a chord name is twenty, which piled the whole intro into one
+   * illegible smudge at the top of the song. There are no syllables here to align to, so
+   * the chords are simply a row of chords, spaced like the words they stand in for.
+   *
+   * The reader has no such trouble: there each chord sets the width of the word beneath
+   * it. Here the words are a real input and the ghost above has to match it letter for
+   * letter, so widening the ghost is exactly what must not happen. (Two chords on one
+   * syllable of a line that *does* have words still overlap; the arrows separate them,
+   * and fixing that properly means measuring.)
+   */
+  if (text.trim() === '') {
+    return (
+      <div
+        className="chord-row"
+        onClick={() => onAddAt(text.length)}
+        role="presentation"
+      >
+        <span className="chord-loose">
+          {ordered.map((chord) =>
+            editing === chord.index ? (
+              <ChordField
+                key={chord.index}
+                name={chord.name}
+                onDone={(name) => onName(chord.index, name)}
+                onMove={(delta) => onMove(chord.index, delta)}
+              />
+            ) : (
+              <button
+                key={chord.index}
+                type="button"
+                className="chord-chip is-loose"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit(chord.index)
+                }}
+                aria-label={`Accordo ${chord.name || 'vuoto'}, modifica`}
+              >
+                {chord.name || '—'}
+              </button>
+            ),
+          )}
+        </span>
+      </div>
+    )
+  }
+
   return (
     /*
      * Tapping the row puts a chord on the syllable under the finger. It is the

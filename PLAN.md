@@ -1010,6 +1010,42 @@ una scaletta: se in una serata lo stesso brano va fatto in due modi diversi, que
 modello non lo permette. E non entra nell'export `.chopro`, come non ci entrano
 trasposizione e ordine: quel file è il brano come è scritto, non come lo leggi.
 
+### v1.9 — la modifica ridisegnata
+
+Consegnata. Viene da un handoff di Claude Design: *Turno 5* del documento
+`Songs Grafica`, che completa il ridisegno già fatto per lettura, elenchi e barra.
+
+1. La testata dell'editor: il titolo del brano, *Annulla* e *Salva* su una riga
+2. Le tre modalità come icone — matita, parentesi, occhio — invece di tre parole
+3. I comandi come icone, con la sola *Accordo* che tiene la sua parola
+4. *Dati del brano* con il suo chevron, *Elimina* come unico controllo scuro dell'app
+
+**Cosa il mockup non poteva sapere.** È stato disegnato prima che i comandi diventassero
+fissi (v1.7, la stessa giornata): lì stanno nel flusso della pagina, con la card dei dati
+in mezzo fra la riga del titolo e le modalità. Fissa, quella card renderebbe il blocco
+alto quattrocento pixel appena la si apre. Quindi l'ordine è quello del mockup tranne la
+card, che scende sotto il blocco fisso — l'unico scostamento, e la ragione è una
+richiesta esplicita dello stesso giorno.
+
+**Le icone hanno pagato il titolo.** Tre parole per le modalità riempivano la riga da
+sole; a icone (66 px l'una) ne resta abbastanza per il nome del brano in alto, che prima
+non c'era da nessuna parte: l'header dice «songs», e in modalità grafica le parole sullo
+schermo sono la canzone, non il suo titolo. Ogni icona conserva il nome in `title` e in
+`aria-label` — la lezione delle pastiglie che sembravano etichette valeva anche al
+contrario.
+
+**Una cosa rotta trovata implementando.** La prima riga di un brano con intro —
+`[re] [la] [re] [sol]` — sovrapponeva tutti gli accordi in una macchia: le sue "parole"
+sono spazi singoli, quattro pixel, e un nome di accordo ne occupa venti. Il lettore non
+ha il problema perché lì è l'accordo a decidere la larghezza della parola sotto; qui le
+parole sono un `input` vero e la copia nascosta sopra deve corrispondergli lettera per
+lettera, quindi allargarla è esattamente ciò che non si può fare. Una riga senza parole
+non ha sillabe a cui appendere niente: gli accordi diventano una riga di accordi.
+
+Resta il caso di due accordi a due lettere di distanza su una riga *con* parole, che si
+sovrappongono ancora: si separano con le frecce, e risolverlo davvero richiede di
+misurare. Era così anche prima.
+
 ### v2 — il resto
 
 Scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei canzonieri.

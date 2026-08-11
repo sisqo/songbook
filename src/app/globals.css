@@ -520,6 +520,24 @@
    * The fill carries it, not an outline: on a page where nothing else has a border,
    * a red hairline reads as a rendering artifact rather than as a warning.
    */
+  /*
+   * The one solid dark control in the app, and it only ever deletes something. Reads as
+   * heavier than a danger fill without shouting in red before anything has happened —
+   * the confirmation is what turns red.
+   */
+  .btn-ink {
+    border-color: transparent;
+    background: var(--ink);
+    color: var(--bg);
+    box-shadow: none;
+  }
+
+  @media (hover: hover) {
+    .btn-ink:not(:disabled):hover {
+      background: color-mix(in srgb, var(--ink) 88%, var(--accent));
+    }
+  }
+
   .btn-danger {
     border-color: transparent;
     background: var(--danger-soft);
@@ -1651,6 +1669,28 @@
    *
    * `top` is the header's height, measured at 64px and the same at every width.
    */
+  .editor-data > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .editor-data > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .editor-data-arrow {
+    flex: none;
+    color: var(--faint);
+    transition: rotate 120ms ease;
+  }
+
+  .editor-data[open] > summary .editor-data-arrow {
+    rotate: 90deg;
+  }
+
   .editor-head {
     position: sticky;
     top: 4rem;
@@ -1673,11 +1713,46 @@
     padding: 0.4rem 0;
   }
 
+  /*
+   * The name of the song being edited, between the way back and the two actions.
+   *
+   * It truncates rather than wrapping: the row is the one that must stay one row, and
+   * a long title is still recognisable from its beginning.
+   */
+  .editor-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  /* The three ways of looking at the song, on a line of their own. */
+  .editor-modes {
+    display: flex;
+    align-items: center;
+    padding-block-end: 0.4rem;
+  }
+
+  /* Wide enough for an icon to sit in the middle of a target worth tapping. */
+  .segment-wide {
+    width: 4.125rem;
+  }
+
   .editor-tools {
     display: flex;
     align-items: center;
     gap: 0.35rem;
     padding-block-end: 0.5rem;
+  }
+
+  /* An icon-only command: square, so five of them fit the row a phone has. */
+  .btn-square {
+    width: 2.375rem;
+    min-width: 2.375rem;
+    padding-inline: 0;
   }
 
   /*
@@ -1813,6 +1888,22 @@
     .chord-chip:hover {
       background: var(--accent-soft);
     }
+  }
+
+  /*
+   * The chords of a line that has no words, laid out as a row instead of hung from a
+   * letter that does not exist. Positioned statically, which is the whole difference:
+   * hanging them all from letter zero stacked them on top of each other.
+   */
+  .chord-loose {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 0.9em;
+  }
+
+  .chord-chip.is-loose {
+    position: static;
+    padding-inline-end: 0;
   }
 
   /* The name and its two arrows, kept together at the letter the chord sits on. */

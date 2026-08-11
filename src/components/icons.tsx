@@ -131,6 +131,79 @@ export function IconBooks(props: IconProps) {
 }
 
 /** Setlists: an ordered list. */
+/*
+ * The editor's six, drawn for the redesign of that screen: the three ways of looking
+ * at a song, and the commands that had to give up their words to fit one row.
+ *
+ * A label survives for each of them in `title` and `aria-label` — an icon alone is a
+ * guess, and this app has already learnt that lesson twice.
+ */
+
+/** Sorgente: the ChordPro underneath, in angle brackets. */
+export function IconCode(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m8 8-4 4 4 4" />
+      <path d="m16 8 4 4-4 4" />
+      <path d="m13.5 6-3 12" />
+    </Icon>
+  )
+}
+
+/** Anteprima: the song as it will be read. */
+export function IconEye(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </Icon>
+  )
+}
+
+/** Ritornello: repeat barlines, the way a score marks one. */
+export function IconChorus(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 4v16" />
+      <path d="M8.5 4v16" />
+      <circle cx="13" cy="9.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="13" cy="14.5" r="1" fill="currentColor" stroke="none" />
+      <path d="M17 6.5v11" />
+      <path d="M20 6.5v11" />
+    </Icon>
+  )
+}
+
+/** Ponte: an arch with its piers. */
+export function IconBridge(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3 15a9 9 0 0 1 18 0" />
+      <path d="M3 15h18" />
+      <path d="M8 15v4M16 15v4" />
+    </Icon>
+  )
+}
+
+/** Commento: something said beside the song rather than in it. */
+export function IconComment(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-6.2A7 7 0 0 1 11 5h2a7 7 0 0 1 7 7z" />
+    </Icon>
+  )
+}
+
+/** Elimina riga: two lines closing over the gap where one was. */
+export function IconRemoveLine(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7h16M4 17h16" />
+      <path d="M9 12h6" />
+    </Icon>
+  )
+}
+
 /** Two bars: what a finger takes hold of to move a row. */
 export function IconGrip(props: IconProps) {
   return (
