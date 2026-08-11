@@ -140,6 +140,27 @@ export function IconSetlist(props: IconProps) {
   )
 }
 
+/** The tuner: a tuning fork. */
+export function IconTuningFork(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 3v7a3 3 0 0 0 6 0V3" />
+      <path d="M12 13v8" />
+    </Icon>
+  )
+}
+
+/** Leaves the app: an arrow out of a box. */
+export function IconExternal(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-8 8" />
+      <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+    </Icon>
+  )
+}
+
 export function IconMenu(props: IconProps) {
   return (
     <Icon {...props}>

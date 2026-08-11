@@ -4,8 +4,19 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { ThemePicker } from '@/components/ThemePicker'
-import { IconBooks, IconImport, IconMenu, IconNote, IconSetlist } from '@/components/icons'
+import {
+  IconBooks,
+  IconExternal,
+  IconImport,
+  IconMenu,
+  IconNote,
+  IconSetlist,
+  IconTuningFork,
+} from '@/components/icons'
 import type { Section } from '@/components/TopBar'
+
+/** The tuner, which is a separate app on its own domain. */
+const TUNER_URL = 'https://guitar.sisqo.dev'
 
 /**
  * The header's sections, behind one button.
@@ -97,6 +108,32 @@ export function NavMenu({
                 Scalette
               </Link>
             )}
+
+            {/*
+              * The tuner, which is another app on another domain.
+              *
+              * It sits with the sections rather than in a group of its own: from
+              * here it is one more place to go, and a fourth divider would make the
+              * menu look like four unrelated things. The arrow at the end is what
+              * says it leaves — and, by saying that, that it needs a network, which
+              * nothing else in this menu does.
+              *
+              * A plain anchor, in a new tab: the reader is in the middle of a song,
+              * and tuning should not cost them the page they were reading.
+              */}
+            <a
+              href={TUNER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="menu-item"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <IconTuningFork size={17} />
+              Accordatore
+              <span className="sr-only">(si apre in una nuova scheda)</span>
+              <IconExternal size={13} className="ms-auto" />
+            </a>
 
             <div className="menu-divider" />
 
