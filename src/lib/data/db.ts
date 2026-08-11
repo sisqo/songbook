@@ -40,8 +40,22 @@ async function songsOf(setlistSlug: string): Promise<string[]> {
 }
 
 export const dbRepository: SongRepository = {
+  /**
+   * In the order the canzonieri were put in, then by title.
+   *
+   * `position` is null until someone drags a song, and Postgres sorts nulls last in
+   * an ascending order — so a canzoniere nobody has arranged is alphabetical, and one
+   * that has been arranged keeps the songs added since at the end. This order is what
+   * the arrows in the song header step through, which is why it is fixed here rather
+   * than in the component: those arrows lead to other static pages, and every one of
+   * them was generated from this same list.
+   */
   async listSongs() {
-    const rows = await db().select().from(songs).orderBy(asc(songs.title))
+    const rows = await db()
+      .select()
+      .from(songs)
+      .orderBy(asc(songs.position), asc(songs.title))
+
     return rows.map(rowToSong)
   },
 

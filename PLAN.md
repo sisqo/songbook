@@ -83,6 +83,7 @@ canzonieri(slug primary key, name, created_at, updated_at)
 
 songs(slug primary key, title, artist, original_key, body, tags[],
       canzoniere_slug references canzonieri(slug) on delete restrict,
+      position,                                                      -- v1.6, nullable
       created_at, updated_at)
 
 setlists(slug primary key, name, position, created_at)
@@ -112,6 +113,11 @@ da rigenerare.
 L'`on delete restrict` è la regola "rifiuta se non è vuoto" scritta nel database, non solo
 nella UI: nessun percorso, nemmeno un errore di programmazione, può cancellare un
 canzoniere lasciando brani orfani.
+
+**`songs.position` è nullable e resta null** finché qualcuno non riordina quel canzoniere.
+Non è un dettaglio implementativo: `null` significa «nessuno ha detto», e Postgres lo mette
+in fondo a un ordinamento crescente, quindi l'ordine alfabetico è il comportamento di default
+senza una riga di codice che lo produca. Un riordino rinumera l'intero canzoniere da 1 a N.
 
 ### Contenuti e seed
 
@@ -319,8 +325,8 @@ scroll orizzontale. Il pinch-zoom nativo del browser non viene disabilitato (nes
 - **Scalette**: definite nei file di seed e in sola lettura in v1. Restano **trasversali** —
   una serata può mescolare brani di canzonieri diversi, ed è l'unica forma che funziona per
   quello che una scaletta è: un ordine di esecuzione, non una libreria. Una scaletta apre in
-  sequenza con `‹ prec` / `succ ›` in fondo al brano, così durante la serata non si torna
-  mai alla lista. Cambiarne una richiede commit e deploy.
+  sequenza con le frecce nell'header, così durante la serata non si torna mai alla lista.
+  Cambiarne una richiede commit e deploy.
 
 ## Canzonieri
 
@@ -380,8 +386,9 @@ service worker — che altrimenti riceverebbe la pagina vecchia dalla cache del 
 ### Gestione
 
 `/canzonieri` elenca i canzonieri con il conteggio dei brani e permette di crearne,
-rinominarne e rimuoverne. Lo spostamento di un singolo brano si fa da dove serve: nella
-testata della pagina del brano il canzoniere è un controllo che apre un selettore.
+rinominarne e rimuoverne. Lo spostamento di un singolo brano si fa dall'editor del brano, e
+uno nuovo si crea anche in `/importa`, dove serve. **L'ordine dei brani dentro un canzoniere**
+si sistema invece dove i brani si vedono: nella card aperta in home, con *Riordina* (v1.6).
 
 La rimozione **rifiuta** un canzoniere non vuoto e propone prima dove spostare i brani:
 
@@ -737,9 +744,10 @@ si troverebbe a modificare l'accordo sbagliato.
 accordo», «non posso eliminare uno stacco», «posso spostare il brano solo dall'editor» — e
 tutte e tre riguardavano cose che si potevano già fare, con un comando che non si vedeva. Il
 selettore del canzoniere nella testata era un `select` nudo, testo attenuato, in mezzo a
-un'altra riga di testo attenuato: leggeva come un'etichetta. Ora è una pastiglia con l'icona
-e il chevron. La lezione, per la prossima volta: un controllo che sta in mezzo al testo va
-disegnato come un controllo, non come il testo che lo circonda.
+un'altra riga di testo attenuato: leggeva come un'etichetta. È diventata una pastiglia con
+l'icona e il chevron — e poi, col ridisegno, è uscita dalla testata del brano: spostare un
+brano si fa dall'editor. La lezione resta, ed è quella che conta: un controllo che sta in
+mezzo al testo va disegnato come un controllo, non come il testo che lo circonda.
 
 **Le righe che non sono testo.** Stacchi, marcature e direttive si potevano già eliminare —
 click sulla riga, poi *Elimina riga* — ma nessuno lo trovava, e una funzione che non si trova
@@ -820,6 +828,64 @@ Verificato contro il database, non contro l'avviso a schermo: tre brani da una p
 canzoniere creato sul momento, l'artista corretto a mano che arriva nella riga giusta, e
 la seconda passata che riconosce i due identici. Il terzo, di cui avevo cambiato l'artista,
 viene salvato di nuovo — ed è giusto: stesso titolo con artista diverso è una cover.
+
+### v1.6 — una via sola per il brano accanto, e l'ordine in mano
+
+Consegnata.
+
+1. Le due card «Precedente / Successiva» in fondo allo spartito non ci sono più: le frecce
+   nell'header portano negli stessi due posti e sono sempre a portata
+2. `songs.position`, nullable, e un trascinamento che la scrive
+3. Riordino dal canzoniere aperto in home, col dito o con le frecce della tastiera
+
+**Due volte la stessa strada.** In fondo al brano c'erano due card coi titoli dei vicini, e
+nell'header due frecce che portano esattamente là. La copia in fondo costava anche due query
+in più per pagina al build — servivano solo a leggere quei due titoli — e per raggiungerla
+bisognava scorrere tutta la canzone, cioè arrivava tardi proprio quando serve: mentre suoni.
+Restano le frecce, e `SetlistContext` non porta più titoli, solo slug.
+
+**Perché `null` e non `0`.** La colonna è nullable senza default, e Postgres mette i null in
+fondo a un ordinamento crescente: così la migrazione è additiva davvero — ogni riga esistente
+resta null, l'ordine resta alfabetico finché nessuno tocca niente, e un brano importato in un
+canzoniere già sistemato si accoda invece di comparire in testa. Un default `0` avrebbe fatto
+l'opposto (il nuovo arrivato primo) e avrebbe richiesto un `position = 0 → in fondo` scritto
+a mano in ogni query. Al primo trascinamento il canzoniere viene rinumerato tutto da 1 a N,
+così buchi e pari merito — due brani il cui ordine reciproco non è definito — sono impossibili
+per costruzione.
+
+**Il trascinamento, con gli eventi puntatore.** L'API drag-and-drop di HTML non esiste su un
+touchscreen, e il touchscreen è dove questa app si usa. Quindi `pointerdown/move/up` con
+`setPointerCapture` sulla maniglia, e `touch-action: none` su di essa — senza quello il
+browser si prende il gesto verticale per lo scroll e gli eventi smettono di arrivare a metà
+strada.
+
+Le bande verticali delle righe si misurano **una volta**, all'inizio del trascinamento, e non
+si rimisurano mentre le righe si spostano: rimisurare sposterebbe i confini contro cui si
+confronta il dito, e la lista oscillerebbe fra due ordini col dito fermo. Le righe non sono
+tutte alte uguale — un brano con artista è più alto di uno senza — quindi si cammina sulle
+bande invece di dividere per un'altezza.
+
+**Anche da tastiera.** La maniglia è un `button`: a fuoco risponde a ↑ e ↓. Senza, questo
+sarebbe stato l'unico comando dell'app che una tastiera non può dare. I salvataggi sono
+accodati su una promessa, così cinque pressioni rapide finiscono nel database nell'ordine in
+cui sono state fatte e non in quello in cui la rete risponde.
+
+**Quello che il riordino non è.** Non è una modifica ai brani: `updated_at` non viene toccato,
+quindi venti righe trascinate non finiscono nella lista «in attesa di pubblicazione», dove non
+avrebbero niente da pubblicare. Le frecce dentro il brano però vengono dal build, quindi
+seguono l'ordine nuovo alla ricostruzione successiva — ed è *Ricostruisci ora* che serve, la
+stessa asimmetria già vera per una rinomina.
+
+**La ricerca è tornata alfabetica di proposito.** Ordinare la lista per `(position, title)`
+serve alle frecce, ma la stessa lista alimenta i risultati di ricerca: fra canzonieri diversi
+le posizioni sono 1..N ciascuna, quindi i risultati sarebbero arrivati come tutti i «primi»,
+poi tutti i «secondi». La ricerca ordina per titolo per conto suo.
+
+**Il costo, detto.** Il riordino richiede la rete (il pulsante non compare offline), e con
+`touch-action: none` un canzoniere più lungo dello schermo non si può scorrere mentre si
+trascina: si arriva in fondo con le frecce della tastiera, oppure in due mosse. L'ordine non
+entra nell'export `.chopro` — non è un fatto del brano, e inventare una direttiva non standard
+renderebbe quei file meno leggibili altrove.
 
 ### v2 — il resto
 

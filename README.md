@@ -84,6 +84,12 @@ pulsante *Scarica tutto* produce un archivio dei `.chopro` da conservare. Per
 ripristinarlo, rimetti i file in `content/` e lancia `npm run seed`, che inserisce
 solo ciò che manca.
 
+Cosa l'archivio **non** porta con sé: l'ordine dei brani dentro il canzoniere. Un
+file `.chopro` sa a quale canzoniere appartiene — c'è una direttiva per quello — ma il
+suo posto nella fila non è un fatto del brano, e inventare una direttiva non standard
+per scriverlo dentro renderebbe quei file meno leggibili da qualsiasi altro programma.
+Dopo un ripristino i canzonieri tornano in ordine alfabetico.
+
 ### Via file, come bootstrap
 
 Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
@@ -185,12 +191,10 @@ una composizione più semplice invece di rimpicciolirsi in una macchia.
 
 Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da
 `/canzonieri`, e se ne crea uno anche in `/importa`, dove serve — appena creato è già
-la destinazione dell'import. **Spostare un brano** si fa da due posti: la pastiglia
-col nome del canzoniere nella testata del brano, sotto il titolo — si apre e si
-sceglie — e il campo *Canzoniere* nell'editor. La prima non ha un salva: cambiare la
-voce sposta il brano. La rimozione di un canzoniere non vuoto chiede prima dove
-spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a livello
-di database.
+la destinazione dell'import. **Spostare un brano** si fa dal campo *Canzoniere*
+nell'editor, `/canzoni/<slug>/modifica`. La rimozione di un canzoniere non vuoto chiede
+prima dove spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a
+livello di database.
 
 L'elenco dei canzonieri che `/importa` offre è quello del database, non quello del
 build: uno creato un minuto prima da `/canzonieri` non ha una pagina da aspettare, e
@@ -198,20 +202,39 @@ una destinazione mancante all'appello sarebbe la stessa cosa di un brano vecchio
 
 Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
 rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
-la rotta. In home, sotto la ricerca, ogni canzoniere è invece un **collegamento
-alla sua prima canzone**, e dalla pagina del brano le frecce nell'header scorrono
-le altre del canzoniere. Un canzoniere vuoto è mostrato ma spento.
+la rotta. In home ogni canzoniere è una **card che si apre** sui suoi brani, e resta
+tutto su quella pagina — che è l'unico modo perché funzioni anche senza connessione.
+Dalla pagina del brano le frecce nell'header scorrono le altre del canzoniere. Un
+brano senza canzoniere finisce sotto una voce «Senza canzoniere», e un database senza
+canzonieri fa ricomparire la lista completa: in nessun caso un brano resta
+irraggiungibile.
 
-La home non elenca brani: i brani compaiono solo cercando. Due casi potrebbero
-altrimenti rendere un brano irraggiungibile, e sono coperti: un brano senza
-canzoniere finisce sotto una voce «Senza canzoniere», e un database senza
-canzonieri fa ricomparire la lista completa.
+### L'ordine dei brani
 
-L'ordine su cui scorrono le frecce è quello del build. Se sposti un brano di
-canzoniere, i suoi vicini restano quelli vecchi fino alla pubblicazione successiva.
-È l'unica parte della pagina che resta ferma al build, e volutamente: le frecce
-portano ad altre pagine statiche, generate con la stessa lista di questa, mentre le
-parole che stai leggendo arrivano dal database.
+Dentro un canzoniere aperto, in home, il pulsante **Riordina** mette una maniglia su
+ogni riga: si trascina col dito o col mouse, e la riga sotto il dito si sposta appena
+lo supera. Con la maniglia a fuoco funzionano anche ↑ e ↓, così l'ordine si può
+sistemare anche da tastiera. Ogni spostamento è salvato appena la riga si posa, e
+*Fatto* rimette i collegamenti al loro posto.
+
+Finché nessuno tocca niente l'ordine è alfabetico: la colonna `position` è `null`, e
+Postgres mette i null in fondo a un ordinamento crescente, quindi un canzoniere mai
+sistemato è in ordine di titolo e un brano importato in uno sistemato si accoda alla
+fine invece di infilarsi in mezzo. Al primo trascinamento il canzoniere viene
+rinumerato tutto, da 1 a N.
+
+La ricerca resta **alfabetica**: dentro un canzoniere l'ordine è quello che hai
+scelto, ma fra canzonieri diversi non è un ordine — i risultati arriverebbero come il
+primo brano di ognuno, poi i secondi, e in una lista di risultati serve l'ordine che
+si può prevedere.
+
+L'ordine su cui scorrono **le frecce** è quello del build, come i vicini di un brano
+appena spostato di canzoniere: restano quelli vecchi fino alla ricostruzione
+successiva. È l'unica parte della pagina che resta ferma al build, e volutamente: le
+frecce portano ad altre pagine statiche, generate con la stessa lista di questa,
+mentre le parole che stai leggendo arrivano dal database. Riordinare non mette i brani
+«in attesa di pubblicazione» — nessun testo è cambiato — quindi per allineare le
+frecce si usa *Ricostruisci ora*.
 
 Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia; la
 regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché un

@@ -131,6 +131,15 @@ export function IconBooks(props: IconProps) {
 }
 
 /** Setlists: an ordered list. */
+/** Two bars: what a finger takes hold of to move a row. */
+export function IconGrip(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5 9h14M5 15h14" />
+    </Icon>
+  )
+}
+
 export function IconSetlist(props: IconProps) {
   return (
     <Icon {...props}>

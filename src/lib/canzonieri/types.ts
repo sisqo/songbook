@@ -21,6 +21,8 @@ export type WriteFailure =
   | 'not-empty'
   | 'not-found'
   | 'invalid-name'
+  /** The songs sent for reordering are no longer the songs the canzoniere holds. */
+  | 'stale'
   | 'failed'
 
 export type WriteResult = { ok: true } | { ok: false; reason: WriteFailure }
@@ -41,6 +43,7 @@ export const WRITE_MESSAGE: Record<WriteFailure, string> = {
   'not-empty': 'Il canzoniere contiene ancora dei brani.',
   'not-found': 'Questo canzoniere non esiste più.',
   'invalid-name': 'Serve un nome.',
+  stale: 'I brani del canzoniere sono cambiati altrove. Ricarica la pagina e riprova.',
   failed: 'Salvataggio non riuscito. Riprova.',
 }
 

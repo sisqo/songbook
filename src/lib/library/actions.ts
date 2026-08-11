@@ -70,7 +70,9 @@ export async function loadSongIndex(): Promise<SongIndexRow[] | null> {
         updatedAt: songs.updatedAt,
       })
       .from(songs)
-      .orderBy(asc(songs.title))
+      // The same order as the build used, or the list would rearrange itself the
+      // moment this answers.
+      .orderBy(asc(songs.position), asc(songs.title))
 
     return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }))
   } catch (error) {

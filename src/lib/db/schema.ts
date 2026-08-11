@@ -42,6 +42,20 @@ export const songs = pgTable('songs', {
   canzoniereSlug: text('canzoniere_slug').references(() => canzonieri.slug, {
     onDelete: 'restrict',
   }),
+  /**
+   * Where the song sits inside its canzoniere, when someone has said.
+   *
+   * Null means nobody has: the song then sorts by title, after the ones that were
+   * placed by hand — which is what Postgres does with nulls in an ascending sort
+   * anyway, so the fallback needs no code. That makes this column additive in the
+   * strongest sense: every existing row is null, so the order stays alphabetical
+   * until the first drag, and a song imported into an ordered canzoniere joins at
+   * the end rather than jumping into the middle.
+   *
+   * Renumbered 1..N for the whole canzoniere on every reorder, so the values never
+   * drift into gaps or ties that would leave two songs' order undefined.
+   */
+  position: integer('position'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

@@ -26,6 +26,7 @@ import {
   mod12,
   noteToItalian,
   noteToPitchClass,
+  parseKey,
   readRoots,
   spellPitchClass,
 } from './notes'
@@ -196,6 +197,17 @@ export function formatKey(key: Key, notation: Notation): string {
   const root = formatNote(key.name.replace(/m$/, ''), notation)
   if (key.mode === 'major') return root
   return root + formatSuffix('m', notation)
+}
+
+/**
+ * A stored key as a reader sees it, or exactly as written when it cannot be read.
+ *
+ * Falling back to the raw text rather than to nothing: the column holds whatever was
+ * typed at import, and a key nobody can parse is still what someone meant to write.
+ */
+export function keyLabel(raw: string, notation: Notation): string {
+  const key = parseKey(raw)
+  return key === null ? raw : formatKey(key, notation)
 }
 
 /**

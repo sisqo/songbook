@@ -916,6 +916,50 @@
     }
   }
 
+  /*
+   * A song being put in order. Same row, minus the part that made it a link: while
+   * the canzoniere is being arranged the rows are things you move, not things you
+   * open, so nothing here lights up under a finger that is only passing through.
+   */
+  .row-dragging {
+    background: var(--surface);
+    box-shadow: var(--shadow-2);
+    /* Lifted, so the one under the finger is the one that is obviously moving. */
+    position: relative;
+    z-index: 1;
+  }
+
+  /*
+   * The handle. `touch-action: none` is what makes a drag on a touchscreen a drag
+   * at all: without it the browser claims the vertical gesture for scrolling and the
+   * pointer events stop arriving halfway through.
+   */
+  .drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-inline-start: -0.35rem;
+    border-radius: var(--r-sm);
+    /* Muted rather than faint: it is the thing to take hold of, not a decoration. */
+    color: var(--muted);
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .drag-handle:focus-visible {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+
+  @media (hover: hover) {
+    .drag-handle:hover {
+      color: var(--muted);
+    }
+  }
+
   /* The key a song is written in. */
   .badge {
     display: inline-flex;

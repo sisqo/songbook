@@ -5,11 +5,12 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { usePrefs } from '@/components/PrefsProvider'
-import { IconChevronDown, IconSearch } from '@/components/icons'
+import { ReorderSongs } from '@/components/ReorderSongs'
+import { IconChevronDown, IconGrip, IconSearch } from '@/components/icons'
+import { applyOrder } from '@/lib/canzonieri/order'
 import { loadSongIndex } from '@/lib/library/actions'
 import { mergeIndex } from '@/lib/library/overlay'
-import { formatKey } from '@/lib/music/chord'
-import { parseKey } from '@/lib/music/notes'
+import { keyLabel } from '@/lib/music/chord'
 import type { SongIndexEntry } from '@/lib/search-index'
 
 /**
@@ -17,12 +18,6 @@ import type { SongIndexEntry } from '@/lib/search-index'
  * string, which no real slug can be, so they group together instead of vanishing.
  */
 const UNGROUPED = ''
-
-/** Shows the song's own key in the reader's notation, or as written if unparseable. */
-function formatKeyLabel(raw: string, notation: 'it' | 'int'): string {
-  const key = parseKey(raw)
-  return key === null ? raw : formatKey(key, notation)
-}
 
 /**
  * The canzonieri, and their songs one level down.
@@ -45,11 +40,13 @@ function formatKeyLabel(raw: string, notation: 'it' | 'int'): string {
  */
 export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
   const { global } = usePrefs()
-  const { canzonieri, assignments, nameOf } = useCanzonieri()
+  const { canzonieri, assignments, nameOf, online } = useCanzonieri()
 
   const [songs, setSongs] = useState(baked)
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
+  /** The canzoniere being arranged, when one is. Never more than one at a time. */
+  const [ordering, setOrdering] = useState<string | null>(null)
   const deferred = useDeferredValue(query)
 
   useEffect(() => {
@@ -87,6 +84,8 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
   const toggle = (key: string) => {
     const next = open === key ? null : key
     setOpen(next)
+    // Closing a canzoniere, or opening another, ends the arranging with it.
+    setOrdering(null)
 
     const url = new URL(window.location.href)
     if (next === null) url.searchParams.delete('c')
@@ -99,7 +98,18 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
     const terms = needle === '' ? [] : needle.split(/\s+/)
 
     // Every term must appear somewhere, so "certe notti" and "notti certe" match.
-    return songs.filter((song) => terms.every((term) => song.haystack.includes(term)))
+    const found = songs.filter((song) => terms.every((term) => song.haystack.includes(term)))
+
+    /*
+     * Alphabetical, whatever order the canzonieri are in.
+     *
+     * The list itself comes in canzoniere order — that is what the arrows in a song
+     * step through — and inside a canzoniere that order is the point. Across
+     * canzonieri it is not an order at all: matches would arrive as every
+     * canzoniere's first song, then every second, which is nobody's idea of a
+     * result list. Here the only useful order is the one you can predict.
+     */
+    return [...found].sort((one, other) => one.title.localeCompare(other.title, 'it'))
   }, [songs, deferred])
 
   /**
@@ -132,6 +142,9 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
 
   const searching = deferred.trim() !== ''
 
+  /** A saved order, adopted by the flat list the whole screen is drawn from. */
+  const adopt = (slugs: string[]) => setSongs((current) => applyOrder(current, slugs))
+
   return (
     <div>
       <label className="search-field block">
@@ -140,7 +153,11 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            // Searching leaves the canzonieri behind, and the arranging with them.
+            if (event.target.value.trim() !== '') setOrdering(null)
+          }}
           placeholder="Cerca titolo, artista o testo"
           autoComplete="off"
           className="form-field"
@@ -201,14 +218,63 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
                     <p className="px-[1.125rem] pb-4 text-sm text-muted">
                       Nessun brano in questo canzoniere.
                     </p>
+                  ) : ordering === group.key ? (
+                    <>
+                      <ReorderSongs
+                        songs={group.songs}
+                        canzoniereSlug={group.key}
+                        notation={global.notation}
+                        onApplied={adopt}
+                      />
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-[1.125rem] pb-4">
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => setOrdering(null)}
+                        >
+                          Fatto
+                        </button>
+                        {/*
+                          * The order is this list's own, and it is saved as soon as a
+                          * row lands. What waits for a rebuild is the pair of arrows
+                          * inside a song, which come from the pages themselves.
+                          */}
+                        <span className="text-xs text-faint">
+                          Salvato subito. Le frecce dentro il brano lo seguono dopo la
+                          prossima ricostruzione.
+                        </span>
+                      </div>
+                    </>
                   ) : (
-                    <ul>
-                      {group.songs.map((song) => (
-                        <li key={song.slug}>
-                          <SongRow song={song} notation={global.notation} nested />
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <ul>
+                        {group.songs.map((song) => (
+                          <li key={song.slug}>
+                            <SongRow song={song} notation={global.notation} nested />
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/*
+                        * Only where there is an order to change: two songs at least,
+                        * a real canzoniere to save it against, and a network to save
+                        * it over. The button says what it does rather than showing a
+                        * handle on every row for the rest of the app's life — this is
+                        * a list you read far more often than you rearrange.
+                        */}
+                      {group.key !== UNGROUPED && group.songs.length > 1 && online && (
+                        <div className="px-[1.125rem] pb-4">
+                          <button
+                            type="button"
+                            className="btn btn-quiet btn-sm"
+                            onClick={() => setOrdering(group.key)}
+                          >
+                            <IconGrip size={16} />
+                            Riordina
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ))}
               </li>
             )
@@ -247,7 +313,7 @@ function SongRow({
       </span>
 
       {song.originalKey !== null && (
-        <span className="badge">{formatKeyLabel(song.originalKey, notation)}</span>
+        <span className="badge">{keyLabel(song.originalKey, notation)}</span>
       )}
     </Link>
   )
