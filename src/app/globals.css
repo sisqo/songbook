@@ -5,7 +5,7 @@
 /*
  * Both themes are designed, not one inverted from the other: a tablet on a dark
  * stage and a tablet in a lit rehearsal room are both real, and the app is read
- * in each. The theme follows the system setting.
+ * in each.
  *
  * Two rules keep the pair honest. Elevation is a shadow in light and a border in
  * dark, because a shadow is invisible on a near-black page — which is what --edge
@@ -16,8 +16,24 @@
  *
  * If --bg changes here, the themeColor pair in layout.tsx has to move with it, or
  * the PWA status bar stops matching the page.
+ *
+ * ---- Which theme is showing ------------------------------------------------
+ *
+ * Three states, in three blocks below: the system's choice, and the reader's own
+ * either way. `data-theme` is set on <html> by the script in layout.tsx, and only
+ * when the reader has actually chosen — in "auto" the attribute is absent, so the
+ * media query drives it and a system that goes dark at sunset needs no listener.
+ *
+ * The dark values are written twice, and that is deliberate. The obvious way to
+ * avoid it is to drop the media query and let the script set the attribute always
+ * — but the script reads localStorage, which throws in private mode and with
+ * storage disabled (see prefs/store.ts). This app is read on stage, offline, from
+ * a precached page; "the storage read failed, so the tablet is white" is not an
+ * acceptable failure. The media query is the answer to that, and it costs these
+ * fourteen lines. Change one dark block and you must change the other.
  */
 :root {
+  color-scheme: light;
   --bg: #f6f5f2;
   --surface: #ffffff;
   /* Recessed fill: grouped controls, slider tracks, inset panels. */
@@ -64,8 +80,16 @@
   --shadow-panel: 0 12px 34px -10px rgb(22 24 29 / 28%);
 }
 
+/*
+ * Dark, when the system asks for it — unless the reader has asked for light. The
+ * :not() is what lets a choice win against the system it disagrees with.
+ *
+ * Twin of the block below. Keep them identical.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
     --bg: #101216;
     --surface: #181b21;
     --surface-2: #21252c;
@@ -91,6 +115,31 @@
     --shadow-float: 0 10px 34px -10px rgb(0 0 0 / 70%);
     --shadow-panel: 0 14px 40px -12px rgb(0 0 0 / 75%);
   }
+}
+
+/* Dark because the reader asked for it, whatever the system says. Twin of above. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #101216;
+  --surface: #181b21;
+  --surface-2: #21252c;
+  --surface-3: #1d2027;
+  --ink: #eceef1;
+  --muted: #99a0aa;
+  --faint: #5f666f;
+  --line: #2b2f37;
+  --edge: var(--line);
+  --accent: #f0b268;
+  --accent-soft: #2a2118;
+  --on-accent: #1b1206;
+  --danger: #ff9a90;
+  --danger-soft: #2f1a18;
+
+  --shadow-1: none;
+  --shadow-2: none;
+  --shadow-float: 0 10px 34px -10px rgb(0 0 0 / 70%);
+  --shadow-panel: 0 14px 40px -12px rgb(0 0 0 / 75%);
 }
 
 @layer base {

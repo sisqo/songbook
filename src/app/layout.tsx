@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
 
+import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
+
 import './globals.css'
 
 /*
@@ -43,6 +45,21 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Puts the reader's theme on the page before anything is painted.
+ *
+ * Inline and synchronous, as the first thing in the body: it cannot come from the
+ * bundle, because by the time the bundle runs the page has already been painted in
+ * the wrong theme and the reader has seen it flash. These pages are statically
+ * generated and served from a precache, so there is no server render that could
+ * know the answer either — this script is the only place it can be applied in time.
+ *
+ * Twin of `applyThemeChoice` in lib/theme.ts, which does the same on a change and
+ * carries the explanation of why the attribute is removed rather than set to
+ * "auto". The key and the id are imported so at least the strings cannot drift.
+ */
+const themeScript = `try{var c=localStorage.getItem('${THEME_KEY}');if(c==='light'||c==='dark'){var r=document.documentElement;r.dataset.theme=c;var b=getComputedStyle(r).getPropertyValue('--bg').trim();if(b){var m=document.createElement('meta');m.id='${STATUS_BAR_ID}';m.name='theme-color';m.content=b;document.head.prepend(m)}}}catch(e){}`
+
 export const viewport: Viewport = {
   // No maximumScale or user-scalable: pinch zoom is an accessibility escape
   // hatch and the font stepper is not a substitute for it.
@@ -61,7 +78,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-      <body className={`${sans.variable} ${mono.variable} antialiased`}>{children}</body>
+      <body className={`${sans.variable} ${mono.variable} antialiased`}>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {children}
+      </body>
     </html>
   )
 }

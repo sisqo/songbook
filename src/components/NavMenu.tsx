@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { ThemePicker } from '@/components/ThemePicker'
 import { IconBooks, IconImport, IconMenu, IconNote, IconSetlist } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 
@@ -96,6 +97,14 @@ export function NavMenu({
                 Scalette
               </Link>
             )}
+
+            <div className="menu-divider" />
+
+            {/*
+              * Not a destination, so it does not close the menu: the reader is
+              * looking at the thing they are changing, and the panel is part of it.
+              */}
+            <ThemePicker />
 
             <div className="menu-divider" />
             {children}
