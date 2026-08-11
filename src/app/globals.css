@@ -979,13 +979,28 @@
     pointer-events: none;
   }
 
-  /* The wrapper waives taps; the dismiss layer for the panel has to take them. */
+  /*
+   * The dismiss layer for the reading panel: it takes taps, which the wrapper
+   * waives, and it sits under the dock rather than over it.
+   *
+   * The z-index is the whole point of this rule. .menu-overlay carries 30 for the
+   * header's menu, where the panel answers with 40 — but the reading panel is a
+   * child of the dock, so what has to win is the dock itself. Two positioned
+   * elements in one stacking context are ordered by z-index before DOM order, so
+   * without these the overlay painted over the panel and swallowed every tap: the
+   * panel closed and the change was never applied.
+   *
+   * Dropping the overlay to 0 costs nothing, because .control-bar is a stacking
+   * context of its own at 30 — everything in here is already above the song.
+   */
   .control-bar .menu-overlay {
+    z-index: 0;
     pointer-events: auto;
   }
 
   .control-dock {
     position: relative;
+    z-index: 1;
     pointer-events: auto;
     display: flex;
     align-items: center;
