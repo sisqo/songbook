@@ -204,44 +204,99 @@ export function EditorScreen({ song }: { song: Song }) {
       {/* Covers the header's links too, which no unload event would catch. */}
       <UnsavedGuard when={dirty} />
 
-      <div className="editor-bar">
-        <Link href={`/canzoni/${song.slug}`} className="btn btn-quiet btn-sm">
-          <IconChevronLeft size={16} />
-          Brano
-        </Link>
+      <div className="editor-head">
+        <div className="editor-bar">
+          {/* Icon alone: the row has to stay one row, and the label is still read out. */}
+          <Link
+            href={`/canzoni/${song.slug}`}
+            className="icon-button"
+            title="Torna al brano"
+            aria-label="Torna al brano"
+          >
+            <IconChevronLeft size={18} />
+          </Link>
 
-        {/*
-          * The app's segmented control, the same one the reading panel uses. The
-          * extra inline padding is this one's own: the panel's buttons hold "Do" or
-          * "A+" and are sized by hand, while these hold words.
-          */}
-        <div className="segment" role="tablist" aria-label="Modalità di modifica">
-          {MODES.map((entry) => (
-            <button
-              key={entry.mode}
-              type="button"
-              role="tab"
-              aria-selected={mode === entry.mode}
-              className={`segment-button px-3 ${mode === entry.mode ? 'is-on' : ''}`}
-              onClick={() => setMode(entry.mode)}
-            >
-              {entry.label}
-            </button>
-          ))}
+          {/*
+            * The app's segmented control, the same one the reading panel uses. The
+            * extra inline padding is this one's own: the panel's buttons hold "Do" or
+            * "A+" and are sized by hand, while these hold words.
+            */}
+          <div className="segment" role="tablist" aria-label="Modalità di modifica">
+            {MODES.map((entry) => (
+              <button
+                key={entry.mode}
+                type="button"
+                role="tab"
+                aria-selected={mode === entry.mode}
+                className={`segment-button px-3 ${mode === entry.mode ? 'is-on' : ''}`}
+                onClick={() => setMode(entry.mode)}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+
+          <span className="flex-1" />
+
+          {/* Enabled means there is something unsaved: no second label for it. */}
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={busy || !dirty || fields.title.trim() === ''}
+            onClick={() => void save()}
+          >
+            Salva
+          </button>
         </div>
 
-        <span className="flex-1" />
+        {mode !== 'preview' && (
+          <div className="editor-tools">
+            <div className="editor-tools-scroll">
+              <button type="button" className="btn btn-sm" onClick={insertChord}>
+                Accordo
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => command((document) => toggleSection(document, caret.line, 'chorus'))}
+              >
+                Ritornello
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => command((document) => toggleSection(document, caret.line, 'bridge'))}
+              >
+                Ponte
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => command((document) => toggleComment(document, caret.line))}
+              >
+                Commento
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => command((document) => removeLine(document, caret.line))}
+              >
+                Elimina riga
+              </button>
+            </div>
 
-        {dirty && <span className="editor-hint">non salvato</span>}
-
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          disabled={busy || !dirty || fields.title.trim() === ''}
-          onClick={() => void save()}
-        >
-          Salva
-        </button>
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm"
+              disabled={history.length === 0}
+              onClick={undo}
+              aria-label="Annulla l'ultima modifica"
+            >
+              <IconUndo size={16} />
+              Annulla
+            </button>
+          </div>
+        )}
       </div>
 
       {error !== null && (
@@ -276,56 +331,6 @@ export function EditorScreen({ song }: { song: Song }) {
           />
         </div>
       </details>
-
-      {mode !== 'preview' && (
-        <div className="editor-toolbar">
-          <button type="button" className="btn btn-sm" onClick={insertChord}>
-            Accordo
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => command((document) => toggleSection(document, caret.line, 'chorus'))}
-          >
-            Ritornello
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => command((document) => toggleSection(document, caret.line, 'bridge'))}
-          >
-            Ponte
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => command((document) => toggleComment(document, caret.line))}
-          >
-            Commento
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => command((document) => removeLine(document, caret.line))}
-          >
-            Elimina riga
-          </button>
-
-          <span className="flex-1" />
-
-          <button
-            type="button"
-            className="btn btn-quiet btn-sm"
-            disabled={history.length === 0}
-            onClick={undo}
-            aria-label="Annulla l'ultima modifica"
-          >
-            <IconUndo size={16} />
-            Annulla
-          </button>
-          <span className="editor-hint self-center">riga {caret.line + 1}</span>
-        </div>
-      )}
 
       {mode === 'graphic' && (
         <GraphicEditor

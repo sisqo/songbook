@@ -1588,25 +1588,66 @@
    * bottom, because the preview puts the reader's own control bar down there and
    * two fixed bars would fight over the same thumb.
    */
-  .editor-bar {
+  /*
+   * Everything you press while editing, in one block that stays put.
+   *
+   * The commands used to scroll away with the page, which put them furthest from
+   * reach exactly when the song is long — the case where you are scrolling in the
+   * first place. Both rows are inside one sticky element rather than two stacked
+   * ones: the first row's height changes with the viewport, so a second offset
+   * would have to guess it.
+   *
+   * `top` is the header's height, measured at 64px and the same at every width.
+   */
+  .editor-head {
     position: sticky;
-    /* Under the header, which is sticky too and 4rem tall. */
     top: 4rem;
     z-index: 30;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0;
     background: var(--bg);
     border-block-end: 1px solid var(--line);
   }
 
-  .editor-toolbar {
+  /*
+   * One row, never wrapping: on a phone this held three rows of controls, and a
+   * sticky block that tall leaves nothing to edit under it. What it costs is the
+   * words next to the back chevron and the "non salvato" label — the first has its
+   * label for a screen reader, and the second was saying what an enabled Salva
+   * button already says.
+   */
+  .editor-bar {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0;
+  }
+
+  .editor-tools {
+    display: flex;
+    align-items: center;
     gap: 0.35rem;
-    padding: 0.5rem 0 0.75rem;
+    padding-block-end: 0.5rem;
+  }
+
+  /*
+   * The commands scroll sideways when they do not fit, instead of wrapping onto a
+   * second and third line. Undo stays outside this strip, because a command you
+   * reach for after a mistake should not have to be found first.
+   */
+  .editor-tools-scroll {
+    display: flex;
+    gap: 0.35rem;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .editor-tools-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .editor-tools-scroll > * {
+    flex: none;
   }
 
   /*
