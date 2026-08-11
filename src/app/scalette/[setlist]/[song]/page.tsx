@@ -41,19 +41,14 @@ export default async function SetlistSongPage({ params }: Props) {
   const index = setlist.songs.indexOf(songSlug)
   if (index === -1) notFound()
 
-  const neighbour = async (position: number) => {
-    if (position < 0 || position >= setlist.songs.length) return null
-    const found = await repository.getSong(setlist.songs[position])
-    return found === null ? null : { slug: found.slug, title: found.title }
-  }
-
+  // The slug is all the header arrows need, so no neighbour has to be read at all.
   const context: SetlistContext = {
     slug: setlist.slug,
     name: setlist.name,
     position: index + 1,
     total: setlist.songs.length,
-    previous: await neighbour(index - 1),
-    next: await neighbour(index + 1),
+    previous: setlist.songs[index - 1] ?? null,
+    next: setlist.songs[index + 1] ?? null,
   }
 
   return <SongReader song={song} setlist={context} />

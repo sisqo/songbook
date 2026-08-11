@@ -4,14 +4,9 @@ import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
-import { IconChevronLeft, IconChevronRight, IconPencil } from '@/components/icons'
+import { IconPencil } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
-
-interface Neighbour {
-  slug: string
-  title: string
-}
 
 export interface SetlistContext {
   slug: string
@@ -19,8 +14,9 @@ export interface SetlistContext {
   /** One-based position of this song in the setlist. */
   position: number
   total: number
-  previous: Neighbour | null
-  next: Neighbour | null
+  /** Slugs only: the header arrows need somewhere to go, not something to say. */
+  previous: string | null
+  next: string | null
 }
 
 /** Where a song sits among the others of its canzoniere. */
@@ -28,8 +24,8 @@ interface Series {
   name: string
   position: number
   total: number
-  previous: Neighbour | null
-  next: Neighbour | null
+  previous: string | null
+  next: string | null
 }
 
 /**
@@ -56,10 +52,7 @@ async function seriesFor(song: Song): Promise<Series | null> {
   const index = siblings.findIndex((entry) => entry.slug === song.slug)
   if (index === -1) return null
 
-  const at = (position: number): Neighbour | null => {
-    const found = siblings[position]
-    return found === undefined ? null : { slug: found.slug, title: found.title }
-  }
+  const at = (position: number): string | null => siblings[position]?.slug ?? null
 
   const name =
     song.canzoniereSlug === null
@@ -81,10 +74,12 @@ async function seriesFor(song: Song): Promise<Series | null> {
  * The ChordPro is parsed here, on the server, so the parse happens once at build
  * time and the client only ever formats an already-structured song.
  *
- * The header keeps to one row here rather than two, because vertical space is the
- * product on this screen: the brand, the two arrows and the menu, and nothing that
- * the page below already says. The arrows matter more than they look — since the
- * home page stopped listing songs, they are how the rest of a canzoniere is reached.
+ * Stepping to the next song happens in the header and nowhere else. There used to be
+ * two cards for it at the foot of the sheet as well, which meant the same two
+ * destinations twice on one screen — and the copy at the bottom was the one you had
+ * to scroll a whole song to reach, while the arrows are in reach the entire time.
+ * They also cost two extra queries per page at build time, to fetch titles nobody
+ * needs now.
  *
  * Inside a setlist the setlist wins: stepping through it is why you opened it.
  */
@@ -100,12 +95,12 @@ export async function SongReader({
 
   const steps = setlist
     ? {
-        previous: setlist.previous && `/scalette/${setlist.slug}/${setlist.previous.slug}`,
-        next: setlist.next && `/scalette/${setlist.slug}/${setlist.next.slug}`,
+        previous: setlist.previous && `/scalette/${setlist.slug}/${setlist.previous}`,
+        next: setlist.next && `/scalette/${setlist.slug}/${setlist.next}`,
       }
     : {
-        previous: series?.previous ? `/canzoni/${series.previous.slug}` : null,
-        next: series?.next ? `/canzoni/${series.next.slug}` : null,
+        previous: series?.previous ? `/canzoni/${series.previous}` : null,
+        next: series?.next ? `/canzoni/${series.next}` : null,
       }
 
   return (
@@ -152,24 +147,6 @@ export async function SongReader({
 
           <LiveSheet />
 
-          {setlist && (
-            <StepNav
-              label="Navigazione nella scaletta"
-              previous={setlist.previous}
-              next={setlist.next}
-              href={(slug) => `/scalette/${setlist.slug}/${slug}`}
-            />
-          )}
-
-          {series && (
-            <StepNav
-              label={`Navigazione in ${series.name}`}
-              previous={series.previous}
-              next={series.next}
-              href={(slug) => `/canzoni/${slug}`}
-            />
-          )}
-
           {/*
             * A link, not a form: the editor is a page of its own, and two ways to
             * change a song would be two things to keep in step. It needs a network
@@ -188,50 +165,5 @@ export async function SongReader({
         <LiveControlBar />
       </SongProvider>
     </PrefsProvider>
-  )
-}
-
-/** The previous and next song, as two cards under the sheet. */
-function StepNav({
-  label,
-  previous,
-  next,
-  href,
-}: {
-  label: string
-  previous: Neighbour | null
-  next: Neighbour | null
-  href: (slug: string) => string
-}) {
-  return (
-    <nav
-      className="mt-10 flex items-stretch justify-between gap-3 border-t pt-4 text-sm"
-      style={{ borderColor: 'var(--surface-2)' }}
-      aria-label={label}
-    >
-      {previous ? (
-        <Link href={href(previous.slug)} className="panel min-w-0 flex-1 px-4 py-3">
-          <span className="flex items-center gap-1 text-faint">
-            <IconChevronLeft size={14} />
-            Precedente
-          </span>
-          <span className="mt-0.5 block truncate font-medium">{previous.title}</span>
-        </Link>
-      ) : (
-        <span className="flex-1" />
-      )}
-
-      {next ? (
-        <Link href={href(next.slug)} className="panel min-w-0 flex-1 px-4 py-3 text-end">
-          <span className="flex items-center justify-end gap-1 text-faint">
-            Successiva
-            <IconChevronRight size={14} />
-          </span>
-          <span className="mt-0.5 block truncate font-medium">{next.title}</span>
-        </Link>
-      ) : (
-        <span className="flex-1" />
-      )}
-    </nav>
   )
 }
