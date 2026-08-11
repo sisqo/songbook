@@ -1,7 +1,23 @@
-import type { SongIndexEntry } from '@/components/SongList'
-
 import { parseChordPro, plainLyrics } from './chordpro'
 import type { Song } from './data'
+
+/**
+ * One row of the list, prepared at build time.
+ *
+ * Lives here rather than beside the component that renders it because it is data:
+ * the build produces it, the list shows it, and the runtime overlay rewrites it.
+ */
+export interface SongIndexEntry {
+  slug: string
+  title: string
+  artist: string | null
+  originalKey: string | null
+  tags: string[]
+  /** Which version this row describes; null with no database. */
+  updatedAt: string | null
+  /** Lyrics with chords stripped, lowercased, for matching. */
+  haystack: string
+}
 
 /**
  * Builds the searchable row for one song.
@@ -24,6 +40,7 @@ export function toIndexEntry(song: Song): SongIndexEntry {
     artist: song.artist,
     originalKey: song.originalKey,
     tags: song.tags,
+    updatedAt: song.updatedAt,
     haystack,
   }
 }

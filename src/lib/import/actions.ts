@@ -9,9 +9,11 @@
  */
 
 import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/auth'
-import { UNFILED } from '@/lib/data/types'
+import { rowToSong } from '@/lib/data/db'
+import { UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { builds, canzonieri, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
@@ -19,6 +21,7 @@ import { uniqueSlug } from '@/lib/slug'
 import { choproFilename, toChoproFile } from './export'
 import type {
   Decision,
+  DeleteResult,
   PendingSong,
   PublishResult,
   SaveResult,
@@ -59,6 +62,33 @@ async function resolveCanzoniere(slug: string): Promise<string> {
     .onConflictDoNothing({ target: canzonieri.slug })
 
   return UNFILED.slug
+}
+
+/**
+ * Drops the server's cached copy of the pages a song appears on.
+ *
+ * This is not what makes an edit visible: a browser that installed the app keeps
+ * serving the page precached at the last deploy, and only the runtime overlay
+ * gets past that. It is for the other kind of visit — a desktop browser with no
+ * service worker, or a phone that never installed it — which would otherwise be
+ * handed the old page from the server's cache until the next deploy.
+ *
+ * Failing here must not fail the write. The row is already committed by this
+ * point, and reporting failure would invite a retry that, for a new song, would
+ * save it twice.
+ */
+function revalidateSong(slug: string): void {
+  try {
+    revalidatePath(`/canzoni/${slug}`)
+    revalidatePath('/')
+  } catch (error) {
+    console.warn(`could not revalidate ${slug}; the server keeps its cached page`, error)
+  }
+}
+
+function saved(song: Song): SaveResult {
+  revalidateSong(song.slug)
+  return { ok: true, song }
 }
 
 /** Same title and artist, ignoring case and surrounding space. */
@@ -102,11 +132,10 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
         .update(songs)
         .set(values)
         .where(eq(songs.slug, input.slug))
-        .returning({ slug: songs.slug })
+        .returning()
 
-      return updated.length === 0
-        ? { ok: false, reason: 'not-found' }
-        : { ok: true, slug: updated[0].slug }
+      if (updated.length === 0) return { ok: false, reason: 'not-found' }
+      return saved(rowToSong(updated[0]))
     }
 
     const twin = await database
@@ -124,23 +153,27 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
         .update(songs)
         .set(values)
         .where(eq(songs.slug, twin[0].slug))
-        .returning({ slug: songs.slug })
+        .returning()
 
-      return { ok: true, slug: updated[0].slug }
+      return saved(rowToSong(updated[0]))
     }
 
     const taken = (await database.select({ slug: songs.slug }).from(songs)).map((row) => row.slug)
     const slug = uniqueSlug(title, taken)
 
-    await database.insert(songs).values({ slug, ...values })
-    return { ok: true, slug }
+    const inserted = await database
+      .insert(songs)
+      .values({ slug, ...values })
+      .returning()
+
+    return saved(rowToSong(inserted[0]))
   } catch (error) {
     console.error('saveSong failed', error)
     return { ok: false, reason: 'failed' }
   }
 }
 
-export async function deleteSong(slug: string): Promise<SaveResult> {
+export async function deleteSong(slug: string): Promise<DeleteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
   if (!(await authorized())) return { ok: false, reason: 'no-session' }
 
@@ -150,9 +183,10 @@ export async function deleteSong(slug: string): Promise<SaveResult> {
       .where(eq(songs.slug, slug))
       .returning({ slug: songs.slug })
 
-    return removed.length === 0
-      ? { ok: false, reason: 'not-found' }
-      : { ok: true, slug: removed[0].slug }
+    if (removed.length === 0) return { ok: false, reason: 'not-found' }
+
+    revalidateSong(slug)
+    return { ok: true, slug: removed[0].slug }
   } catch (error) {
     console.error('deleteSong failed', error)
     return { ok: false, reason: 'failed' }
@@ -245,15 +279,7 @@ export async function exportAll(): Promise<ExportedFile[]> {
   return rows.map((row) => ({
     name: choproFilename(row.slug),
     content: toChoproFile(
-      {
-        slug: row.slug,
-        title: row.title,
-        artist: row.artist,
-        originalKey: row.originalKey,
-        tags: row.tags,
-        canzoniereSlug: row.canzoniereSlug,
-        body: row.body,
-      },
+      rowToSong(row),
       row.canzoniereSlug === null ? null : (nameBySlug.get(row.canzoniereSlug) ?? null),
     ),
   }))

@@ -26,6 +26,16 @@ export interface Song {
    */
   canzoniereSlug: string | null
   body: string
+  /**
+   * When this version was written, as an ISO string, or null with no database.
+   *
+   * This is what the page was built from, and the only way to tell whether a copy
+   * fetched at runtime is actually newer than what the reader is looking at. It
+   * cannot be inferred from the build stamp: the stamp is written *before* the
+   * build, so for the whole length of a deploy the database would claim a song is
+   * published while every browser still holds the old page.
+   */
+  updatedAt: string | null
 }
 
 export interface Setlist {

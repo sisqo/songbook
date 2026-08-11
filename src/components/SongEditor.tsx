@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { SongForm } from '@/components/SongForm'
+import { useSong } from '@/components/SongProvider'
 import { IconPencil } from '@/components/icons'
-import type { Canzoniere, Song } from '@/lib/data/types'
-import { deleteSong, saveSong } from '@/lib/import/actions'
+import type { Canzoniere } from '@/lib/data/types'
 
 /**
  * Correcting the song you are reading, from where you noticed the mistake.
@@ -15,12 +15,14 @@ import { deleteSong, saveSong } from '@/lib/import/actions'
  * carries its own preview, and this way nothing about the reading page changes
  * for anyone who never opens it.
  *
- * Saving does not change what is on screen — the page is static — so it says so
- * instead of pretending. Deleting leaves for the list, since this page is about
- * to stop existing.
+ * The form is filled from the song the provider holds, not from the page, so a
+ * save shows in the sheet above the moment it lands and reopening the form finds
+ * the words that were saved. Publishing is still worth doing, but it is now only
+ * about the pages being right offline — not about seeing your own work.
  */
-export function SongEditor({ song, canzonieri }: { song: Song; canzonieri: Canzoniere[] }) {
+export function SongEditor({ canzonieri }: { canzonieri: Canzoniere[] }) {
   const router = useRouter()
+  const { song, save, remove } = useSong()
   const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
@@ -61,15 +63,15 @@ export function SongEditor({ song, canzonieri }: { song: Song; canzonieri: Canzo
           body: song.body,
         }}
         onSave={async (input, decision) => {
-          const result = await saveSong(input, decision)
+          const result = await save(input, decision)
           if (result.ok) {
             setOpen(false)
-            setNotice('Salvato. La pagina si aggiorna dopo la pubblicazione, in Importa.')
+            setNotice('Salvato. Pubblica quando vuoi averlo anche senza connessione.')
           }
           return result
         }}
         onDelete={async () => {
-          const result = await deleteSong(song.slug)
+          const result = await remove()
           if (result.ok) router.push('/')
           else setNotice('Eliminazione non riuscita.')
         }}

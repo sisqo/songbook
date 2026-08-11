@@ -27,10 +27,26 @@ sono accordi sopra il testo e converte, deduce titolo, artista e tonalità, e mo
 una preview prima di salvare. Correggere e cancellare si fanno dalla pagina del
 brano, sotto lo spartito.
 
-Un brano salvato **non è ancora visibile**: lista, ricerca, pagine e precache si
-generano al build. La schermata elenca i brani in attesa e il pulsante **Pubblica**
-lancia una ricostruzione per tutto il gruppo. Serve `DEPLOY_HOOK_URL`, un deploy
-hook creato su Vercel in Settings → Git → Deploy Hooks.
+Quello che salvi **si vede subito**: la pagina del brano e l'elenco chiedono al
+database la versione corrente e la mettono sopra quella generata al build, quindi una
+correzione appare senza aspettare nulla. Il confronto è per versione — `updated_at`
+del database contro quello con cui la pagina è stata generata — perciò la copia
+fresca resta al suo posto per tutta la durata del deploy che la sta incorporando, e
+si fa da parte appena arriva la pagina nuova.
+
+La **pubblicazione** serve ancora, ma per una cosa sola: incorporare le modifiche
+nelle pagine statiche e nel precache, cioè renderle disponibili **senza
+connessione**. La schermata elenca i brani non ancora nel sito, e `Pubblica` lancia
+la ricostruzione per tutto il gruppo, poi resta in attesa finché il build non li
+prende in carico — quello che la lista può dire con certezza, dato che il build
+timbra il database quando parte. Serve `DEPLOY_HOOK_URL`, un deploy hook creato su
+Vercel in Settings → Git → Deploy Hooks.
+
+Un brano importato adesso è cliccabile dall'elenco anche prima della pubblicazione:
+la sua rotta non esiste fra quelle generate, e Next la genera su richiesta. Offline
+no, per lo stesso motivo — non è nel precache — ed è per questo che l'elenco, quando
+il server non risponde, resta quello del build, dove ogni riga porta da qualche
+parte.
 
 Il database è la sorgente di verità dei brani, quindi **non c'è cronologia git**: il
 pulsante *Scarica tutto* produce un archivio dei `.chopro` da conservare. Per
@@ -105,8 +121,10 @@ canzoniere finisce sotto una voce «Senza canzoniere», e un database senza
 canzonieri fa ricomparire la lista completa.
 
 L'ordine su cui scorrono le frecce è quello del build. Se sposti un brano di
-canzoniere, i suoi vicini restano quelli vecchi fino alla pubblicazione successiva
-— la stessa staleness del resto del sito.
+canzoniere, i suoi vicini restano quelli vecchi fino alla pubblicazione successiva.
+È l'unica parte della pagina che resta ferma al build, e volutamente: le frecce
+portano ad altre pagine statiche, generate con la stessa lista di questa, mentre le
+parole che stai leggendo arrivano dal database.
 
 Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia; la
 regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché un

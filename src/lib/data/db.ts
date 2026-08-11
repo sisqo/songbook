@@ -9,7 +9,14 @@ import { db } from '../db/client'
 import { canzonieri, setlistSongs, setlists, songs } from '../db/schema'
 import type { Canzoniere, Setlist, Song, SongRepository } from './types'
 
-function toSong(row: typeof songs.$inferSelect): Song {
+/**
+ * One row as the app's `Song`.
+ *
+ * Exported because the write actions need the same mapping: what they return
+ * after a save is compared against what a page was built with, so the two have to
+ * be the same shape produced the same way.
+ */
+export function rowToSong(row: typeof songs.$inferSelect): Song {
   return {
     slug: row.slug,
     title: row.title,
@@ -18,6 +25,7 @@ function toSong(row: typeof songs.$inferSelect): Song {
     tags: row.tags,
     canzoniereSlug: row.canzoniereSlug,
     body: row.body,
+    updatedAt: row.updatedAt.toISOString(),
   }
 }
 
@@ -34,12 +42,12 @@ async function songsOf(setlistSlug: string): Promise<string[]> {
 export const dbRepository: SongRepository = {
   async listSongs() {
     const rows = await db().select().from(songs).orderBy(asc(songs.title))
-    return rows.map(toSong)
+    return rows.map(rowToSong)
   },
 
   async getSong(slug) {
     const rows = await db().select().from(songs).where(eq(songs.slug, slug)).limit(1)
-    return rows.length > 0 ? toSong(rows[0]) : null
+    return rows.length > 0 ? rowToSong(rows[0]) : null
   },
 
   async listSetlists() {

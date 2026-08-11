@@ -1,11 +1,10 @@
 import Link from 'next/link'
 
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
-import { CanzonierePicker } from '@/components/CanzonierePicker'
-import { ControlBar } from '@/components/ControlBar'
+import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongEditor } from '@/components/SongEditor'
-import { SongSheet } from '@/components/SongSheet'
+import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
 import { IconChevronLeft, IconChevronRight } from '@/components/icons'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
@@ -39,12 +38,14 @@ interface Series {
 /**
  * The songs of this song's canzoniere, in the order the list has them.
  *
- * Built from the same build-time data as everything else on this page, on
- * purpose: the assignment can change in the database afterwards, and then the
- * header picker will show the new canzoniere while these neighbours still belong
- * to the old one — exactly as stale as the rest of the site, until a publish.
- * Wiring this to the live provider instead would make one strip of the page
- * disagree with the pages it links to.
+ * Built from build-time data, unlike the song's own words, which are refreshed
+ * from the database as soon as the page opens. The difference is deliberate: these
+ * arrows lead to other static pages, and each of those was generated with the same
+ * list this one was. Reading the live assignment here would point the arrows at
+ * songs whose own pages still think they belong somewhere else.
+ *
+ * So the neighbours are as stale as the pages they lead to — which is the only way
+ * for them to agree — while what you are reading is not.
  */
 async function seriesFor(song: Song): Promise<Series | null> {
   const [songs, canzonieri] = await Promise.all([
@@ -119,61 +120,57 @@ export async function SongReader({
   return (
     <PrefsProvider songSlug={song.slug}>
       <CanzoniereProvider initial={initial} refreshOnMount={false}>
-        <TopBar
-          current={setlist ? 'scalette' : 'canzoni'}
-          back={
-            setlist
-              ? {
-                  href: `/scalette/${setlist.slug}`,
-                  label: `${setlist.name} · ${setlist.position} di ${setlist.total}`,
-                }
-              : { href: '/', label: 'Tutte le canzoni' }
-          }
-          steps={steps}
-        />
+        {/*
+          * Keyed by slug: stepping to the next song lands on the same component in
+          * the same place, and without a key React would keep the previous song's
+          * state and show its words under the new title.
+          */}
+        <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
+          <TopBar
+            current={setlist ? 'scalette' : 'canzoni'}
+            back={
+              setlist
+                ? {
+                    href: `/scalette/${setlist.slug}`,
+                    label: `${setlist.name} · ${setlist.position} di ${setlist.total}`,
+                  }
+                : { href: '/', label: 'Tutte le canzoni' }
+            }
+            steps={steps}
+          />
 
-        <main className="mx-auto max-w-3xl px-4 pt-4">
-          <header className="mb-5 border-b pb-4" style={{ borderColor: 'var(--line)' }}>
-            <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">
-              {song.title}
-            </h1>
-            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted">
-              {song.artist !== null && <span>{song.artist}</span>}
-              <CanzonierePicker songSlug={song.slug} />
-              {series !== null && (
-                <span className="text-faint">
-                  {series.position} di {series.total}
-                </span>
-              )}
-            </p>
-          </header>
-
-          <SongSheet song={parsed} originalKey={song.originalKey} />
-
-          {setlist && (
-            <StepNav
-              label="Navigazione nella scaletta"
-              previous={setlist.previous}
-              next={setlist.next}
-              href={(slug) => `/scalette/${setlist.slug}/${slug}`}
+          <main className="mx-auto max-w-3xl px-4 pt-4">
+            <SongHeading
+              series={series === null ? null : { position: series.position, total: series.total }}
             />
-          )}
 
-          {series && (
-            <StepNav
-              label={`Navigazione in ${series.name}`}
-              previous={series.previous}
-              next={series.next}
-              href={(slug) => `/canzoni/${slug}`}
-            />
-          )}
+            <LiveSheet />
 
-          <SongEditor song={song} canzonieri={canzonieri} />
+            {setlist && (
+              <StepNav
+                label="Navigazione nella scaletta"
+                previous={setlist.previous}
+                next={setlist.next}
+                href={(slug) => `/scalette/${setlist.slug}/${slug}`}
+              />
+            )}
 
-          <div className="bar-spacer" />
-        </main>
+            {series && (
+              <StepNav
+                label={`Navigazione in ${series.name}`}
+                previous={series.previous}
+                next={series.next}
+                href={(slug) => `/canzoni/${slug}`}
+              />
+            )}
 
-        <ControlBar originalKey={song.originalKey} />
+            <SongEditor canzonieri={canzonieri} />
+
+            <div className="bar-spacer" />
+          </main>
+
+          <LiveControlBar />
+        </SongProvider>
       </CanzoniereProvider>
     </PrefsProvider>
   )

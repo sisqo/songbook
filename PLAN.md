@@ -1,9 +1,10 @@
 # songs — Piano di implementazione
 
-> **Stato:** v1 e **v1.1 — canzonieri** sono consegnate e in produzione su
-> https://songs.sisqo.dev, e con esse la **v1.2 — import e modifica**. La v1.2 ha
-> cambiato chi possiede un brano: il database, non i file. Va letta prima di toccare
-> il seed.
+> **Stato:** v1, **v1.1 — canzonieri**, **v1.2 — import e modifica** e **v1.3 — le
+> modifiche si vedono subito** sono consegnate e in produzione su
+> https://songs.sisqo.dev. La v1.2 ha cambiato chi possiede un brano: il database, non i
+> file — va letta prima di toccare il seed. La v1.3 ha aggiunto lo strato che mostra la
+> versione del database sopra la pagina statica: va letta prima di toccare la lettura.
 
 ## Cosa è
 
@@ -43,22 +44,29 @@ costruisce da qui.
 
 ### Flusso dei dati
 
-Il punto chiave è che **il DB non sta sul percorso di lettura**:
+Il punto chiave è che **il DB non sta davanti alla lettura**: la pagina si legge subito, e la
+domanda al database viene dopo — se ha una risposta più recente, la si mette sopra.
 
 ```
 build      Neon ──SELECT──▶ generateStaticParams ──▶ /canzoni/[slug] statiche
                         └──▶ /api index di ricerca (JSON statico)
 runtime    lettura  ──▶ pagina statica (o cache del service worker)
-           scrittura ──▶ server action ──▶ Neon   (solo preferenze)
+                     └──▶ server action ──▶ Neon  (la versione corrente, dopo il paint)
+           scrittura ──▶ server action ──▶ Neon   (preferenze, canzonieri, brani)
 ```
 
 Le pagine dei brani sono generate al build leggendo Neon, quindi a runtime la lettura non
-paga né latenza di database né cold start. Il DB viene scritto solo per le preferenze — e
-sono quelle scritture, non le letture, a pagare l'autosuspend di Neon: il primo `+1` dopo un
+paga né latenza di database né cold start: quello che si legge è sullo schermo prima che
+qualsiasi richiesta parta. La domanda «questa canzone è cambiata?» viene fatta dopo, e la
+risposta conta solo se è più recente della pagina — vedi *Pubblicazione*.
+
+Sono le scritture, non le letture, a pagare l'autosuspend di Neon: il primo `+1` dopo un
 periodo di inattività attende il risveglio del database. La coda di scrittura rende
 l'attesa invisibile sullo schermo, ma esiste.
-Dopo una modifica ai contenuti serve una rivalidazione: in v1 la fa il deploy che segue il
-seed, in v2 la farà `revalidatePath()` al salvataggio dall'editor.
+
+Dopo una modifica ai contenuti serve una rivalidazione: la fa il deploy, e dalla v1.3 anche
+`revalidatePath()` al salvataggio — che però non basta da solo, perché non passa davanti al
+service worker.
 
 **Conseguenza da gestire:** le pagine statiche sono identiche per tutti, quindi non possono
 contenere le preferenze dell'utente. La pagina viene servita nella tonalità originale e le
@@ -361,9 +369,11 @@ runtime (server)  { canzonieri: [{slug, name, count}],
 Una rinomina si vede subito; offline si vede l'ultimo stato conosciuto. Il payload è
 minuscolo, dell'ordine di poche centinaia di byte per canzoniere.
 
-`revalidatePath()` sarebbe la risposta standard di Next e **qui non funzionerebbe**: il
+`revalidatePath()` sarebbe la risposta standard di Next e **da sola qui non basterebbe**: il
 service worker serve quelle pagine cache-first, quindi una rigenerazione lato server
-resterebbe invisibile al dispositivo fino al build successivo.
+resterebbe invisibile al dispositivo che ha installato l'app fino al build successivo. Viene
+comunque chiamata dopo ogni scrittura, ma per l'altro tipo di visita — un browser senza
+service worker — che altrimenti riceverebbe la pagina vecchia dalla cache del server.
 
 ### Gestione
 
@@ -482,19 +492,49 @@ brano sopravvivono.
 
 ### Pubblicazione
 
-Un brano nel database non è ancora visibile: lista, indice di ricerca, pagine e precache sono
-tutti generati al build. Quindi l'import **mette in attesa** e la schermata elenca i brani
-non ancora pubblicati; un'azione **Pubblica** chiama un deploy hook di Vercel e un solo build
-li rende tutti pagine statiche, ricercabili e precachate.
+**v1.3.** Il modello «si vede dopo il build» era sbagliato, e sbagliato in un modo che
+sembrava una perdita di dati: correggevi un verso, salvavi, lo spartito non cambiava, e
+riaprendo la modifica ritrovavi le parole vecchie — perché il form era riempito dalla pagina,
+non dal database. La modifica era salva, ma nessuna schermata lo mostrava.
 
-Un modello unico e coerente — i contenuti cambiano, si ricostruisce — che evita di dover
-costruire strati mutabili anche per la lista e per l'indice. E permette di importare cinque
-brani pagando un solo deploy.
+Quindi le pagine restano statiche e precachate, ma sopra ci va uno strato di runtime, lo
+stesso già usato per preferenze e canzonieri:
+
+```
+statico (build)   brani, titoli, testi, accordi, indice di ricerca
+runtime (server)  la canzone aperta, per intero
+                  l'elenco senza i corpi
+                  ↓ cache locale (solo le canzoni, non l'elenco)
+```
+
+La regola che tiene insieme il tutto è **una sola**: si confrontano le versioni,
+`songs.updated_at` del database contro quello con cui la pagina è stata generata. Niente
+timbri, niente orologi del browser. Il timbro in `builds` viene scritto *prima* del build,
+quindi qualsiasi cosa derivata da lui è falsa per tutta la durata di un deploy; e una data
+generata nel browser sarebbe una supposizione su un valore che appartiene al database — e
+vincerebbe per sempre, dato che viene messa in cache. Per questo un salvataggio restituisce
+la riga scritta, non l'input che gli era stato passato.
+
+Ne segue il comportamento giusto senza casi speciali: la copia fresca resta al suo posto per
+tutta la durata del build che la sta incorporando, e si fa da parte da sola quando arriva la
+pagina che la contiene.
+
+La pubblicazione resta, con un compito più stretto: **rendere le modifiche disponibili
+offline**, incorporandole nelle pagine e nel precache. Un solo deploy per cinque import,
+come prima.
 
 Lo stato «in attesa» non è una colonna: è il confronto fra `songs.updated_at` e il timbro in
 `builds`. Ne segue che un deploy fatto per altri motivi, per esempio un push di codice,
-pubblica anche i brani in attesa. È corretto e coerente: la lista si svuota perché quei brani
-sono davvero diventati statici.
+pubblica anche i brani in attesa. E ne segue anche cosa può dire il pulsante: dopo aver
+chiamato il hook, la schermata **aspetta** che la lista si svuoti, che è il momento in cui il
+build che sta girando ha timbrato il database e quindi contiene quei brani. Non dice «è
+online», perché saperlo richiederebbe l'API di Vercel. Prima non aspettava affatto, e la
+lista restava lì immobile: il secondo sintomo del bug.
+
+L'elenco, invece, non viene messo in cache. Una riga lì è la promessa che toccandola si apre
+qualcosa, e un brano importato dopo l'ultimo build non ha una pagina nel precache da aprire
+(online sì: la rotta non è fra quelle generate e Next la genera su richiesta). Quando il
+server non risponde, l'elenco resta quello del build, dove ogni riga porta da qualche parte.
 
 ### Export e ripristino
 
@@ -592,6 +632,25 @@ Consegnata. Il cambio di regime: il database diventa il padrone dei brani.
 Verificato end to end e non assunto: una correzione applicata al database e un brano
 esistente solo lì sono sopravvissuti a `npm run seed`; l'elenco «in attesa» è vuoto
 subito dopo un build e nomina esattamente il brano toccato dopo.
+
+### v1.3 — le modifiche si vedono subito
+
+Consegnata, in risposta a un bug: salvare non cambiava niente sullo schermo e riaprire la
+modifica mostrava le parole vecchie, mentre il pulsante Pubblica lasciava la lista immobile.
+
+1. `songs.updated_at` esposto nel dominio: è la versione con cui la pagina è stata generata
+2. `saveSong` restituisce la riga scritta — canzoniere risolto e data del database compresi
+3. Regola di sovrapposizione pura e testata: vince solo ciò che è più recente della pagina
+4. Provider della canzone letta: pagina → cache locale → database, e il salvataggio applicato
+   subito
+5. Elenco sovrapposto a runtime: brano nuovo, brano rinominato, brano cancellato
+6. `revalidatePath()` dopo ogni scrittura, per chi non ha il service worker
+7. Pubblica attende che il build prenda in carico i brani, e dice solo quello che sa
+
+Verificato su un build di produzione con il service worker installato, non in sviluppo: la
+pagina in precache è ancora quella vecchia — controllato leggendo la Cache API — e sullo
+schermo c'è la correzione. Poi ricarica, riapertura del form, elenco, cancellazione. La
+prova che serviva era proprio questa: battere il precache, non evitarlo per caso.
 
 ### v2 — il resto
 

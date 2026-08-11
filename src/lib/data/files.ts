@@ -43,6 +43,9 @@ function toSong(slug: string, body: string): ParsedFile {
       tags: parsed.tags,
       canzoniereSlug: slugify(canzoniereName) || UNFILED.slug,
       body,
+      // No versions to compare without a database, and nothing to compare them
+      // against: with no database there is no runtime copy of a song either.
+      updatedAt: null,
     },
     canzoniereName,
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import { zipSync, strToU8 } from 'fflate'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { type FormValues, SongForm } from '@/components/SongForm'
 import {
@@ -48,19 +48,29 @@ export function ImportScreen({
   const [pending, setPending] = useState<PendingSong[]>([])
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [online, setOnline] = useState(true)
+  /** Set when this screen goes away, so the watch below stops with it. */
+  const gone = useRef(false)
 
-  const refreshPending = async () => {
+  /** Null when the list could not be read, which is not the same as an empty one. */
+  const refreshPending = useCallback(async (): Promise<PendingSong[] | null> => {
     try {
-      setPending(await loadPending())
+      const fresh = await loadPending()
+      setPending(fresh)
+      return fresh
     } catch {
       // Offline or signed out: leave the list as it is.
+      return null
     }
-  }
+  }, [])
 
   useEffect(() => {
     void refreshPending()
-  }, [])
+    return () => {
+      gone.current = true
+    }
+  }, [refreshPending])
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine)
@@ -93,12 +103,52 @@ export function ImportScreen({
   }
 
   /** Triggers the deploy hook and reports what happened. */
-  const rebuild = async (done: string) => {
+  const fire = async (done: string): Promise<boolean> => {
     setBusy(true)
     setNotice(null)
     const result = await publish()
     setNotice(result.ok ? done : PUBLISH_MESSAGE[result.reason])
     setBusy(false)
+    return result.ok
+  }
+
+  /**
+   * Publishes, then watches the list until the rebuild has taken these songs on.
+   *
+   * Firing the hook changes nothing that this screen can see, which is why the
+   * list used to sit there unchanged and publishing looked like it had failed. What
+   * empties the list is the build itself: it stamps the database as it starts, and
+   * the list is every song written after that stamp.
+   *
+   * So the wait is real and worth showing, and the end of it means the songs are in
+   * the build that is running — not that the site is live. Reporting more than that
+   * would need Vercel's API; the wording here says what is actually known.
+   */
+  const publishPending = async () => {
+    const fired = await fire('Ricostruzione avviata.')
+    if (!fired) return
+
+    setPublishing(true)
+
+    for (let attempt = 0; attempt < 45; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 4000))
+      if (gone.current) return
+
+      const still = await refreshPending()
+      // A read that failed says nothing; only an answered, empty list does.
+      if (still !== null && still.length === 0) {
+        setPublishing(false)
+        setNotice(
+          'Fatto: i brani sono entrati nella ricostruzione. Fra un minuto sono anche nelle pagine e disponibili offline.',
+        )
+        return
+      }
+    }
+
+    setPublishing(false)
+    setNotice(
+      'La ricostruzione non risulta ancora partita. Controlla il deploy su Vercel, oppure riprova.',
+    )
   }
 
   const download = async () => {
@@ -190,7 +240,7 @@ export function ImportScreen({
               if (result.ok) {
                 setPrepared(null)
                 setPasted('')
-                setNotice('Salvato. Comparirà sul sito dopo la pubblicazione.')
+                setNotice('Salvato. È già nell’elenco; pubblica per averlo anche senza connessione.')
                 await refreshPending()
               }
               return result
@@ -202,8 +252,9 @@ export function ImportScreen({
       <section className="mt-8 border-t pt-5" style={{ borderColor: 'var(--line)' }}>
         <h2 className="text-lg font-semibold tracking-tight">In attesa di pubblicazione</h2>
         <p className="mt-1 text-sm text-muted">
-          Lista, ricerca e pagine si generano al build, quindi un brano è visibile solo dopo una
-          ricostruzione. Puoi importarne diversi e pubblicarli in un colpo.
+          Quello che salvi si vede subito, qui e nell’elenco. La pubblicazione serve a ricostruire
+          le pagine: finché non la lanci, questi brani non ci sono senza connessione. Puoi
+          importarne diversi e pubblicarli in un colpo.
         </p>
 
         {pending.length === 0 ? (
@@ -224,15 +275,21 @@ export function ImportScreen({
           </ul>
         )}
 
+        {publishing && (
+          <p className="mt-3 text-sm text-muted" role="status">
+            Pubblicazione in corso: aspetto che la ricostruzione prenda in carico questi brani.
+          </p>
+        )}
+
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!online || busy || pending.length === 0}
-            onClick={() => void rebuild('Ricostruzione avviata. Fra un minuto i brani sono sul sito.')}
+            disabled={!online || busy || publishing || pending.length === 0}
+            onClick={() => void publishPending()}
           >
             <IconPublish size={16} />
-            Pubblica
+            {publishing ? 'Pubblicazione…' : 'Pubblica'}
           </button>
 
           {/*
@@ -244,8 +301,8 @@ export function ImportScreen({
           <button
             type="button"
             className="btn"
-            disabled={!online || busy}
-            onClick={() => void rebuild('Ricostruzione avviata. Fra un minuto il sito è aggiornato.')}
+            disabled={!online || busy || publishing}
+            onClick={() => void fire('Ricostruzione avviata. Fra un minuto il sito è aggiornato.')}
           >
             <IconRebuild size={16} />
             Ricostruisci ora
@@ -254,7 +311,7 @@ export function ImportScreen({
           <button
             type="button"
             className="btn"
-            disabled={!online || busy}
+            disabled={!online || busy || publishing}
             onClick={() => void download()}
           >
             <IconDownload size={16} />

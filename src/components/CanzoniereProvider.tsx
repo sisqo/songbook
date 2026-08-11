@@ -24,6 +24,9 @@ import type { CanzoniereState, WriteResult } from '@/lib/canzonieri/types'
 interface CanzoniereContextValue extends CanzoniereState {
   /** False while the browser reports no connection: management is disabled. */
   online: boolean
+  /** Re-reads the layer. Exposed because saving a song can change its canzoniere. */
+  refresh: () => Promise<void>
+
   create: (name: string) => Promise<WriteResult>
   rename: (slug: string, name: string) => Promise<WriteResult>
   remove: (slug: string, moveTo: string | null) => Promise<WriteResult>
@@ -50,11 +53,16 @@ export function CanzoniereProvider({
   /** Snapshot from build time, so the first paint is already right. */
   initial: CanzoniereState
   /**
-   * False on the reading pages. A song page needs the list and this song's
-   * assignment, both already baked in, so fetching on mount would put a server
-   * round trip on the reading path — exactly what static pages plus precache
-   * exist to avoid. A write still refreshes, because then there is something new
-   * to learn.
+   * False on the reading pages, where the round trip is spent on the song itself.
+   *
+   * A song page asks the server for its own content, because words and chords that
+   * disagree with the database are the bug this layer exists to prevent. Which
+   * canzoniere the song sits in is a different matter: the header would then name
+   * a canzoniere whose songs the arrows still step through as they were at build
+   * time, so one strip of the page would contradict the pages it links to.
+   *
+   * A write refreshes anyway — including a save that moves the song — because then
+   * there is something new to learn.
    */
   refreshOnMount?: boolean
   children: ReactNode
@@ -113,6 +121,7 @@ export function CanzoniereProvider({
     () => ({
       ...state,
       online,
+      refresh,
       create: async (name) => afterWrite(await createCanzoniere(name)),
       rename: async (slug, name) => afterWrite(await renameCanzoniere(slug, name)),
       remove: async (slug, moveTo) => afterWrite(await removeCanzoniere(slug, moveTo)),
@@ -121,7 +130,7 @@ export function CanzoniereProvider({
       nameOf: (slug) =>
         slug == null ? null : (state.canzonieri.find((entry) => entry.slug === slug)?.name ?? null),
     }),
-    [state, online, afterWrite],
+    [state, online, refresh, afterWrite],
   )
 
   return <CanzoniereContext.Provider value={value}>{children}</CanzoniereContext.Provider>

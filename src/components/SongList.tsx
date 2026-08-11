@@ -6,19 +6,11 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { usePrefs } from '@/components/PrefsProvider'
 import { IconChevronDown, IconSearch } from '@/components/icons'
+import { loadSongIndex } from '@/lib/library/actions'
+import { mergeIndex } from '@/lib/library/overlay'
 import { formatKey } from '@/lib/music/chord'
 import { parseKey } from '@/lib/music/notes'
-
-/** One row of the index, prepared at build time. */
-export interface SongIndexEntry {
-  slug: string
-  title: string
-  artist: string | null
-  originalKey: string | null
-  tags: string[]
-  /** Lyrics with chords stripped, lowercased, for matching. */
-  haystack: string
-}
+import type { SongIndexEntry } from '@/lib/search-index'
 
 /**
  * The key a song is grouped under. Songs with no canzoniere share the empty
@@ -46,11 +38,16 @@ function formatKeyLabel(raw: string, notation: 'it' | 'int'): string {
  * has to stay static to be precached. That is also what makes the back button
  * return to an open canzoniere instead of a closed one, and why `c` belongs in
  * Serwist's `ignoreURLParametersMatching`.
+ *
+ * The list the build baked in is only the starting point: what the database holds
+ * now is laid over it on mount, so a song imported or renamed since the last
+ * publish is not missing from the one screen whose job is finding songs.
  */
-export function SongList({ songs }: { songs: SongIndexEntry[] }) {
+export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
   const { global } = usePrefs()
   const { canzonieri, assignments, nameOf } = useCanzonieri()
 
+  const [songs, setSongs] = useState(baked)
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const deferred = useDeferredValue(query)
@@ -59,6 +56,33 @@ export function SongList({ songs }: { songs: SongIndexEntry[] }) {
     const fromUrl = new URLSearchParams(window.location.search).get('c')
     if (fromUrl !== null) setOpen(fromUrl)
   }, [])
+
+  /**
+   * What the database holds now, over the list the build baked in: a song
+   * imported since then gets a row, a deleted one loses it, and a retitled one
+   * shows its new title.
+   *
+   * Nothing is cached. A row here is a promise that tapping it opens something,
+   * and a song added since the last build has no page in the precache to open —
+   * so when the server cannot be reached, the list stays as the build left it,
+   * where every row leads somewhere.
+   */
+  useEffect(() => {
+    let alive = true
+
+    void (async () => {
+      try {
+        const live = await loadSongIndex()
+        if (alive && live !== null) setSongs(mergeIndex(baked, live))
+      } catch {
+        // Offline or signed out: the baked list still stands.
+      }
+    })()
+
+    return () => {
+      alive = false
+    }
+  }, [baked])
 
   const toggle = (key: string) => {
     const next = open === key ? null : key

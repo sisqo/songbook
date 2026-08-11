@@ -13,6 +13,8 @@ const song: Song = {
   tags: ['lento'],
   canzoniereSlug: 'repertorio',
   body: '{title: Vecchio titolo}\n{key: G}\n\n[Am]Certe notti',
+  // An export is a file: nothing in it says which version it came from.
+  updatedAt: '2026-08-11T06:00:00.000Z',
 }
 
 describe('toChoproFile', () => {
