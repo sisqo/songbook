@@ -115,17 +115,21 @@ in uno c'è già nell'altro.
 
 - **Grafico** — lo spartito modificabile. Le parole sono campi di testo veri, quindi
   cursore, selezione e tastiera del telefono funzionano come dovrebbero; gli accordi
-  stanno nella riga sopra, ognuno appeso alla lettera cui appartiene. Toccane uno per
-  cambiarlo, svuotalo per toglierlo. Invio divide la riga, Backspace a inizio riga la
-  unisce a quella sopra.
+  stanno nella riga sopra, ognuno appeso alla lettera cui appartiene.
+  - **Tocca la riga degli accordi** sopra una sillaba per metterne uno lì.
+  - Tocca un accordo per cambiarlo; **‹ ›** lo spostano di una lettera (o Alt con le
+    frecce), e svuotarlo lo toglie.
+  - Ogni riga che non è testo — stacco, inizio e fine di ritornello, direttive —
+    ha il suo **×**.
+  - Invio divide la riga, Backspace a inizio riga la unisce a quella sopra.
 - **Sorgente** — il ChordPro come sta nel file, senza aiuti.
 - **Anteprima** — il brano come si legge, con la barra dei controlli vera. Trasporre
   qui trasporta davvero: è la stessa preferenza che ti ritrovi sul palco.
 
 I comandi agiscono sulla riga dove sta il cursore, in entrambe le modalità di
-modifica: **Accordo** (dove sei), **Ritornello** e **Ponte** (marcano il blocco di
-righe fra due stacchi, e premuti di nuovo lo smarcano), **Commento**, **Elimina
-riga**. C'è **Annulla**: un passo per comando, e uno per ogni raffica di scrittura
+modifica: **Accordo** (dove sei, l'equivalente da tastiera del tocco sulla riga),
+**Ritornello** e **Ponte** (marcano il blocco di righe fra due stacchi, e premuti di
+nuovo lo smarcano), **Commento**, **Elimina riga**. C'è **Annulla**: un passo per comando, e uno per ogni raffica di scrittura
 invece di uno per lettera.
 
 Uscire con modifiche non salvate chiede conferma — anche dall'header e dal menù, che

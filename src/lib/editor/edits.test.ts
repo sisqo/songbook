@@ -5,7 +5,9 @@ import { parseChordPro } from '../chordpro'
 import { fromSource, toSource } from './document'
 import {
   addChord,
+  chordIndexAt,
   joinLines,
+  moveChord,
   removeChord,
   removeLine,
   setChord,
@@ -59,6 +61,56 @@ describe('the chords themselves', () => {
 
   it('removes one by hand', () => {
     assert.equal(edit('[la]x[mi]y', (doc) => removeChord(doc, 0, 1)), '[la]xy')
+  })
+})
+
+describe('moving a chord along its line', () => {
+  const move = (source: string, chord: number, delta: number) => {
+    const result = moveChord(fromSource(source), 0, chord, delta)
+    return { source: toSource(result.document), chord: result.chord }
+  }
+
+  it('goes one letter forward', () => {
+    assert.equal(move('[la]castello', 0, 1).source, 'c[la]astello')
+  })
+
+  it('and one letter back', () => {
+    assert.equal(move('c[la]astello', 0, -1).source, '[la]castello')
+  })
+
+  it('stops at the start of the line', () => {
+    const result = move('[la]castello', 0, -5)
+    assert.equal(result.source, '[la]castello')
+  })
+
+  it('stops at the end of it', () => {
+    assert.equal(move('castell[la]o', 0, 5).source, 'castello[la]')
+  })
+
+  it('says where the chord went when it overtakes another', () => {
+    // `la` starts first and ends up second, so the index the caller holds must move.
+    const result = move('[la]ca[mi]stello', 0, 4)
+    assert.equal(result.source, 'ca[mi]st[la]ello')
+    assert.equal(result.chord, 1)
+  })
+
+  it('keeps its place when it overtakes nothing', () => {
+    const result = move('[la]ca[mi]stello', 0, 1)
+    assert.equal(result.chord, 0)
+  })
+})
+
+describe('where a new chord lands in the list', () => {
+  it('counts the ones already at or before that letter', () => {
+    const chords = [
+      { at: 0, name: 'la' },
+      { at: 4, name: 'mi' },
+    ]
+
+    assert.equal(chordIndexAt(chords, 0), 1)
+    assert.equal(chordIndexAt(chords, 2), 1)
+    assert.equal(chordIndexAt(chords, 4), 2)
+    assert.equal(chordIndexAt([], 0), 0)
   })
 })
 

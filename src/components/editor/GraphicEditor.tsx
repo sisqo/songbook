@@ -10,7 +10,52 @@ import {
   sectionsOf,
   toSource,
 } from '@/lib/editor/document'
-import { insertLineAfter, joinLines, setChord, setLineText, splitLine } from '@/lib/editor/edits'
+import {
+  addChord,
+  chordIndexAt,
+  insertLineAfter,
+  joinLines,
+  moveChord,
+  removeLine,
+  setChord,
+  setLineText,
+  splitLine,
+} from '@/lib/editor/edits'
+
+/**
+ * Which letter of a line a click landed on.
+ *
+ * The chords are *positioned* by the browser, using a hidden copy of the words, and
+ * that needs no measuring. Going the other way — from a point back to a letter —
+ * has no such trick, so this measures with a canvas set to the input's own font. The
+ * same measurement, in a test, agrees with the browser's layout to a tenth of a
+ * pixel; and a chord landing a letter off can be nudged with the arrows next to it.
+ */
+function letterAt(row: HTMLElement, clientX: number): number | null {
+  const input = row.parentElement?.querySelector<HTMLInputElement>('.line-input')
+  if (input == null) return null
+
+  const context = document.createElement('canvas').getContext('2d')
+  if (context === null) return null
+
+  const style = window.getComputedStyle(input)
+  context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+
+  const x = clientX - input.getBoundingClientRect().left
+  const text = input.value
+
+  let best = 0
+  let smallest = Infinity
+  for (let at = 0; at <= text.length; at += 1) {
+    const gap = Math.abs(context.measureText(text.slice(0, at)).width - x)
+    if (gap < smallest) {
+      smallest = gap
+      best = at
+    }
+  }
+
+  return best
+}
 
 export interface Caret {
   /** Index of the block the cursor is in. */
@@ -87,6 +132,21 @@ export function GraphicEditor({
               apply(setChord(doc, index, chord, name))
               onEditing(null)
             }}
+            onAddChord={(at) => {
+              const block = doc.blocks[index]
+              if (block.kind !== 'lyrics') return
+
+              // Opened for typing straight away: an empty chord is a chord you are
+              // in the middle of naming, and leaving it empty takes it back off.
+              onEditing({ line: index, chord: chordIndexAt(block.chords, at) })
+              apply(addChord(doc, index, at))
+            }}
+            onMoveChord={(chord, delta) => {
+              const moved = moveChord(doc, index, chord, delta)
+              // Passing another chord changes which one this index means.
+              onEditing({ line: index, chord: moved.chord })
+              apply(moved.document)
+            }}
             onText={(text, at) => {
               onCaret({ line: index, at })
               apply(setLineText(doc, index, text), `typing:${index}`)
@@ -103,6 +163,7 @@ export function GraphicEditor({
               wanted.current = { line: index - 1, at: previous.text.length }
               apply(joinLines(doc, index))
             }}
+            onRemove={() => apply(removeLine(doc, index))}
           />
         </Fragment>
       ))}
@@ -133,10 +194,13 @@ function BlockRow({
   editing,
   onEditChord,
   onChordName,
+  onAddChord,
+  onMoveChord,
   onText,
   onCaret,
   onSplit,
   onJoin,
+  onRemove,
 }: {
   block: Block
   index: number
@@ -145,48 +209,55 @@ function BlockRow({
   editing: number | null
   onEditChord: (chord: number | null) => void
   onChordName: (chord: number, name: string) => void
+  onAddChord: (at: number) => void
+  onMoveChord: (chord: number, delta: number) => void
   onText: (text: string, at: number) => void
   onCaret: (at: number) => void
   onSplit: (at: number) => void
   onJoin: () => void
+  onRemove: () => void
 }) {
   const classes = `editor-line is-${section}${focused ? ' is-focused' : ''}`
 
-  if (block.kind === 'blank') {
-    return (
-      <div className={classes} data-line={index}>
-        <button
-          type="button"
-          className="editor-aside w-full text-start"
-          onClick={() => onCaret(0)}
-          aria-label="Riga vuota: separa due strofe"
-        >
-          <span className="editor-hint">— stacco —</span>
-        </button>
-      </div>
-    )
-  }
+  /**
+   * The lines that are not words: a blank, a chorus marker, a directive.
+   *
+   * Each carries its own × . The toolbar can delete the line the cursor is on and
+   * always could, but nobody found it there — a row you can see is a row you can
+   * remove.
+   */
+  if (block.kind === 'blank' || block.kind === 'boundary' || block.kind === 'directive') {
+    const section = block.kind === 'boundary' && block.section === 'chorus' ? 'ritornello' : 'ponte'
 
-  if (block.kind === 'boundary') {
-    const label = block.section === 'chorus' ? 'ritornello' : 'ponte'
     return (
       <div className={classes} data-line={index}>
-        <button type="button" className="editor-aside w-full text-start" onClick={() => onCaret(0)}>
-          <span className="badge">
-            {block.edge === 'start' ? `inizio ${label}` : `fine ${label}`}
-          </span>
-        </button>
-      </div>
-    )
-  }
+        <button type="button" className="editor-aside flex-1 text-start" onClick={() => onCaret(0)}>
+          {block.kind === 'blank' && <span className="editor-hint">— stacco —</span>}
 
-  if (block.kind === 'directive') {
-    return (
-      <div className={classes} data-line={index}>
-        <button type="button" className="editor-aside w-full text-start" onClick={() => onCaret(0)}>
+          {block.kind === 'boundary' && (
+            <span className="badge">
+              {block.edge === 'start' ? `inizio ${section}` : `fine ${section}`}
+            </span>
+          )}
+
           {/* Shown rather than hidden: it is in the file, so it is on the screen.
               Its text is edited in Sorgente, where a directive is just a line. */}
-          <code className="editor-hint">{block.raw.trim()}</code>
+          {block.kind === 'directive' && <code className="editor-hint">{block.raw.trim()}</code>}
+        </button>
+
+        <button
+          type="button"
+          className="line-remove"
+          onClick={onRemove}
+          aria-label={
+            block.kind === 'blank'
+              ? 'Elimina questo stacco'
+              : block.kind === 'boundary'
+                ? 'Elimina questa marcatura'
+                : 'Elimina questa direttiva'
+          }
+        >
+          ×
         </button>
       </div>
     )
@@ -231,6 +302,8 @@ function BlockRow({
             editing={editing}
             onEdit={onEditChord}
             onName={onChordName}
+            onAddAt={onAddChord}
+            onMove={onMoveChord}
           />
 
           <input
@@ -287,12 +360,16 @@ function ChordRow({
   editing,
   onEdit,
   onName,
+  onAddAt,
+  onMove,
 }: {
   text: string
   chords: { at: number; name: string }[]
   editing: number | null
   onEdit: (chord: number | null) => void
   onName: (chord: number, name: string) => void
+  onAddAt: (at: number) => void
+  onMove: (chord: number, delta: number) => void
 }) {
   const ordered = chords
     .map((chord, index) => ({ ...chord, index }))
@@ -313,12 +390,20 @@ function ChordRow({
     pieces.push(
       <span className="chord-anchor" key={`c${chord.index}`}>
         {editing === chord.index ? (
-          <ChordField name={chord.name} onDone={(name) => onName(chord.index, name)} />
+          <ChordField
+            name={chord.name}
+            onDone={(name) => onName(chord.index, name)}
+            onMove={(delta) => onMove(chord.index, delta)}
+          />
         ) : (
           <button
             type="button"
             className="chord-chip"
-            onClick={() => onEdit(chord.index)}
+            /* The row below adds a chord; a chip opens the one already there. */
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit(chord.index)
+            }}
             aria-label={`Accordo ${chord.name || 'vuoto'}, modifica`}
           >
             {chord.name || '—'}
@@ -335,37 +420,97 @@ function ChordRow({
   )
 
   return (
-    <div className="chord-row">
+    /*
+     * Tapping the row puts a chord on the syllable under the finger. It is the
+     * gesture the row is asking for, and the toolbar button is the same thing for
+     * whoever is on a keyboard.
+     */
+    <div
+      className="chord-row"
+      onClick={(event) => {
+        const at = letterAt(event.currentTarget, event.clientX)
+        if (at !== null) onAddAt(at)
+      }}
+      role="presentation"
+    >
       <span className="chord-ghost">{pieces}</span>
     </div>
   )
 }
 
-/** Typing a chord. Empty and confirmed means the chord goes away. */
-function ChordField({ name, onDone }: { name: string; onDone: (name: string) => void }) {
+/**
+ * Typing a chord, and moving it.
+ *
+ * Empty and confirmed means the chord goes away — that is how one comes off a
+ * syllable. The two arrows nudge it a letter at a time; they keep the field focused
+ * on purpose, since losing focus would commit and close the very thing being moved.
+ */
+function ChordField({
+  name,
+  onDone,
+  onMove,
+}: {
+  name: string
+  onDone: (name: string) => void
+  onMove: (delta: number) => void
+}) {
   const [value, setValue] = useState(name)
 
+  const nudge = (delta: number) => (event: React.MouseEvent) => {
+    // Before focus moves, so the field survives the press.
+    event.preventDefault()
+    event.stopPropagation()
+    onMove(delta)
+  }
+
   return (
-    <input
-      className="chord-field"
-      value={value}
-      autoFocus
-      spellCheck={false}
-      autoCapitalize="off"
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => onDone(value)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === 'Tab') {
-          event.preventDefault()
-          onDone(value)
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          onDone(name)
-        }
-      }}
-      aria-label="Nome dell'accordo"
-    />
+    <span className="chord-editing" onClick={(event) => event.stopPropagation()}>
+      <input
+        className="chord-field"
+        value={value}
+        autoFocus
+        spellCheck={false}
+        autoCapitalize="off"
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={() => onDone(value)}
+        onKeyDown={(event) => {
+          // Alt with an arrow moves the chord; the arrows alone move the cursor
+          // inside the name, which is what they are for while typing.
+          if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+            event.preventDefault()
+            onMove(event.key === 'ArrowLeft' ? -1 : 1)
+            return
+          }
+
+          if (event.key === 'Enter' || event.key === 'Tab') {
+            event.preventDefault()
+            onDone(value)
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            onDone(name)
+          }
+        }}
+        aria-label="Nome dell'accordo"
+      />
+
+      <button
+        type="button"
+        className="chord-nudge"
+        onMouseDown={nudge(-1)}
+        aria-label="Sposta l'accordo di una lettera a sinistra"
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        className="chord-nudge"
+        onMouseDown={nudge(1)}
+        aria-label="Sposta l'accordo di una lettera a destra"
+      >
+        ›
+      </button>
+    </span>
   )
 }
 

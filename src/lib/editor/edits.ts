@@ -45,6 +45,18 @@ export function setLineText(document: SongDocument, index: number, text: string)
   })
 }
 
+/**
+ * Where a chord sitting at `at` ends up in the list once the line has been written
+ * out and read back.
+ *
+ * The order is positional, so a new chord goes after any already at the same letter.
+ * The editor needs this to keep pointing at the chord it just made while the user
+ * types its name.
+ */
+export function chordIndexAt(chords: ChordAt[], at: number): number {
+  return chords.filter((chord) => chord.at <= at).length
+}
+
 export function addChord(
   document: SongDocument,
   index: number,
@@ -77,6 +89,39 @@ export function setChord(
     at === chord ? { ...entry, name: name.trim() } : entry,
   )
   return replace(document, index, { ...block, chords })
+}
+
+/**
+ * Nudges a chord along its line, a letter at a time.
+ *
+ * Returns the chord's new index as well as the document, because moving one past
+ * another changes which is first: the list is ordered by position, so the index the
+ * caller was holding would quietly come to mean the other chord. The order is worked
+ * out the same way writing and re-reading the line would — by position, ties in the
+ * order they were already in.
+ */
+export function moveChord(
+  document: SongDocument,
+  index: number,
+  chord: number,
+  delta: number,
+): { document: SongDocument; chord: number } {
+  const block = lyricsAt(document, index)
+  if (block === null || block.chords[chord] === undefined) return { document, chord }
+
+  const at = Math.max(0, Math.min(block.text.length, block.chords[chord].at + delta))
+  const chords = block.chords.map((entry, position) =>
+    position === chord ? { ...entry, at } : entry,
+  )
+
+  const ordered = chords
+    .map((entry, position) => ({ entry, position }))
+    .sort((a, b) => a.entry.at - b.entry.at || a.position - b.position)
+
+  return {
+    document: replace(document, index, { ...block, chords }),
+    chord: ordered.findIndex((entry) => entry.position === chord),
+  }
 }
 
 export function removeChord(document: SongDocument, index: number, chord: number): SongDocument {

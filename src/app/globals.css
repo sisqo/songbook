@@ -1070,10 +1070,38 @@
     }
   }
 
-  .chord-field {
+  /* The name and its two arrows, kept together at the letter the chord sits on. */
+  .chord-editing {
     position: absolute;
     inset-block-end: -0.2rem;
     inset-inline-start: 0;
+    visibility: visible;
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+  }
+
+  .chord-nudge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.9rem;
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  @media (hover: hover) {
+    .chord-nudge:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+  }
+
+  .chord-field {
     visibility: visible;
     width: 5ch;
     padding: 0.1rem 0.2rem;
@@ -1107,6 +1135,32 @@
 
   .line-input::placeholder {
     color: var(--faint);
+  }
+
+  /* The × that takes a stacco, a marker or a directive away. */
+  .line-remove {
+    flex: none;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: var(--r-sm);
+    color: var(--faint);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  @media (hover: hover) {
+    .line-remove:hover {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+  }
+
+  /*
+   * The chord row is a target now: tapping it puts a chord on the syllable under the
+   * finger, so it needs to be worth aiming at even on a line with no chords yet.
+   */
+  .chord-row {
+    cursor: text;
   }
 
   /* A comment, a directive, a blank: lines that are not words with chords. */

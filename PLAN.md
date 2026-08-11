@@ -672,9 +672,10 @@ con tre modalità sopra un'unica sorgente: **Grafico**, **Sorgente**, **Anteprim
 4. Sorgente: il ChordPro, con gli stessi comandi
 5. Anteprima: lo spartito e la barra dei controlli veri
 6. Rotta dinamica, esclusa dal precache anche a runtime
-7. Annulla, con la scrittura raggruppata in un passo per raffica
-8. Guardia sull'uscita con modifiche non salvate, header e menù compresi
-9. Set di icone generato da uno script, con favicon vero al posto di quello di Next
+7. Accordi: si mettono toccando la riga sopra la sillaba, si spostano con due frecce
+8. Annulla, con la scrittura raggruppata in un passo per raffica
+9. Guardia sull'uscita con modifiche non salvate, header e menù compresi
+10. Set di icone generato da uno script, con favicon vero al posto di quello di Next
 
 **La copia nascosta.** Gli accordi devono stare sopra la sillaba giusta, ma le parole sono
 dentro un `input`, e dentro un input non ci sono nodi di testo su cui appendere qualcosa. La
@@ -695,6 +696,20 @@ Un editor precachato invece mostrerebbe le parole dell'ultimo deploy e poi non r
 salvare quelle nuove: peggio di una pagina che si rifiuta di aprirsi. Serve anche una regola
 nel service worker, perché le regole di default se lo prendevano comunque — trovato nella
 cache `others`, non immaginato.
+
+**Dal punto alla lettera.** Mettere un accordo *posizionandolo* non richiede misure — la
+copia nascosta fa tutto. La direzione opposta, da un tocco alla lettera sotto il dito, non
+ha lo stesso trucco: lì si misura con un canvas impostato sul font del campo. Che sia la
+stessa cosa che fa il browser è verificato, non sperato — `caretPositionFromPoint` dà la
+stessa lettera dello stesso punto — e un accordo finito una lettera più in là si sposta con
+le frecce accanto al nome, che tengono il campo aperto perché perdere il fuoco chiuderebbe
+proprio la cosa che si sta spostando. Spostarne uno oltre un altro cambia quale dei due
+viene prima, quindi l'operazione restituisce anche il nuovo indice: senza, il campo aperto
+si troverebbe a modificare l'accordo sbagliato.
+
+**Le righe che non sono testo.** Stacchi, marcature e direttive si potevano già eliminare —
+click sulla riga, poi *Elimina riga* — ma nessuno lo trovava, e una funzione che non si trova
+è una funzione che non c'è. Ora ognuna porta il suo ×.
 
 **La guardia sull'uscita.** `beforeunload` copre solo l'uscita dal sito. Ogni link
 dell'header è una navigazione interna e non fa scattare niente: con mezzo verso scritto,
