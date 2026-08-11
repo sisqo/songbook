@@ -66,7 +66,12 @@ export function ImportScreen({
   }, [])
 
   useEffect(() => {
+    // Set again on every run, not just once: in development the effect is mounted,
+    // cleaned up and mounted again, and a flag left true would stop the watch below
+    // on its first turn — leaving the button stuck on "Pubblicazione…" for good.
+    gone.current = false
     void refreshPending()
+
     return () => {
       gone.current = true
     }

@@ -65,7 +65,12 @@ async function resolveCanzoniere(slug: string): Promise<string> {
 }
 
 /**
- * Drops the server's cached copy of the pages a song appears on.
+ * Drops the server's cached copy of the song's own page and of the list.
+ *
+ * Not of `/scalette/<scaletta>/<brano>`, which shows the same song: reaching those
+ * would mean looking up every setlist the song is in. The runtime overlay covers
+ * them, so what is left behind is the server's cache for a visit with no service
+ * worker — a narrower gap than the round trip to find them.
  *
  * This is not what makes an edit visible: a browser that installed the app keeps
  * serving the page precached at the last deploy, and only the runtime overlay
@@ -122,7 +127,16 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
       canzoniereSlug: await resolveCanzoniere(input.canzoniereSlug),
       body: input.body,
-      updatedAt: new Date(),
+      /**
+       * The database's clock, not this server's.
+       *
+       * This column is the version the reading page compares itself against, and a
+       * comparison is only sound if both sides were stamped by the same clock. Two
+       * app instances a second apart would otherwise be enough for a real edit to
+       * look older than the page it is meant to replace, and it would then be
+       * ignored — the exact bug this was written to fix.
+       */
+      updatedAt: sql`now()`,
     }
 
     // Editing a known song: update in place and keep the slug, which is what

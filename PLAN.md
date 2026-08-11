@@ -531,7 +531,12 @@ build che sta girando ha timbrato il database e quindi contiene quei brani. Non 
 online», perché saperlo richiederebbe l'API di Vercel. Prima non aspettava affatto, e la
 lista restava lì immobile: il secondo sintomo del bug.
 
-L'elenco, invece, non viene messo in cache. Una riga lì è la promessa che toccandola si apre
+Resta fuori l'elenco **dentro una scaletta**: i titoli lì vengono dal build, quindi un brano
+rinominato compare col nome vecchio finché non si pubblica. Aprirlo dà la versione giusta —
+la pagina del brano ha il suo strato — ed è per questo che la riga può aspettare: raggiungere
+quelle pagine dalla scrittura vorrebbe dire cercare in quali scalette sta il brano.
+
+L'elenco in home, invece, non viene messo in cache. Una riga lì è la promessa che toccandola si apre
 qualcosa, e un brano importato dopo l'ultimo build non ha una pagina nel precache da aprire
 (online sì: la rotta non è fra quelle generate e Next la genera su richiesta). Quando il
 server non risponde, l'elenco resta quello del build, dove ogni riga porta da qualche parte.

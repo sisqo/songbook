@@ -1,25 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import type { Song } from '../data/types'
 import type { SongIndexEntry } from '../search-index'
-import { type SongIndexRow, isNewer, liveHaystack, mergeIndex, pick } from './overlay'
+import { type SongIndexRow, isNewer, liveHaystack, mergeIndex } from './overlay'
 
 const BUILT = '2026-08-11T06:00:00.000Z'
 const LATER = '2026-08-11T07:00:00.000Z'
-
-function song(updatedAt: string | null, body = 'originale'): Song {
-  return {
-    slug: 'certe-notti',
-    title: 'Certe notti',
-    artist: 'Ligabue',
-    originalKey: 'C',
-    tags: [],
-    canzoniereSlug: 'repertorio',
-    body,
-    updatedAt,
-  }
-}
 
 function entry(slug: string, title: string, updatedAt: string | null): SongIndexEntry {
   return {
@@ -70,30 +56,6 @@ describe('isNewer', () => {
   it('never prefers a version that cannot say when it was written', () => {
     assert.equal(isNewer({ updatedAt: null }, { updatedAt: BUILT }), false)
     assert.equal(isNewer({ updatedAt: null }, { updatedAt: null }), false)
-  })
-})
-
-describe('pick', () => {
-  it('shows an edit made after the build', () => {
-    const edited = song(LATER, 'corretto')
-    assert.equal(pick(song(BUILT), edited).body, 'corretto')
-  })
-
-  it('drops the edit once the build has caught up', () => {
-    // What the browser cached is now exactly what the page ships.
-    const cached = song(BUILT, 'corretto')
-    assert.equal(pick(song(BUILT, 'corretto'), cached).updatedAt, BUILT)
-    assert.equal(pick(song(LATER, 'più recente'), cached).body, 'più recente')
-  })
-
-  it('ignores nothing at all', () => {
-    assert.equal(pick(song(BUILT), null).body, 'originale')
-    assert.equal(pick(song(BUILT), undefined).body, 'originale')
-  })
-
-  it('ignores a candidate for a different song', () => {
-    const other = { ...song(LATER, 'un altro brano'), slug: 'balla-linda' }
-    assert.equal(pick(song(BUILT), other).body, 'originale')
   })
 })
 

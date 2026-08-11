@@ -17,7 +17,7 @@ import type { Song } from '@/lib/data/types'
 import { deleteSong, saveSong } from '@/lib/import/actions'
 import type { Decision, DeleteResult, SaveResult, SongInput } from '@/lib/import/types'
 import { loadSongContent } from '@/lib/library/actions'
-import { isNewer, pick } from '@/lib/library/overlay'
+import { isNewer } from '@/lib/library/overlay'
 import { dropEdit, readEdit, writeEdit } from '@/lib/library/store'
 
 interface SongContextValue {
@@ -40,10 +40,11 @@ const SongContext = createContext<SongContextValue | null>(null)
  * the sheet did not change, and reopening the form showed the old words back
  * again, because the form was filled from the page rather than from the database.
  *
- * Three sources, in this order, each only if it is genuinely newer than the last:
- * the copy baked into the page, the copy this browser cached the last time it
- * learned of an edit, then the database. And a save applies its own result
- * straight away, which is what makes the sheet change under your hands.
+ * Three sources: the copy baked into the page, the copy this browser cached the
+ * last time it learned of an edit, then the database — each shown only if it is
+ * newer than the baked one. A save is the exception and applies its result at once,
+ * since the server has just said what it persisted; that is what makes the sheet
+ * change under your hands.
  *
  * "Newer" is always measured against the baked copy — never against the cache, and
  * never against a clock in the browser. That is what lets the cached edit survive
@@ -132,7 +133,13 @@ export function SongProvider({
       const result = await saveSong(input, decision)
       if (!result.ok) return result
 
-      setSong(pick(baked, result.song))
+      /**
+       * Shown unconditionally: the server has just said what it persisted, so there
+       * is nothing to compare it against. Only whether to *cache* it is a question
+       * of versions — and the answer being no would mean the page already carries
+       * these words.
+       */
+      setSong(result.song)
       if (isNewer(result.song, baked)) writeEdit(result.song)
       else dropEdit(baked.slug)
 

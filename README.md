@@ -101,6 +101,11 @@ Le scalette sono file YAML in `content/setlists/` con un nome e l'elenco ordinat
 degli slug, e restano **trasversali**: possono mescolare brani di canzonieri
 diversi. In v1 sono in sola lettura: cambiarle richiede un commit.
 
+Una cosa che resta ferma al build: **l'elenco dentro una scaletta** mostra i titoli
+come erano all'ultima pubblicazione, quindi un brano rinominato compare lì col nome
+vecchio finché non pubblichi. Aprendolo, il brano è quello giusto e aggiornato — è
+solo la riga dell'elenco a restare indietro.
+
 ## Canzonieri
 
 Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da

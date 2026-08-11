@@ -8,7 +8,7 @@
  * library structure rather than per-reader preferences.
  */
 
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 
 import { auth } from '@/auth'
 import { db, hasDatabase } from '@/lib/db/client'
@@ -99,7 +99,7 @@ export async function moveSong(songSlug: string, canzoniereSlug: string): Promis
   try {
     const updated = await db()
       .update(songs)
-      .set({ canzoniereSlug, updatedAt: new Date() })
+      .set({ canzoniereSlug, updatedAt: sql`now()` })
       .where(eq(songs.slug, songSlug))
       .returning({ slug: songs.slug })
 
@@ -148,7 +148,7 @@ export async function removeCanzoniere(
 
         await tx
           .update(songs)
-          .set({ canzoniereSlug: moveTo, updatedAt: new Date() })
+          .set({ canzoniereSlug: moveTo, updatedAt: sql`now()` })
           .where(eq(songs.canzoniereSlug, slug))
       }
 

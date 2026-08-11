@@ -10,6 +10,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { sql } from 'drizzle-orm'
+
 import { loadEnv } from './load-env'
 
 async function main() {
@@ -52,15 +54,21 @@ async function main() {
    * pages are generated and therefore knows exactly which songs they will
    * contain: anything written to the database after this moment is genuinely not
    * in the build, and the import screen should keep listing it as pending.
+   *
+   * The instant comes from the database, like `songs.updated_at`, because the
+   * pending list compares the two. A build machine whose clock ran a second ahead
+   * would otherwise stamp the future and quietly call a song published that it had
+   * not read.
    */
   if (hasDatabase) {
-    const builtAt = new Date()
     try {
-      await db()
+      const [stamped] = await db()
         .insert(builds)
-        .values({ id: 'last', builtAt })
-        .onConflictDoUpdate({ target: builds.id, set: { builtAt } })
-      console.log(`Build stamped at ${builtAt.toISOString()}`)
+        .values({ id: 'last', builtAt: sql`now()` })
+        .onConflictDoUpdate({ target: builds.id, set: { builtAt: sql`now()` } })
+        .returning({ builtAt: builds.builtAt })
+
+      console.log(`Build stamped at ${stamped.builtAt.toISOString()}`)
     } catch (error) {
       /**
        * The stamp is not load-bearing for generating pages: without it the import

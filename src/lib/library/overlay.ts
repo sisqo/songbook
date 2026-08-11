@@ -44,6 +44,9 @@ interface Versioned {
  *
  * Both timestamps come from the same column through `toISOString`, which is
  * fixed-width and always UTC, so comparing the strings is comparing the instants.
+ * And that column is written by the database's own clock — see the writes in
+ * `import/actions.ts` — so the two instants are on the same clock, not on two
+ * machines' guesses about the time.
  *
  * The two null cases are not symmetrical. A `fresh` without a timestamp cannot be
  * shown to be newer, so it loses. A `baked` without one means the page was
@@ -54,18 +57,6 @@ export function isNewer(fresh: Versioned, baked: Versioned): boolean {
   if (fresh.updatedAt === null) return false
   if (baked.updatedAt === null) return true
   return fresh.updatedAt > baked.updatedAt
-}
-
-/**
- * The version to show: the candidate if it is genuinely newer, otherwise what the
- * page was built with.
- *
- * Equal versions return the baked song, which is what prunes an overlay entry
- * once a build has caught up with it.
- */
-export function pick(baked: Song, candidate: Song | null | undefined): Song {
-  if (candidate == null || candidate.slug !== baked.slug) return baked
-  return isNewer(candidate, baked) ? candidate : baked
 }
 
 /**
