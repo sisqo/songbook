@@ -9,11 +9,12 @@ import { SongFields, type SongFieldValues } from '@/components/SongFields'
 import { SongSheet } from '@/components/SongSheet'
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { type Caret, GraphicEditor } from '@/components/editor/GraphicEditor'
-import { IconChevronLeft, IconInfo, IconTrash } from '@/components/icons'
+import { UnsavedGuard } from '@/components/editor/UnsavedGuard'
+import { IconChevronLeft, IconInfo, IconTrash, IconUndo } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
 import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
-import { addChord, toggleComment, toggleSection } from '@/lib/editor/edits'
+import { addChord, removeLine, toggleComment, toggleSection } from '@/lib/editor/edits'
 import { deleteSong, saveSong } from '@/lib/import/actions'
 import { SAVE_MESSAGE } from '@/lib/import/types'
 import { dropEdit, writeEdit } from '@/lib/library/store'
@@ -71,9 +72,12 @@ export function EditorScreen({ song }: { song: Song }) {
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
 
+  const [history, setHistory] = useState<string[]>([])
   const raw = useRef<HTMLTextAreaElement | null>(null)
   /** Where the caret goes after a command rewrote the source. */
   const rawCaret = useRef<number | null>(null)
+  /** What produced the last change, so a burst of typing is one step and not thirty. */
+  const lastKind = useRef<string | null>(null)
 
   const saved = useRef({ source: song.body, fields })
   const dirty =
@@ -81,15 +85,6 @@ export function EditorScreen({ song }: { song: Song }) {
     JSON.stringify(fields) !== JSON.stringify(saved.current.fields)
 
   const parsed = useMemo(() => parseChordPro(source), [source])
-
-  /** Closing the tab with unsaved words in it deserves a question. */
-  useEffect(() => {
-    if (!dirty) return
-
-    const ask = (event: BeforeUnloadEvent) => event.preventDefault()
-    window.addEventListener('beforeunload', ask)
-    return () => window.removeEventListener('beforeunload', ask)
-  }, [dirty])
 
   useEffect(() => {
     const at = rawCaret.current
@@ -100,8 +95,35 @@ export function EditorScreen({ song }: { song: Song }) {
     raw.current.setSelectionRange(at, at)
   }, [source])
 
-  const command = (change: (document: SongDocument) => SongDocument) => {
-    setSource(toSource(change(fromSource(source))))
+  /**
+   * Every change to the source goes through here, so a step back is always possible.
+   *
+   * Typing on one line is one step, however many letters it took: the kind stays the
+   * same and nothing new is pushed, so the entry already on the stack is the state
+   * from before the burst began. A command is always its own step — those are the
+   * changes worth undoing, and two of them throw something away.
+   */
+  const change = (next: string, kind: string | null) => {
+    if (kind === null || kind !== lastKind.current) {
+      setHistory((entries) => [...entries, source].slice(-40))
+    }
+
+    lastKind.current = kind
+    setSource(next)
+  }
+
+  const undo = () => {
+    const previous = history[history.length - 1]
+    if (previous === undefined) return
+
+    setHistory((entries) => entries.slice(0, -1))
+    lastKind.current = null
+    setSource(previous)
+    setNotice(null)
+  }
+
+  const command = (edit: (document: SongDocument) => SongDocument) => {
+    change(toSource(edit(fromSource(source))), null)
     setNotice(null)
   }
 
@@ -115,7 +137,7 @@ export function EditorScreen({ song }: { song: Song }) {
   const insertChord = () => {
     if (mode === 'source' && raw.current !== null) {
       const at = raw.current.selectionStart
-      setSource(`${source.slice(0, at)}[]${source.slice(at)}`)
+      change(`${source.slice(0, at)}[]${source.slice(at)}`, null)
       rawCaret.current = at + 1
       return
     }
@@ -126,7 +148,7 @@ export function EditorScreen({ song }: { song: Song }) {
 
     // Where the new chord lands once the chords are back in order.
     const chord = block.chords.filter((entry) => entry.at <= caret.at).length
-    setSource(toSource(addChord(document, caret.line, caret.at)))
+    change(toSource(addChord(document, caret.line, caret.at)), null)
     setEditing({ line: caret.line, chord })
   }
 
@@ -177,16 +199,13 @@ export function EditorScreen({ song }: { song: Song }) {
     router.push('/')
   }
 
-  const leave = (event: React.MouseEvent) => {
-    if (dirty && !window.confirm('Ci sono modifiche non salvate. Uscire comunque?')) {
-      event.preventDefault()
-    }
-  }
-
   return (
     <div>
+      {/* Covers the header's links too, which no unload event would catch. */}
+      <UnsavedGuard when={dirty} />
+
       <div className="editor-bar">
-        <Link href={`/canzoni/${song.slug}`} className="btn btn-quiet btn-sm" onClick={leave}>
+        <Link href={`/canzoni/${song.slug}`} className="btn btn-quiet btn-sm">
           <IconChevronLeft size={16} />
           Brano
         </Link>
@@ -279,9 +298,27 @@ export function EditorScreen({ song }: { song: Song }) {
           >
             Commento
           </button>
-          <span className="editor-hint self-center">
-            agiscono sulla riga {caret.line + 1}
-          </span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => command((document) => removeLine(document, caret.line))}
+          >
+            Elimina riga
+          </button>
+
+          <span className="flex-1" />
+
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            disabled={history.length === 0}
+            onClick={undo}
+            aria-label="Annulla l'ultima modifica"
+          >
+            <IconUndo size={16} />
+            Annulla
+          </button>
+          <span className="editor-hint self-center">riga {caret.line + 1}</span>
         </div>
       )}
 
@@ -290,7 +327,7 @@ export function EditorScreen({ song }: { song: Song }) {
           source={source}
           caret={caret}
           editing={editing}
-          onChange={setSource}
+          onChange={change}
           onCaret={setCaret}
           onEditing={setEditing}
         />
@@ -303,7 +340,7 @@ export function EditorScreen({ song }: { song: Song }) {
           value={source}
           spellCheck={false}
           onChange={(event) => {
-            setSource(event.target.value)
+            change(event.target.value, 'raw')
             setCaret(caretFromRaw(event.target.value, event.target.selectionStart))
           }}
           onSelect={(event) =>

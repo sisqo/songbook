@@ -124,7 +124,12 @@ in uno c'è già nell'altro.
 
 I comandi agiscono sulla riga dove sta il cursore, in entrambe le modalità di
 modifica: **Accordo** (dove sei), **Ritornello** e **Ponte** (marcano il blocco di
-righe fra due stacchi, e premuti di nuovo lo smarcano), **Commento**.
+righe fra due stacchi, e premuti di nuovo lo smarcano), **Commento**, **Elimina
+riga**. C'è **Annulla**: un passo per comando, e uno per ogni raffica di scrittura
+invece di uno per lettera.
+
+Uscire con modifiche non salvate chiede conferma — anche dall'header e dal menù, che
+sono navigazioni interne e non farebbero scattare nessun avviso del browser.
 
 Gli accordi restano attaccati alle sillabe anche mentre riscrivi le parole, e una
 direttiva che il lettore ignora — `{new_song}`, o qualsiasi altra — non viene buttata

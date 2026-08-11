@@ -672,7 +672,9 @@ con tre modalità sopra un'unica sorgente: **Grafico**, **Sorgente**, **Anteprim
 4. Sorgente: il ChordPro, con gli stessi comandi
 5. Anteprima: lo spartito e la barra dei controlli veri
 6. Rotta dinamica, esclusa dal precache anche a runtime
-7. Set di icone generato da uno script, con favicon vero al posto di quello di Next
+7. Annulla, con la scrittura raggruppata in un passo per raffica
+8. Guardia sull'uscita con modifiche non salvate, header e menù compresi
+9. Set di icone generato da uno script, con favicon vero al posto di quello di Next
 
 **La copia nascosta.** Gli accordi devono stare sopra la sillaba giusta, ma le parole sono
 dentro un `input`, e dentro un input non ci sono nodi di testo su cui appendere qualcosa. La
@@ -694,8 +696,17 @@ salvare quelle nuove: peggio di una pagina che si rifiuta di aprirsi. Serve anch
 nel service worker, perché le regole di default se lo prendevano comunque — trovato nella
 cache `others`, non immaginato.
 
+**La guardia sull'uscita.** `beforeunload` copre solo l'uscita dal sito. Ogni link
+dell'header è una navigazione interna e non fa scattare niente: con mezzo verso scritto,
+toccare il menù lo buttava via in silenzio. I click vengono quindi intercettati in fase di
+cattura, prima che il router li veda, così valgono il marchio, il menù, le frecce e
+qualunque cosa venga aggiunta all'header dopo.
+
 Il prezzo, detto: la vecchia modifica in pagina si apriva anche senza rete, e questa no. Non
 salvava neanche prima, ma potevi almeno guardare il form.
+
+Resta fuori l'import: un brano nuovo si crea ancora dal form di `/importa`, e le tre modalità
+valgono per i brani che esistono.
 
 ### v2 — il resto
 

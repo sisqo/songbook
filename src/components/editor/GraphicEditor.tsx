@@ -10,7 +10,7 @@ import {
   sectionsOf,
   toSource,
 } from '@/lib/editor/document'
-import { joinLines, setChord, setLineText, splitLine } from '@/lib/editor/edits'
+import { insertLineAfter, joinLines, setChord, setLineText, splitLine } from '@/lib/editor/edits'
 
 export interface Caret {
   /** Index of the block the cursor is in. */
@@ -44,7 +44,7 @@ export function GraphicEditor({
   caret: Caret
   /** The chord open for typing, owned above because the toolbar opens one too. */
   editing: { line: number; chord: number } | null
-  onChange: (source: string) => void
+  onChange: (source: string, kind: string | null) => void
   onCaret: (caret: Caret) => void
   onEditing: (editing: { line: number; chord: number } | null) => void
 }) {
@@ -52,7 +52,7 @@ export function GraphicEditor({
   const sections = sectionsOf(doc.blocks)
   const wanted = useRef<{ line: number; at: number } | null>(null)
 
-  const apply = (next: SongDocument) => onChange(toSource(next))
+  const apply = (next: SongDocument, kind: string | null = null) => onChange(toSource(next), kind)
 
   /**
    * Focus follows the structure the edit produced, not the element that was there
@@ -89,7 +89,7 @@ export function GraphicEditor({
             }}
             onText={(text, at) => {
               onCaret({ line: index, at })
-              apply(setLineText(doc, index, text))
+              apply(setLineText(doc, index, text), `typing:${index}`)
             }}
             onCaret={(at) => onCaret({ line: index, at })}
             onSplit={(at) => {
@@ -115,10 +115,8 @@ export function GraphicEditor({
         type="button"
         className="editor-hint mt-3 block w-full text-start"
         onClick={() => {
-          const last = doc.blocks.length - 1
-          const block = doc.blocks[last]
-          wanted.current = { line: last + 1, at: 0 }
-          apply(splitLine(doc, last, block.kind === 'lyrics' ? block.text.length : 0))
+          wanted.current = { line: doc.blocks.length, at: 0 }
+          apply(insertLineAfter(doc, doc.blocks.length - 1))
         }}
       >
         + riga
