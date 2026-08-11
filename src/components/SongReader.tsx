@@ -1,12 +1,10 @@
 import Link from 'next/link'
 
-import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
 import { IconChevronLeft, IconChevronRight, IconPencil } from '@/components/icons'
-import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
 
@@ -98,13 +96,7 @@ export async function SongReader({
   setlist?: SetlistContext | null
 }) {
   const parsed = parseChordPro(song.body)
-  const canzonieri = await repository.listCanzonieri()
   const series = setlist ? null : await seriesFor(song)
-
-  const initial: CanzoniereState = {
-    canzonieri,
-    assignments: song.canzoniereSlug === null ? {} : { [song.slug]: song.canzoniereSlug },
-  }
 
   const steps = setlist
     ? {
@@ -118,85 +110,83 @@ export async function SongReader({
 
   return (
     <PrefsProvider songSlug={song.slug}>
-      <CanzoniereProvider initial={initial} refreshOnMount={false}>
+      {/*
+        * Keyed by slug: stepping to the next song lands on the same component in
+        * the same place, and without a key React would keep the previous song's
+        * state and show its words under the new title.
+        */}
+      <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
+        <TopBar
+          current={setlist ? 'scalette' : 'canzoni'}
+          /*
+            * Only inside a setlist, where going back means the setlist and not
+            * the whole repertoire. On its own a song needs no return link: the
+            * brand next to it already leads to the list of everything.
+            *
+            * The name alone, without the position it used to carry: with the brand
+            * back in the bar there is no room for both, and a truncating chip cut
+            * the number rather than the name. The position is under the title now,
+            * where it is never abbreviated.
+            */
+          back={setlist ? { href: `/scalette/${setlist.slug}`, label: setlist.name } : undefined}
+          steps={steps}
+        />
+
         {/*
-          * Keyed by slug: stepping to the next song lands on the same component in
-          * the same place, and without a key React would keep the previous song's
-          * state and show its words under the new title.
+          * The sheet is a card that runs off the bottom of the screen, so
+          * everything that belongs to the song is inside it: the title, the words,
+          * the way to the next song, and the way into the editor. Nothing sits on
+          * the page beside it — a second surface next to the one you are reading
+          * would be a second thing to look at.
           */}
-        <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
-          <TopBar
-            current={setlist ? 'scalette' : 'canzoni'}
-            /*
-              * Only inside a setlist, where going back means the setlist and not
-              * the whole repertoire. On its own a song needs no return link: the
-              * brand next to it already leads to the list of everything.
-              *
-              * The name alone, without the position it used to carry: with the brand
-              * back in the bar there is no room for both, and a truncating chip cut
-              * the number rather than the name. The position is under the title now,
-              * where it is never abbreviated.
-              */
-            back={setlist ? { href: `/scalette/${setlist.slug}`, label: setlist.name } : undefined}
-            steps={steps}
+        <main className="song-card">
+          <SongHeading
+            place={
+              setlist
+                ? { position: setlist.position, total: setlist.total, within: setlist.name }
+                : series === null
+                  ? null
+                  : { position: series.position, total: series.total, within: series.name }
+            }
           />
 
-          {/*
-            * The sheet is a card that runs off the bottom of the screen, so
-            * everything that belongs to the song is inside it: the title, the words,
-            * the way to the next song, and the way into the editor. Nothing sits on
-            * the page beside it — a second surface next to the one you are reading
-            * would be a second thing to look at.
-            */}
-          <main className="song-card">
-            <SongHeading
-              place={
-                setlist
-                  ? { position: setlist.position, total: setlist.total, within: setlist.name }
-                  : series === null
-                    ? null
-                    : { position: series.position, total: series.total, within: null }
-              }
+          <LiveSheet />
+
+          {setlist && (
+            <StepNav
+              label="Navigazione nella scaletta"
+              previous={setlist.previous}
+              next={setlist.next}
+              href={(slug) => `/scalette/${setlist.slug}/${slug}`}
             />
+          )}
 
-            <LiveSheet />
+          {series && (
+            <StepNav
+              label={`Navigazione in ${series.name}`}
+              previous={series.previous}
+              next={series.next}
+              href={(slug) => `/canzoni/${slug}`}
+            />
+          )}
 
-            {setlist && (
-              <StepNav
-                label="Navigazione nella scaletta"
-                previous={setlist.previous}
-                next={setlist.next}
-                href={(slug) => `/scalette/${setlist.slug}/${slug}`}
-              />
-            )}
+          {/*
+            * A link, not a form: the editor is a page of its own, and two ways to
+            * change a song would be two things to keep in step. It needs a network
+            * to save, so it needs one to open.
+            */}
+          <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
+            <Link href={`/canzoni/${song.slug}/modifica`} className="btn is-inset">
+              <IconPencil size={16} />
+              Modifica
+            </Link>
+          </div>
 
-            {series && (
-              <StepNav
-                label={`Navigazione in ${series.name}`}
-                previous={series.previous}
-                next={series.next}
-                href={(slug) => `/canzoni/${slug}`}
-              />
-            )}
+          <div className="bar-spacer" />
+        </main>
 
-            {/*
-              * A link, not a form: the editor is a page of its own, and two ways to
-              * change a song would be two things to keep in step. It needs a network
-              * to save, so it needs one to open.
-              */}
-            <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
-              <Link href={`/canzoni/${song.slug}/modifica`} className="btn is-inset">
-                <IconPencil size={16} />
-                Modifica
-              </Link>
-            </div>
-
-            <div className="bar-spacer" />
-          </main>
-
-          <LiveControlBar />
-        </SongProvider>
-      </CanzoniereProvider>
+        <LiveControlBar />
+      </SongProvider>
     </PrefsProvider>
   )
 }

@@ -8,7 +8,6 @@
  * form renders the same sheet with no provider anywhere near it.
  */
 
-import { CanzonierePicker } from '@/components/CanzonierePicker'
 import { ControlBar } from '@/components/ControlBar'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
@@ -16,10 +15,10 @@ import { useSong } from '@/components/SongProvider'
 /**
  * Where this song sits in the sequence it is being read in.
  *
- * `within` names that sequence when the page does not already: inside a setlist the
- * count is the setlist's, while the chip next to it names the canzoniere, and "1 di
- * 12" between them would look like it belonged to the canzoniere. Read from a
- * canzoniere the chip is the answer, so naming it again would only repeat it.
+ * `within` names that sequence. It used to be left unset when the song was read
+ * from a canzoniere, because the chip beside it already named one and "1 di 12"
+ * between the two would have looked like it belonged to the chip. That chip is
+ * gone, so the name has nowhere else to be said and this is where it is said.
  */
 export interface Place {
   position: number
@@ -44,7 +43,6 @@ export function SongHeading({ place }: { place: Place | null }) {
       </h1>
       <p className="mt-2.5 flex flex-wrap items-center gap-2 text-base text-muted">
         {song.artist !== null && <span>{song.artist}</span>}
-        <CanzonierePicker songSlug={song.slug} />
         {place !== null && (
           <span className="text-faint">
             {place.position} di {place.total}

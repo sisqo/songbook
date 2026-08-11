@@ -1468,13 +1468,15 @@
   }
 
   /*
-   * The canzoniere of the song you are reading, as a control that looks like one.
+   * A native select dressed as a control that looks like one.
    *
-   * It was a bare select with muted text sitting in the line under the title, and it
-   * read as a label: two people in a row concluded the song could only be moved from
-   * the editor. Same mechanism as before — a real native select, so the phone's own
-   * picker opens — with a chip around it, an icon at each end, and the chevron saying
-   * there is something to open.
+   * A real `<select>` underneath, so the phone opens its own picker, with a chip
+   * around it and a chevron saying there is something to open — a bare select with
+   * muted text reads as a label rather than as something you can press.
+   *
+   * It used to sit under the song's title too, naming that song's canzoniere. It
+   * does not any more: moving a song lives in the editor, and the reading page says
+   * which canzoniere it belongs to in the line that counts its position.
    */
   .picker {
     position: relative;
