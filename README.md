@@ -155,8 +155,10 @@ una composizione più semplice invece di rimpicciolirsi in una macchia.
 ## Canzonieri
 
 Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da
-`/canzonieri`; lo spostamento di un singolo brano si fa dal selettore nella testata
-del brano. La rimozione di un canzoniere non vuoto chiede prima dove spostare i
+`/canzonieri`. **Spostare un brano** si fa da due posti: la pastiglia col nome del
+canzoniere nella testata del brano, sotto il titolo — si apre e si sceglie — e il
+campo *Canzoniere* nell'editor. La prima non ha un salva: cambiare la voce sposta il
+brano. La rimozione di un canzoniere non vuoto chiede prima dove spostare i
 brani — e il vincolo `on delete restrict` la impedisce comunque a livello di
 database.
 

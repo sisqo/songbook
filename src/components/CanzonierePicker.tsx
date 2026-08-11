@@ -3,11 +3,15 @@
 import { useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { IconBooks, IconChevronDown } from '@/components/icons'
 import { WRITE_MESSAGE } from '@/lib/canzonieri/types'
 
 /**
- * Moves the song you are reading into another canzoniere, from the header where
- * you already are rather than from a management screen elsewhere.
+ * Moves the song you are reading into another canzoniere, from the header where you
+ * already are rather than from a management screen elsewhere.
+ *
+ * A real `<select>`: the phone opens its own picker, which beats anything hand-built
+ * here. What is around it is only there to say that it can be opened at all.
  */
 export function CanzonierePicker({ songSlug }: { songSlug: string }) {
   const { canzonieri, assignments, nameOf, move, online } = useCanzonieri()
@@ -25,16 +29,26 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
 
   if (canzonieri.length === 0) return null
 
-  // Offline the name is still worth showing; only changing it is unavailable.
+  /*
+   * Offline, and when there is only one canzoniere to be in, the name is still worth
+   * showing — as plain text, because in neither case is there anywhere to move to.
+   */
   if (!online || canzonieri.length === 1) {
-    return name === null ? null : <span className="text-faint">{name}</span>
+    return name === null ? null : (
+      <span className="inline-flex items-center gap-1 text-faint">
+        <IconBooks size={13} />
+        {name}
+      </span>
+    )
   }
 
   return (
     <span className="inline-flex items-baseline gap-2">
-      <label>
+      <label className="picker">
+        <IconBooks size={14} />
         <span className="sr-only">Canzoniere di questo brano</span>
         <select
+          className="picker-select"
           value={current ?? ''}
           disabled={busy}
           onChange={async (event) => {
@@ -50,15 +64,6 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
               setBusy(false)
             }
           }}
-          className="rounded-md border px-2 py-1"
-          style={{
-            // 16px: smaller makes iOS zoom the viewport on focus, the exact thing
-            // the 44px targets elsewhere exist to avoid.
-            fontSize: '1rem',
-            background: 'var(--surface-2)',
-            borderColor: 'var(--line)',
-            color: 'var(--muted)',
-          }}
         >
           {current === undefined && <option value="">Senza canzoniere</option>}
           {canzonieri.map((canzoniere) => (
@@ -67,6 +72,7 @@ export function CanzonierePicker({ songSlug }: { songSlug: string }) {
             </option>
           ))}
         </select>
+        <IconChevronDown size={14} />
       </label>
       {error !== null && (
         <span className="text-xs text-danger" role="alert">

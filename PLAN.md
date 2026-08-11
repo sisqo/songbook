@@ -707,6 +707,14 @@ proprio la cosa che si sta spostando. Spostarne uno oltre un altro cambia quale 
 viene prima, quindi l'operazione restituisce anche il nuovo indice: senza, il campo aperto
 si troverebbe a modificare l'accordo sbagliato.
 
+**Le pastiglie che sembravano etichette.** Tre segnalazioni di fila — «non posso mettere un
+accordo», «non posso eliminare uno stacco», «posso spostare il brano solo dall'editor» — e
+tutte e tre riguardavano cose che si potevano già fare, con un comando che non si vedeva. Il
+selettore del canzoniere nella testata era un `select` nudo, testo attenuato, in mezzo a
+un'altra riga di testo attenuato: leggeva come un'etichetta. Ora è una pastiglia con l'icona
+e il chevron. La lezione, per la prossima volta: un controllo che sta in mezzo al testo va
+disegnato come un controllo, non come il testo che lo circonda.
+
 **Le righe che non sono testo.** Stacchi, marcature e direttive si potevano già eliminare —
 click sulla riga, poi *Elimina riga* — ma nessuno lo trovava, e una funzione che non si trova
 è una funzione che non c'è. Ora ognuna porta il suo ×.
