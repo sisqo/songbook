@@ -1,27 +1,50 @@
 /**
- * Guitar shapes for chords, in standard tuning.
+ * Chord shapes, for the instrument in the reader's hands.
  *
- * Two sources, in this order:
+ * A C is a C on anything with strings: what changes between a guitar and a ukulele
+ * is not the chord but where the fingers go. So the chord side of this file is shared
+ * and only the fingerings are per instrument — and the two are found in different
+ * ways, on purpose:
  *
- * 1. A short table of shapes played in open position, because the movable forms
- *    below would otherwise answer "C" with a barre at the third fret when what a
- *    guitarist plays is x32010.
- * 2. Movable forms anchored to the root on the sixth or fifth string. One entry
- *    per chord family covers all twelve roots, and the lower of the two candidates
- *    wins.
+ * - **Guitar**, six strings: a short table of open-position shapes, plus movable
+ *   forms anchored to the root on the sixth or fifth string. Written by hand because
+ *   what a guitarist plays is a barre form or x32010, and no scoring function would
+ *   discover a barre; six strings also make a search enormous.
+ * - **Ukulele**, four: a search. Four strings and a four-fret reach leave few valid
+ *   voicings and almost no room to mute anything, so the compact one *is* the one
+ *   players use — and the search proves it, since the famous shapes come out of it
+ *   unprompted (C 0003, F 2010, G 0232, Am 2000, B7 2322).
  *
- * Every entry — curated and derived — is checked by the tests against the pitch
- * classes it produces: no note outside the chord, and the tones that make the
- * chord what it is all present. That check is what the fret numbers here rest on;
- * they are not transcribed from a source, so the claim is "these are voicings of
- * the right chord", not "these are the fingerings a given book prints".
+ * Every shape either way is checked by the tests against the pitch classes it
+ * produces: no note outside the chord, and the tones that make the chord what it is
+ * all present. That check is what the fret numbers rest on; they are not transcribed
+ * from a source, so the claim is "these are voicings of the right chord", not "these
+ * are the fingerings a given book prints".
  */
 
 import { type Chord, normalizeSuffix } from './chord'
 import { type PitchClass, mod12, spellPitchClass } from './notes'
 
-/** Open string pitch classes, low E to high e. */
-export const STRINGS: PitchClass[] = [4, 9, 2, 7, 11, 4]
+export type Instrument = 'chitarra' | 'ukulele'
+
+export const INSTRUMENTS: Instrument[] = ['chitarra', 'ukulele']
+
+export const INSTRUMENT_LABEL: Record<Instrument, string> = {
+  chitarra: 'Chitarra',
+  ukulele: 'Ukulele',
+}
+
+/**
+ * Open string pitch classes, in the order a chart draws them.
+ *
+ * The ukulele's G is written first and is actually the *higher* of the first two
+ * strings — the tuning is reentrant. Nothing here cares: these are pitch classes, so
+ * octaves never enter the arithmetic.
+ */
+const TUNING: Record<Instrument, PitchClass[]> = {
+  chitarra: [4, 9, 2, 7, 11, 4],
+  ukulele: [7, 0, 4, 9],
+}
 
 /** A fret per string, low to high. `null` is a muted string, `0` is open. */
 export type Fret = number | null
@@ -205,16 +228,109 @@ export function familyOf(rawSuffix: string): { family: string; simplified: boole
 }
 
 /** The notes a shape actually sounds, low to high, as pitch classes. */
-export function shapeNotes(frets: Fret[]): PitchClass[] {
+export function shapeNotes(frets: Fret[], instrument: Instrument = 'chitarra'): PitchClass[] {
+  const strings = TUNING[instrument]
   const notes: PitchClass[] = []
+
   frets.forEach((fret, string) => {
-    if (fret !== null) notes.push(mod12(STRINGS[string] + fret))
+    if (fret !== null) notes.push(mod12(strings[string] + fret))
   })
   return notes
 }
 
-/** Every candidate shape for a root and family, cheapest position first. */
-export function candidates(root: PitchClass, family: string): Fret[][] {
+/** Whether a set of frets is a voicing of this chord, and not of a neighbouring one. */
+function isVoicing(frets: Fret[], root: PitchClass, family: string, instrument: Instrument): boolean {
+  const spec = FAMILIES[family]
+  const allowed = new Set(spec.intervals.map((interval) => mod12(root + interval)))
+  const sounded = new Set(shapeNotes(frets, instrument))
+
+  if (sounded.size === 0) return false
+  for (const note of sounded) if (!allowed.has(note)) return false
+  for (const interval of spec.required) if (!sounded.has(mod12(root + interval))) return false
+
+  return true
+}
+
+/** Four frets under one hand, and where a ukulele stops being one. */
+const REACH = 3
+const LAST_FRET = 12
+
+/**
+ * How a ukulele voicing is judged, lowest cost first: strings left silent, then how
+ * far up the neck it sits, then how far the hand has to stretch, then how many
+ * fingers it takes.
+ *
+ * The order of the middle two is the whole difference between a chart someone would
+ * recognise and one they would not. Ranked by stretch first, the search answers F
+ * with 5555 — four fingers in a row at the fifth fret, span zero, perfectly valid and
+ * not what anybody plays — instead of 2010 at the nut. Position first, and the famous
+ * shapes appear on their own.
+ */
+function cost(frets: Fret[]): number[] {
+  const fretted = frets.filter((fret): fret is number => fret !== null && fret > 0)
+  const highest = fretted.length === 0 ? 0 : Math.max(...fretted)
+  const span = fretted.length === 0 ? 0 : highest - Math.min(...fretted)
+
+  return [frets.filter((fret) => fret === null).length, highest, span, fretted.length]
+}
+
+function cheaper(one: number[], other: number[]): boolean {
+  for (let index = 0; index < one.length; index += 1) {
+    if (one[index] !== other[index]) return one[index] < other[index]
+  }
+  return false
+}
+
+/** Answers are the same every time, and the same chord is asked for again and again. */
+const searched = new Map<string, Fret[] | null>()
+
+/**
+ * The best ukulele voicing, or null when four strings cannot hold the chord.
+ *
+ * Null is a real answer, not a failure: `m9` needs four distinct tones, so one root in
+ * twelve has no voicing inside twelve frets, and the dialog then shows the notes —
+ * which is more use than a shape at the fourteenth fret of an instrument that has
+ * twelve.
+ */
+function ukuleleShape(root: PitchClass, family: string): Fret[] | null {
+  const key = `${root}:${family}`
+  const known = searched.get(key)
+  if (known !== undefined) return known
+
+  let best: Fret[] | null = null
+
+  for (let base = 0; base + REACH <= LAST_FRET; base += 1) {
+    const options: Fret[] = [null, 0]
+    for (let fret = base; fret <= base + REACH; fret += 1) if (fret > 0) options.push(fret)
+
+    for (const a of options) {
+      for (const b of options) {
+        for (const c of options) {
+          for (const d of options) {
+            const frets = [a, b, c, d]
+            if (!isVoicing(frets, root, family, 'ukulele')) continue
+            if (best === null || cheaper(cost(frets), cost(best))) best = frets
+          }
+        }
+      }
+    }
+  }
+
+  searched.set(key, best)
+  return best
+}
+
+/** Every candidate shape for a root and family on one instrument. */
+export function candidates(
+  root: PitchClass,
+  family: string,
+  instrument: Instrument = 'chitarra',
+): Fret[][] {
+  if (instrument === 'ukulele') {
+    const found = ukuleleShape(root, family)
+    return found === null ? [] : [found]
+  }
+
   const found: Fret[][] = []
 
   const open = OPEN[`${mod12(root)}:${family}`]
@@ -236,20 +352,20 @@ function highestFret(frets: Fret[]): number {
 }
 
 /**
- * The shape to draw for a chord, or null when the suffix is outside the table.
+ * The shape to draw for a chord, or null when there is none to draw.
  *
- * A curated open shape wins outright. Otherwise the movable form that sits
- * lowest on the neck wins, which is what keeps a Bb from being drawn at the
- * tenth fret when the sixth will do.
+ * On a guitar a curated open shape wins outright, and otherwise the movable form that
+ * sits lowest on the neck, which is what keeps a Bb from being drawn at the tenth fret
+ * when the sixth will do. On a ukulele the search has already chosen.
  */
-export function shapeFor(chord: Chord): ChordShape | null {
+export function shapeFor(chord: Chord, instrument: Instrument = 'chitarra'): ChordShape | null {
   const resolved = familyOf(chord.suffix)
   if (resolved === null) return null
 
-  const options = candidates(chord.root, resolved.family)
+  const options = candidates(chord.root, resolved.family, instrument)
   if (options.length === 0) return null
 
-  const openShape = OPEN[`${mod12(chord.root)}:${resolved.family}`]
+  const openShape = instrument === 'chitarra' ? OPEN[`${mod12(chord.root)}:${resolved.family}`] : undefined
   const best =
     openShape !== undefined
       ? openShape

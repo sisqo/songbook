@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { repository } from '@/lib/data'
 
@@ -28,7 +29,8 @@ export default async function SetlistPage({ params }: Props) {
   const songs = await Promise.all(setlist.songs.map((songSlug) => repository.getSong(songSlug)))
 
   return (
-    <>
+    // The menu in the header holds a reader preference, so it needs this here too.
+    <PrefsProvider songSlug={null}>
       <TopBar current="scalette" back={{ href: '/scalette', label: 'Scalette' }} />
 
       <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
@@ -68,6 +70,6 @@ export default async function SetlistPage({ params }: Props) {
           )}
         </ol>
       </main>
-    </>
+    </PrefsProvider>
   )
 }

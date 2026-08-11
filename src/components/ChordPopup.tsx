@@ -6,7 +6,7 @@ import { ChordDiagram } from '@/components/ChordDiagram'
 import { IconClose } from '@/components/icons'
 import { type Chord, type Notation, formatChord } from '@/lib/music/chord'
 import { noteToItalian } from '@/lib/music/notes'
-import { chordNoteNames, shapeFor } from '@/lib/music/shapes'
+import { type Instrument, chordNoteNames, shapeFor } from '@/lib/music/shapes'
 
 /**
  * The shape of the chord you tapped.
@@ -19,10 +19,13 @@ import { chordNoteNames, shapeFor } from '@/lib/music/shapes'
 export function ChordPopup({
   chord,
   notation,
+  instrument,
   onClose,
 }: {
   chord: Chord
   notation: Notation
+  /** Whose fingerings to draw. The chord itself is the same on either. */
+  instrument: Instrument
   onClose: () => void
 }) {
   useEffect(() => {
@@ -33,7 +36,7 @@ export function ChordPopup({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const shape = shapeFor(chord)
+  const shape = shapeFor(chord, instrument)
   const notes = chordNoteNames(chord).map((note) =>
     notation === 'it' ? noteToItalian(note) : note,
   )
@@ -50,7 +53,11 @@ export function ChordPopup({
         <p className="chord-name">{formatChord(chord, notation)}</p>
 
         {shape === null ? (
-          <p className="mt-1 text-sm text-muted">Nessuna forma disponibile per questo accordo.</p>
+          <p className="mt-1 text-sm text-muted">
+            {instrument === 'ukulele'
+              ? 'Nessuna forma per questo accordo su quattro corde.'
+              : 'Nessuna forma disponibile per questo accordo.'}
+          </p>
         ) : (
           <ChordDiagram shape={shape} />
         )}

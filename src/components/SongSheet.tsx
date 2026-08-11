@@ -74,7 +74,12 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
       </div>
 
       {shown !== null && (
-        <ChordPopup chord={shown} notation={global.notation} onClose={() => setShown(null)} />
+        <ChordPopup
+          chord={shown}
+          notation={global.notation}
+          instrument={global.instrument}
+          onClose={() => setShown(null)}
+        />
       )}
     </>
   )

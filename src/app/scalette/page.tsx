@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { IconChevronRight } from '@/components/icons'
 import { repository } from '@/lib/data'
@@ -11,7 +12,8 @@ export default async function SetlistsPage() {
   const setlists = await repository.listSetlists()
 
   return (
-    <>
+    // The menu in the header holds a reader preference, so it needs this here too.
+    <PrefsProvider songSlug={null}>
       <TopBar current="scalette" />
 
       <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
@@ -39,6 +41,6 @@ export default async function SetlistsPage() {
           </ul>
         )}
       </main>
-    </>
+    </PrefsProvider>
   )
 }

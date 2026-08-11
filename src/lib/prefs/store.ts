@@ -23,6 +23,7 @@ import {
   clampSemitones,
   clampSpeed,
   clampZoom,
+  readInstrument,
 } from './types'
 
 const GLOBAL_KEY = 'songs:prefs'
@@ -57,6 +58,7 @@ export function readGlobalPrefs(): GlobalPrefs {
     zoomStep:
       typeof cached.zoomStep === 'number' ? clampZoom(cached.zoomStep) : DEFAULT_GLOBAL_PREFS.zoomStep,
     notation: cached.notation === 'int' || cached.notation === 'it' ? cached.notation : 'it',
+    instrument: readInstrument(cached.instrument),
   }
 }
 

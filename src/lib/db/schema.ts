@@ -99,6 +99,15 @@ export const userPrefs = pgTable('user_prefs', {
   userEmail: text('user_email').primaryKey(),
   zoomStep: integer('zoom_step').notNull().default(2),
   notation: text('notation').notNull().default('it'),
+  /**
+   * Which instrument the chord diagrams are drawn for.
+   *
+   * A preference about the reader, like the notation, so it belongs here rather than
+   * in local storage next to the theme: the same person picks up the same instrument
+   * on the phone and on the tablet. Defaulted rather than nullable so every existing
+   * row already answers the question.
+   */
+  instrument: text('instrument').notNull().default('chitarra'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

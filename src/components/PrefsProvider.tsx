@@ -12,6 +12,7 @@ import {
 } from 'react'
 
 import type { Notation } from '@/lib/music/chord'
+import type { Instrument } from '@/lib/music/shapes'
 import { loadPrefs, saveGlobalPrefs, saveSongPrefs } from '@/lib/prefs/actions'
 import { prefsQueue } from '@/lib/prefs/queue'
 import {
@@ -37,6 +38,7 @@ interface PrefsContextValue {
   pending: number
   setZoomStep: (step: number) => void
   setNotation: (notation: Notation) => void
+  setInstrument: (instrument: Instrument) => void
   setSemitones: (semitones: number) => void
   setScrollSpeed: (step: number) => void
 }
@@ -116,7 +118,13 @@ export function PrefsProvider({
    */
   const updateGlobal = useCallback(
     (next: GlobalPrefs) => {
-      if (next.zoomStep === global.zoomStep && next.notation === global.notation) return
+      if (
+        next.zoomStep === global.zoomStep &&
+        next.notation === global.notation &&
+        next.instrument === global.instrument
+      ) {
+        return
+      }
 
       setGlobal(next)
       writeGlobalPrefs(next)
@@ -144,6 +152,7 @@ export function PrefsProvider({
       pending,
       setZoomStep: (step) => updateGlobal({ ...global, zoomStep: clampZoom(step) }),
       setNotation: (notation) => updateGlobal({ ...global, notation }),
+      setInstrument: (instrument) => updateGlobal({ ...global, instrument }),
       setSemitones: (semitones) => updateSong({ ...song, semitones: clampSemitones(semitones) }),
       setScrollSpeed: (step) => updateSong({ ...song, scrollSpeed: clampSpeed(step) }),
     }),

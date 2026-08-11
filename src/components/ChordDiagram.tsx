@@ -1,7 +1,10 @@
 import type { ChordShape } from '@/lib/music/shapes'
 
 /**
- * A chord box: six strings, five frets, a dot where a finger goes.
+ * A chord box: a string per string, five frets, a dot where a finger goes.
+ *
+ * How many strings comes from the shape itself, so the same component draws a
+ * guitar's six and a ukulele's four without being told which it is holding.
  *
  * Drawn as SVG with `currentColor` so it belongs to whichever theme is on, and
  * sized in `em` so the dialog controls how big it is.
@@ -13,10 +16,10 @@ const LEFT = 14
 const TOP = 26
 const FRETS_SHOWN = 5
 
-const RIGHT = LEFT + STRING_GAP * 5
 const BOTTOM = TOP + FRET_GAP * FRETS_SHOWN
 
 export function ChordDiagram({ shape }: { shape: ChordShape }) {
+  const RIGHT = LEFT + STRING_GAP * (shape.frets.length - 1)
   const fretted = shape.frets.filter((fret): fret is number => fret !== null && fret > 0)
   const lowest = fretted.length === 0 ? 1 : Math.min(...fretted)
   const highest = fretted.length === 0 ? 1 : Math.max(...fretted)

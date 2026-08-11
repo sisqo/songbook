@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { CanzoniereManager } from '@/components/CanzoniereManager'
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
+import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { repository } from '@/lib/data'
@@ -33,20 +34,23 @@ export default async function CanzonieriPage() {
   }
 
   return (
-    <CanzoniereProvider initial={initial}>
-      <TopBar current="canzonieri" showSetlists={setlists.length > 0} />
+    // The menu in the header holds a reader preference, so it needs this here too.
+    <PrefsProvider songSlug={null}>
+      <CanzoniereProvider initial={initial}>
+        <TopBar current="canzonieri" showSetlists={setlists.length > 0} />
 
-      <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
-        <header className="mb-[1.125rem]">
-          <h1 className="screen-title">Canzonieri</h1>
-          <p className="mt-2 text-sm leading-[1.45] text-muted">
-            Ogni brano appartiene a un canzoniere. Le scalette sono un&apos;altra cosa e possono
-            mescolarli.
-          </p>
-        </header>
+        <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
+          <header className="mb-[1.125rem]">
+            <h1 className="screen-title">Canzonieri</h1>
+            <p className="mt-2 text-sm leading-[1.45] text-muted">
+              Ogni brano appartiene a un canzoniere. Le scalette sono un&apos;altra cosa e possono
+              mescolarli.
+            </p>
+          </header>
 
-        <CanzoniereManager />
-      </main>
-    </CanzoniereProvider>
+          <CanzoniereManager />
+        </main>
+      </CanzoniereProvider>
+    </PrefsProvider>
   )
 }

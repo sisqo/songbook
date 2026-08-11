@@ -18,6 +18,7 @@ import {
   clampSemitones,
   clampSpeed,
   clampZoom,
+  readInstrument,
 } from './types'
 
 /**
@@ -62,6 +63,7 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
       : {
           zoomStep: clampZoom(globalRows[0].zoomStep),
           notation: globalRows[0].notation === 'int' ? ('int' as const) : ('it' as const),
+          instrument: readInstrument(globalRows[0].instrument),
         }
 
   if (songSlug === null) return { global, song: null }
@@ -90,6 +92,7 @@ export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
   const values = {
     zoomStep: clampZoom(prefs.zoomStep),
     notation: prefs.notation === 'int' ? 'int' : 'it',
+    instrument: readInstrument(prefs.instrument),
   }
 
   try {

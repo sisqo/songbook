@@ -375,9 +375,18 @@
    * reads well as a one-pixel edge between two panels disappears as a lattice of
    * thin lines with nothing behind it.
    */
+  /*
+   * Sized by its height, not its width.
+   *
+   * A ukulele box is four strings wide where a guitar's is six, so a fixed width
+   * stretched the narrower one — same frets, further apart, a chart of an instrument
+   * nobody owns. Fixing the height instead leaves both in their own proportions, and
+   * leaves the guitar diagram exactly the size it was.
+   */
   .chord-diagram {
     display: block;
-    width: 8.5rem;
+    width: auto;
+    height: 12rem;
     margin: 0.75rem auto 0;
     stroke: color-mix(in srgb, var(--ink) 28%, transparent);
     color: var(--muted);

@@ -890,11 +890,11 @@ renderebbe quei file meno leggibili altrove.
 
 ### v1.7 — i comandi fermi, l'ordine dell'import, l'ukulele
 
-In consegna.
+Consegnata.
 
 1. I comandi dell'editor non scorrono più con la pagina
 2. I brani importati restano nell'ordine in cui sono stati incollati
-3. Chitarra o ukulele, dal menù: cambia la forma che il diagramma disegna *(in corso)*
+3. Chitarra o ukulele, dal menù: cambia la forma che il diagramma disegna
 
 **Un blocco fermo, e corto.** I comandi dell'editor stavano in fondo a una pagina che
 scorre, cioè più lontani proprio quando la canzone è lunga — il caso in cui si scorre. Ora
@@ -922,6 +922,35 @@ mantiene il suo ordine e i nuovi finiscono sotto.
 Il resto sono conseguenze della stessa regola: un brano *spostato* in un altro canzoniere
 resta senza numero (arriva in coda: il numero che aveva era un posto fra altri brani, e
 quelli non sono questi), e sostituire il testo di un brano che sta già lì non lo muove.
+
+**Chitarra o ukulele.** Un Do è un Do su qualsiasi strumento: cambia la *forma*, non
+l'accordo, quindi sullo spartito non si muove niente e cambia solo il diagramma che si apre
+toccando un accordo. Lo strumento è una preferenza globale accanto alla notazione —
+sincronizzata sul database, non locale come il tema, perché è una preferenza su chi legge e
+non sullo schermo che ha davanti.
+
+La tabella dell'ukulele **non è scritta a mano**: una ricerca prova le combinazioni in una
+finestra di quattro tasti e tiene solo quelle che il test già sa giudicare — nessuna nota
+estranea, tutte quelle indispensabili — ordinate per corde mute, posizione, estensione e
+dita. L'ordine di quei quattro criteri è tutta la differenza fra un diagramma riconoscibile e
+uno no: mettendo l'estensione prima della posizione la ricerca risponde Fa con 5555, quattro
+dita in fila al quinto tasto, valido e non quello che suona nessuno. Con la posizione prima,
+le forme dei manuali escono da sole — Do 0003, Fa 2010, Sol 0232, La- 2000 — e sono ventuno
+casi nel test, nessuno dei quali è scritto nel codice.
+
+Su quattro corde e senza corde da smorzare una combinazione su 216 non ha voicing entro il
+dodicesimo tasto (`G#m9`, che chiede quattro note distinte): lì `shapeFor` risponde null e la
+finestra mostra le note, che è più utile di una forma al quattordicesimo tasto di uno
+strumento che ne ha dodici. Il test quindi non pretende più «una forma per ogni famiglia» ma
+verifica quanto ciascuno strumento copre.
+
+Il diagramma è passato a essere dimensionato in **altezza**: a larghezza fissa una cassa da
+quattro corde veniva stirata — stessi tasti, più distanti, il manico di uno strumento che non
+esiste — mentre così ognuno resta nelle sue proporzioni e la chitarra non cambia di un pixel.
+
+**Il costo, detto.** Una preferenza in più nell'header significa che il menù ora legge le
+preferenze, quindi le tre pagine che avevano solo la barra — canzonieri, scalette, la singola
+scaletta — hanno anche loro il `PrefsProvider`. Il conto è una query in più su quelle pagine.
 
 ### v2 — il resto
 

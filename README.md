@@ -249,12 +249,31 @@ vecchio segnalibro continui a trovare la home in cache.
 
 ## Forme degli accordi
 
-Ogni accordo sullo spartito è un bottone: aprirlo mostra la forma per chitarra in
-accordatura standard, trasposta e nella notazione che stai leggendo. Le diteggiature
-sono in `src/lib/music/shapes.ts`: una tabella corta di forme in posizione aperta,
-più due forme mobili con la fondamentale sulla sesta o sulla quinta corda che
-coprono le dodici tonalità. Ogni forma è verificata dai test contro le note
-dell'accordo — nessuna nota estranea, e presenti quelle che fanno l'accordo.
+Ogni accordo sullo spartito è un bottone: aprirlo mostra la forma per lo strumento
+che hai scelto nel menù — **chitarra** o **ukulele** — trasposta e nella notazione che
+stai leggendo. Un Do resta un Do: cambia la diteggiatura, non l'accordo, quindi sullo
+spartito non si muove nulla.
+
+Le diteggiature sono in `src/lib/music/shapes.ts`, e i due strumenti le trovano in
+modi diversi, di proposito:
+
+- **Chitarra**, sei corde: una tabella corta di forme in posizione aperta, più due
+  forme mobili con la fondamentale sulla sesta o sulla quinta corda che coprono le
+  dodici tonalità. Scritta a mano perché quello che si suona è un barré o x32010, e
+  nessun punteggio automatico inventerebbe un barré.
+- **Ukulele**, quattro: una ricerca. Con quattro corde e una mano che copre quattro
+  tasti le posizioni valide sono poche e non c'è spazio per smorzare, quindi la più
+  compatta *è* quella che si usa — e infatti dalla ricerca escono da sole le forme dei
+  manuali (Do 0003, Fa 2010, Sol 0232, La- 2000, Si7 2322), che è la prova che il
+  criterio ha capito il problema. Su 216 combinazioni una sola non ha forma entro il
+  dodicesimo tasto: lì il popup mostra le note, che è la risposta onesta.
+
+Ogni forma, in entrambi i casi, è verificata dai test contro le note dell'accordo —
+nessuna nota estranea, e presenti quelle che fanno l'accordo.
+
+La scelta dello strumento sta nel menù insieme al tema, ma a differenza del tema **è
+sincronizzata**: è una preferenza su chi legge, come la notazione, e la stessa persona
+prende lo stesso strumento sul telefono e sul tablet.
 
 Quando il cifrato chiede qualcosa che la tabella non ha, la forma mostrata può
 **omettere** una nota ma non contraddirla: un accordo di tredicesima si disegna come

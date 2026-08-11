@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { InstrumentPicker } from '@/components/InstrumentPicker'
 import { ThemePicker } from '@/components/ThemePicker'
 import {
   IconBooks,
@@ -138,9 +139,10 @@ export function NavMenu({
             <div className="menu-divider" />
 
             {/*
-              * Not a destination, so it does not close the menu: the reader is
+              * Neither is a destination, so neither closes the menu: the reader is
               * looking at the thing they are changing, and the panel is part of it.
               */}
+            <InstrumentPicker />
             <ThemePicker />
 
             <div className="menu-divider" />
