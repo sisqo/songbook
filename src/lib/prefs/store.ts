@@ -20,6 +20,7 @@ import {
   DEFAULT_SONG_PREFS,
   type GlobalPrefs,
   type SongPrefs,
+  clampCapo,
   clampSemitones,
   clampSpeed,
   clampZoom,
@@ -79,6 +80,7 @@ export function readSongPrefs(slug: string): SongPrefs {
       typeof cached.scrollSpeed === 'number'
         ? clampSpeed(cached.scrollSpeed)
         : DEFAULT_SONG_PREFS.scrollSpeed,
+    capo: typeof cached.capo === 'number' ? clampCapo(cached.capo) : DEFAULT_SONG_PREFS.capo,
   }
 }
 

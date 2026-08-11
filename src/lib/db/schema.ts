@@ -121,6 +121,15 @@ export const userSongPrefs = pgTable(
       .references(() => songs.slug, { onDelete: 'cascade' }),
     semitones: integer('semitones').notNull().default(0),
     scrollSpeed: integer('scroll_speed').notNull().default(3),
+    /**
+     * The fret the capo is on, 0 for none.
+     *
+     * Not the same thing as `semitones`, which is why it is a second column and not a
+     * clever reuse of the first: transposing moves the sound, a capo moves the hand and
+     * leaves the sound where it was. Defaulted rather than nullable, because every row
+     * that exists already answers this — nobody had a capo on.
+     */
+    capo: integer('capo').notNull().default(0),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.userEmail, table.songSlug] })],

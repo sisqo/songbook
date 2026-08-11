@@ -396,6 +396,27 @@
     fill: var(--accent);
   }
 
+  /* The bar the capo makes: the same line as the nut, in the colour of a finger. */
+  .chord-diagram-capo {
+    stroke: var(--accent);
+  }
+
+  /*
+   * That a capo is on, under the title. In the accent colour and not muted: it changes
+   * every chord below it, which is more than a detail about the song — it is the reason
+   * the letters are the ones they are.
+   */
+  .capo-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem 0.2rem 0.5rem;
+    border-radius: var(--r-pill);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8125rem;
+  }
+
   .chord-diagram-open {
     stroke: var(--muted);
   }
@@ -1295,6 +1316,28 @@
 
   .control-row + .control-row {
     margin-top: 0.625rem;
+  }
+
+  /*
+   * Something the panel has to say about the row above, with the one button that acts
+   * on it. Indented under that row rather than aligned with it, so it reads as a remark
+   * about the capo and not as a fourth control.
+   */
+  .control-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .control-hint > button {
+    flex: none;
   }
 
   .control-name {

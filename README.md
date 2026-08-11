@@ -1,8 +1,8 @@
 # songs
 
 Testi e accordi del proprio repertorio, da leggere su tablet e telefono: zoom,
-scorrimento automatico, cambio di tonalità e notazione italiana o internazionale.
-Accesso riservato a una lista di indirizzi.
+scorrimento automatico, cambio di tonalità, capotasto e notazione italiana o
+internazionale. Accesso riservato a una lista di indirizzi.
 
 - Produzione: https://songs.sisqo.dev
 - Repo: https://github.com/sisqo/songs
@@ -246,6 +246,43 @@ frecce si usa *Ricostruisci ora*.
 Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia; la
 regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché un
 vecchio segnalibro continui a trovare la home in cache.
+
+## Tonalità e capotasto
+
+Due controlli nel pannello di lettura, e rispondono a due domande diverse:
+
+| | Cambia il suono | Cambia le forme |
+|---|---|---|
+| **Tonalità** (−1 / +1) | **sì** | sì |
+| **Capotasto** (0–7) | no | **sì** |
+
+Il capotasto fa quello che fa sulla chitarra: dici a quale tasto lo metti e lo spartito
+mostra **le forme da fare**, non gli accordi che suonano. Un brano in Re col capotasto
+al 2 si legge in Do e continua a suonare in Re. Una formula sola:
+
+```
+accordo letto   = accordo scritto + semitoni − capotasto
+accordo sonante = accordo scritto + semitoni
+```
+
+Gli accordi letti si scrivono con le alterazioni della tonalità **letta**, perché quelle
+sono le lettere che hai davanti; la tonalità che suona la dichiara una pastiglia sotto
+il titolo — «capotasto 2° tasto · suona in Re» — che compare solo col capotasto
+inserito. Serve lì e non solo nel pannello: il pannello è chiuso quasi sempre, e un
+capotasto ricordato da ieri rinomina ogni accordo della pagina senza spiegare perché.
+
+Il **suggerimento** sotto il controllo prova i tasti da 0 a 7 e dice quale rende aperti
+più accordi del brano — «col 3° tasto tutti gli accordi sono aperti» — con un pulsante
+per metterlo. Non si applica da sé: il capotasto lo mette chi suona. Un accordo conta
+come aperto quando la sua forma lascia **almeno una corda libera** e non passa il terzo
+tasto: una corda libera è esattamente ciò che un barré toglie, e la regola vale identica
+su chitarra e ukulele. Mette insieme Do, La, Sol, Mi, Re, La-, Mi- e le loro settime, e
+lascia fuori Fa, Si-, Sib, Fa#- — cioè i quattro accordi per cui il capotasto si mette.
+
+Il capotasto è **per brano**, accanto alla trasposizione: «questo lo faccio col
+capotasto al 2» lo ritrovi la volta dopo, e nessun brano che non hai toccato cambia da
+solo. Nel diagramma la forma non si rinumera — col capotasto al 2 la forma di Do *è* la
+forma di Do — e il capotasto si vede come una barra colorata col numero accanto.
 
 ## Forme degli accordi
 

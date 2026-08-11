@@ -1,6 +1,8 @@
 import type { Notation } from '../music/chord'
 import type { Instrument } from '../music/shapes'
 
+export { clampCapo } from '../music/capo'
+
 /** Preferences that belong to the reader, not to any one song. */
 export interface GlobalPrefs {
   /** Index into ZOOM_STEPS. */
@@ -15,6 +17,14 @@ export interface SongPrefs {
   semitones: number
   /** Index into SCROLL_SPEEDS. */
   scrollSpeed: number
+  /**
+   * Which fret the capo is on, 0 for none.
+   *
+   * A decision about this song — "questo lo faccio col capotasto al 2" — so it sits
+   * here with the transposition rather than among the reader's global preferences: a
+   * capo kept globally would silently change the chords of songs never opened.
+   */
+  capo: number
 }
 
 /** Font sizes for the sheet, in pixels. The text reflows; it is not a viewport zoom. */
@@ -40,7 +50,7 @@ export function readInstrument(value: unknown): Instrument {
   return value === 'ukulele' ? 'ukulele' : 'chitarra'
 }
 
-export const DEFAULT_SONG_PREFS: SongPrefs = { semitones: 0, scrollSpeed: 3 }
+export const DEFAULT_SONG_PREFS: SongPrefs = { semitones: 0, scrollSpeed: 3, capo: 0 }
 
 export function clampZoom(step: number): number {
   return Math.max(0, Math.min(ZOOM_STEPS.length - 1, Math.round(step)))

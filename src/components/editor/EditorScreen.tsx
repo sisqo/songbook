@@ -11,7 +11,7 @@ import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { type Caret, GraphicEditor } from '@/components/editor/GraphicEditor'
 import { UnsavedGuard } from '@/components/editor/UnsavedGuard'
 import { IconChevronLeft, IconInfo, IconTrash, IconUndo } from '@/components/icons'
-import { parseChordPro } from '@/lib/chordpro'
+import { chordTokens, parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
 import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
 import { addChord, removeLine, toggleComment, toggleSection } from '@/lib/editor/edits'
@@ -368,7 +368,7 @@ export function EditorScreen({ song }: { song: Song }) {
             * see the song the way it will be read, transposition included.
             */}
           <div className="bar-spacer" />
-          <ControlBar originalKey={fields.originalKey || null} />
+          <ControlBar originalKey={fields.originalKey || null} chords={chordTokens(parsed)} />
         </>
       )}
 

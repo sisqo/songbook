@@ -20,12 +20,15 @@ export function ChordPopup({
   chord,
   notation,
   instrument,
+  capo,
   onClose,
 }: {
   chord: Chord
   notation: Notation
   /** Whose fingerings to draw. The chord itself is the same on either. */
   instrument: Instrument
+  /** The fret the capo is on: the shape is the same, but it starts from there. */
+  capo: number
   onClose: () => void
 }) {
   useEffect(() => {
@@ -59,7 +62,7 @@ export function ChordPopup({
               : 'Nessuna forma disponibile per questo accordo.'}
           </p>
         ) : (
-          <ChordDiagram shape={shape} />
+          <ChordDiagram shape={shape} capo={capo} />
         )}
 
         <p className="chord-notes">{notes.join(' · ')}</p>

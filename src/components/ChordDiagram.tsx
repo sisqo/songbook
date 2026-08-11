@@ -18,7 +18,7 @@ const FRETS_SHOWN = 5
 
 const BOTTOM = TOP + FRET_GAP * FRETS_SHOWN
 
-export function ChordDiagram({ shape }: { shape: ChordShape }) {
+export function ChordDiagram({ shape, capo = 0 }: { shape: ChordShape; capo?: number }) {
   const RIGHT = LEFT + STRING_GAP * (shape.frets.length - 1)
   const fretted = shape.frets.filter((fret): fret is number => fret !== null && fret > 0)
   const lowest = fretted.length === 0 ? 1 : Math.min(...fretted)
@@ -54,7 +54,14 @@ export function ChordDiagram({ shape }: { shape: ChordShape }) {
       aria-hidden
       focusable="false"
     >
-      {/* The nut, or a plain fret when the window has moved up the neck. */}
+      {/*
+        * The nut, or a plain fret when the window has moved up the neck.
+        *
+        * With a capo on, the shape is unchanged — a capo makes a new nut, and the C
+        * shape behind it is still the C shape — so the only thing to draw differently
+        * is the bar itself, in the accent colour, with the fret named beside it. Without
+        * that, an open shape and the same shape behind a capo are the same picture.
+        */}
       <line
         x1={LEFT}
         y1={TOP}
@@ -62,7 +69,14 @@ export function ChordDiagram({ shape }: { shape: ChordShape }) {
         y2={TOP}
         strokeWidth={atNut ? 4 : 1.2}
         strokeLinecap="butt"
+        className={atNut && capo > 0 ? 'chord-diagram-capo' : undefined}
       />
+
+      {atNut && capo > 0 && (
+        <text x={LEFT - 5} y={TOP - 4} className="chord-diagram-fret" textAnchor="end">
+          {capo}
+        </text>
+      )}
 
       {Array.from({ length: FRETS_SHOWN }, (_, index) => (
         <line

@@ -15,6 +15,7 @@ import { userPrefs, userSongPrefs } from '@/lib/db/schema'
 import {
   type GlobalPrefs,
   type SongPrefs,
+  clampCapo,
   clampSemitones,
   clampSpeed,
   clampZoom,
@@ -80,6 +81,7 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
       : {
           semitones: clampSemitones(songRows[0].semitones),
           scrollSpeed: clampSpeed(songRows[0].scrollSpeed),
+          capo: clampCapo(songRows[0].capo),
         }
 
   return { global, song }
@@ -117,6 +119,7 @@ export async function saveSongPrefs(songSlug: string, prefs: SongPrefs): Promise
   const values = {
     semitones: clampSemitones(prefs.semitones),
     scrollSpeed: clampSpeed(prefs.scrollSpeed),
+    capo: clampCapo(prefs.capo),
   }
 
   try {

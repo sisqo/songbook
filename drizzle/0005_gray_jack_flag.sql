@@ -1,0 +1,1 @@
+ALTER TABLE "user_song_prefs" ADD COLUMN "capo" integer DEFAULT 0 NOT NULL;

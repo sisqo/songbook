@@ -9,8 +9,14 @@
  */
 
 import { ControlBar } from '@/components/ControlBar'
+import { usePrefs } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
+import { IconNote } from '@/components/icons'
+import { chordTokens } from '@/lib/chordpro'
+import { soundingKey } from '@/lib/music/capo'
+import { formatKey } from '@/lib/music/chord'
+import { C_MAJOR, parseKey } from '@/lib/music/notes'
 
 /**
  * Where this song sits in the sequence it is being read in.
@@ -51,6 +57,8 @@ export function SongHeading({ place }: { place: Place | null }) {
         )}
       </p>
 
+      <CapoNote />
+
       {/*
         * Said only when the server has answered that the row is gone — never
         * because it could not be reached, which is the ordinary state offline.
@@ -64,13 +72,47 @@ export function SongHeading({ place }: { place: Place | null }) {
   )
 }
 
+/**
+ * That there is a capo on, and what the song therefore sounds like.
+ *
+ * The one thing on this screen that has to be here rather than in the reading panel:
+ * the panel is shut almost all the time, and a capo kept from yesterday renames every
+ * chord on the page. Without this line the sheet would say Do where it said Re and
+ * nothing would explain why — the sort of silent surprise this app avoids elsewhere.
+ *
+ * Nothing at all when there is no capo, because then there is nothing to explain.
+ */
+function CapoNote() {
+  const { global, song: prefs } = usePrefs()
+  const { song } = useSong()
+
+  if (prefs.capo === 0) return null
+
+  // Named in the notation being read, like every other key on this screen.
+  const sounding = formatKey(
+    soundingKey(parseKey(song.originalKey) ?? C_MAJOR, prefs.semitones),
+    global.notation,
+  )
+
+  return (
+    <p className="capo-note mt-2.5">
+      <IconNote size={13} />
+      capotasto {prefs.capo}° tasto · suona in {sounding}
+    </p>
+  )
+}
+
 export function LiveSheet() {
   const { song, parsed } = useSong()
   return <SongSheet song={parsed} originalKey={song.originalKey} />
 }
 
-/** The key the bar transposes from is the song's, so it follows an edited key. */
+/**
+ * The key the bar transposes from is the song's, so it follows an edited key — and the
+ * chords are handed over too, because a capo worth suggesting depends on which chords
+ * the song actually holds.
+ */
 export function LiveControlBar() {
-  const { song } = useSong()
-  return <ControlBar originalKey={song.originalKey} />
+  const { song, parsed } = useSong()
+  return <ControlBar originalKey={song.originalKey} chords={chordTokens(parsed)} />
 }

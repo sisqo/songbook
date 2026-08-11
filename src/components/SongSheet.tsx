@@ -6,7 +6,8 @@ import { ChordPopup } from '@/components/ChordPopup'
 import { usePrefs } from '@/components/PrefsProvider'
 import type { Line, ParsedSong } from '@/lib/chordpro'
 import { type Chord, type Notation, formatChord, parseChord, transposeChord } from '@/lib/music/chord'
-import { type Key, C_MAJOR, parseKey, transposeKey } from '@/lib/music/notes'
+import { readKey, readShift } from '@/lib/music/capo'
+import { type Key, C_MAJOR, parseKey } from '@/lib/music/notes'
 import { ZOOM_STEPS } from '@/lib/prefs/types'
 
 const BLANK = ' '
@@ -31,9 +32,18 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
   const { global, song: songPrefs } = usePrefs()
   const [shown, setShown] = useState<Chord | null>(null)
 
+  /*
+   * The key whose letters go on the page, which is not always the key that sounds.
+   *
+   * Transposing moves both; a capo moves only this one, downwards, because the shapes
+   * you finger behind a capo are lower than what comes out of the instrument. So the
+   * sheet is written in `read` and the header says what `sounding` is — see
+   * `lib/music/capo.ts`, where the two shifts are named and tested.
+   */
+  const shift = readShift(songPrefs.semitones, songPrefs.capo)
   const currentKey = useMemo(
-    () => transposeKey(parseKey(originalKey) ?? C_MAJOR, songPrefs.semitones),
-    [originalKey, songPrefs.semitones],
+    () => readKey(parseKey(originalKey) ?? C_MAJOR, songPrefs.semitones, songPrefs.capo),
+    [originalKey, songPrefs.semitones, songPrefs.capo],
   )
 
   /**
@@ -62,7 +72,7 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
               <SheetLine
                 key={lineIndex}
                 line={line}
-                semitones={songPrefs.semitones}
+                shift={shift}
                 notation={global.notation}
                 currentKey={currentKey}
                 roomForChords={roomForChords}
@@ -78,6 +88,7 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
           chord={shown}
           notation={global.notation}
           instrument={global.instrument}
+          capo={songPrefs.capo}
           onClose={() => setShown(null)}
         />
       )}
@@ -87,14 +98,15 @@ export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey
 
 function SheetLine({
   line,
-  semitones,
+  shift,
   notation,
   currentKey,
   roomForChords,
   onPick,
 }: {
   line: Line
-  semitones: number
+  /** Transposition and capo together: how far the written chords move to reach the page. */
+  shift: number
   notation: Notation
   currentKey: Key
   roomForChords: boolean
@@ -116,7 +128,7 @@ function SheetLine({
                 {roomForChords && (
                   <SheetChord
                     raw={part.chord}
-                    semitones={semitones}
+                    shift={shift}
                     notation={notation}
                     currentKey={currentKey}
                     onPick={onPick}
@@ -141,13 +153,13 @@ function SheetLine({
  */
 function SheetChord({
   raw,
-  semitones,
+  shift,
   notation,
   currentKey,
   onPick,
 }: {
   raw: string | null
-  semitones: number
+  shift: number
   notation: Notation
   currentKey: Key
   onPick: (chord: Chord) => void
@@ -163,7 +175,7 @@ function SheetChord({
   const parsed = parseChord(raw)
   if (parsed === null) return <span className="sheet-chord">{raw}</span>
 
-  const chord = transposeChord(parsed, semitones, currentKey)
+  const chord = transposeChord(parsed, shift, currentKey)
   const label = formatChord(chord, notation)
 
   return (

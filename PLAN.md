@@ -92,6 +92,7 @@ setlist_songs(setlist_slug, song_slug, position,
 
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
 user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
+                capo,                                                -- v1.8
                 updated_at, primary key (user_email, song_slug))
 
 builds(id primary key default 'last', built_at)                      -- v1.2
@@ -951,6 +952,63 @@ esiste — mentre così ognuno resta nelle sue proporzioni e la chitarra non cam
 **Il costo, detto.** Una preferenza in più nell'header significa che il menù ora legge le
 preferenze, quindi le tre pagine che avevano solo la barra — canzonieri, scalette, la singola
 scaletta — hanno anche loro il `PrefsProvider`. Il conto è una query in più su quelle pagine.
+
+### v1.8 — capotasto
+
+Consegnata.
+
+1. `user_song_prefs.capo`, e uno spartito che mostra le forme da fare invece degli
+   accordi che suonano
+2. Una pastiglia sotto il titolo che dichiara il capotasto e la tonalità che suona
+3. Un suggerimento: quale tasto rende aperti più accordi del brano
+
+**Due spostamenti che non sono lo stesso spostamento.** Trasporre muove il suono;
+il capotasto muove la mano e lascia il suono dov'è. Insieme: `letto = scritto + semitoni
+− capotasto`, `sonante = scritto + semitoni`. È una sottrazione, e per questo sta in un
+modulo con i test invece che dentro un componente: sbagliata di segno resta plausibile a
+schermo, e l'unico caso che la smaschera è **+2 semitoni con il capotasto al 2**, dove le
+lettere devono tornare quelle scritte *e* il brano deve suonare un tono sopra. Una delle
+due cose da sola non basta: con un segno invertito una delle due continua a tornare.
+
+**Perché la pastiglia sotto il titolo.** Il pannello di lettura è chiuso quasi sempre —
+è una scelta di design già dichiarata: «col pannello chiuso la barra non dice più in che
+tonalità stai leggendo» — e un capotasto ricordato da ieri rinomina *ogni* accordo della
+pagina. Senza una riga fissa, aprire un brano mostrerebbe Do dove c'era Re e niente
+spiegherebbe perché: la sorpresa silenziosa che questa app evita altrove. La pastiglia
+c'è solo col capotasto inserito, perché a zero non c'è niente da spiegare.
+
+**Il suggerimento, e la definizione che ha dovuto cambiare.** Il criterio parte da una
+domanda semplice: quali accordi sono aperti. La prima versione lo chiedeva alla tabella
+delle posizioni aperte — sembrava di principio ed era sbagliata: il La aperto arriva allo
+spartito attraverso una forma mobile che capita di cadere al capotasto, quindi la tabella
+non ha una voce per lui e il suggerimento contava il La fra i difficili. Il test l'ha
+trovato subito. La definizione buona è **almeno una corda libera, e niente oltre il terzo
+tasto**: una corda libera è esattamente quello che un barré toglie, quindi dice «senza
+barré» senza dover riconoscere un barré — cosa che nessuna euristica fa bene, perché tre
+dita in fila al secondo tasto sono indistinguibili da un barré e sono un La aperto. E vale
+identica sui due strumenti, dove prima servivano due regole diverse.
+
+Il suggerimento **non si applica da sé** e si confronta col capotasto già messo, non con
+un manico nudo: a chi ha già scelto il secondo tasto, sentirsi dire che il secondo tasto
+andrebbe bene è rumore. Il test della proprietà — su cinque brani, otto tasti e due
+strumenti — verifica che quando parla sia sempre un miglioramento vero.
+
+**Il diagramma non si rinumera.** Col capotasto al 2 la forma di Do *è* la forma di Do:
+il capotasto è il nuovo tasto zero. Cambia solo la barra, colorata e col numero accanto,
+perché altrimenti una forma aperta e la stessa forma dietro un capotasto sarebbero lo
+stesso disegno.
+
+**Cosa ha detto il tipo.** Aggiungere `capo` a `SongPrefs` ha fatto fallire la
+compilazione in tre punti: la server action, la cache locale e le fixture del test della
+coda — cioè esattamente i tre posti che costruiscono le preferenze campo per campo
+invece di passarle intere. È la stessa classe di bug evitata due volte in v1.7 (il
+confronto di uguaglianza in `updateGlobal`, poi in `updateSong`), e stavolta l'ha trovata
+il compilatore invece di me.
+
+**Il costo, detto.** Il capotasto è una preferenza del brano, quindi lo segue anche dentro
+una scaletta: se in una serata lo stesso brano va fatto in due modi diversi, questo
+modello non lo permette. E non entra nell'export `.chopro`, come non ci entrano
+trasposizione e ordine: quel file è il brano come è scritto, non come lo leggi.
 
 ### v2 — il resto
 

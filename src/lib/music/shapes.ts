@@ -238,17 +238,27 @@ export function shapeNotes(frets: Fret[], instrument: Instrument = 'chitarra'): 
   return notes
 }
 
-/** Whether a set of frets is a voicing of this chord, and not of a neighbouring one. */
-function isVoicing(frets: Fret[], root: PitchClass, family: string, instrument: Instrument): boolean {
-  const spec = FAMILIES[family]
-  const allowed = new Set(spec.intervals.map((interval) => mod12(root + interval)))
-  const sounded = new Set(shapeNotes(frets, instrument))
+/**
+ * The twelve pitch classes as bits of one integer.
+ *
+ * The search below tries about thirteen thousand fingerings per chord, and the first
+ * version asked `shapeNotes` for an array and built two Sets for each one: 168 ms to
+ * answer a capo suggestion for a ten-chord song, in a synchronous render, on the first
+ * press. As bitmasks the same question is an `&`, the masks for the chord are computed
+ * once instead of thirteen thousand times, and the answer is the same one — which the
+ * tests check independently, over every root and family of both instruments.
+ */
+function maskOf(intervals: number[], root: PitchClass): number {
+  return intervals.reduce((mask, interval) => mask | (1 << mod12(root + interval)), 0)
+}
 
-  if (sounded.size === 0) return false
-  for (const note of sounded) if (!allowed.has(note)) return false
-  for (const interval of spec.required) if (!sounded.has(mod12(root + interval))) return false
-
-  return true
+function soundedMask(frets: Fret[], strings: PitchClass[]): number {
+  let mask = 0
+  for (let string = 0; string < frets.length; string += 1) {
+    const fret = frets[string]
+    if (fret !== null) mask |= 1 << mod12(strings[string] + fret)
+  }
+  return mask
 }
 
 /** Four frets under one hand, and where a ukulele stops being one. */
@@ -297,7 +307,13 @@ function ukuleleShape(root: PitchClass, family: string): Fret[] | null {
   const known = searched.get(key)
   if (known !== undefined) return known
 
+  const spec = FAMILIES[family]
+  const allowed = maskOf(spec.intervals, root)
+  const required = maskOf(spec.required, root)
+  const strings = TUNING.ukulele
+
   let best: Fret[] | null = null
+  let bestCost: number[] | null = null
 
   for (let base = 0; base + REACH <= LAST_FRET; base += 1) {
     const options: Fret[] = [null, 0]
@@ -308,8 +324,18 @@ function ukuleleShape(root: PitchClass, family: string): Fret[] | null {
         for (const c of options) {
           for (const d of options) {
             const frets = [a, b, c, d]
-            if (!isVoicing(frets, root, family, 'ukulele')) continue
-            if (best === null || cheaper(cost(frets), cost(best))) best = frets
+            const sounded = soundedMask(frets, strings)
+
+            // Nothing foreign, nothing missing, and something sounding.
+            if (sounded === 0) continue
+            if ((sounded & ~allowed) !== 0) continue
+            if ((sounded & required) !== required) continue
+
+            const price = cost(frets)
+            if (bestCost === null || cheaper(price, bestCost)) {
+              best = frets
+              bestCost = price
+            }
           }
         }
       }
@@ -372,6 +398,40 @@ export function shapeFor(chord: Chord, instrument: Instrument = 'chitarra'): Cho
       : options.reduce((a, b) => (highestFret(b) < highestFret(a) ? b : a))
 
   return { frets: best, family: resolved.family, simplified: resolved.simplified }
+}
+
+/**
+ * Whether this chord is one a hand holds in open position.
+ *
+ * Two conditions, and the same two on either instrument: **at least one string left
+ * open**, and **nothing past the third fret**. An open string is what a barre takes
+ * away — a barre stops all six — so "has an open string" says "no barre" without
+ * having to detect one, which is worth avoiding: three fingers side by side at the
+ * second fret look exactly like a barre to any test for it, and that shape is an open
+ * A, one of the easiest chords there is.
+ *
+ * It sorts the guitar's chords the way a player would: C, A, G, E, D, Am, Em and their
+ * sevenths are easy; F, Bm, Bb, F#m are not, and those are precisely the chords a capo
+ * gets put on to avoid. On a ukulele it separates C, F, Am and D from Bb and E the same
+ * way.
+ *
+ * An earlier version asked instead whether the curated open-position table had an
+ * entry. It looked principled and was wrong: open A reaches the page through a movable
+ * form that happens to land at the nut, so the table has no entry for it and a capo
+ * suggestion counted A as hard.
+ *
+ * Used to suggest a capo, so it has to rank fingerings sensibly rather than settle what
+ * any given player finds hard.
+ */
+export function isEasyShape(root: PitchClass, suffix: string, instrument: Instrument): boolean {
+  const shape = shapeFor(
+    { root: mod12(root), rootName: 'C', suffix, bass: null, bassName: null },
+    instrument,
+  )
+  if (shape === null) return false
+
+  const fretted = shape.frets.filter((fret): fret is number => fret !== null && fret > 0)
+  return shape.frets.includes(0) && (fretted.length === 0 || Math.max(...fretted) <= 3)
 }
 
 /**

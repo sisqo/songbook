@@ -1,0 +1,173 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import { formatChord, formatKey, parseChord, transposeChord } from './chord'
+import {
+  MAX_CAPO,
+  clampCapo,
+  easeOf,
+  readKey,
+  readShift,
+  soundingKey,
+  suggestCapo,
+} from './capo'
+import { C_MAJOR, parseKey } from './notes'
+
+/** What the sheet would print for a chord, at a given transposition and capo. */
+function onPage(token: string, original: string, semitones: number, capo: number): string {
+  const chord = parseChord(token)
+  assert.ok(chord !== null)
+
+  const shift = readShift(semitones, capo)
+  const key = readKey(parseKey(original) ?? C_MAJOR, semitones, capo)
+  return formatChord(transposeChord(chord, shift, key), 'int')
+}
+
+describe('what the capo moves and what it leaves alone', () => {
+  const D = parseKey('D') ?? C_MAJOR
+
+  it('leaves the sound where it was, at every fret', () => {
+    for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
+      assert.equal(formatKey(soundingKey(D, 0), 'int'), 'D', `capo ${capo} changed the sound`)
+    }
+  })
+
+  it('moves the page down by the fret the capo is on', () => {
+    // A song in D, capo 2: the shapes are the ones of C.
+    assert.equal(formatKey(readKey(D, 0, 2), 'int'), 'C')
+    assert.equal(onPage('D', 'D', 0, 2), 'C')
+    assert.equal(onPage('G', 'D', 0, 2), 'F')
+    assert.equal(onPage('A', 'D', 0, 2), 'G')
+  })
+
+  it('is the transposition that moves the sound, not the capo', () => {
+    assert.equal(formatKey(soundingKey(D, 2), 'int'), 'E')
+    assert.equal(formatKey(soundingKey(D, -3), 'int'), 'B')
+  })
+
+  /**
+   * The case where a wrong sign still looks plausible.
+   *
+   * Up two semitones and a capo on the second fret cancel on the page — the letters are
+   * the ones the file was written with — while the instrument sounds a tone higher. Get
+   * either sign backwards and one of these two facts breaks, never both.
+   */
+  it('shows the written chords when the transposition and the capo cancel', () => {
+    assert.equal(readShift(2, 2), 0)
+    assert.equal(onPage('D', 'D', 2, 2), 'D')
+    assert.equal(onPage('Bm', 'D', 2, 2), 'Bm')
+    assert.equal(formatKey(soundingKey(D, 2), 'int'), 'E')
+    assert.equal(formatKey(readKey(D, 2, 2), 'int'), 'D')
+  })
+
+  it('spells the page in the key of the page', () => {
+    // Sounding Eb, capo 1, so the shapes are in D: sharps, not the flats of Eb.
+    const Eb = parseKey('Eb') ?? C_MAJOR
+    assert.equal(formatKey(readKey(Eb, 0, 1), 'int'), 'D')
+    assert.equal(onPage('Ab', 'Eb', 0, 1), 'G')
+    assert.equal(onPage('Bb', 'Eb', 0, 1), 'A')
+  })
+
+  it('keeps the fret on the neck', () => {
+    assert.equal(clampCapo(-3), 0)
+    assert.equal(clampCapo(99), MAX_CAPO)
+    assert.equal(clampCapo(2.4), 2)
+  })
+})
+
+describe('suggesting a capo', () => {
+  /** Eb, Ab, Bb: three barre chords on a guitar, and all of them open a fret up. */
+  const EB_SONG = ['Eb', 'Ab', 'Bb', 'Cm']
+
+  it('finds the fret that opens the most chords', () => {
+    const found = suggestCapo(EB_SONG, 0, 0, 'chitarra')
+
+    assert.ok(found !== null)
+    // Capo 1 reads them as D, G, A, Bm — three of the four have open shapes.
+    assert.equal(found.fret, 1)
+    assert.equal(found.total, 4)
+    assert.ok(found.easy >= 3, `only ${found.easy} easy`)
+  })
+
+  it('says nothing when the song is already all open chords', () => {
+    assert.equal(suggestCapo(['C', 'G', 'Am', 'D7'], 0, 0, 'chitarra'), null)
+  })
+
+  /**
+   * The property behind the feature, rather than one song that happens to show it.
+   *
+   * A suggestion is only ever worth making if it strictly beats the fret the reader is
+   * on. Checked across songs, frets and both instruments, because the interesting
+   * failures are the combinations nobody thinks to try: a suggestion that repeats the
+   * current fret, or one that makes the chords harder while claiming to help.
+   */
+  it('only ever offers a fret that is a real improvement', () => {
+    const songs = [
+      ['Eb', 'Ab', 'Bb', 'Cm'],
+      ['C', 'F', 'G', 'Am'],
+      ['F#', 'B', 'C#', 'D#m'],
+      ['Bb', 'Eb', 'F7'],
+      ['A', 'D', 'E'],
+    ]
+
+    let offered = 0
+
+    for (const song of songs) {
+      for (const instrument of ['chitarra', 'ukulele'] as const) {
+        for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
+          const found = suggestCapo(song, 0, capo, instrument)
+          if (found === null) continue
+
+          offered += 1
+          const now = easeOf(song, 0, capo, instrument)
+          assert.ok(
+            found.easy > now.easy,
+            `${instrument} ${song.join(' ')} at capo ${capo}: offered ${found.fret} with ${found.easy}, already ${now.easy}`,
+          )
+          assert.notEqual(found.fret, capo)
+          assert.equal(found.total, now.total)
+        }
+      }
+    }
+
+    // The loop has to have had something to check.
+    assert.ok(offered > 10, `only ${offered} suggestions made`)
+  })
+
+  it('says nothing about a song with no chords in it', () => {
+    assert.equal(suggestCapo([], 0, 0, 'chitarra'), null)
+    assert.equal(suggestCapo(['x2', 'assolo'], 0, 0, 'chitarra'), null)
+  })
+
+  it('compares against the capo already on, not against a bare neck', () => {
+    // With the capo where the suggestion would send it, there is nothing left to say.
+    const first = suggestCapo(EB_SONG, 0, 0, 'chitarra')
+    assert.ok(first !== null)
+    assert.equal(suggestCapo(EB_SONG, 0, first.fret, 'chitarra'), null)
+  })
+
+  it('takes the transposition into account, since it moves the shapes too', () => {
+    /*
+     * The same song read a semitone higher already needs no capo: +1 puts it in E, A, B,
+     * C#m, and the suggestion must not offer the fret that was right before.
+     */
+    const moved = suggestCapo(EB_SONG, 1, 0, 'chitarra')
+    assert.notEqual(moved?.fret, 1)
+  })
+
+  it('answers for a ukulele too, where easy means near the nut', () => {
+    const found = suggestCapo(['Eb', 'Ab', 'Bb'], 0, 0, 'ukulele')
+    // Whatever it picks, it must be an improvement and a real fret.
+    if (found !== null) {
+      assert.ok(found.fret >= 1 && found.fret <= MAX_CAPO)
+      assert.ok(found.easy > 0)
+    }
+  })
+
+  it('never suggests the fret it was given', () => {
+    for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
+      const found = suggestCapo(EB_SONG, 0, capo, 'chitarra')
+      assert.notEqual(found?.fret, capo)
+    }
+  })
+})

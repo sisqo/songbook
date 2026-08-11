@@ -11,6 +11,7 @@ import {
   IconTurtle,
   IconUndo,
 } from '@/components/icons'
+import { type CapoOption, MAX_CAPO, readKey, suggestCapo } from '@/lib/music/capo'
 import { formatKey } from '@/lib/music/chord'
 import { C_MAJOR, parseKey } from '@/lib/music/notes'
 import { SCROLL_SPEEDS, ZOOM_STEPS } from '@/lib/prefs/types'
@@ -28,9 +29,27 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * named and accepted: with the panel closed, the bar no longer says which key you
  * are reading in. The sheet does, in the chords themselves.
  */
-export function ControlBar({ originalKey }: { originalKey: string | null }) {
-  const { global, song, pending, setZoomStep, setNotation, setSemitones, setScrollSpeed } =
-    usePrefs()
+export function ControlBar({
+  originalKey,
+  chords = [],
+}: {
+  originalKey: string | null
+  /**
+   * Every chord token of the song, for the capo suggestion. Empty is a fine answer —
+   * the suggestion then has nothing to say and says nothing.
+   */
+  chords?: string[]
+}) {
+  const {
+    global,
+    song,
+    pending,
+    setZoomStep,
+    setNotation,
+    setSemitones,
+    setScrollSpeed,
+    setCapo,
+  } = usePrefs()
   const { running, toggle } = useAutoScroll(song.scrollSpeed)
   const [open, setOpen] = useState(false)
 
@@ -54,6 +73,31 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
     [originalKey, global.notation],
   )
 
+  /*
+   * What the shapes on the page are, once the capo has moved them. Named only when a
+   * capo is on: without one it is the key every chord of the sheet already spells out.
+   */
+  const reading = useMemo(
+    () =>
+      formatKey(
+        readKey(parseKey(originalKey) ?? C_MAJOR, song.semitones, song.capo),
+        global.notation,
+      ),
+    [originalKey, song.semitones, song.capo, global.notation],
+  )
+
+  /*
+   * Only while the panel is open, because that is the only place it is shown — and
+   * because on a ukulele the answer is searched rather than looked up: about thirteen
+   * thousand fingerings per chord, cached after the first time, but the first time is
+   * 56 ms of one thread. Paying that when a panel is opened is fine; paying it on every
+   * reading page, for something nobody is looking at, is not.
+   */
+  const suggestion = useMemo(
+    () => (open ? suggestCapo(chords, song.semitones, song.capo, global.instrument) : null),
+    [open, chords, song.semitones, song.capo, global.instrument],
+  )
+
   const lastSpeed = SCROLL_SPEEDS.length - 1
 
   return (
@@ -66,10 +110,14 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
         {open && (
           <ReadingPanel
             home={home}
+            reading={reading}
             semitones={song.semitones}
+            capo={song.capo}
+            suggestion={suggestion}
             notation={global.notation}
             zoomStep={global.zoomStep}
             setSemitones={setSemitones}
+            setCapo={setCapo}
             setNotation={setNotation}
             setZoomStep={setZoomStep}
           />
@@ -157,19 +205,28 @@ function formatSemitones(semitones: number): string {
  */
 function ReadingPanel({
   home,
+  reading,
   semitones,
+  capo,
+  suggestion,
   notation,
   zoomStep,
   setSemitones,
+  setCapo,
   setNotation,
   setZoomStep,
 }: {
   /** The key the song was written in, for the label on the way back to it. */
   home: string
+  /** The key the shapes on the page are in, which the capo moves and nothing else does. */
+  reading: string
   semitones: number
+  capo: number
+  suggestion: CapoOption | null
   notation: 'it' | 'int'
   zoomStep: number
   setSemitones: (value: number) => void
+  setCapo: (value: number) => void
   setNotation: (value: 'it' | 'int') => void
   setZoomStep: (value: number) => void
 }) {
@@ -217,6 +274,68 @@ function ReadingPanel({
           </button>
         </span>
       </div>
+
+      <div className="control-row">
+        <span className="control-name">
+          <span className="control-name-label">Capotasto</span>
+          <span className={capo === 0 ? 'control-name-value' : 'control-name-value is-changed'}>
+            {capo === 0 ? 'nessuno' : `${capo}° tasto · leggi in ${reading}`}
+          </span>
+        </span>
+
+        <span className="segment">
+          <button
+            type="button"
+            className="segment-button"
+            onClick={() => setCapo(capo - 1)}
+            disabled={capo === 0}
+            aria-label="Abbassa il capotasto di un tasto"
+          >
+            <span aria-hidden>−</span>
+          </button>
+
+          <button
+            type="button"
+            className="segment-button"
+            onClick={() => setCapo(0)}
+            disabled={capo === 0}
+            aria-label="Togli il capotasto"
+            title={capo === 0 ? undefined : 'Togli il capotasto'}
+          >
+            <IconUndo size={15} />
+          </button>
+
+          <button
+            type="button"
+            className="segment-button"
+            onClick={() => setCapo(capo + 1)}
+            disabled={capo === MAX_CAPO}
+            aria-label="Alza il capotasto di un tasto"
+          >
+            <span aria-hidden>+</span>
+          </button>
+        </span>
+      </div>
+
+      {/*
+        * What a capo would do for the hands, when it would do something.
+        *
+        * A sentence and a button rather than an automatic move: the capo is the one
+        * thing here that changes what the hands do, and the reader is the one holding
+        * them. It disappears as soon as it has nothing left to offer.
+        */}
+      {suggestion !== null && (
+        <div className="control-hint">
+          <span>
+            {suggestion.easy === suggestion.total
+              ? `Col ${suggestion.fret}° tasto tutti gli accordi sono aperti.`
+              : `Col ${suggestion.fret}° tasto ${suggestion.easy} accordi su ${suggestion.total} sono aperti.`}
+          </span>
+          <button type="button" className="btn btn-sm" onClick={() => setCapo(suggestion.fret)}>
+            Metti
+          </button>
+        </div>
+      )}
 
       <div className="control-row">
         <span className="control-name">

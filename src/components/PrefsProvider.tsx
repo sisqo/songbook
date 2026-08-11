@@ -26,6 +26,7 @@ import {
   DEFAULT_SONG_PREFS,
   type GlobalPrefs,
   type SongPrefs,
+  clampCapo,
   clampSemitones,
   clampSpeed,
   clampZoom,
@@ -41,6 +42,7 @@ interface PrefsContextValue {
   setInstrument: (instrument: Instrument) => void
   setSemitones: (semitones: number) => void
   setScrollSpeed: (step: number) => void
+  setCapo: (fret: number) => void
 }
 
 const PrefsContext = createContext<PrefsContextValue | null>(null)
@@ -135,7 +137,13 @@ export function PrefsProvider({
 
   const updateSong = useCallback(
     (next: SongPrefs) => {
-      if (next.semitones === song.semitones && next.scrollSpeed === song.scrollSpeed) return
+      if (
+        next.semitones === song.semitones &&
+        next.scrollSpeed === song.scrollSpeed &&
+        next.capo === song.capo
+      ) {
+        return
+      }
 
       setSong(next)
       if (songSlug === null) return
@@ -155,6 +163,7 @@ export function PrefsProvider({
       setInstrument: (instrument) => updateGlobal({ ...global, instrument }),
       setSemitones: (semitones) => updateSong({ ...song, semitones: clampSemitones(semitones) }),
       setScrollSpeed: (step) => updateSong({ ...song, scrollSpeed: clampSpeed(step) }),
+      setCapo: (fret) => updateSong({ ...song, capo: clampCapo(fret) }),
     }),
     [global, song, pending, updateGlobal, updateSong],
   )
