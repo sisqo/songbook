@@ -16,7 +16,7 @@
  */
 
 import { defaultCache } from '@serwist/next/worker'
-import { type PrecacheEntry, type SerwistGlobalConfig, Serwist } from 'serwist'
+import { NetworkOnly, type PrecacheEntry, type SerwistGlobalConfig, Serwist } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -54,7 +54,23 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  /**
+   * The editor is never cached, and the rule comes first because the first match
+   * wins.
+   *
+   * Without it the default rules keep a copy of the page, and offline that copy
+   * would open an editor showing the words as they were at the last deploy, over a
+   * database it cannot reach — you would type into a stale song and lose it on save.
+   * A page that plainly refuses to open says the true thing instead. Measured, not
+   * assumed: it was found sitting in the `others` cache.
+   */
+  runtimeCaching: [
+    {
+      matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('/modifica'),
+      handler: new NetworkOnly(),
+    },
+    ...defaultCache,
+  ],
 })
 
 serwist.addEventListeners()

@@ -1,0 +1,348 @@
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+import { ControlBar } from '@/components/ControlBar'
+import { SongFields, type SongFieldValues } from '@/components/SongFields'
+import { SongSheet } from '@/components/SongSheet'
+import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { type Caret, GraphicEditor } from '@/components/editor/GraphicEditor'
+import { IconChevronLeft, IconInfo, IconTrash } from '@/components/icons'
+import { parseChordPro } from '@/lib/chordpro'
+import type { Song } from '@/lib/data/types'
+import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
+import { addChord, toggleComment, toggleSection } from '@/lib/editor/edits'
+import { deleteSong, saveSong } from '@/lib/import/actions'
+import { SAVE_MESSAGE } from '@/lib/import/types'
+import { dropEdit, writeEdit } from '@/lib/library/store'
+
+type Mode = 'graphic' | 'source' | 'preview'
+
+const MODES: { mode: Mode; label: string }[] = [
+  { mode: 'graphic', label: 'Grafico' },
+  { mode: 'source', label: 'Sorgente' },
+  { mode: 'preview', label: 'Anteprima' },
+]
+
+/** Where a raw offset in the source falls, in line-and-letter terms. */
+function caretFromRaw(source: string, rawAt: number): Caret {
+  const before = source.slice(0, rawAt)
+  const lineStart = before.lastIndexOf('\n') + 1
+
+  return {
+    line: before.split('\n').length - 1,
+    // The chords written before the cursor are not letters of the line.
+    at: readLyricLine(before.slice(lineStart)).text.length,
+  }
+}
+
+/**
+ * The editor, on its own page.
+ *
+ * One song, three ways of looking at it, and a single source string underneath —
+ * so switching modes can never lose an edit or show two different songs. The
+ * commands act on the line the cursor is in, whichever mode is open, because they
+ * are the same operations on the same document.
+ *
+ * Saving writes the row into the local overlay before leaving, which is what makes
+ * the reading page show the new words the moment it opens rather than after its own
+ * round trip.
+ */
+export function EditorScreen({ song }: { song: Song }) {
+  const router = useRouter()
+  const { canzonieri, refresh: refreshCanzonieri } = useCanzonieri()
+
+  const [mode, setMode] = useState<Mode>('graphic')
+  const [source, setSource] = useState(song.body)
+  const [fields, setFields] = useState<SongFieldValues>({
+    title: song.title,
+    artist: song.artist ?? '',
+    originalKey: song.originalKey ?? '',
+    tags: song.tags.join(', '),
+    canzoniereSlug: song.canzoniereSlug ?? canzonieri[0]?.slug ?? '',
+  })
+
+  const [caret, setCaret] = useState<Caret>({ line: 0, at: 0 })
+  const [editing, setEditing] = useState<{ line: number; chord: number } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  const raw = useRef<HTMLTextAreaElement | null>(null)
+  /** Where the caret goes after a command rewrote the source. */
+  const rawCaret = useRef<number | null>(null)
+
+  const saved = useRef({ source: song.body, fields })
+  const dirty =
+    source !== saved.current.source ||
+    JSON.stringify(fields) !== JSON.stringify(saved.current.fields)
+
+  const parsed = useMemo(() => parseChordPro(source), [source])
+
+  /** Closing the tab with unsaved words in it deserves a question. */
+  useEffect(() => {
+    if (!dirty) return
+
+    const ask = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', ask)
+    return () => window.removeEventListener('beforeunload', ask)
+  }, [dirty])
+
+  useEffect(() => {
+    const at = rawCaret.current
+    if (at === null || raw.current === null) return
+
+    rawCaret.current = null
+    raw.current.focus()
+    raw.current.setSelectionRange(at, at)
+  }, [source])
+
+  const command = (change: (document: SongDocument) => SongDocument) => {
+    setSource(toSource(change(fromSource(source))))
+    setNotice(null)
+  }
+
+  /**
+   * A chord where the cursor is.
+   *
+   * In the graphic mode it is added to the document and opened for typing; in the
+   * source mode the brackets are typed into the text, which is what someone reading
+   * ChordPro expects to see happen.
+   */
+  const insertChord = () => {
+    if (mode === 'source' && raw.current !== null) {
+      const at = raw.current.selectionStart
+      setSource(`${source.slice(0, at)}[]${source.slice(at)}`)
+      rawCaret.current = at + 1
+      return
+    }
+
+    const document = fromSource(source)
+    const block = document.blocks[caret.line]
+    if (block === undefined || block.kind !== 'lyrics') return
+
+    // Where the new chord lands once the chords are back in order.
+    const chord = block.chords.filter((entry) => entry.at <= caret.at).length
+    setSource(toSource(addChord(document, caret.line, caret.at)))
+    setEditing({ line: caret.line, chord })
+  }
+
+  const save = async () => {
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const result = await saveSong({
+        slug: song.slug,
+        title: fields.title,
+        artist: fields.artist,
+        originalKey: fields.originalKey,
+        tags: fields.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
+        canzoniereSlug: fields.canzoniereSlug,
+        body: source,
+      })
+
+      if (!result.ok) {
+        setError(SAVE_MESSAGE[result.reason])
+        return
+      }
+
+      // The reading page reads this before it asks the server anything.
+      writeEdit(result.song)
+      saved.current = { source, fields }
+      setNotice('Salvato. Si vede subito nel brano; pubblica per averlo anche offline.')
+      await refreshCanzonieri()
+    } catch {
+      setError(SAVE_MESSAGE.failed)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async () => {
+    setBusy(true)
+    const result = await deleteSong(song.slug)
+    setBusy(false)
+
+    if (!result.ok) {
+      setError(SAVE_MESSAGE[result.reason])
+      return
+    }
+
+    dropEdit(song.slug)
+    router.push('/')
+  }
+
+  const leave = (event: React.MouseEvent) => {
+    if (dirty && !window.confirm('Ci sono modifiche non salvate. Uscire comunque?')) {
+      event.preventDefault()
+    }
+  }
+
+  return (
+    <div>
+      <div className="editor-bar">
+        <Link href={`/canzoni/${song.slug}`} className="btn btn-quiet btn-sm" onClick={leave}>
+          <IconChevronLeft size={16} />
+          Brano
+        </Link>
+
+        <div className="segment" role="tablist" aria-label="Modalità di modifica">
+          {MODES.map((entry) => (
+            <button
+              key={entry.mode}
+              type="button"
+              role="tab"
+              aria-selected={mode === entry.mode}
+              className={`control-button ${mode === entry.mode ? 'is-active' : ''}`}
+              onClick={() => setMode(entry.mode)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+
+        <span className="flex-1" />
+
+        {dirty && <span className="editor-hint">non salvato</span>}
+
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={busy || !dirty || fields.title.trim() === ''}
+          onClick={() => void save()}
+        >
+          Salva
+        </button>
+      </div>
+
+      {error !== null && (
+        <p className="notice notice-error mt-4" role="alert">
+          {error}
+        </p>
+      )}
+
+      {notice !== null && (
+        <p className="notice mt-4" role="status">
+          <IconInfo />
+          {notice}
+        </p>
+      )}
+
+      <details className="card mt-4 p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Dati del brano
+          <span className="text-muted">
+            {' — '}
+            {fields.title || 'senza titolo'}
+            {fields.artist !== '' && ` · ${fields.artist}`}
+            {fields.originalKey !== '' && ` · ${fields.originalKey}`}
+          </span>
+        </summary>
+
+        <div className="mt-4">
+          <SongFields
+            values={fields}
+            canzonieri={canzonieri}
+            onChange={(field, value) => setFields((current) => ({ ...current, [field]: value }))}
+          />
+        </div>
+      </details>
+
+      {mode !== 'preview' && (
+        <div className="editor-toolbar">
+          <button type="button" className="btn btn-sm" onClick={insertChord}>
+            Accordo
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => command((document) => toggleSection(document, caret.line, 'chorus'))}
+          >
+            Ritornello
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => command((document) => toggleSection(document, caret.line, 'bridge'))}
+          >
+            Ponte
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => command((document) => toggleComment(document, caret.line))}
+          >
+            Commento
+          </button>
+          <span className="editor-hint self-center">
+            agiscono sulla riga {caret.line + 1}
+          </span>
+        </div>
+      )}
+
+      {mode === 'graphic' && (
+        <GraphicEditor
+          source={source}
+          caret={caret}
+          editing={editing}
+          onChange={setSource}
+          onCaret={setCaret}
+          onEditing={setEditing}
+        />
+      )}
+
+      {mode === 'source' && (
+        <textarea
+          ref={raw}
+          className="editor-raw"
+          value={source}
+          spellCheck={false}
+          onChange={(event) => {
+            setSource(event.target.value)
+            setCaret(caretFromRaw(event.target.value, event.target.selectionStart))
+          }}
+          onSelect={(event) =>
+            setCaret(caretFromRaw(source, event.currentTarget.selectionStart))
+          }
+          aria-label="Sorgente ChordPro"
+        />
+      )}
+
+      {mode === 'preview' && (
+        <>
+          <SongSheet song={parsed} originalKey={fields.originalKey || null} />
+          {/*
+            * The reader's own bar, not a copy of it: the point of this mode is to
+            * see the song the way it will be read, transposition included.
+            */}
+          <div className="bar-spacer" />
+          <ControlBar originalKey={fields.originalKey || null} />
+        </>
+      )}
+
+      <div className="mt-10 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+        {confirming ? (
+          <>
+            <span className="text-sm text-muted">Eliminare questo brano?</span>
+            <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => void remove()}>
+              Elimina
+            </button>
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirming(false)}>
+              Annulla
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirming(true)}>
+            <IconTrash size={16} />
+            Elimina
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

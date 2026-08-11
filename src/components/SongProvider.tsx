@@ -3,7 +3,6 @@
 import {
   type ReactNode,
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -11,11 +10,8 @@ import {
   useState,
 } from 'react'
 
-import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { type ParsedSong, parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
-import { deleteSong, saveSong } from '@/lib/import/actions'
-import type { Decision, DeleteResult, SaveResult, SongInput } from '@/lib/import/types'
 import { loadSongContent } from '@/lib/library/actions'
 import { isNewer } from '@/lib/library/overlay'
 import { dropEdit, readEdit, writeEdit } from '@/lib/library/store'
@@ -26,8 +22,6 @@ interface SongContextValue {
   parsed: ParsedSong
   /** True only once the server has said this song no longer exists. */
   deleted: boolean
-  save: (input: SongInput, decision?: Decision) => Promise<SaveResult>
-  remove: () => Promise<DeleteResult>
 }
 
 const SongContext = createContext<SongContextValue | null>(null)
@@ -42,9 +36,8 @@ const SongContext = createContext<SongContextValue | null>(null)
  *
  * Three sources: the copy baked into the page, the copy this browser cached the
  * last time it learned of an edit, then the database — each shown only if it is
- * newer than the baked one. A save is the exception and applies its result at once,
- * since the server has just said what it persisted; that is what makes the sheet
- * change under your hands.
+ * newer than the baked one. The editor writes into that cache as it saves, which is
+ * why coming back from it shows the new words before the server is asked anything.
  *
  * "Newer" is always measured against the baked copy — never against the cache, and
  * never against a clock in the browser. That is what lets the cached edit survive
@@ -67,7 +60,6 @@ export function SongProvider({
 }) {
   const [song, setSong] = useState<Song>(baked)
   const [deleted, setDeleted] = useState(false)
-  const { refresh: refreshCanzonieri } = useCanzonieri()
 
   /**
    * Reading the cache in a layout effect rather than in render: render has to
@@ -128,38 +120,9 @@ export function SongProvider({
     [song.body, baked.body, bakedParsed],
   )
 
-  const save = useCallback(
-    async (input: SongInput, decision?: Decision) => {
-      const result = await saveSong(input, decision)
-      if (!result.ok) return result
-
-      /**
-       * Shown unconditionally: the server has just said what it persisted, so there
-       * is nothing to compare it against. Only whether to *cache* it is a question
-       * of versions — and the answer being no would mean the page already carries
-       * these words.
-       */
-      setSong(result.song)
-      if (isNewer(result.song, baked)) writeEdit(result.song)
-      else dropEdit(baked.slug)
-
-      // A save can move the song to another canzoniere, and the header says which.
-      void refreshCanzonieri()
-
-      return result
-    },
-    [baked, refreshCanzonieri],
-  )
-
-  const remove = useCallback(async () => {
-    const result = await deleteSong(baked.slug)
-    if (result.ok) dropEdit(baked.slug)
-    return result
-  }, [baked.slug])
-
   const value = useMemo<SongContextValue>(
-    () => ({ song, parsed, deleted, save, remove }),
-    [song, parsed, deleted, save, remove],
+    () => ({ song, parsed, deleted }),
+    [song, parsed, deleted],
   )
 
   return <SongContext.Provider value={value}>{children}</SongContext.Provider>

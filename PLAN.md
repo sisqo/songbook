@@ -4,7 +4,9 @@
 > modifiche si vedono subito** sono consegnate e in produzione su
 > https://songs.sisqo.dev. La v1.2 ha cambiato chi possiede un brano: il database, non i
 > file — va letta prima di toccare il seed. La v1.3 ha aggiunto lo strato che mostra la
-> versione del database sopra la pagina statica: va letta prima di toccare la lettura.
+> versione del database sopra la pagina statica: va letta prima di toccare la lettura. La
+> v1.4 ha portato l'editor in una pagina sua, con la regola che nessuna modifica può
+> riscrivere il file: va letta prima di toccare il modello a blocchi.
 
 ## Cosa è
 
@@ -656,6 +658,44 @@ Verificato su un build di produzione con il service worker installato, non in sv
 pagina in precache è ancora quella vecchia — controllato leggendo la Cache API — e sullo
 schermo c'è la correzione. Poi ricarica, riapertura del form, elenco, cancellazione. La
 prova che serviva era proprio questa: battere il precache, non evitarlo per caso.
+
+### v1.4 — editor e icone
+
+Consegnata.
+
+L'editor esce dalla pagina del brano e diventa una pagina sua, `/canzoni/<slug>/modifica`,
+con tre modalità sopra un'unica sorgente: **Grafico**, **Sorgente**, **Anteprima**.
+
+1. Modello a blocchi, uno per riga del file, con `toSource(fromSource(x)) === x`
+2. Operazioni pure e testate: testo, accordi, taglia e unisci riga, commento, sezioni
+3. Grafico: le parole sono `input` veri, gli accordi appesi a una copia nascosta delle parole
+4. Sorgente: il ChordPro, con gli stessi comandi
+5. Anteprima: lo spartito e la barra dei controlli veri
+6. Rotta dinamica, esclusa dal precache anche a runtime
+7. Set di icone generato da uno script, con favicon vero al posto di quello di Next
+
+**La copia nascosta.** Gli accordi devono stare sopra la sillaba giusta, ma le parole sono
+dentro un `input`, e dentro un input non ci sono nodi di testo su cui appendere qualcosa. La
+soluzione non misura niente: sotto la riga di accordi c'è una copia invisibile delle stesse
+parole, nello stesso font, e ogni accordo è appeso a un'ancora di larghezza zero fra le sue
+lettere. È il browser a fare la misura, quindi non si sposta nulla quando il font finisce di
+caricare o cambia il tema. Verificato con un righello indipendente — un canvas col font
+dell'input — su ogni accordo: **scarto 0,0 px**.
+
+**Il round trip è la rete di sicurezza.** Il parser del lettore butta via quello che non gli
+serve: `{new_song}` — che sta in due dei tre brani veri — sparirebbe al primo salvataggio.
+Quindi il modello dell'editor tiene ogni riga, comprese quelle che il lettore ignora, gli
+spazi in coda (diciannove righe ne hanno) e le interruzioni di riga di Windows. Provato sui
+brani veri, non su fixture inventate: identici byte per byte.
+
+**Perché questa pagina non è statica.** Tutto il resto lo è, per sopravvivere senza rete.
+Un editor precachato invece mostrerebbe le parole dell'ultimo deploy e poi non riuscirebbe a
+salvare quelle nuove: peggio di una pagina che si rifiuta di aprirsi. Serve anche una regola
+nel service worker, perché le regole di default se lo prendevano comunque — trovato nella
+cache `others`, non immaginato.
+
+Il prezzo, detto: la vecchia modifica in pagina si apriva anche senza rete, e questa no. Non
+salvava neanche prima, ma potevi almeno guardare il form.
 
 ### v2 — il resto
 

@@ -2,18 +2,14 @@
 
 import { useMemo, useState } from 'react'
 
+import { SongFields, type SongFieldValues } from '@/components/SongFields'
 import { SongSheet } from '@/components/SongSheet'
 import { IconTrash } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import type { Canzoniere } from '@/lib/data/types'
 import { SAVE_MESSAGE, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
 
-export interface FormValues {
-  title: string
-  artist: string
-  originalKey: string
-  tags: string
-  canzoniereSlug: string
+export interface FormValues extends SongFieldValues {
   body: string
 }
 
@@ -93,64 +89,12 @@ export function SongForm({
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="field-label">Titolo</span>
-          <input
-            value={values.title}
-            onChange={(event) => set('title', event.target.value)}
-            className="form-field"
-          />
-        </label>
-
-        <label className="block">
-          <span className="field-label">Artista</span>
-          <input
-            value={values.artist}
-            onChange={(event) => set('artist', event.target.value)}
-            className="form-field"
-          />
-        </label>
-
-        <label className="block">
-          <span className="field-label">
-            Tonalità{' '}
-            {keyIsGuess && values.originalKey === initial.originalKey && (
-              <em className="not-italic text-accent">stimata</em>
-            )}
-          </span>
-          <input
-            value={values.originalKey}
-            onChange={(event) => set('originalKey', event.target.value)}
-            placeholder="es. Bb o F#m"
-            className="form-field"
-          />
-        </label>
-
-        <label className="block">
-          <span className="field-label">Canzoniere</span>
-          <select
-            value={values.canzoniereSlug}
-            onChange={(event) => set('canzoniereSlug', event.target.value)}
-            className="form-field"
-          >
-            {canzonieri.map((canzoniere) => (
-              <option key={canzoniere.slug} value={canzoniere.slug}>
-                {canzoniere.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block sm:col-span-2">
-          <span className="field-label">Tag, separati da virgola</span>
-          <input
-            value={values.tags}
-            onChange={(event) => set('tags', event.target.value)}
-            className="form-field"
-          />
-        </label>
-      </div>
+      <SongFields
+        values={values}
+        canzonieri={canzonieri}
+        keyIsGuess={keyIsGuess && values.originalKey === initial.originalKey}
+        onChange={set}
+      />
 
       <div className="mt-5 grid gap-3 lg:grid-cols-2">
         <label className="block">

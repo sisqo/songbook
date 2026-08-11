@@ -929,6 +929,223 @@
     }
   }
 
+  /* ---- The editor ------------------------------------------------------ */
+
+  /*
+   * The bar that holds the modes and Salva. Sticky rather than fixed at the
+   * bottom, because the preview puts the reader's own control bar down there and
+   * two fixed bars would fight over the same thumb.
+   */
+  .editor-bar {
+    position: sticky;
+    /* Under the header, which is sticky too and 3.3rem tall. */
+    top: 3.3rem;
+    z-index: 30;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0;
+    background: var(--bg);
+    border-block-end: 1px solid var(--line);
+  }
+
+  .editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.5rem 0 0.75rem;
+  }
+
+  /*
+   * One line of the song. The chords sit in a row above the words, and the words
+   * are a real input — the native caret and the phone keyboard are worth more here
+   * than any custom text handling.
+   */
+  .editor-line {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+    border-inline-start: 2px solid transparent;
+    padding-inline-start: 0.5rem;
+  }
+
+  .editor-line.is-focused {
+    border-inline-start-color: var(--accent);
+  }
+
+  .editor-line.is-chorus,
+  .editor-line.is-bridge {
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  }
+
+  /*
+   * Both, always together: italic letters are a different width, and the hidden
+   * copy is what tells the chords where the letters are.
+   */
+  .editor-line.is-bridge .line-input,
+  .editor-line.is-bridge .chord-ghost {
+    font-style: italic;
+  }
+
+  /*
+   * The line scrolls sideways as one piece, so a chord can never drift away from
+   * its syllable: the row of chords and the row of words are the same width and
+   * scroll together. Wrapping is the reading page's business, and the preview
+   * shows it.
+   */
+  .line-scroll {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .line-inner {
+    /*
+     * The invisible copy of the text sets this width, and the input takes all of
+     * it, so the input never scrolls inside itself — which is what would make the
+     * two rows disagree. The trailing space is room for the caret at the end.
+     */
+    width: max-content;
+    min-width: 100%;
+    padding-inline-end: 1.5ch;
+  }
+
+  /*
+   * The row's height comes from the hidden copy of the words, not from a number:
+   * that copy is set in the same size as the input, so the row is exactly one line
+   * of text tall and the chords have somewhere to sit.
+   */
+  .chord-row {
+    position: relative;
+    color: var(--accent);
+    font-size: 1rem;
+    line-height: 1.4;
+    white-space: pre;
+  }
+
+  /*
+   * A copy of the line's words, laid out in the same font as the input below and
+   * then hidden. It is what puts each chord over the right letter without
+   * measuring anything: the browser does the measuring.
+   */
+  .chord-ghost {
+    visibility: hidden;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+
+  /* Zero width, so the hidden copy keeps the exact spacing of the words. */
+  .chord-anchor {
+    position: relative;
+    display: inline-block;
+    width: 0;
+  }
+
+  /*
+   * Hung from the baseline of the hidden copy, upwards — not dropped from the top of
+   * the row. The anchor sits on that baseline, and the top of the row is not where
+   * the letters begin, so measuring down from it put the chords across the words.
+   */
+  .chord-chip {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    visibility: visible;
+    padding-inline-end: 0.35em;
+    border-radius: var(--r-sm);
+    color: var(--accent);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: pre;
+  }
+
+  @media (hover: hover) {
+    .chord-chip:hover {
+      background: var(--accent-soft);
+    }
+  }
+
+  .chord-field {
+    position: absolute;
+    inset-block-end: -0.2rem;
+    inset-inline-start: 0;
+    visibility: visible;
+    width: 5ch;
+    padding: 0.1rem 0.2rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--accent);
+    /* 16px, again to stop iOS zooming when it takes focus. */
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .line-input {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    line-height: 1.35;
+    white-space: pre;
+  }
+
+  .line-input:focus {
+    outline: none;
+  }
+
+  .line-input::placeholder {
+    color: var(--faint);
+  }
+
+  /* A comment, a directive, a blank: lines that are not words with chords. */
+  .editor-aside {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 1.9rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+
+  .editor-raw {
+    display: block;
+    width: 100%;
+    min-height: 60vh;
+    padding: 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    tab-size: 2;
+  }
+
+  .editor-raw:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* The line the source-mode buttons will act on, marked while typing. */
+  .editor-hint {
+    color: var(--faint);
+    font-size: 0.75rem;
+  }
+
   .pending-dot {
     flex: none;
     width: 0.45rem;

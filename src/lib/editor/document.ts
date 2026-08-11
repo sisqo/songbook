@@ -1,0 +1,211 @@
+/**
+ * The song as the editor handles it: one block per line of the source.
+ *
+ * The reading parser (`chordpro.ts`) throws away what it does not need — unknown
+ * directives vanish, spacing between words is not recoverable from its output —
+ * which is right for a renderer and fatal for an editor. Saving from here must not
+ * quietly rewrite someone's file, so this model keeps every line, in order, and
+ * `toSource(fromSource(x))` gives `x` back.
+ *
+ * That is the invariant the tests hold to, byte for byte, including on the real
+ * repertoire: two of those songs carry a `{new_song}` line that the reader ignores
+ * and that must survive being edited anyway.
+ *
+ * The source string stays the single source of truth in the editor. Every change
+ * here is source → blocks → change → source, so the graphic mode and the raw mode
+ * can never drift apart.
+ */
+
+export type SectionKind = 'verse' | 'chorus' | 'bridge'
+
+/** A chord and the position in the line's text it sits above. */
+export interface ChordAt {
+  /** Index into the block's `text`, from 0 to text.length. */
+  at: number
+  /** Chord as written, e.g. `la` or `F#m`. */
+  name: string
+}
+
+export type Block =
+  | { kind: 'lyrics'; text: string; chords: ChordAt[] }
+  /** `{c: ...}`, keeping the spelling the file used. */
+  | { kind: 'comment'; directive: string; text: string }
+  /** `{soc}`, `{eoc}`, `{sob}`, `{eob}`, again as written. */
+  | { kind: 'boundary'; directive: string; edge: 'start' | 'end'; section: 'chorus' | 'bridge' }
+  /** Any other directive, kept verbatim because something else may depend on it. */
+  | { kind: 'directive'; raw: string }
+  | { kind: 'blank'; raw: string }
+
+export interface SongDocument {
+  blocks: Block[]
+  /** Preserved so a file written on Windows is not rewritten wholesale. */
+  eol: '\n' | '\r\n'
+}
+
+const DIRECTIVE = /^\{\s*([a-zA-Z_]+)\s*(?::\s*(.*?)\s*)?\}$/
+
+const COMMENT_NAMES = new Set(['c', 'comment'])
+
+const BOUNDARIES: Record<string, { edge: 'start' | 'end'; section: 'chorus' | 'bridge' }> = {
+  soc: { edge: 'start', section: 'chorus' },
+  start_of_chorus: { edge: 'start', section: 'chorus' },
+  eoc: { edge: 'end', section: 'chorus' },
+  end_of_chorus: { edge: 'end', section: 'chorus' },
+  sob: { edge: 'start', section: 'bridge' },
+  start_of_bridge: { edge: 'start', section: 'bridge' },
+  eob: { edge: 'end', section: 'bridge' },
+  end_of_bridge: { edge: 'end', section: 'bridge' },
+}
+
+/**
+ * Splits one lyric line into plain text and the chords above it.
+ *
+ * A `[` with no closing bracket is literal text, exactly as the reader treats it,
+ * so a line of prose containing a bracket survives a visit to the editor.
+ */
+export function readLyricLine(line: string): { text: string; chords: ChordAt[] } {
+  const chords: ChordAt[] = []
+  let text = ''
+
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '[') {
+      const close = line.indexOf(']', i)
+      if (close !== -1) {
+        chords.push({ at: text.length, name: line.slice(i + 1, close) })
+        i = close
+        continue
+      }
+    }
+    text += line[i]
+  }
+
+  return { text, chords }
+}
+
+/** Puts the chords back where they were. */
+export function writeLyricLine(text: string, chords: ChordAt[]): string {
+  const ordered = [...chords].sort((a, b) => a.at - b.at)
+  let out = ''
+  let cursor = 0
+
+  for (const chord of ordered) {
+    const at = Math.max(0, Math.min(text.length, chord.at))
+    out += text.slice(cursor, at) + `[${chord.name}]`
+    cursor = at
+  }
+
+  return out + text.slice(cursor)
+}
+
+export function fromSource(source: string): SongDocument {
+  const eol = source.includes('\r\n') ? '\r\n' : '\n'
+
+  const blocks = source.split(/\r?\n/).map<Block>((line) => {
+    if (line.trim() === '') return { kind: 'blank', raw: line }
+
+    const directive = DIRECTIVE.exec(line.trim())
+    if (directive) {
+      const name = directive[1].toLowerCase()
+
+      if (COMMENT_NAMES.has(name)) {
+        return { kind: 'comment', directive: directive[1], text: directive[2] ?? '' }
+      }
+
+      const boundary = BOUNDARIES[name]
+      if (boundary) return { kind: 'boundary', directive: directive[1], ...boundary }
+
+      return { kind: 'directive', raw: line }
+    }
+
+    return { kind: 'lyrics', ...readLyricLine(line) }
+  })
+
+  return { blocks, eol }
+}
+
+export function toSource(document: SongDocument): string {
+  return document.blocks.map(lineOf).join(document.eol)
+}
+
+function lineOf(block: Block): string {
+  switch (block.kind) {
+    case 'blank':
+      return block.raw
+    case 'directive':
+      return block.raw
+    case 'comment':
+      return `{${block.directive}: ${block.text}}`
+    case 'boundary':
+      return `{${block.directive}}`
+    case 'lyrics':
+      return writeLyricLine(block.text, block.chords)
+  }
+}
+
+/**
+ * Which section each block belongs to, by the same rules the reader applies: an
+ * explicit start directive wins until its end directive, and otherwise a blank line
+ * closes the verse. The editor needs this to show a chorus as a chorus while it is
+ * being written.
+ */
+export function sectionsOf(blocks: Block[]): SectionKind[] {
+  let forced: SectionKind | null = null
+
+  return blocks.map((block) => {
+    if (block.kind === 'boundary') {
+      if (block.edge === 'start') {
+        forced = block.section
+        return block.section
+      }
+
+      const closing = forced ?? block.section
+      forced = null
+      return closing
+    }
+
+    return forced ?? 'verse'
+  })
+}
+
+/**
+ * Where the chords of a line end up after its text changes.
+ *
+ * The edit is reduced to one replaced span: what the old and new text share at the
+ * start, what they share at the end, and the difference in between. Anchors before
+ * the span stay, anchors after it move by the length delta, and anchors *inside* it
+ * collapse to where the span begins rather than disappearing — losing a chord
+ * because a word was retyped would be the worst kind of quiet damage.
+ *
+ * Common prefix and suffix are ambiguous on repeated text: turning `la la` into
+ * `la la la` could be read as an insertion at three different points. Any of them
+ * keeps every chord and moves only the ones after the change, which is why the rule
+ * is stated in terms of the span rather than of an intent that cannot be known.
+ */
+export function shiftChords(chords: ChordAt[], oldText: string, newText: string): ChordAt[] {
+  if (oldText === newText) return chords
+
+  let prefix = 0
+  while (prefix < oldText.length && prefix < newText.length && oldText[prefix] === newText[prefix]) {
+    prefix += 1
+  }
+
+  let suffix = 0
+  while (
+    suffix < oldText.length - prefix &&
+    suffix < newText.length - prefix &&
+    oldText[oldText.length - 1 - suffix] === newText[newText.length - 1 - suffix]
+  ) {
+    suffix += 1
+  }
+
+  const spanEnd = oldText.length - suffix
+  const delta = newText.length - oldText.length
+
+  return chords.map((chord) => {
+    // Strictly before, so text typed at an anchor pushes it along: a chord belongs
+    // to the syllable that follows it, and that syllable has just moved.
+    if (chord.at < prefix) return chord
+    if (chord.at >= spanEnd) return { ...chord, at: chord.at + delta }
+    return { ...chord, at: prefix }
+  })
+}

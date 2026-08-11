@@ -3,10 +3,9 @@ import Link from 'next/link'
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
-import { SongEditor } from '@/components/SongEditor'
 import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
-import { IconChevronLeft, IconChevronRight } from '@/components/icons'
+import { IconChevronLeft, IconChevronRight, IconPencil } from '@/components/icons'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
@@ -164,7 +163,17 @@ export async function SongReader({
               />
             )}
 
-            <SongEditor canzonieri={canzonieri} />
+            {/*
+              * A link, not a form: the editor is a page of its own, and two ways to
+              * change a song would be two things to keep in step. It needs a network
+              * to save, so it needs one to open.
+              */}
+            <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+              <Link href={`/canzoni/${song.slug}/modifica`} className="btn">
+                <IconPencil size={16} />
+                Modifica
+              </Link>
+            </div>
 
             <div className="bar-spacer" />
           </main>

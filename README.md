@@ -24,8 +24,10 @@ normale di lavorare in locale: non serve un database per vedere l'app funzionare
 
 Dall'app, in `/importa`: incolli il brano, l'app riconosce se è già ChordPro o se
 sono accordi sopra il testo e converte, deduce titolo, artista e tonalità, e mostra
-una preview prima di salvare. Correggere e cancellare si fanno dalla pagina del
-brano, sotto lo spartito.
+una preview prima di salvare.
+
+Correggere e cancellare si fanno **nell'editor**, `/canzoni/<slug>/modifica`, che si
+apre dal pulsante *Modifica* sotto lo spartito.
 
 Quello che salvi **si vede subito**: la pagina del brano e l'elenco chiedono al
 database la versione corrente e la mettono sopra quella generata al build, quindi una
@@ -105,6 +107,41 @@ Una cosa che resta ferma al build: **l'elenco dentro una scaletta** mostra i tit
 come erano all'ultima pubblicazione, quindi un brano rinominato compare lì col nome
 vecchio finché non pubblichi. Aprendolo, il brano è quello giusto e aggiornato — è
 solo la riga dell'elenco a restare indietro.
+
+## Editor
+
+Tre modi di guardare lo stesso brano, con una sola sorgente sotto: quello che cambi
+in uno c'è già nell'altro.
+
+- **Grafico** — lo spartito modificabile. Le parole sono campi di testo veri, quindi
+  cursore, selezione e tastiera del telefono funzionano come dovrebbero; gli accordi
+  stanno nella riga sopra, ognuno appeso alla lettera cui appartiene. Toccane uno per
+  cambiarlo, svuotalo per toglierlo. Invio divide la riga, Backspace a inizio riga la
+  unisce a quella sopra.
+- **Sorgente** — il ChordPro come sta nel file, senza aiuti.
+- **Anteprima** — il brano come si legge, con la barra dei controlli vera. Trasporre
+  qui trasporta davvero: è la stessa preferenza che ti ritrovi sul palco.
+
+I comandi agiscono sulla riga dove sta il cursore, in entrambe le modalità di
+modifica: **Accordo** (dove sei), **Ritornello** e **Ponte** (marcano il blocco di
+righe fra due stacchi, e premuti di nuovo lo smarcano), **Commento**.
+
+Gli accordi restano attaccati alle sillabe anche mentre riscrivi le parole, e una
+direttiva che il lettore ignora — `{new_song}`, o qualsiasi altra — non viene buttata
+via: aprire un brano nell'editor e salvarlo senza toccare nulla restituisce lo stesso
+file, byte per byte. È la proprietà su cui poggia tutto il resto, e ha i suoi test.
+
+L'editor è l'unica pagina **non** statica e non precachata: deve mostrare la versione
+che il database ha adesso, e senza rete non potrebbe comunque salvare. Quindi offline
+non si apre — mentre i brani si leggono. Se la rete cade mentre stai scrivendo, il
+salvataggio lo dice e il testo resta sullo schermo.
+
+## Icone
+
+`npm run icons` rigenera favicon, icone PWA e icona iOS da `scripts/icons.ts`; gli
+output sono committati, quindi il build normale non le tocca. Il disegno è due accordi
+sopra le righe di un testo, nei colori del tema scuro — e alle misure piccole diventa
+una composizione più semplice invece di rimpicciolirsi in una macchia.
 
 ## Canzonieri
 
