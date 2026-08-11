@@ -36,12 +36,10 @@ export default async function CanzonieriPage() {
     <CanzoniereProvider initial={initial}>
       <TopBar current="canzonieri" showSetlists={setlists.length > 0} />
 
-      <main className="mx-auto max-w-3xl px-4 pb-12 pt-5">
-        <header className="mb-5">
-          <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">
-            Canzonieri
-          </h1>
-          <p className="mt-1 text-sm text-muted">
+      <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
+        <header className="mb-[1.125rem]">
+          <h1 className="screen-title">Canzonieri</h1>
+          <p className="mt-2 text-sm leading-[1.45] text-muted">
             Ogni brano appartiene a un canzoniere. Le scalette sono un&apos;altra cosa e possono
             mescolarli.
           </p>

@@ -45,10 +45,8 @@ export default async function ImportPage() {
       <CanzoniereProvider initial={{ canzonieri, assignments }}>
         <TopBar current="importa" showSetlists={setlists.length > 0} />
 
-        <main className="mx-auto max-w-5xl px-4 pb-12 pt-5">
-          <h1 className="mb-5 text-[1.75rem] font-semibold leading-tight tracking-tight">
-            Importa
-          </h1>
+        <main className="mx-auto max-w-5xl px-4 pb-12 pt-3">
+          <h1 className="screen-title mb-4">Importa</h1>
 
           <ImportScreen defaultCanzoniere={preferred} />
         </main>

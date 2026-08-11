@@ -11,7 +11,13 @@ interface IconProps {
   className?: string
 }
 
-function Icon({ size = 18, className, children }: IconProps & { children: React.ReactNode }) {
+function Icon({
+  size = 18,
+  className,
+  /* Lighter than the default only for the two animals, which are drawings. */
+  strokeWidth = 1.75,
+  children,
+}: IconProps & { strokeWidth?: number; children: React.ReactNode }) {
   return (
     <svg
       width={size}
@@ -19,7 +25,7 @@ function Icon({ size = 18, className, children }: IconProps & { children: React.
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.75}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -182,6 +188,48 @@ export function IconPause({ size = 18, className }: IconProps) {
       <rect x="7" y="5" width="3.5" height="14" rx="1.25" />
       <rect x="13.5" y="5" width="3.5" height="14" rx="1.25" />
     </svg>
+  )
+}
+
+/*
+ * The two ends of the speed slider.
+ *
+ * A turtle and a hare rather than a minus and a plus, because the slider has no
+ * unit to put on it: "20 pixels per second" means nothing to someone holding a
+ * guitar, and slower-than-this and faster-than-that is the whole of what the
+ * control does.
+ */
+export function IconTurtle(props: IconProps) {
+  return (
+    <Icon {...props} strokeWidth={1.5}>
+      <path d="M3.5 14.5a7 5.5 0 0 1 14 0" />
+      <path d="M3.5 14.5h14" />
+      <path d="M6 14.5v3M15 14.5v3" />
+      <path d="M17.5 13.6c1.7 0 2.9-1 2.9-2.3" />
+      <path d="M10.5 9.2v5.3M7 11.4l1.2 3.1M14 11.4l-1.2 3.1" />
+    </Icon>
+  )
+}
+
+export function IconHare(props: IconProps) {
+  return (
+    <Icon {...props} strokeWidth={1.5}>
+      <ellipse cx="9.6" cy="6.6" rx="1.4" ry="3.8" transform="rotate(-14 9.6 6.6)" />
+      <ellipse cx="13.4" cy="6.6" rx="1.4" ry="3.8" transform="rotate(14 13.4 6.6)" />
+      <path d="M8.2 13.2a3.6 3.6 0 0 1 6.6 1.6c1.4.6 2.4 1.9 2.4 3.4H6.6c-1 0-1.8-.8-1.8-1.8 0-1.6 1.4-2.9 3.4-3.2z" />
+      <path d="M13.2 12.4h.01" />
+    </Icon>
+  )
+}
+
+/** The reading panel: two faders, as on a mixing desk. */
+export function IconSliders(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+      <circle cx="16" cy="8" r="2.25" />
+      <circle cx="10" cy="16" r="2.25" />
+    </Icon>
   )
 }
 

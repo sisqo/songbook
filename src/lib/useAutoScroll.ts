@@ -134,8 +134,13 @@ export function useAutoScroll(speedStep: number) {
     }
 
     const onKey = (event: KeyboardEvent) => {
-      // Space on one of our buttons presses it; it does not scroll the page.
-      if (event.key === ' ' && fromControls(event.target)) return
+      /*
+       * A key pressed on one of our own controls is working that control, not
+       * scrolling the page: space presses a button, and the arrows move the speed
+       * slider — the one control on the bar meant to be touched mid-song. Pausing
+       * on those would stop the scroll the key is there to adjust.
+       */
+      if (fromControls(event.target)) return
 
       if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) {
         setRunning(false)

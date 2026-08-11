@@ -29,10 +29,8 @@ export default async function Home() {
       <CanzoniereProvider initial={initial}>
         <TopBar current="canzoni" showSetlists={setlists.length > 0} />
 
-        <main className="mx-auto max-w-3xl px-4 pb-12 pt-5">
-          <h1 className="mb-4 text-[1.75rem] font-semibold leading-tight tracking-tight">
-            Canzoni
-          </h1>
+        <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
+          <h1 className="screen-title mb-4">Canzoni</h1>
 
           <SongList songs={songs.map(toIndexEntry)} />
         </main>

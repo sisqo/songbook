@@ -62,7 +62,7 @@ export function TopBar({
          * next to them do not shift between the first song and the second.
          */}
         {steps !== undefined && (
-          <div className="flex items-center">
+          <div className="flex items-center gap-1.5">
             <Step href={steps.previous} label="Canzone precedente" direction="previous" />
             <Step href={steps.next} label="Canzone successiva" direction="next" />
           </div>

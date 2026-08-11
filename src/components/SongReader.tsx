@@ -141,7 +141,14 @@ export async function SongReader({
             steps={steps}
           />
 
-          <main className="mx-auto max-w-3xl px-4 pt-4">
+          {/*
+            * The sheet is a card that runs off the bottom of the screen, so
+            * everything that belongs to the song is inside it: the title, the words,
+            * the way to the next song, and the way into the editor. Nothing sits on
+            * the page beside it — a second surface next to the one you are reading
+            * would be a second thing to look at.
+            */}
+          <main className="song-card">
             <SongHeading
               place={
                 setlist
@@ -177,8 +184,8 @@ export async function SongReader({
               * change a song would be two things to keep in step. It needs a network
               * to save, so it needs one to open.
               */}
-            <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
-              <Link href={`/canzoni/${song.slug}/modifica`} className="btn">
+            <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
+              <Link href={`/canzoni/${song.slug}/modifica`} className="btn is-inset">
                 <IconPencil size={16} />
                 Modifica
               </Link>
@@ -209,11 +216,11 @@ function StepNav({
   return (
     <nav
       className="mt-10 flex items-stretch justify-between gap-3 border-t pt-4 text-sm"
-      style={{ borderColor: 'var(--line)' }}
+      style={{ borderColor: 'var(--surface-2)' }}
       aria-label={label}
     >
       {previous ? (
-        <Link href={href(previous.slug)} className="card min-w-0 flex-1 px-4 py-3">
+        <Link href={href(previous.slug)} className="panel min-w-0 flex-1 px-4 py-3">
           <span className="flex items-center gap-1 text-faint">
             <IconChevronLeft size={14} />
             Precedente
@@ -225,7 +232,7 @@ function StepNav({
       )}
 
       {next ? (
-        <Link href={href(next.slug)} className="card min-w-0 flex-1 px-4 py-3 text-end">
+        <Link href={href(next.slug)} className="panel min-w-0 flex-1 px-4 py-3 text-end">
           <span className="flex items-center justify-end gap-1 text-faint">
             Successiva
             <IconChevronRight size={14} />

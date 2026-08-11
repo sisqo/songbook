@@ -156,6 +156,7 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
           {results.length === 0 ? (
             <p className="mt-8 text-center text-sm text-muted">Nessuna canzone trovata.</p>
           ) : (
+            /* Matches from anywhere belong to each other, so they share one card. */
             <ul className="row-list card">
               {results.map((song) => (
                 <li key={song.slug}>
@@ -170,15 +171,20 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
           )}
         </>
       ) : (
-        <ul className="row-list card mt-5">
+        /*
+         * A card each, rather than rows of one list. A canzoniere is a thing you
+         * open, not a line in an index: separating them is what makes the open one
+         * look like a container with songs inside it instead of a row that grew.
+         */
+        <ul className="card-stack mt-4">
           {groups.map((group) => {
             const isOpen = open === group.key
 
             return (
-              <li key={group.key}>
+              <li key={group.key} className={isOpen ? 'card card-lead' : 'card'}>
                 <button
                   type="button"
-                  className="row w-full text-start"
+                  className="row-head"
                   aria-expanded={isOpen}
                   onClick={() => toggle(group.key)}
                 >
@@ -192,11 +198,11 @@ export function SongList({ songs: baked }: { songs: SongIndexEntry[] }) {
 
                 {isOpen &&
                   (group.songs.length === 0 ? (
-                    <p className="px-3 pb-3 text-sm text-muted">
+                    <p className="px-[1.125rem] pb-4 text-sm text-muted">
                       Nessun brano in questo canzoniere.
                     </p>
                   ) : (
-                    <ul className="pb-1">
+                    <ul>
                       {group.songs.map((song) => (
                         <li key={song.slug}>
                           <SongRow song={song} notation={global.notation} nested />

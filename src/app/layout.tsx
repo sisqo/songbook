@@ -1,15 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { DM_Sans, Geist_Mono } from 'next/font/google'
 
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+/*
+ * DM Sans reads the app, Geist Mono reads the ChordPro.
+ *
+ * The variables are named for the job rather than the typeface, because the sheet
+ * and the editor both depend on the app font being one thing: the editor positions
+ * chords by measuring a hidden copy of the words, so the copy and the input have to
+ * be set in the same family, and a name like `--font-sans` is the thing they share.
+ */
+const sans = DM_Sans({
+  variable: '--font-sans',
   subsets: ['latin'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const mono = Geist_Mono({
+  variable: '--font-mono',
   subsets: ['latin'],
 })
 
@@ -53,7 +61,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+      <body className={`${sans.variable} ${mono.variable} antialiased`}>{children}</body>
     </html>
   )
 }

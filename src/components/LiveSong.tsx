@@ -27,14 +27,22 @@ export interface Place {
   within: string | null
 }
 
-/** Title, artist, and where the song sits in whatever led here. */
+/**
+ * Title, artist, and where the song sits in whatever led here.
+ *
+ * No rule under it any more. The title sits on the same sheet as the words and is
+ * the first thing on it, so a line drawn between them was separating a song from
+ * itself; the space does the work.
+ */
 export function SongHeading({ place }: { place: Place | null }) {
   const { song, deleted } = useSong()
 
   return (
-    <header className="mb-5 border-b pb-4" style={{ borderColor: 'var(--line)' }}>
-      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">{song.title}</h1>
-      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted">
+    <header className="mb-4">
+      <h1 className="text-[1.6875rem] font-medium leading-[1.12] tracking-[-0.03em]">
+        {song.title}
+      </h1>
+      <p className="mt-2.5 flex flex-wrap items-center gap-2 text-base text-muted">
         {song.artist !== null && <span>{song.artist}</span>}
         <CanzonierePicker songSlug={song.slug} />
         {place !== null && (

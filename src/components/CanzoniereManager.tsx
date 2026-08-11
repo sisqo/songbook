@@ -3,7 +3,13 @@
 import { useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
-import { IconOffline, IconPencil, IconPlus, IconTrash } from '@/components/icons'
+import {
+  IconChevronDown,
+  IconOffline,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from '@/components/icons'
 import { WRITE_MESSAGE, type WriteResult, countBySlug } from '@/lib/canzonieri/types'
 
 /**
@@ -60,15 +66,20 @@ export function CanzoniereManager() {
         </p>
       )}
 
-      <ul className="row-list card">
+      {/*
+        * A card each. A canzoniere is a container, not a line in an index — and the
+        * step that asks where its songs should go opens inside its own card, under
+        * the row it belongs to, rather than in a list where it could belong to any.
+        */}
+      <ul className="card-stack">
         {canzonieri.map((canzoniere) => {
           const count = counts[canzoniere.slug] ?? 0
           const isRenaming = renaming === canzoniere.slug
           const isRemoving = removing === canzoniere.slug
 
           return (
-            <li key={canzoniere.slug}>
-              <div className="row">
+            <li key={canzoniere.slug} className="card p-[0.875rem] sm:px-4">
+              <div className="flex items-center gap-2.5">
                 {isRenaming ? (
                   <>
                     <input
@@ -105,13 +116,13 @@ export function CanzoniereManager() {
                   <>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{canzoniere.name}</span>
-                      <span className="count-badge mt-1">
+                      <span className="meta-chip mt-1.5">
                         {count} {count === 1 ? 'brano' : 'brani'}
                       </span>
                     </span>
                     <button
                       type="button"
-                      className="btn btn-quiet btn-sm"
+                      className="icon-button"
                       disabled={!online || busy}
                       onClick={() => {
                         setRenaming(canzoniere.slug)
@@ -121,12 +132,15 @@ export function CanzoniereManager() {
                       }}
                       aria-label={`Rinomina ${canzoniere.name}`}
                     >
-                      <IconPencil size={16} />
-                      <span className="hidden sm:inline">Rinomina</span>
+                      <IconPencil size={17} />
                     </button>
+                    {/*
+                      * Turns red when its own confirmation is open, so it is clear
+                      * which row the question under the list belongs to.
+                      */}
                     <button
                       type="button"
-                      className="btn btn-quiet btn-sm"
+                      className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
                       disabled={!online || busy}
                       onClick={() => {
                         setRemoving(isRemoving ? null : canzoniere.slug)
@@ -137,15 +151,14 @@ export function CanzoniereManager() {
                       aria-label={`Rimuovi ${canzoniere.name}`}
                       aria-expanded={isRemoving}
                     >
-                      <IconTrash size={16} />
-                      <span className="hidden sm:inline">Rimuovi</span>
+                      <IconTrash size={17} />
                     </button>
                   </>
                 )}
               </div>
 
               {isRemoving && (
-                <div className="panel mx-3 mb-3 p-3 text-sm">
+                <div className="panel mt-3.5 p-3.5 text-sm">
                   {count === 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="flex-1">Rimuovere «{canzoniere.name}»? È vuoto.</span>
@@ -179,12 +192,12 @@ export function CanzoniereManager() {
                       <span className="flex-1">
                         Contiene {count} {count === 1 ? 'brano' : 'brani'}. Spostali in:
                       </span>
-                      <label>
+                      <label className="picker picker-raised">
                         <span className="sr-only">Canzoniere di destinazione</span>
                         <select
                           value={destination}
                           onChange={(event) => setDestination(event.target.value)}
-                          className="form-field w-auto"
+                          className="picker-select"
                         >
                           {others(canzoniere.slug).map((entry) => (
                             <option key={entry.slug} value={entry.slug}>
@@ -192,6 +205,7 @@ export function CanzoniereManager() {
                             </option>
                           ))}
                         </select>
+                        <IconChevronDown size={14} />
                       </label>
                       <button
                         type="button"
@@ -234,12 +248,12 @@ export function CanzoniereManager() {
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
             placeholder="Nuovo canzoniere"
-            className="form-field"
+            className="form-field min-h-12 rounded-pill px-[1.125rem]"
           />
         </label>
         <button
           type="submit"
-          className="btn btn-primary"
+          className="btn btn-primary min-h-12 px-5"
           disabled={!online || busy || newName.trim() === ''}
         >
           <IconPlus size={16} />

@@ -121,7 +121,7 @@ export function SongForm({
       </div>
 
       {duplicate !== null && (
-        <div className="notice-accent mt-4 rounded-lg p-3 text-sm" role="alert">
+        <div className="notice-accent mt-4 rounded-[var(--r-lg)] p-4 text-sm" role="alert">
           <p>
             Esiste già «{duplicate.title}»
             {duplicate.artist !== null && ` di ${duplicate.artist}`}.
@@ -154,7 +154,7 @@ export function SongForm({
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
         <button
           type="button"
           className="btn btn-primary"

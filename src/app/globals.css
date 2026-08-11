@@ -8,9 +8,11 @@
  * in each. The theme follows the system setting.
  *
  * Two rules keep the pair honest. Elevation is a shadow in light and a border in
- * dark, because a shadow is invisible on a near-black page. And the accent is the
- * chord colour first, so anything else that borrows it — an active control, a key
- * badge — stays quieter than the chords themselves.
+ * dark, because a shadow is invisible on a near-black page — which is what --edge
+ * is for: the border colour that only exists in dark, so one class can carry both
+ * mechanisms without a media query of its own. And the accent is the chord colour
+ * first, so anything else that borrows it — an active control, a key badge — stays
+ * quieter than the chords themselves.
  *
  * If --bg changes here, the themeColor pair in layout.tsx has to move with it, or
  * the PWA status bar stops matching the page.
@@ -18,12 +20,20 @@
 :root {
   --bg: #f6f5f2;
   --surface: #ffffff;
-  /* Recessed fill: grouped controls, hovers, inset panels. */
+  /* Recessed fill: grouped controls, slider tracks, inset panels. */
   --surface-2: #edebe5;
+  /*
+   * A row inside a card. Between the page and the recessed fill on purpose: the
+   * card is white, so a row that has to read as nested cannot be lighter, and one
+   * as dark as a control track would read as a control.
+   */
+  --surface-3: #f1efe9;
   --ink: #16181d;
   --muted: #5c626c;
   --faint: #8d939c;
   --line: #dcdad4;
+  /* Invisible here. In dark it becomes --line: see the note above. */
+  --edge: transparent;
   --accent: #97490f;
   --accent-soft: #f4e7d9;
   /* Text on an accent fill. Not white: warm, so the fill does not look printed. */
@@ -31,13 +41,27 @@
   --danger: #9d2820;
   --danger-soft: #fbe7e4;
 
-  --r-sm: 0.5rem;
-  --r-md: 0.75rem;
-  --r-lg: 1rem;
-  --r-xl: 1.5rem;
+  /*
+   * Corners, from the smallest control to the largest surface. Every step is a
+   * job rather than a size, because the shapes nest: a button sits in a cluster
+   * that sits in a card, and each has to look rounder than the thing inside it.
+   */
+  --r-xs: 0.6875rem; /* a button inside a grouped control; the brand mark */
+  --r-sm: 0.875rem; /* an icon button */
+  --r-md: 1rem; /* a row inside a card */
+  --r-lg: 1.125rem; /* a field; a cluster on the reading bar */
+  --r-panel: 1.25rem; /* a popover */
+  --r-xl: 1.375rem; /* a card */
+  --r-2xl: 1.625rem; /* the reading bar itself */
+  --r-pill: 999px;
 
-  --shadow-1: 0 1px 2px rgb(22 24 29 / 5%), 0 6px 16px -6px rgb(22 24 29 / 10%);
-  --shadow-2: 0 2px 4px rgb(22 24 29 / 6%), 0 18px 40px -14px rgb(22 24 29 / 18%);
+  --shadow-1: 0 1px 2px rgb(22 24 29 / 5%);
+  /* A card that leads somewhere, lifted a little further off the page. */
+  --shadow-2: 0 1px 2px rgb(22 24 29 / 5%), 0 10px 24px -18px rgb(22 24 29 / 40%);
+  /* The reading bar, which floats over the song. */
+  --shadow-float: 0 8px 30px -8px rgb(22 24 29 / 25%);
+  /* A popover: the menu, the reading panel, a chord shape. */
+  --shadow-panel: 0 12px 34px -10px rgb(22 24 29 / 28%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -45,19 +69,27 @@
     --bg: #101216;
     --surface: #181b21;
     --surface-2: #21252c;
+    --surface-3: #1d2027;
     --ink: #eceef1;
     --muted: #99a0aa;
     --faint: #5f666f;
     --line: #2b2f37;
+    --edge: var(--line);
     --accent: #f0b268;
     --accent-soft: #2a2118;
     --on-accent: #1b1206;
     --danger: #ff9a90;
     --danger-soft: #2f1a18;
 
-    /* Dark separates by border, not by shadow. */
+    /*
+     * Dark separates by border, not by shadow — so the two card shadows go, and
+     * the two that float keep a shadow, because something lifted over the song
+     * has to read as lifted in either theme.
+     */
     --shadow-1: none;
-    --shadow-2: 0 20px 50px -20px rgb(0 0 0 / 70%);
+    --shadow-2: none;
+    --shadow-float: 0 10px 34px -10px rgb(0 0 0 / 70%);
+    --shadow-panel: 0 14px 40px -12px rgb(0 0 0 / 75%);
   }
 }
 
@@ -70,12 +102,16 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
     /*
-     * Only the reading page has a fixed bar, and it carries its own spacer. Here
-     * just the home indicator on iOS.
+     * No bottom padding for the home indicator here any more.
+     *
+     * The sheet is meant to run off the bottom edge, and a strip of page colour
+     * reserved after it would both break that and make a song that fits exactly
+     * scroll by the height of the inset. Every screen already covers the indicator
+     * on its own: the reading page through .bar-spacer, which carries the inset
+     * itself, and the others through the padding under their main element.
      */
-    padding-bottom: env(safe-area-inset-bottom);
   }
 
   :focus-visible {
@@ -95,6 +131,32 @@
 
 @layer components {
   /* ---- The sheet ------------------------------------------------------ */
+
+  /*
+   * The page of the song, as a sheet of paper laid on the app.
+   *
+   * It is inset at the sides and open at the bottom: the words run off the edge of
+   * the screen rather than ending in a corner, which is what says there is more
+   * song below. The corners are a little rounder than a card's — it is the largest
+   * surface in the app, and the one thing on this screen you are meant to read.
+   *
+   * min-height, not height: the mockup could say height because its frame was 844
+   * pixels of nothing. Here the sheet has to reach the bottom on a short song and
+   * grow past it on a long one.
+   */
+  .song-card {
+    /* 12px of page either side on a phone; centred and capped on anything wider. */
+    width: calc(100% - 1.5rem);
+    max-width: 48rem;
+    margin: 0.375rem auto 0;
+    padding: 1.25rem 1.125rem 1.125rem;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-block-end: 0;
+    border-radius: 1.5rem 1.5rem 0 0;
+    /* Reaches the bottom under a 4rem header, and grows past it on a long song. */
+    min-height: calc(100dvh - 4.375rem);
+  }
 
   .song-sheet {
     line-height: 1.2;
@@ -155,9 +217,14 @@
     background: none;
     color: var(--accent);
     font-family: inherit;
-    font-size: 0.72em;
-    font-weight: 600;
-    letter-spacing: inherit;
+    /*
+     * Smaller and lighter than the words, and lighter than it used to be: DM Sans
+     * sets a 600 at this size heavier than Geist did, and a chord that competes
+     * with the syllable under it is a chord you read instead of singing.
+     */
+    font-size: 0.7em;
+    font-weight: 500;
+    letter-spacing: 0;
     line-height: 1.4;
     text-align: start;
     white-space: pre;
@@ -221,9 +288,9 @@
     max-width: 15rem;
     padding: 1.25rem 1rem 1rem;
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-2);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-panel);
     text-align: center;
   }
 
@@ -304,12 +371,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     min-height: 2.75rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    padding: 0.5rem 1.125rem;
+    border: 1px solid var(--edge);
+    /*
+     * A pill. Nothing else in the app is this shape, which is the point: a card
+     * has corners, a field has corners, and an action does not — so the one thing
+     * on a screen that will do something is the one thing shaped like this.
+     */
+    border-radius: var(--r-pill);
     background: var(--surface);
+    box-shadow: var(--shadow-1);
     color: var(--ink);
     font-size: 0.9375rem;
     font-weight: 500;
@@ -324,10 +397,9 @@
   }
 
   .btn-primary {
-    border-color: var(--accent);
+    border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
-    box-shadow: var(--shadow-1);
   }
 
   /*
@@ -336,7 +408,7 @@
    * that is nearly ready rather than one that is inert.
    */
   .btn-primary:disabled {
-    border-color: var(--line);
+    border-color: var(--edge);
     background: var(--surface-2);
     color: var(--faint);
     box-shadow: none;
@@ -346,18 +418,40 @@
   .btn-quiet {
     border-color: transparent;
     background: transparent;
+    box-shadow: none;
     color: var(--muted);
   }
 
+  /*
+   * Recessed rather than raised, for a control on a surface that is already white —
+   * the sheet, or a card. Everywhere else a white fill with a shadow reads as lifted
+   * off the warm page; on white it would be invisible.
+   *
+   * Only buttons need to be told. A field is asked by its container instead, further
+   * down: the forms are shared components that do not know which surface they landed
+   * on, while every button that needs this is written where it sits.
+   */
+  .btn.is-inset {
+    border-color: transparent;
+    background: var(--surface-2);
+    box-shadow: none;
+  }
+
+  /*
+   * The fill carries it, not an outline: on a page where nothing else has a border,
+   * a red hairline reads as a rendering artifact rather than as a warning.
+   */
   .btn-danger {
-    border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+    border-color: transparent;
+    background: var(--danger-soft);
     color: var(--danger);
+    box-shadow: none;
   }
 
   /* Row-level actions, where the row already provides the vertical space. */
   .btn-sm {
     min-height: 2.5rem;
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 0.875rem;
     font-size: 0.875rem;
   }
 
@@ -368,26 +462,62 @@
 
     .btn-primary:not(:disabled):hover {
       background: color-mix(in srgb, var(--accent) 88%, var(--ink));
-      border-color: color-mix(in srgb, var(--accent) 88%, var(--ink));
     }
 
     .btn-danger:not(:disabled):hover {
-      background: var(--danger-soft);
-      border-color: var(--danger);
+      background: color-mix(in srgb, var(--danger-soft) 80%, var(--danger));
     }
   }
 
   /* ---- Surfaces ------------------------------------------------------- */
 
+  /*
+   * The surfaces alternate, and that is the whole rule the app is drawn by: the page
+   * is warm, a card on it is white, anything recessed inside that card is warm again,
+   * and a control inside that is white once more.
+   *
+   * Everything below that says "on a white surface" or "on a recessed one" is this
+   * ladder being applied.
+   */
   .card {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-xl);
     box-shadow: var(--shadow-1);
   }
 
+  /*
+   * A card inside a card is one step further down the ladder, so it takes the page
+   * colour: two white surfaces touching would merge into one. It is the container
+   * that decides and not the card itself, because the cards that end up nested are
+   * in shared components — the import preview is the same box in the editor, where
+   * it sits on the page and white is right.
+   */
+  .card .card,
+  .song-card .card {
+    background: var(--bg);
+    box-shadow: none;
+  }
+
+  /* A card that leads somewhere: the one on the screen you are meant to reach for. */
+  .card-lead {
+    box-shadow: var(--shadow-2);
+  }
+
+  /* A stack of cards that are each their own thing, rather than one list. */
+  .card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /*
+   * Recessed inside a card: a step that opens under a row, and the paste box. Takes
+   * the page colour rather than the control colour — it is a place things sit, not a
+   * control you press.
+   */
   .panel {
-    background: var(--surface-2);
+    background: var(--bg);
     border-radius: var(--r-lg);
   }
 
@@ -395,22 +525,29 @@
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
-    padding: 0.65rem 0.85rem;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--r-lg);
     background: var(--surface);
+    box-shadow: var(--shadow-1);
     color: var(--muted);
     font-size: 0.875rem;
   }
 
+  /* The tinted ones need no edge and no lift: the fill is the whole message. */
+  .notice-accent,
+  .notice-error {
+    box-shadow: none;
+  }
+
   .notice-accent {
-    border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+    border-color: transparent;
     background: var(--accent-soft);
     color: var(--accent);
   }
 
   .notice-error {
-    border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+    border-color: transparent;
     background: var(--danger-soft);
     color: var(--danger);
   }
@@ -433,6 +570,38 @@
     color: var(--on-accent);
   }
 
+  /* ---- Headings ------------------------------------------------------- */
+
+  /*
+   * The name of the screen. Larger and lighter than a bold heading would be: the
+   * size does the work, so the weight does not have to, and at 500 the title sits
+   * next to the words of a song instead of shouting over them.
+   */
+  .screen-title {
+    font-size: 1.875rem;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  /* The same voice, one step down: a section inside a screen. */
+  .section-title {
+    font-size: 1.1875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  /* A label over a group of controls, in the reading panel and over a form field. */
+  .group-label {
+    display: block;
+    color: var(--faint);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   /* A warm wash behind the card, so the page is not a flat rectangle. */
   .login-glow {
     position: fixed;
@@ -452,13 +621,20 @@
    * this header, so the header's stacking context is what decides whether an open
    * menu is painted over the reading controls or under them.
    */
+  /*
+   * Solid, and with nothing drawn under it.
+   *
+   * It used to be a translucent blur over a hairline, which worked when the page
+   * behind it was the page colour. The sheet is a white card inset from the edges
+   * now, so a translucent header would show lyrics through itself and show the page
+   * colour in the gutters beside them — two different backgrounds in one bar. The
+   * separation comes from the sheet's own top edge instead.
+   */
   .top-bar {
     position: sticky;
     top: 0;
     z-index: 40;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--line);
+    background: var(--bg);
   }
 
   .top-bar-inner {
@@ -467,31 +643,36 @@
     gap: 0.5rem;
     max-width: 48rem;
     margin-inline: auto;
-    padding: 0.4rem 0.75rem;
+    padding: 0.75rem 1rem;
   }
 
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.5625rem;
     /* Never squeezed by what sits next to it: that is the point of keeping it. */
     flex: none;
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 1.0625rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
 
   .brand-mark {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 0.6rem;
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: var(--r-xs);
     background: var(--accent);
     color: var(--on-accent);
   }
 
+  /*
+   * An icon button in the header: a raised white square rather than a bare glyph.
+   * The reading screen puts three of them in a row, and bare glyphs on a warm page
+   * did not read as three separate targets.
+   */
   .nav-link {
     display: inline-flex;
     align-items: center;
@@ -500,7 +681,9 @@
     min-width: 2.5rem;
     min-height: 2.5rem;
     padding-inline: 0.5rem;
-    border-radius: var(--r-md);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-sm);
+    background: var(--surface);
     color: var(--muted);
     font-size: 0.875rem;
     font-weight: 500;
@@ -508,6 +691,7 @@
 
   .nav-link.is-on {
     background: var(--accent-soft);
+    border-color: transparent;
     color: var(--accent);
   }
 
@@ -546,11 +730,11 @@
     inset-inline-end: 0;
     z-index: 40;
     min-width: 13rem;
-    padding: 0.35rem;
+    padding: 0.5rem;
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-2);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-panel);
   }
 
   .menu-item {
@@ -560,7 +744,7 @@
     width: 100%;
     min-height: 2.6rem;
     padding: 0.4rem 0.7rem;
-    border-radius: var(--r-sm);
+    border-radius: var(--r-md);
     color: var(--ink);
     font-size: 0.9375rem;
     text-align: start;
@@ -599,9 +783,12 @@
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.3rem 0.5rem 0.3rem 0.35rem;
-    border-radius: var(--r-md);
+    gap: 0.375rem;
+    /* Tighter on the chevron's side, so the arrow sits at the edge of the pill. */
+    padding: 0.5rem 0.875rem 0.5rem 0.625rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--r-pill);
+    background: var(--surface);
     color: var(--muted);
     font-size: 0.875rem;
   }
@@ -619,54 +806,149 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.7rem 0.75rem;
+    padding: 0.75rem 0.875rem;
     border-radius: var(--r-md);
   }
 
   @media (hover: hover) {
-    a.row:hover {
-      background: var(--surface-2);
+    a.row:hover,
+    button.row:hover {
+      background: var(--surface-3);
     }
   }
 
-  /* The hairline sits on the list item, so a row's hover fill can stay rounded. */
-  .row-list > li + li {
-    box-shadow: inset 0 1px 0 var(--line);
+  /*
+   * The head of a card that opens: a canzoniere, with its songs underneath. It
+   * fills the card rather than sitting in it, so it takes the card's own corners
+   * and there is one shape to press instead of a row inside a frame.
+   */
+  .row-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 1rem 1.125rem;
+    border-radius: var(--r-xl);
+    text-align: start;
+  }
+
+  @media (hover: hover) {
+    .row-head:hover {
+      background: var(--surface-3);
+    }
   }
 
   /*
-   * A song inside an open canzoniere. Indented and marked with a rule, so the
-   * nesting is legible without a second card inside the first.
+   * One card holding rows, where the rows belong to each other: the songs of a
+   * setlist, the matches of a search. The card gives the padding and the rows keep
+   * their corners inside it, so a hover never squares off against the card's edge.
+   *
+   * There is no hairline between them any more. Rows that are separate things —
+   * a canzoniere, a setlist — are separate cards now instead (see .card-stack),
+   * and inside one card the rows are close enough that a rule only adds noise.
    */
-  .row-nested {
-    margin-inline-start: 1.4rem;
-    padding-block: 0.5rem;
-    border-inline-start: 1px solid var(--line);
-    border-radius: 0 var(--r-md) var(--r-md) 0;
+  .row-list {
+    padding: 0.5rem;
   }
 
+  /*
+   * A song inside an open canzoniere. A filled row rather than an indent with a
+   * rule: the fill says "inside this card" without drawing a second frame in it,
+   * and it survives dark mode, where a one-pixel indent line disappears.
+   */
+  .row-nested {
+    margin: 0 0.625rem 0.625rem;
+    background: var(--surface-3);
+  }
+
+  @media (hover: hover) {
+    a.row-nested:hover {
+      background: color-mix(in srgb, var(--surface-3) 70%, var(--surface-2));
+    }
+  }
+
+  /* The key a song is written in. */
   .badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.35rem;
-    padding: 0.2rem 0.45rem;
-    border-radius: 999px;
+    min-width: 2.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--r-pill);
     background: var(--accent-soft);
     color: var(--accent);
     font-size: 0.8125rem;
-    font-weight: 600;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
 
+  /*
+   * How many songs are in there. Accent-soft, because it is the answer to the
+   * question the row is asking — a canzoniere or a setlist is worth opening in
+   * proportion to what is in it.
+   */
   .count-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 1.5rem;
-    height: 1.5rem;
-    padding-inline: 0.35rem;
-    border-radius: 999px;
+    min-width: 1.625rem;
+    height: 1.625rem;
+    padding-inline: 0.5rem;
+    border-radius: var(--r-pill);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * An icon button on a card: recessed, because the card is already white. The same
+   * size and corner as the ones in the header, which are raised instead — the page
+   * they sit on is darker than they are.
+   */
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-sm);
+    background: var(--bg);
+    color: var(--muted);
+  }
+
+  /* Armed: the confirmation under this row is open, and this is what it undoes. */
+  .icon-button.is-danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  .icon-button:disabled {
+    color: var(--faint);
+  }
+
+  @media (hover: hover) {
+    .icon-button:not(:disabled):hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+
+    .icon-button.is-danger:not(:disabled):hover {
+      background: color-mix(in srgb, var(--danger-soft) 80%, var(--danger));
+      color: var(--danger);
+    }
+  }
+
+  /* A fact about a row, not a way into it: "2 brani", a position, a format. */
+  .meta-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.625rem;
+    padding: 0.1875rem 0.625rem;
+    border-radius: var(--r-pill);
     background: var(--surface-2);
     color: var(--muted);
     font-size: 0.75rem;
@@ -676,52 +958,50 @@
   /* ---- Controls ------------------------------------------------------- */
 
   /*
-   * Two rows on a phone, one on anything wider. Wrapping rather than a media
-   * query because the trigger is the content: every cluster fits inside 390px on
-   * its own, and all of them together do not.
+   * The reading controls, as one floating bar over the song.
+   *
+   * It used to be a full-width tray pinned to the bottom edge, and on a phone it
+   * wrapped onto two rows — eight controls do not fit 390 pixels. Now the bar holds
+   * only what is touched while playing, play and speed, and everything set once
+   * before you start — key, notation, text size — moved into a panel behind one
+   * button. One row, on any screen.
+   *
+   * The wrapper takes no taps: the song shows either side of the bar on a wide
+   * screen, and it should be scrollable there rather than blocked by an invisible
+   * rectangle. Everything that does take a tap turns them back on.
    */
   .control-bar {
     position: fixed;
     inset-inline: 0;
     bottom: 0;
     z-index: 30;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    backdrop-filter: blur(14px);
-    border-top: 1px solid var(--line);
+    padding: 0 0.75rem calc(0.875rem + env(safe-area-inset-bottom));
+    pointer-events: none;
   }
 
-  /* Keeps the end of the song clear of the bar, in either layout. */
+  /* The wrapper waives taps; the dismiss layer for the panel has to take them. */
+  .control-bar .menu-overlay {
+    pointer-events: auto;
+  }
+
+  .control-dock {
+    position: relative;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-float);
+  }
+
+  /* Keeps the end of the song clear of the bar. One row now, so one number. */
   .bar-spacer {
-    height: 7.25rem;
-  }
-
-  @media (min-width: 30rem) {
-    .bar-spacer {
-      height: 4.5rem;
-    }
-  }
-
-  .control-cluster {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    flex: none;
-  }
-
-  /* A grouped control: one recessed track holding related buttons. */
-  .segment {
-    display: flex;
-    align-items: center;
-    gap: 0.1rem;
-    padding: 0.15rem;
-    border-radius: 999px;
-    background: var(--surface-2);
+    height: calc(5.5rem + env(safe-area-inset-bottom));
   }
 
   .control-button {
@@ -729,121 +1009,303 @@
     align-items: center;
     justify-content: center;
     /* 44px is the smallest target that is reliably hit with a thumb. */
-    min-width: 2.5rem;
-    min-height: 2.45rem;
-    padding-inline: 0.4rem;
-    border-radius: 999px;
+    flex: none;
+    min-width: 2.875rem;
+    height: 2.875rem;
+    border-radius: var(--r-lg);
     color: var(--ink);
     font-size: 0.9rem;
     font-weight: 500;
     line-height: 1;
   }
 
-  .control-button:disabled {
-    color: var(--faint);
-  }
-
-  .control-button.is-active {
-    background: var(--accent-soft);
-    color: var(--accent);
-  }
-
   /* The one control that is a destination rather than a nudge. */
   .control-play {
     background: var(--accent);
     color: var(--on-accent);
-    min-width: 2.45rem;
   }
 
-  .control-play.is-active {
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-
-  @media (hover: hover) {
-    .control-button:not(:disabled):hover {
-      background: color-mix(in srgb, var(--ink) 8%, transparent);
-    }
-
-    .control-play:not(:disabled):hover {
-      background: color-mix(in srgb, var(--accent) 88%, var(--ink));
-    }
-  }
-
-  .control-readout {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-width: 3.4rem;
-    line-height: 1.1;
-  }
-
-  .control-readout strong {
-    font-size: 0.95rem;
-    font-weight: 600;
-  }
-
-  .control-readout span {
-    display: flex;
-    align-items: center;
-    gap: 0.1rem;
-    color: var(--faint);
-    font-size: 0.625rem;
-  }
-
-  /*
-   * Away from the original key. The accent marks the one control on the bar whose
-   * state differs from how the song was written, and it is the same colour as the
-   * chords it is changing.
-   */
-  .control-readout.is-changed span {
+  /* Opens the panel. Accent-soft: related to play, quieter than it. */
+  .control-open {
+    position: relative;
+    background: var(--accent-soft);
     color: var(--accent);
   }
 
-  .speed-dots {
+  @media (hover: hover) {
+    .control-play:hover {
+      background: color-mix(in srgb, var(--accent) 88%, var(--ink));
+    }
+
+    .control-open:hover {
+      background: color-mix(in srgb, var(--accent-soft) 82%, var(--accent));
+    }
+  }
+
+  /*
+   * A queued preference change, on the button that opens the panel those
+   * preferences live behind. It had no home in the new bar and this is the honest
+   * one: whatever has not reached the server is one of the things in there.
+   */
+  .pending-dot {
+    position: absolute;
+    top: 0.4375rem;
+    inset-inline-end: 0.4375rem;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ---- Speed ---------------------------------------------------------- */
+
+  /*
+   * Speed, as one recessed track between a slow animal and a fast one.
+   *
+   * It was two buttons and eight dots. The dots said which step you were on but
+   * not that you could go straight to another, and reaching step 8 from step 1
+   * cost seven taps in the middle of a song.
+   */
+  .speed {
     display: flex;
     align-items: center;
-    gap: 0.2rem;
-    padding-inline: 0.35rem;
+    gap: 0.625rem;
+    flex: 1;
+    min-width: 0;
+    height: 2.875rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
   }
 
-  .speed-dot {
-    width: 0.3rem;
-    height: 0.3rem;
+  .speed svg {
+    flex: none;
+    color: var(--faint);
+  }
+
+  /*
+   * A real range input, styled. The steps are the same eight the dots showed, and
+   * the same index the preference stores — this is the same control in a new shape,
+   * so the keyboard and a screen reader get it for free.
+   *
+   * The box is taller than the track it paints, so the thumb has somewhere to be
+   * grabbed. --fill comes from the component: it is the only part of a range the
+   * browser will not compute for us in both engines.
+   */
+  .speed-range {
+    appearance: none;
+    flex: 1;
+    min-width: 0;
+    height: 1.25rem;
+    margin: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .speed-range::-webkit-slider-runnable-track {
+    height: 0.375rem;
+    border-radius: var(--r-pill);
+    background: linear-gradient(
+      to right,
+      var(--accent) var(--fill),
+      var(--line) var(--fill)
+    );
+  }
+
+  .speed-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    /* Centres the thumb on a track that is 14px thinner than it is. */
+    margin-top: -0.4375rem;
+    border: 2px solid var(--accent);
     border-radius: 50%;
-    background: color-mix(in srgb, var(--ink) 20%, transparent);
+    background: var(--surface);
   }
 
-  .speed-dot.is-on {
+  .speed-range::-moz-range-track {
+    height: 0.375rem;
+    border-radius: var(--r-pill);
+    background: var(--line);
+  }
+
+  .speed-range::-moz-range-progress {
+    height: 0.375rem;
+    border-radius: var(--r-pill);
     background: var(--accent);
+  }
+
+  .speed-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    background: var(--surface);
+  }
+
+  /* ---- The reading panel ---------------------------------------------- */
+
+  /*
+   * Key, notation and text size, above the button that opens them.
+   *
+   * Inside .control-dock rather than beside it, and that is load-bearing:
+   * useAutoScroll ignores touches that land inside .control-bar so the speed
+   * buttons do not stop the scroll they are adjusting. A panel rendered outside
+   * that element would pause the song on every tap it received.
+   */
+  .control-panel {
+    position: absolute;
+    inset-block-end: calc(100% + 0.625rem);
+    inset-inline-end: 0;
+    width: 16.75rem;
+    max-width: calc(100vw - 1.5rem);
+    padding: 0.875rem;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .control-panel .group-label {
+    margin-bottom: 0.5rem;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .control-row + .control-row {
+    margin-top: 0.625rem;
+  }
+
+  .control-name {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .control-name-label {
+    display: block;
+    color: var(--ink);
+    font-size: 0.8125rem;
+  }
+
+  /* What the control is set to now, under the name of the control. */
+  .control-name-value {
+    display: block;
+    margin-top: 1px;
+    color: var(--faint);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Away from the original key: the same colour as the chords it is changing. */
+  .control-name-value.is-changed {
+    color: var(--accent);
+  }
+
+  .control-divider {
+    height: 1px;
+    margin: 0.875rem 0;
+    background: var(--surface-2);
+  }
+
+  /* A grouped control: one recessed track holding related buttons. */
+  .segment {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    flex: none;
+    padding: 0.1875rem;
+    border-radius: var(--r-sm);
+    background: var(--surface-2);
+  }
+
+  .segment-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.375rem;
+    height: 2.125rem;
+    border-radius: var(--r-xs);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.875rem;
+    line-height: 1;
+  }
+
+  .segment-button.is-on {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 500;
+  }
+
+  /* Nothing to undo, nowhere further to go: the fill drops rather than fading. */
+  .segment-button:disabled {
+    background: transparent;
+    color: var(--faint);
+  }
+
+  @media (hover: hover) {
+    .segment-button:not(:disabled):not(.is-on):hover {
+      background: color-mix(in srgb, var(--surface) 88%, var(--accent));
+      color: var(--accent);
+    }
   }
 
   /* ---- Forms ---------------------------------------------------------- */
 
+  /* The same voice as .group-label, over a field instead of over a cluster. */
   .field-label {
     display: block;
-    margin-bottom: 0.3rem;
-    color: var(--muted);
-    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+    color: var(--faint);
+    font-size: 0.6875rem;
     font-weight: 500;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
   .form-field {
     display: block;
     width: 100%;
-    padding: 0.65rem 0.8rem;
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--edge);
+    border-radius: var(--r-lg);
     background: var(--surface);
+    box-shadow: var(--shadow-1);
     color: var(--ink);
     /* 16px keeps iOS from zooming the viewport when a field takes focus. */
     font-size: 1rem;
     transition: border-color 0.15s ease;
   }
 
+  /*
+   * The same ladder as the cards. SongFields is one form used twice — inside a card
+   * on the import screen, and on the page in the editor — and it does not know which,
+   * so the container answers for it.
+   */
+  .card .form-field,
+  .song-card .form-field {
+    border-color: transparent;
+    background: var(--bg);
+    box-shadow: none;
+  }
+
+  /* One step further down: a panel already took the page colour, so this is white. */
+  .panel .form-field {
+    border-color: var(--edge);
+    background: var(--surface);
+    box-shadow: var(--shadow-1);
+  }
+
+  /*
+   * The border is invisible until it is needed. With no outline in the resting
+   * state, focus is the one moment a field has an edge — which makes it a stronger
+   * signal here than it was when every field had one all the time. Declared after
+   * the two rules above so it wins over both at the same specificity.
+   */
   .form-field:focus {
     border-color: var(--accent);
   }
@@ -853,7 +1315,14 @@
     padding-inline-end: 2rem;
   }
 
+  /*
+   * A box of text inside a card is recessed rather than raised: the card is already
+   * white, so a white field on it would have no edge at all.
+   */
   textarea.form-field {
+    border-radius: var(--r-md);
+    background: var(--bg);
+    box-shadow: none;
     line-height: 1.45;
     resize: vertical;
   }
@@ -865,14 +1334,14 @@
   .search-field svg {
     position: absolute;
     top: 50%;
-    inset-inline-start: 0.85rem;
+    inset-inline-start: 1rem;
     translate: 0 -50%;
     color: var(--faint);
     pointer-events: none;
   }
 
   .search-field input {
-    padding-inline-start: 2.5rem;
+    padding-inline-start: 2.875rem;
   }
 
   /* ---- Chips ---------------------------------------------------------- */
@@ -949,10 +1418,21 @@
     align-items: center;
     gap: 0.3rem;
     padding: 0.1rem 0.5rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
+    border: 1px solid var(--edge);
+    border-radius: var(--r-pill);
+    /* Recessed: it sits on the sheet, which is already the lightest surface here. */
     background: var(--surface-2);
     color: var(--ink);
+  }
+
+  /*
+   * The same control on a recessed panel, where the recessed fill would disappear.
+   * Which way round it goes follows the surface, exactly as .is-inset does.
+   */
+  .picker-raised {
+    padding: 0.25rem 0.75rem;
+    background: var(--surface);
+    box-shadow: var(--shadow-1);
   }
 
   .picker svg {
@@ -1000,8 +1480,8 @@
    */
   .editor-bar {
     position: sticky;
-    /* Under the header, which is sticky too and 3.3rem tall. */
-    top: 3.3rem;
+    /* Under the header, which is sticky too and 4rem tall. */
+    top: 4rem;
     z-index: 30;
     display: flex;
     flex-wrap: wrap;
@@ -1094,7 +1574,7 @@
    */
   .chord-ghost {
     visibility: hidden;
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 1rem;
     font-weight: 400;
     letter-spacing: normal;
@@ -1118,9 +1598,9 @@
     inset-inline-start: 0;
     visibility: visible;
     padding-inline-end: 0.35em;
-    border-radius: var(--r-sm);
+    border-radius: var(--r-xs);
     color: var(--accent);
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 0.8rem;
     font-weight: 600;
     white-space: pre;
@@ -1149,7 +1629,7 @@
     justify-content: center;
     width: 1.6rem;
     height: 1.9rem;
-    border-radius: var(--r-sm);
+    border-radius: var(--r-xs);
     background: var(--surface-2);
     color: var(--ink);
     font-size: 1rem;
@@ -1168,7 +1648,7 @@
     width: 5ch;
     padding: 0.1rem 0.2rem;
     border: 1px solid var(--accent);
-    border-radius: var(--r-sm);
+    border-radius: var(--r-xs);
     background: var(--surface);
     color: var(--accent);
     /* 16px, again to stop iOS zooming when it takes focus. */
@@ -1183,7 +1663,7 @@
     border: 0;
     background: none;
     color: var(--ink);
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 1rem;
     font-weight: 400;
     letter-spacing: normal;
@@ -1204,7 +1684,7 @@
     flex: none;
     width: 1.9rem;
     height: 1.9rem;
-    border-radius: var(--r-sm);
+    border-radius: var(--r-xs);
     color: var(--faint);
     font-size: 1.1rem;
     line-height: 1;
@@ -1245,7 +1725,7 @@
     border-radius: var(--r-md);
     background: var(--surface);
     color: var(--ink);
-    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-family: var(--font-mono), ui-monospace, monospace;
     font-size: 0.9rem;
     line-height: 1.5;
     tab-size: 2;

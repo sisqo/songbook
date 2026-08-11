@@ -210,6 +210,11 @@ export function EditorScreen({ song }: { song: Song }) {
           Brano
         </Link>
 
+        {/*
+          * The app's segmented control, the same one the reading panel uses. The
+          * extra inline padding is this one's own: the panel's buttons hold "Do" or
+          * "A+" and are sized by hand, while these hold words.
+          */}
         <div className="segment" role="tablist" aria-label="Modalità di modifica">
           {MODES.map((entry) => (
             <button
@@ -217,7 +222,7 @@ export function EditorScreen({ song }: { song: Song }) {
               type="button"
               role="tab"
               aria-selected={mode === entry.mode}
-              className={`control-button ${mode === entry.mode ? 'is-active' : ''}`}
+              className={`segment-button px-3 ${mode === entry.mode ? 'is-on' : ''}`}
               onClick={() => setMode(entry.mode)}
             >
               {entry.label}
@@ -362,7 +367,7 @@ export function EditorScreen({ song }: { song: Song }) {
         </>
       )}
 
-      <div className="mt-10 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--line)' }}>
+      <div className="mt-10 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
         {confirming ? (
           <>
             <span className="text-sm text-muted">Eliminare questo brano?</span>

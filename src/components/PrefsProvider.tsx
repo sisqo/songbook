@@ -104,20 +104,37 @@ export function PrefsProvider({
     }
   }, [songSlug])
 
-  const updateGlobal = useCallback((next: GlobalPrefs) => {
-    setGlobal(next)
-    writeGlobalPrefs(next)
-    prefsQueue.enqueueGlobal(next)
-  }, [])
+  /*
+   * Setting a preference to the value it already has is not a change, and saying so
+   * here rather than at each call site is what keeps the queue honest: it would
+   * otherwise send the server a write it does not need and light the unsaved dot for
+   * nothing.
+   *
+   * Reachable since the reading panel replaced the notation toggle with a pair of
+   * buttons. A toggle could only ever be called with the other value; "Do" can be
+   * pressed while the notation is already Do.
+   */
+  const updateGlobal = useCallback(
+    (next: GlobalPrefs) => {
+      if (next.zoomStep === global.zoomStep && next.notation === global.notation) return
+
+      setGlobal(next)
+      writeGlobalPrefs(next)
+      prefsQueue.enqueueGlobal(next)
+    },
+    [global],
+  )
 
   const updateSong = useCallback(
     (next: SongPrefs) => {
+      if (next.semitones === song.semitones && next.scrollSpeed === song.scrollSpeed) return
+
       setSong(next)
       if (songSlug === null) return
       writeSongPrefs(songSlug, next)
       prefsQueue.enqueueSong(songSlug, next)
     },
-    [songSlug],
+    [song, songSlug],
   )
 
   const value = useMemo<PrefsContextValue>(

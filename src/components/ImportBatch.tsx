@@ -139,9 +139,7 @@ export function ImportBatch({
   return (
     <div className="card p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold">
-          {songs.length} brani in questo testo
-        </h2>
+        <h2 className="section-title">{songs.length} brani in questo testo</h2>
         <button type="button" className="text-sm underline underline-offset-2" onClick={onReset}>
           incolla altro
         </button>
@@ -247,9 +245,9 @@ function BatchRow({
   const number = index + 1
 
   return (
-    <li className={`card p-3 ${row.include ? '' : 'opacity-60'}`}>
+    <li className={`panel p-3 ${row.include ? '' : 'opacity-60'}`}>
       <div className="flex items-start gap-3">
-        <span className="count-badge mt-1.5" aria-hidden>
+        <span className="meta-chip mt-1.5" aria-hidden>
           {number}
         </span>
 

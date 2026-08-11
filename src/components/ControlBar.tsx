@@ -1,47 +1,83 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { usePrefs } from '@/components/PrefsProvider'
-import { IconPause, IconPlay, IconUndo } from '@/components/icons'
+import {
+  IconHare,
+  IconPause,
+  IconPlay,
+  IconSliders,
+  IconTurtle,
+  IconUndo,
+} from '@/components/icons'
 import { formatKey } from '@/lib/music/chord'
-import { C_MAJOR, parseKey, transposeKey } from '@/lib/music/notes'
+import { C_MAJOR, parseKey } from '@/lib/music/notes'
 import { SCROLL_SPEEDS, ZOOM_STEPS } from '@/lib/prefs/types'
 import { useAutoScroll } from '@/lib/useAutoScroll'
 
 /**
- * The reading controls, fixed to the bottom of the screen.
+ * The reading controls, floating over the bottom of the song.
  *
- * Everything used while playing is one tap away and always visible: stopping the
- * scroll or moving up a semitone must never cost hunting through a menu. Notation
- * lives here as a plain toggle rather than behind an overflow menu, which is a
- * small departure from the plan — one tap and no popover to manage.
+ * One row, and only two things on it: play, and how fast the page moves. Those are
+ * the ones a hand reaches for with a guitar in the other, and the eight controls
+ * that used to sit here wrapped onto a second line on every phone.
  *
- * The clusters wrap onto a second line below ~480px rather than scrolling
- * sideways: on a phone in one hand, a control that has scrolled out of view is a
- * control you cannot reach. Their order decides where the line breaks — scroll,
- * speed and key stay together on the first row, because those are the ones
- * touched while playing; zoom and notation, set once and left alone, drop below.
+ * Everything else — the key, the notation, the size of the text — is set once
+ * before the song starts and lives in a panel behind the last button. The cost is
+ * named and accepted: with the panel closed, the bar no longer says which key you
+ * are reading in. The sheet does, in the chords themselves.
  */
 export function ControlBar({ originalKey }: { originalKey: string | null }) {
   const { global, song, pending, setZoomStep, setNotation, setSemitones, setScrollSpeed } =
     usePrefs()
   const { running, toggle } = useAutoScroll(song.scrollSpeed)
+  const [open, setOpen] = useState(false)
 
-  const keys = useMemo(() => {
-    const base = parseKey(originalKey) ?? C_MAJOR
-    return {
-      current: formatKey(transposeKey(base, song.semitones), global.notation),
-      original: formatKey(base, global.notation),
+  useEffect(() => {
+    if (!open) return
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
     }
-  }, [originalKey, song.semitones, global.notation])
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  /*
+   * The key the song was written in, named in the notation being read. Only the
+   * original: what it has been moved to is on every chord of the sheet, and the
+   * panel says the distance rather than repeating the destination.
+   */
+  const home = useMemo(
+    () => formatKey(parseKey(originalKey) ?? C_MAJOR, global.notation),
+    [originalKey, global.notation],
+  )
+
+  const lastSpeed = SCROLL_SPEEDS.length - 1
 
   return (
     <nav className="control-bar" aria-label="Controlli di lettura">
-      <div className="control-cluster">
+      {/* Catches the tap that means "never mind". Inside the bar, so it does not
+          count as the manual gesture that pauses the scroll. */}
+      {open && <div className="menu-overlay" onClick={() => setOpen(false)} aria-hidden />}
+
+      <div className="control-dock">
+        {open && (
+          <ReadingPanel
+            home={home}
+            semitones={song.semitones}
+            notation={global.notation}
+            zoomStep={global.zoomStep}
+            setSemitones={setSemitones}
+            setNotation={setNotation}
+            setZoomStep={setZoomStep}
+          />
+        )}
+
         <button
           type="button"
-          className={running ? 'control-button control-play is-active' : 'control-button control-play'}
+          className="control-button control-play"
           onClick={toggle}
           aria-pressed={running}
           aria-label={running ? 'Ferma lo scorrimento' : 'Avvia lo scorrimento'}
@@ -49,143 +85,195 @@ export function ControlBar({ originalKey }: { originalKey: string | null }) {
           {running ? <IconPause size={16} /> : <IconPlay size={16} />}
         </button>
 
-        <div className="segment">
-          <button
-            type="button"
-            className="control-button"
-            onClick={() => setScrollSpeed(song.scrollSpeed - 1)}
-            disabled={song.scrollSpeed === 0}
-            aria-label="Rallenta lo scorrimento"
-          >
-            <span aria-hidden>−</span>
-          </button>
-
-          <div
-            className="speed-dots"
-            role="img"
-            aria-label={`Velocità ${song.scrollSpeed + 1} di ${SCROLL_SPEEDS.length}`}
-          >
-            {SCROLL_SPEEDS.map((_, index) => (
-              <span
-                key={index}
-                className={index <= song.scrollSpeed ? 'speed-dot is-on' : 'speed-dot'}
-              />
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className="control-button"
-            onClick={() => setScrollSpeed(song.scrollSpeed + 1)}
-            disabled={song.scrollSpeed === SCROLL_SPEEDS.length - 1}
-            aria-label="Accelera lo scorrimento"
-          >
-            <span aria-hidden>+</span>
-          </button>
+        <div className="speed">
+          <IconTurtle size={24} />
+          <input
+            type="range"
+            className="speed-range"
+            min={0}
+            max={lastSpeed}
+            step={1}
+            value={song.scrollSpeed}
+            onChange={(event) => setScrollSpeed(Number(event.target.value))}
+            /*
+             * The filled part of the track. Chrome will not paint it from the
+             * value, and Firefox uses ::-moz-range-progress instead, so the number
+             * is handed to CSS and each engine takes the half it understands.
+             */
+            style={{ '--fill': `${(song.scrollSpeed / lastSpeed) * 100}%` } as React.CSSProperties}
+            aria-label="Velocità di scorrimento"
+            aria-valuetext={`${song.scrollSpeed + 1} di ${SCROLL_SPEEDS.length}`}
+          />
+          <IconHare size={24} />
         </div>
-      </div>
 
-      <div className="control-cluster">
-        <div className="segment">
+        <button
+          type="button"
+          className="control-button control-open"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          /*
+           * The unsaved change is named here rather than on the dot. A live region
+           * nested inside a button is not something a reader reaching this control
+           * would be told about — the button's own name is — so the dot is left as
+           * the visual half and the words join the label.
+           */
+          aria-label={
+            (open ? 'Chiudi accordi e testo' : 'Accordi e testo') +
+            (pending > 0 ? ', modifica non ancora salvata' : '')
+          }
+        >
+          <IconSliders size={20} />
+
+          {/* A queued change is visible, so nothing is ever lost in silence. */}
+          {pending > 0 && <span className="pending-dot" title="Non salvato" aria-hidden />}
+        </button>
+      </div>
+    </nav>
+  )
+}
+
+/**
+ * How far the song has been moved from the key it was written in.
+ *
+ * Steps rather than the name of the key: the name is on every chord of the sheet
+ * already, and what this row cannot show is how far from home you have gone.
+ * The sign is the typographic minus, so it lines up with the buttons beside it.
+ */
+function formatSemitones(semitones: number): string {
+  if (semitones === 0) return '0 semitoni'
+  const sign = semitones > 0 ? '+' : '−'
+  const size = Math.abs(semitones)
+  return `${sign}${size} ${size === 1 ? 'semitono' : 'semitoni'}`
+}
+
+/**
+ * What the song is read in, rather than how it is read: the key, the notation the
+ * chords are named in, and how big the words are.
+ *
+ * Grouped by what they act on — the chords, then the text — because "notazione"
+ * and "dimensione" are both settings of the same sheet and nothing else on the
+ * screen says which part of it each one changes.
+ */
+function ReadingPanel({
+  home,
+  semitones,
+  notation,
+  zoomStep,
+  setSemitones,
+  setNotation,
+  setZoomStep,
+}: {
+  /** The key the song was written in, for the label on the way back to it. */
+  home: string
+  semitones: number
+  notation: 'it' | 'int'
+  zoomStep: number
+  setSemitones: (value: number) => void
+  setNotation: (value: 'it' | 'int') => void
+  setZoomStep: (value: number) => void
+}) {
+  return (
+    <div className="control-panel">
+      <span className="group-label">Accordi</span>
+
+      <div className="control-row">
+        <span className="control-name">
+          <span className="control-name-label">Tonalità</span>
+          <span className={semitones === 0 ? 'control-name-value' : 'control-name-value is-changed'}>
+            {formatSemitones(semitones)}
+          </span>
+        </span>
+
+        <span className="segment">
           <button
             type="button"
-            className="control-button"
-            onClick={() => setSemitones(song.semitones - 1)}
+            className="segment-button"
+            onClick={() => setSemitones(semitones - 1)}
             aria-label="Abbassa di un semitono"
           >
             <span aria-hidden>−1</span>
           </button>
 
-          {/*
-           * The readout is also the way back. Transposed, it drops the word and
-           * shows the arrow instead: a symbol says "this is a button that undoes
-           * something" where "orig. Re" only reported a fact.
-           */}
+          {/* The way back, as a symbol: inert while there is nothing to undo. */}
           <button
             type="button"
-            className={
-              song.semitones === 0
-                ? 'control-button control-readout'
-                : 'control-button control-readout is-changed'
-            }
+            className="segment-button"
             onClick={() => setSemitones(0)}
-            disabled={song.semitones === 0}
-            aria-label={
-              song.semitones === 0
-                ? `Tonalità ${keys.current}, originale`
-                : `Tonalità ${keys.current}, originale ${keys.original}. Torna all'originale`
-            }
-            title={song.semitones === 0 ? undefined : `Torna a ${keys.original}`}
+            disabled={semitones === 0}
+            aria-label={`Torna alla tonalità originale, ${home}`}
+            title={semitones === 0 ? undefined : `Torna a ${home}`}
           >
-            <strong>{keys.current}</strong>
-            <span>
-              {song.semitones === 0 ? (
-                'originale'
-              ) : (
-                <>
-                  <IconUndo size={11} />
-                  {keys.original}
-                </>
-              )}
-            </span>
+            <IconUndo size={15} />
           </button>
 
           <button
             type="button"
-            className="control-button"
-            onClick={() => setSemitones(song.semitones + 1)}
+            className="segment-button"
+            onClick={() => setSemitones(semitones + 1)}
             aria-label="Alza di un semitono"
           >
             <span aria-hidden>+1</span>
           </button>
-        </div>
-
-        {/* A queued change is visible, so nothing is ever lost in silence. */}
-        {pending > 0 && (
-          <span
-            className="pending-dot"
-            role="status"
-            aria-label="Modifica non ancora salvata: verrà salvata al ritorno della rete"
-            title="Non salvato"
-          />
-        )}
+        </span>
       </div>
 
-      <div className="control-cluster">
-        <div className="segment">
+      <div className="control-row">
+        <span className="control-name">
+          <span className="control-name-label">Notazione</span>
+        </span>
+
+        <span className="segment" role="group" aria-label="Notazione degli accordi">
           <button
             type="button"
-            className="control-button"
-            onClick={() => setZoomStep(global.zoomStep - 1)}
-            disabled={global.zoomStep === 0}
+            className={notation === 'it' ? 'segment-button is-on' : 'segment-button'}
+            onClick={() => setNotation('it')}
+            aria-pressed={notation === 'it'}
+          >
+            Do
+          </button>
+          <button
+            type="button"
+            className={notation === 'int' ? 'segment-button is-on' : 'segment-button'}
+            onClick={() => setNotation('int')}
+            aria-pressed={notation === 'int'}
+          >
+            C
+          </button>
+        </span>
+      </div>
+
+      <div className="control-divider" />
+
+      <span className="group-label">Testo</span>
+
+      <div className="control-row">
+        <span className="control-name">
+          <span className="control-name-label">Dimensione</span>
+          <span className="control-name-value">{ZOOM_STEPS[zoomStep]} px</span>
+        </span>
+
+        <span className="segment">
+          <button
+            type="button"
+            className="segment-button"
+            onClick={() => setZoomStep(zoomStep - 1)}
+            disabled={zoomStep === 0}
             aria-label="Riduci il testo"
           >
             <span aria-hidden>A−</span>
           </button>
           <button
             type="button"
-            className="control-button"
-            onClick={() => setZoomStep(global.zoomStep + 1)}
-            disabled={global.zoomStep === ZOOM_STEPS.length - 1}
+            className="segment-button"
+            onClick={() => setZoomStep(zoomStep + 1)}
+            disabled={zoomStep === ZOOM_STEPS.length - 1}
             aria-label="Ingrandisci il testo"
           >
             <span aria-hidden>A+</span>
           </button>
-        </div>
-
-        <button
-          type="button"
-          className="control-button"
-          onClick={() => setNotation(global.notation === 'it' ? 'int' : 'it')}
-          aria-label={
-            global.notation === 'it'
-              ? 'Notazione italiana, passa a internazionale'
-              : 'Notazione internazionale, passa a italiana'
-          }
-        >
-          <span aria-hidden>{global.notation === 'it' ? 'Do' : 'C'}</span>
-        </button>
+        </span>
       </div>
-    </nav>
+    </div>
   )
 }

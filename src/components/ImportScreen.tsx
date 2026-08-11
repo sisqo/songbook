@@ -292,9 +292,22 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
       </div>
 
       {prepared === null && (
-        <div className="card mt-3 p-4 sm:p-5">
+        /* The one card on the screen you have come here to use, so it is the one lifted. */
+        <div className="card card-lead mt-3 p-4 sm:p-5">
           <label className="block">
             <span className="field-label">2. Incolla i brani</span>
+
+            {/*
+              * Above the box rather than under it: it says what will happen to what
+              * you paste, which is worth knowing before pasting rather than after.
+              */}
+            <span className="mb-2.5 block text-sm leading-[1.45] text-muted">
+              Se ha gli accordi fra parentesi quadre è già ChordPro; altrimenti si tenta la
+              conversione da accordi sopra il testo. Più brani in una volta: separali con una
+              riga di <code>---</code>, oppure incolla un export ChordPro — i suoi{' '}
+              <code>{'{title}'}</code> bastano.
+            </span>
+
             <textarea
               value={pasted}
               onChange={(event) => setPasted(event.target.value)}
@@ -305,16 +318,9 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
             />
           </label>
 
-          <p className="mt-2 text-xs text-faint">
-            Se ha gli accordi fra parentesi quadre è già ChordPro; altrimenti si tenta la
-            conversione da accordi sopra il testo. Più brani in una volta: separali con una riga
-            di <code>---</code>, oppure incolla un export ChordPro — i suoi{' '}
-            <code>{'{title}'}</code> bastano.
-          </p>
-
           <button
             type="button"
-            className="btn btn-primary mt-3"
+            className="btn btn-primary mt-3.5"
             disabled={!online || pasted.trim() === ''}
             onClick={analyse}
           >
@@ -377,9 +383,10 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
         </div>
       )}
 
-      <section className="mt-8 border-t pt-5" style={{ borderColor: 'var(--line)' }}>
-        <h2 className="text-lg font-semibold tracking-tight">In attesa di pubblicazione</h2>
-        <p className="mt-1 text-sm text-muted">
+      {/* Space instead of a rule: nothing else on these screens is separated by one. */}
+      <section className="mt-8">
+        <h2 className="section-title">In attesa di pubblicazione</h2>
+        <p className="mt-1.5 text-sm leading-[1.45] text-muted">
           Quello che salvi si vede subito, qui e nell’elenco. La pubblicazione serve a ricostruire
           le pagine: finché non la lanci, questi brani non ci sono senza connessione. Puoi
           importarne diversi e pubblicarli in un colpo.
@@ -388,9 +395,10 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
         {pending.length === 0 ? (
           <p className="mt-4 text-sm text-muted">Nulla in attesa.</p>
         ) : (
-          <ul className="row-list card mt-4">
+          /* One card per song: each is a separate thing waiting, not a list to read. */
+          <ul className="card-stack mt-3.5">
             {pending.map((song) => (
-              <li key={song.slug} className="row">
+              <li key={song.slug} className="card flex items-center gap-3 px-4 py-3.5">
                 <span className="count-badge" aria-hidden>
                   <IconCheck size={13} />
                 </span>

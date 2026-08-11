@@ -7,8 +7,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-geist-sans)'],
-        mono: ['var(--font-geist-mono)'],
+        sans: ['var(--font-sans)'],
+        mono: ['var(--font-mono)'],
       },
       /*
        * The palette lives in globals.css as custom properties, because both themes
@@ -23,6 +23,7 @@ module.exports = {
         bg: 'var(--bg)',
         surface: 'var(--surface)',
         raised: 'var(--surface-2)',
+        nested: 'var(--surface-3)',
         ink: 'var(--ink)',
         muted: 'var(--muted)',
         faint: 'var(--faint)',
@@ -34,7 +35,9 @@ module.exports = {
         'danger-soft': 'var(--danger-soft)',
       },
       borderRadius: {
-        card: 'var(--r-lg)',
+        row: 'var(--r-md)',
+        card: 'var(--r-xl)',
+        pill: 'var(--r-pill)',
       },
       boxShadow: {
         card: 'var(--shadow-1)',

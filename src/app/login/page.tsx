@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: Props) {
             <IconNote size={26} />
           </span>
 
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight">songs</h1>
+          <h1 className="screen-title mt-4">songs</h1>
           <p className="mx-auto mt-2 max-w-[15rem] text-sm text-muted">
             Testi e accordi del repertorio, con tonalità, notazione e scorrimento.
           </p>
