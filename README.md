@@ -217,11 +217,18 @@ lo supera. Con la maniglia a fuoco funzionano anche ↑ e ↓, così l'ordine si
 sistemare anche da tastiera. Ogni spostamento è salvato appena la riga si posa, e
 *Fatto* rimette i collegamenti al loro posto.
 
-Finché nessuno tocca niente l'ordine è alfabetico: la colonna `position` è `null`, e
+Finché nessuno lo tocca l'ordine è alfabetico: la colonna `position` è `null`, e
 Postgres mette i null in fondo a un ordinamento crescente, quindi un canzoniere mai
-sistemato è in ordine di titolo e un brano importato in uno sistemato si accoda alla
-fine invece di infilarsi in mezzo. Al primo trascinamento il canzoniere viene
-rinumerato tutto, da 1 a N.
+sistemato è in ordine di titolo. Al primo trascinamento — o al primo import — il
+canzoniere viene rinumerato tutto, da 1 a N, nell'ordine in cui era in quel momento.
+Da lì in poi l'ordine è esplicito: rinominare un brano non lo fa più risalire, e ogni
+brano nuovo si accoda alla fine.
+
+**I brani importati restano nell'ordine in cui li hai incollati**, ed è per questo che
+un import numera il canzoniere: se i nuovi arrivassero con un numero e i vecchi
+restassero `null`, i nuovi finirebbero *primi*, perché i null stanno in fondo.
+Spostare un brano in un altro canzoniere lo lascia invece senza numero, quindi arriva
+in coda — dove un brano che nessuno ha ancora ordinato appartiene.
 
 La ricerca resta **alfabetica**: dentro un canzoniere l'ordine è quello che hai
 scelto, ma fra canzonieri diversi non è un ordine — i risultati arriverebbero come il

@@ -64,6 +64,45 @@ export function applyOrder<T extends { slug: string }>(items: T[], order: string
   return next
 }
 
+/** A song already in the canzoniere, in the order the list shows it. */
+export interface Placed {
+  slug: string
+  position: number | null
+}
+
+/**
+ * Where songs arriving in a canzoniere go: after the ones already there, in the
+ * order they arrived.
+ *
+ * Importing three songs and finding them alphabetised is not what pasting them in
+ * an order means, so an imported song is *placed* rather than left unplaced. But a
+ * place among unplaced songs is meaningless — null sorts last, so a numbered
+ * newcomer would leap to the front of a canzoniere nobody has arranged. Hence the
+ * two cases: if the canzoniere is already numbered 1..N the newcomers simply carry
+ * on from N, and otherwise the whole thing is numbered first, in the order it is
+ * being shown right now. Either way what was on screen keeps its order and the new
+ * songs land under it.
+ *
+ * `existing` must arrive in display order — `position` first, then title, which is
+ * how every query here reads it. Any other order would renumber the canzoniere into
+ * an order nobody asked for.
+ */
+export function placeAfter(
+  existing: Placed[],
+  added: string[],
+): { slug: string; position: number }[] {
+  const tidy = existing.every((entry, index) => entry.position === index + 1)
+
+  if (tidy) {
+    return added.map((slug, index) => ({ slug, position: existing.length + index + 1 }))
+  }
+
+  return [...existing.map((entry) => entry.slug), ...added].map((slug, index) => ({
+    slug,
+    position: index + 1,
+  }))
+}
+
 /** A row's vertical extent, as it was measured before anything moved. */
 export interface Band {
   top: number

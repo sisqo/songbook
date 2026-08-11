@@ -114,10 +114,11 @@ L'`on delete restrict` è la regola "rifiuta se non è vuoto" scritta nel databa
 nella UI: nessun percorso, nemmeno un errore di programmazione, può cancellare un
 canzoniere lasciando brani orfani.
 
-**`songs.position` è nullable e resta null** finché qualcuno non riordina quel canzoniere.
-Non è un dettaglio implementativo: `null` significa «nessuno ha detto», e Postgres lo mette
-in fondo a un ordinamento crescente, quindi l'ordine alfabetico è il comportamento di default
-senza una riga di codice che lo produca. Un riordino rinumera l'intero canzoniere da 1 a N.
+**`songs.position` è nullable e resta null** finché qualcuno non riordina quel canzoniere o
+non ci importa dentro. Non è un dettaglio implementativo: `null` significa «nessuno ha detto»,
+e Postgres lo mette in fondo a un ordinamento crescente, quindi l'ordine alfabetico è il
+comportamento di default senza una riga di codice che lo produca — verificato interrogando
+Postgres, non la tabella. Un riordino, e ogni import, rinumerano l'intero canzoniere da 1 a N.
 
 ### Contenuti e seed
 
@@ -886,6 +887,41 @@ poi tutti i «secondi». La ricerca ordina per titolo per conto suo.
 trascina: si arriva in fondo con le frecce della tastiera, oppure in due mosse. L'ordine non
 entra nell'export `.chopro` — non è un fatto del brano, e inventare una direttiva non standard
 renderebbe quei file meno leggibili altrove.
+
+### v1.7 — i comandi fermi, l'ordine dell'import, l'ukulele
+
+In consegna.
+
+1. I comandi dell'editor non scorrono più con la pagina
+2. I brani importati restano nell'ordine in cui sono stati incollati
+3. Chitarra o ukulele, dal menù: cambia la forma che il diagramma disegna *(in corso)*
+
+**Un blocco fermo, e corto.** I comandi dell'editor stavano in fondo a una pagina che
+scorre, cioè più lontani proprio quando la canzone è lunga — il caso in cui si scorre. Ora
+le due righe stanno in un unico elemento sticky: uno e non due sovrapposti, perché l'altezza
+della prima cambia con la larghezza dello schermo e un secondo offset dovrebbe indovinarla.
+L'offset è quello dell'header, **misurato** a 64 px, non dedotto da un commento.
+
+Farli stare lì ha richiesto di accorciare il blocco: su un telefono da 360 px la sola riga
+delle modalità ne occupava tre, 146 px di controlli prima di un comando. Quindi il link di
+ritorno è il suo chevron (l'etichetta resta per chi legge con la voce), la scritta «non
+salvato» è sparita perché un pulsante *Salva* attivo dice già quello, e «riga 3» è sparita
+perché la riga su cui agiscono i comandi è quella col bordo accento accanto. I comandi
+scorrono in orizzontale invece di andare a capo, con *Annulla* fuori dalla striscia: un
+comando che si cerca dopo un errore non deve essere anche da trovare. 102 px a ogni
+larghezza.
+
+**Perché l'import numera il canzoniere.** Incollare venti brani in un ordine e ritrovarli
+alfabetizzati non è quello che significa incollarli in un ordine. Ma un posto in mezzo a
+brani senza posto non vuol dire niente: i null stanno in fondo, quindi un brano nuovo *con*
+un numero salterebbe in testa a un canzoniere che nessuno ha ordinato. Da qui le due
+strade — se il canzoniere è già 1..N i nuovi continuano da N, altrimenti viene numerato
+prima, nell'ordine in cui è in quel momento. In entrambi i casi ciò che era a schermo
+mantiene il suo ordine e i nuovi finiscono sotto.
+
+Il resto sono conseguenze della stessa regola: un brano *spostato* in un altro canzoniere
+resta senza numero (arriva in coda: il numero che aveva era un posto fra altri brani, e
+quelli non sono questi), e sostituire il testo di un brano che sta già lì non lo muove.
 
 ### v2 — il resto
 

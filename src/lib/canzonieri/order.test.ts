@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { type Band, applyOrder, bandAt, moveItem, sameMembers } from './order'
+import { type Band, applyOrder, bandAt, moveItem, placeAfter, sameMembers } from './order'
 
 describe('moving one song to another place', () => {
   const list = ['a', 'b', 'c', 'd']
@@ -89,6 +89,62 @@ describe('putting a saved order back into the whole list', () => {
       applyOrder(all, ['a3', 'a1']).map((item) => item.slug),
       ['a3', 'b1', 'a2', 'b2', 'a1'],
     )
+  })
+})
+
+describe('where an imported song lands', () => {
+  it('carries on from the end of a canzoniere already in order', () => {
+    const existing = [
+      { slug: 'a', position: 1 },
+      { slug: 'b', position: 2 },
+    ]
+
+    assert.deepEqual(placeAfter(existing, ['new']), [{ slug: 'new', position: 3 }])
+  })
+
+  it('keeps two imported songs in the order they were pasted', () => {
+    assert.deepEqual(placeAfter([{ slug: 'a', position: 1 }], ['x', 'y']), [
+      { slug: 'x', position: 2 },
+      { slug: 'y', position: 3 },
+    ])
+  })
+
+  it('numbers a canzoniere nobody has arranged, in the order it is shown', () => {
+    /*
+     * The alternative — leaving these null and numbering only the newcomer — would
+     * put the new song *first*, because null sorts last. So the order on screen
+     * becomes explicit, and the new song goes under it.
+     */
+    const existing = [
+      { slug: 'calendar-man', position: null },
+      { slug: 'spada', position: null },
+      { slug: 'yattaman', position: null },
+    ]
+
+    assert.deepEqual(placeAfter(existing, ['new']), [
+      { slug: 'calendar-man', position: 1 },
+      { slug: 'spada', position: 2 },
+      { slug: 'yattaman', position: 3 },
+      { slug: 'new', position: 4 },
+    ])
+  })
+
+  it('repairs a canzoniere that is numbered but not 1..N', () => {
+    // Gaps and a stray null both mean the same thing: renumber, then append.
+    assert.deepEqual(placeAfter([{ slug: 'a', position: 1 }, { slug: 'b', position: 5 }], ['x']), [
+      { slug: 'a', position: 1 },
+      { slug: 'b', position: 2 },
+      { slug: 'x', position: 3 },
+    ])
+    assert.deepEqual(placeAfter([{ slug: 'a', position: 1 }, { slug: 'b', position: null }], ['x']), [
+      { slug: 'a', position: 1 },
+      { slug: 'b', position: 2 },
+      { slug: 'x', position: 3 },
+    ])
+  })
+
+  it('gives the first song of an empty canzoniere the first place', () => {
+    assert.deepEqual(placeAfter([], ['only']), [{ slug: 'only', position: 1 }])
   })
 })
 

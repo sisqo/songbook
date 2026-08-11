@@ -100,7 +100,9 @@ export async function moveSong(songSlug: string, canzoniereSlug: string): Promis
   try {
     const updated = await db()
       .update(songs)
-      .set({ canzoniereSlug, updatedAt: sql`now()` })
+      // Unplaced in its new canzoniere, so it arrives at the end: the number it held
+      // was a place among other songs, and those are not these songs.
+      .set({ canzoniereSlug, position: null, updatedAt: sql`now()` })
       .where(eq(songs.slug, songSlug))
       .returning({ slug: songs.slug })
 
@@ -200,7 +202,8 @@ export async function removeCanzoniere(
 
         await tx
           .update(songs)
-          .set({ canzoniereSlug: moveTo, updatedAt: sql`now()` })
+          // Same as a single move: unplaced where they land, so they queue at the end.
+          .set({ canzoniereSlug: moveTo, position: null, updatedAt: sql`now()` })
           .where(eq(songs.canzoniereSlug, slug))
       }
 

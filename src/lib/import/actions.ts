@@ -8,10 +8,11 @@
  * nothing that could work without a network and nothing worth holding.
  */
 
-import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { auth } from '@/auth'
+import { placeAfter } from '@/lib/canzonieri/order'
 import { rowToSong } from '@/lib/data/db'
 import { UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
@@ -96,6 +97,40 @@ function saved(song: Song): SaveResult {
   return { ok: true, song }
 }
 
+/**
+ * Gives an arriving song the place after the ones already in its canzoniere.
+ *
+ * Without this, importing five songs would file them alphabetically the moment the
+ * page reloaded, which is not what pasting them in an order means. The songs already
+ * there may have to be numbered for that to be possible — see `placeAfter` — and
+ * numbering them changes no song, so none of these updates touches `updated_at`:
+ * they would otherwise all appear in the publish list with nothing new to publish.
+ */
+async function placeLast(
+  tx: Parameters<Parameters<ReturnType<typeof db>['transaction']>[0]>[0],
+  canzoniereSlug: string,
+  slug: string,
+): Promise<number> {
+  const siblings = await tx
+    .select({ slug: songs.slug, position: songs.position })
+    .from(songs)
+    .where(eq(songs.canzoniereSlug, canzoniereSlug))
+    // Display order, which is the order the numbering must preserve.
+    .orderBy(asc(songs.position), asc(songs.title))
+
+  const writes = placeAfter(
+    siblings.filter((row) => row.slug !== slug),
+    [slug],
+  )
+
+  for (const write of writes) {
+    if (write.slug === slug) continue
+    await tx.update(songs).set({ position: write.position }).where(eq(songs.slug, write.slug))
+  }
+
+  return writes[writes.length - 1].position
+}
+
 /** Same title and artist, ignoring case and surrounding space. */
 function sameSong(title: string, artist: string | null) {
   const normalisedTitle = sql`lower(trim(${songs.title})) = ${title.trim().toLowerCase()}`
@@ -142,18 +177,41 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     // Editing a known song: update in place and keep the slug, which is what
     // keeps that song's saved transposition and speed attached to it.
     if (input.slug !== undefined) {
-      const updated = await database
-        .update(songs)
-        .set(values)
-        .where(eq(songs.slug, input.slug))
-        .returning()
+      const updated = await database.transaction(async (tx) => {
+        const before = await tx
+          .select({ canzoniereSlug: songs.canzoniereSlug })
+          .from(songs)
+          .where(eq(songs.slug, input.slug as string))
+          .limit(1)
+
+        if (before.length === 0) return []
+
+        /*
+         * A song sent to another canzoniere arrives unplaced, so it lands at the end
+         * of it — the same place an import would. Keeping the old number would have
+         * it claim a place among songs it has never been ordered against, tying with
+         * whichever song already holds that number.
+         */
+        const moved = before[0].canzoniereSlug !== values.canzoniereSlug
+
+        return tx
+          .update(songs)
+          .set(moved ? { ...values, position: null } : values)
+          .where(eq(songs.slug, input.slug as string))
+          .returning()
+      })
 
       if (updated.length === 0) return { ok: false, reason: 'not-found' }
       return saved(rowToSong(updated[0]))
     }
 
     const twin = await database
-      .select({ slug: songs.slug, title: songs.title, artist: songs.artist })
+      .select({
+        slug: songs.slug,
+        title: songs.title,
+        artist: songs.artist,
+        canzoniereSlug: songs.canzoniereSlug,
+      })
       .from(songs)
       .where(sameSong(title, values.artist))
       .limit(1)
@@ -163,11 +221,23 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     }
 
     if (twin.length > 0 && decision === 'replace') {
-      const updated = await database
-        .update(songs)
-        .set(values)
-        .where(eq(songs.slug, twin[0].slug))
-        .returning()
+      const updated = await database.transaction(async (tx) => {
+        /*
+         * Replacing a song's words is not moving it: one that already lives here keeps
+         * the place it was given. Only one arriving from another canzoniere is placed,
+         * and then at the end, like any other arrival.
+         */
+        if (twin[0].canzoniereSlug === values.canzoniereSlug) {
+          return tx.update(songs).set(values).where(eq(songs.slug, twin[0].slug)).returning()
+        }
+
+        const place = await placeLast(tx, values.canzoniereSlug, twin[0].slug)
+        return tx
+          .update(songs)
+          .set({ ...values, position: place })
+          .where(eq(songs.slug, twin[0].slug))
+          .returning()
+      })
 
       return saved(rowToSong(updated[0]))
     }
@@ -175,10 +245,18 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     const taken = (await database.select({ slug: songs.slug }).from(songs)).map((row) => row.slug)
     const slug = uniqueSlug(title, taken)
 
-    const inserted = await database
-      .insert(songs)
-      .values({ slug, ...values })
-      .returning()
+    /*
+     * One transaction: the place is worked out from what the canzoniere holds, and a
+     * second import landing between that read and this insert would be given the same
+     * number.
+     */
+    const inserted = await database.transaction(async (tx) => {
+      const place = await placeLast(tx, values.canzoniereSlug, slug)
+      return tx
+        .insert(songs)
+        .values({ slug, ...values, position: place })
+        .returning()
+    })
 
     return saved(rowToSong(inserted[0]))
   } catch (error) {
