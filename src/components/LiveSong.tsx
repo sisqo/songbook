@@ -13,8 +13,22 @@ import { ControlBar } from '@/components/ControlBar'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
 
-/** Title, artist and where the song sits in its canzoniere. */
-export function SongHeading({ series }: { series: { position: number; total: number } | null }) {
+/**
+ * Where this song sits in the sequence it is being read in.
+ *
+ * `within` names that sequence when the page does not already: inside a setlist the
+ * count is the setlist's, while the chip next to it names the canzoniere, and "1 di
+ * 12" between them would look like it belonged to the canzoniere. Read from a
+ * canzoniere the chip is the answer, so naming it again would only repeat it.
+ */
+export interface Place {
+  position: number
+  total: number
+  within: string | null
+}
+
+/** Title, artist, and where the song sits in whatever led here. */
+export function SongHeading({ place }: { place: Place | null }) {
   const { song, deleted } = useSong()
 
   return (
@@ -23,9 +37,10 @@ export function SongHeading({ series }: { series: { position: number; total: num
       <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-muted">
         {song.artist !== null && <span>{song.artist}</span>}
         <CanzonierePicker songSlug={song.slug} />
-        {series !== null && (
+        {place !== null && (
           <span className="text-faint">
-            {series.position} di {series.total}
+            {place.position} di {place.total}
+            {place.within !== null && ` in ${place.within}`}
           </span>
         )}
       </p>

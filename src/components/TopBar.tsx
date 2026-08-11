@@ -13,9 +13,13 @@ export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'scalette'
  * fit a phone — the first version proved it by cutting "Esci" off the right edge
  * — and icons alone said too little.
  *
- * `back` replaces the brand with a contextual return link, which is what keeps
- * the reading page down to one header row instead of two: inside a setlist that
- * link also carries the position, "‹ Sabato in cantina · 2 di 12".
+ * The brand is on every screen, including inside a song. It used to be swapped
+ * out for the return link there, which saved a few millimetres and cost the one
+ * thing that says which app this is — on a phone, in standalone mode, with no
+ * browser chrome around it. So `back` is now something the bar gains rather than
+ * something that displaces the mark, and it is only worth passing when it leads
+ * somewhere the brand does not: inside a setlist it also carries the position,
+ * "‹ Sabato in cantina · 2 di 12".
  *
  * The active section arrives as a prop rather than from `usePathname`, so the
  * server renders it: these pages are statically generated and precached, and
@@ -29,6 +33,7 @@ export function TopBar({
 }: {
   current: Section
   showSetlists?: boolean
+  /** A second way out, next to the brand. Leave unset when it would lead home too. */
   back?: { href: string; label: string }
   /** Previous and next song, when this screen is part of a sequence. */
   steps?: { previous: string | null; next: string | null }
@@ -36,14 +41,14 @@ export function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-inner">
-        {back === undefined ? (
-          <Link href="/" className="brand" aria-label="songs, tutte le canzoni">
-            <span className="brand-mark">
-              <IconNote size={15} />
-            </span>
-            <span>songs</span>
-          </Link>
-        ) : (
+        <Link href="/" className="brand" aria-label="songs, tutte le canzoni">
+          <span className="brand-mark">
+            <IconNote size={15} />
+          </span>
+          <span>songs</span>
+        </Link>
+
+        {back !== undefined && (
           <Link href={back.href} className="back-link min-w-0">
             <IconChevronLeft size={16} />
             <span className="truncate">{back.label}</span>

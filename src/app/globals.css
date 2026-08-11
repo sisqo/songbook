@@ -474,6 +474,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
+    /* Never squeezed by what sits next to it: that is the point of keeping it. */
+    flex: none;
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -590,11 +592,14 @@
     background: var(--line);
   }
 
+  /*
+   * Sits after the brand rather than in its place, so it keeps the chevron but
+   * loses the negative margin that used to pull it to the left edge.
+   */
   .back-link {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    margin-inline-start: -0.35rem;
     padding: 0.3rem 0.5rem 0.3rem 0.35rem;
     border-radius: var(--r-md);
     color: var(--muted);

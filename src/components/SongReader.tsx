@@ -83,10 +83,10 @@ async function seriesFor(song: Song): Promise<Series | null> {
  * The ChordPro is parsed here, on the server, so the parse happens once at build
  * time and the client only ever formats an already-structured song.
  *
- * The header carries the return link instead of the page repeating it below, so
- * the screen spends one row on navigation rather than two: vertical space here is
- * the product. It also carries the two arrows, because since the home page stopped
- * listing songs those arrows are how the rest of a canzoniere is reached.
+ * The header keeps to one row here rather than two, because vertical space is the
+ * product on this screen: the brand, the two arrows and the menu, and nothing that
+ * the page below already says. The arrows matter more than they look — since the
+ * home page stopped listing songs, they are how the rest of a canzoniere is reached.
  *
  * Inside a setlist the setlist wins: stepping through it is why you opened it.
  */
@@ -127,20 +127,29 @@ export async function SongReader({
         <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
           <TopBar
             current={setlist ? 'scalette' : 'canzoni'}
-            back={
-              setlist
-                ? {
-                    href: `/scalette/${setlist.slug}`,
-                    label: `${setlist.name} · ${setlist.position} di ${setlist.total}`,
-                  }
-                : { href: '/', label: 'Tutte le canzoni' }
-            }
+            /*
+              * Only inside a setlist, where going back means the setlist and not
+              * the whole repertoire. On its own a song needs no return link: the
+              * brand next to it already leads to the list of everything.
+              *
+              * The name alone, without the position it used to carry: with the brand
+              * back in the bar there is no room for both, and a truncating chip cut
+              * the number rather than the name. The position is under the title now,
+              * where it is never abbreviated.
+              */
+            back={setlist ? { href: `/scalette/${setlist.slug}`, label: setlist.name } : undefined}
             steps={steps}
           />
 
           <main className="mx-auto max-w-3xl px-4 pt-4">
             <SongHeading
-              series={series === null ? null : { position: series.position, total: series.total }}
+              place={
+                setlist
+                  ? { position: setlist.position, total: setlist.total, within: setlist.name }
+                  : series === null
+                    ? null
+                    : { position: series.position, total: series.total, within: null }
+              }
             />
 
             <LiveSheet />
