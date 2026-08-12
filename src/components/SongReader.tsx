@@ -1,10 +1,8 @@
-import Link from 'next/link'
-
+import { EditSongLink } from '@/components/EditSongLink'
 import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
-import { IconPencil } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
 
@@ -127,14 +125,10 @@ export async function SongReader({ song }: { song: Song }) {
           {/*
             * A link, not a form: the editor is a page of its own, and two ways to
             * change a song would be two things to keep in step. It needs a network
-            * to save, so it needs one to open.
+            * to save, so it needs one to open — and a role that may change songs,
+            * which is why it is a component of its own.
             */}
-          <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
-            <Link href={`/canzoni/${song.slug}/modifica`} className="btn is-inset">
-              <IconPencil size={16} />
-              Modifica
-            </Link>
-          </div>
+          <EditSongLink slug={song.slug} />
 
           <div className="bar-spacer" />
         </main>

@@ -3,15 +3,15 @@
 /**
  * Server actions for import, editing, deletion, publishing and export.
  *
- * Every call needs a session from the allowlist. Nothing here has an offline
- * queue: saving needs the database and publishing needs a deploy, so there is
- * nothing that could work without a network and nothing worth holding.
+ * Every call needs an **editor**. Nothing here has an offline queue: saving needs the
+ * database and publishing needs a deploy, so there is nothing that could work without a
+ * network and nothing worth holding.
  */
 
 import { and, asc, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
-import { currentMember } from '@/lib/auth/session'
+import { asEditor } from '@/lib/auth/session'
 import { placeAfter } from '@/lib/canzonieri/order'
 import { rowToSong } from '@/lib/data/db'
 import { UNFILED, type Song } from '@/lib/data/types'
@@ -29,9 +29,11 @@ import type {
   SongInput,
 } from './types'
 
-async function authorized(): Promise<boolean> {
-  return (await currentMember()) !== null
-}
+/**
+ * Everything in this file changes the repertoire or acts on it as a whole, so all of it
+ * needs an editor — including the two reads: the pending list and the export belong to
+ * the import screen, which a viewer has no way to reach in the first place.
+ */
 
 /**
  * A canzoniere slug that certainly exists.
@@ -141,7 +143,8 @@ function sameSong(title: string, artist: string | null) {
 
 export async function saveSong(input: SongInput, decision?: Decision): Promise<SaveResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const title = input.title.trim()
   if (title === '') return { ok: false, reason: 'invalid-title' }
@@ -261,7 +264,8 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
 
 export async function deleteSong(slug: string): Promise<DeleteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   try {
     const removed = await db()
@@ -289,7 +293,7 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
  * from — everything counts as pending, which is the truthful answer.
  */
 export async function loadPending(): Promise<PendingSong[]> {
-  if (!(await authorized())) return []
+  if (!(await asEditor()).ok) return []
 
   const database = db()
   const stamp = await database
@@ -328,7 +332,8 @@ export async function loadPending(): Promise<PendingSong[]> {
 
 /** Triggers a rebuild, which is what turns pending songs into pages. */
 export async function publish(): Promise<PublishResult> {
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const hook = process.env.DEPLOY_HOOK_URL
   if (hook === undefined || hook === '') return { ok: false, reason: 'no-hook' }
@@ -354,7 +359,7 @@ export interface ExportedFile {
  * path: put them back in `content/`, run the seed, and what is missing returns.
  */
 export async function exportAll(): Promise<ExportedFile[]> {
-  if (!(await authorized())) return []
+  if (!(await asEditor()).ok) return []
 
   const database = db()
   const [rows, names] = await Promise.all([

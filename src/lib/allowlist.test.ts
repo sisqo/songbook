@@ -1,14 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import {
-  isAllowed,
-  isEmailShape,
-  isOwner,
-  mayEnter,
-  normalizeEmail,
-  parseAllowlist,
-} from './allowlist'
+import { isAllowed, isEmailShape, isOwner, normalizeEmail, parseAllowlist } from './allowlist'
 
 describe('parseAllowlist', () => {
   it('splits, trims and lowercases', () => {
@@ -67,42 +60,6 @@ describe('isAllowed', () => {
     assert.equal(isAllowed(null, owners), false)
     assert.equal(isAllowed(undefined, owners), false)
     assert.equal(isAllowed('', owners), false)
-  })
-})
-
-/**
- * The whole gate, including the case that has no other test: the table did not answer.
- *
- * That case reaches here as null from `listMembers`, and it is the one where failing the
- * wrong way is invisible in normal use — a database is up while anyone is looking at it.
- */
-describe('mayEnter', () => {
-  const owners = 'padrone@x.it'
-
-  it('admits an owner even when the table did not answer', () => {
-    assert.equal(mayEnter('padrone@x.it', owners, null), true)
-    assert.equal(mayEnter('PADRONE@X.it', owners, null), true)
-  })
-
-  it('admits an invited address when the table answered', () => {
-    assert.equal(mayEnter('ospite@x.it', owners, ['ospite@x.it']), true)
-  })
-
-  it('refuses an invited address when the table did not answer', () => {
-    // Fail closed: an unreachable database is not permission.
-    assert.equal(mayEnter('ospite@x.it', owners, null), false)
-  })
-
-  it('refuses everyone else, answered table or not', () => {
-    assert.equal(mayEnter('nessuno@x.it', owners, ['ospite@x.it']), false)
-    assert.equal(mayEnter('nessuno@x.it', owners, []), false)
-    assert.equal(mayEnter('nessuno@x.it', owners, null), false)
-    assert.equal(mayEnter(null, owners, ['ospite@x.it']), false)
-  })
-
-  it('refuses everyone when nothing is configured at all', () => {
-    assert.equal(mayEnter('padrone@x.it', undefined, null), false)
-    assert.equal(mayEnter('padrone@x.it', '', []), false)
   })
 })
 

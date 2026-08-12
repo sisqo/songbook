@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
 import { ReorderSongs } from '@/components/ReorderSongs'
+import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
 import { IconGrip } from '@/components/icons'
 import { applyOrder } from '@/lib/canzonieri/order'
@@ -29,6 +30,7 @@ export function CanzoniereSongs({
   songs: SongIndexRow[]
 }) {
   const { assignments, online } = useCanzonieri()
+  const { mayEdit } = useRole()
 
   const [rows, setRows] = useLiveRows(baked)
   const [ordering, setOrdering] = useState(false)
@@ -87,10 +89,10 @@ export function CanzoniereSongs({
       </ul>
 
       {/*
-        * Only where there is an order to change: two songs at least, and a network to
-        * save it over.
+        * Only where there is an order to change, and only for someone whose order it is
+        * to change: two songs at least, an editor, and a network to save it over.
         */}
-      {songs.length > 1 && online && (
+      {songs.length > 1 && online && mayEdit && (
         <div className="mt-4">
           <button
             type="button"

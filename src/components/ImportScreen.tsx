@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ImportBatch } from '@/components/ImportBatch'
 import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { RoleNotice } from '@/components/RoleNotice'
+import { useRole } from '@/components/RoleProvider'
 import { SongForm } from '@/components/SongForm'
 import {
   IconCheck,
@@ -42,6 +44,7 @@ const FORMAT_LABEL: Record<string, string> = {
  */
 export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string }) {
   const { canzonieri, online, create, refresh: refreshCanzonieri } = useCanzonieri()
+  const { known, mayEdit } = useRole()
 
   const [destination, setDestination] = useState(defaultCanzoniere)
   const [naming, setNaming] = useState(false)
@@ -206,6 +209,14 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
   }
 
   const single = prepared !== null && prepared.length === 1 ? prepared[0] : null
+
+  /*
+   * Nothing at all until the role is known, then either the screen or the reason.
+   * The actions refuse a viewer on their own; this is so nobody gets as far as pasting a
+   * song in and pressing a button to find out.
+   */
+  if (!known) return null
+  if (!mayEdit) return <RoleNotice needed="Editor" what="importare o modificare brani" />
 
   return (
     <div>

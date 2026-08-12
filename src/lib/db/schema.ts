@@ -89,6 +89,16 @@ export const members = pgTable('members', {
   email: text('email').primaryKey(),
   /** Which owner or member let them in, kept as a plain address for the same reason. */
   addedBy: text('added_by'),
+  /**
+   * What they may do: `admin`, `editor` or `viewer` — see `lib/roles.ts`.
+   *
+   * Text rather than an enum, and defaulted to the least of the three. An enum would put
+   * the list in two places and make adding a fourth a migration on the type; `readRole`
+   * treats anything it does not recognise as `viewer`, so a value nobody expected cannot
+   * become a way in. Owners have no row here and are admin by definition, which is why
+   * this column cannot demote anybody who matters.
+   */
+  role: text('role').notNull().default('viewer'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

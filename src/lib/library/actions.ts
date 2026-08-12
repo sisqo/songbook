@@ -14,7 +14,7 @@
 
 import { asc, eq } from 'drizzle-orm'
 
-import { currentMember } from '@/lib/auth/session'
+import { currentUser } from '@/lib/auth/session'
 import { rowToSong } from '@/lib/data/db'
 import { db } from '@/lib/db/client'
 import { songs } from '@/lib/db/schema'
@@ -23,8 +23,9 @@ import type { SongIndexRow } from '@/lib/search-index'
 
 import type { SongContent } from './overlay'
 
+/** Reads, so any role: what a viewer may see is the whole repertoire. */
 async function authorized(): Promise<boolean> {
-  return (await currentMember()) !== null
+  return (await currentUser()) !== null
 }
 
 /**

@@ -1,18 +1,20 @@
 /**
- * The addresses in the members table.
+ * The members table, read.
  *
- * Not a server action: it is read by the sign-in callback and by the guard in front
- * of every write, neither of which is called from a browser. Both go through here so
- * there is one query and one failure behaviour rather than two that could differ.
+ * Not a server action: it is read by the sign-in callback and by the guards in front of
+ * every write, neither of which is called from a browser. Both go through here so there
+ * is one query and one failure behaviour rather than two that could differ.
  */
 
 import { asc } from 'drizzle-orm'
 
 import { db, hasDatabase } from '@/lib/db/client'
 import { members } from '@/lib/db/schema'
+import { type Membership, type Role, readRole } from '@/lib/roles'
 
-export interface MemberRow {
+export interface MemberRow extends Membership {
   email: string
+  role: Role
   addedBy: string | null
   createdAt: string
 }
@@ -34,20 +36,26 @@ export async function listMembers(): Promise<MemberRow[] | null> {
       .select({
         email: members.email,
         addedBy: members.addedBy,
+        role: members.role,
         createdAt: members.createdAt,
       })
       .from(members)
       .orderBy(asc(members.email))
 
-    return rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }))
+    return rows.map((row) => ({
+      ...row,
+      // The column is text; `readRole` is where an unexpected value stops being a role.
+      role: readRole(row.role),
+      createdAt: row.createdAt.toISOString(),
+    }))
   } catch (error) {
     console.error('listMembers failed', error)
     return null
   }
 }
 
-/** For the gate: an unreadable table admits nobody, which is where null collapses to none. */
-export async function listMemberEmails(): Promise<string[] | null> {
+/** For the gate: address and role, which is all the decision takes. */
+export async function listMemberships(): Promise<Membership[] | null> {
   const rows = await listMembers()
-  return rows === null ? null : rows.map((row) => row.email)
+  return rows === null ? null : rows.map(({ email, role }) => ({ email, role }))
 }

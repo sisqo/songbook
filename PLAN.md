@@ -86,8 +86,9 @@ songs(slug primary key, title, artist, body, tags[],
       created_at, updated_at)
       -- original_key rimossa in v2.0: la tonalità si stima dagli accordi
 
-members(email primary key, added_by, created_at)                     -- v2.0
-      -- solo gli invitati; i proprietari restano in ALLOWED_EMAILS
+members(email primary key, added_by, created_at,
+        role)                                                        -- v2.1: admin|editor|viewer
+      -- solo gli invitati; i proprietari restano in ALLOWED_EMAILS e sono admin per definizione
 
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
 user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
@@ -161,6 +162,10 @@ ciò che non è archiviato si vede a colpo d'occhio.
 - Il callback `signIn` confronta l'email con l'unione di `ALLOWED_EMAILS` (i proprietari,
   dall'ambiente) e della tabella `members` (gli invitati, gestiti da `/utenti` — v2.0);
   qualunque altro account Google valido viene respinto con una pagina dedicata.
+- **Ruoli** (v2.1): admin, editor, viewer. Una funzione sola, `roleOf`, risponde sia al
+  login sia alle guardie davanti a ogni scrittura, e i proprietari sono admin per
+  definizione. Il ruolo **non** entra nel token: una sessione dura novanta giorni e si
+  porterebbe dietro i poteri di ieri, mentre così un cambio vale dall'azione successiva.
 - `maxAge` sessione **90 giorni**: una sessione scaduta senza rete significherebbe restare
   chiusi fuori dal repertorio nel momento peggiore.
 - Middleware a protezione di tutto tranne `/login`, gli asset statici e il manifest.
@@ -1131,6 +1136,50 @@ trasposizione in `localStorage`, e un `input` svuotato via DOM non aggiorna lo s
 React. Il terzo era vero e istruttivo: un `type="email"` fa rifiutare l'indirizzo
 malformato al browser, prima che l'azione sul server venga chiamata.
 
+### v2.1 — ruoli
+
+Tre ruoli, e la linea fra loro è cosa possono **cambiare**: admin tutto, editor il
+repertorio, viewer niente di condiviso. Quattro decisioni tengono in piedi il resto.
+
+**I proprietari sono admin per definizione, non per una riga.** `ALLOWED_EMAILS` non è
+scrivibile dall'app, quindi chi c'è dentro non si può rimuovere — e la stessa cosa lo
+rende non retrocedibile. Non esiste perciò una sequenza di gesti permessi che lasci
+l'installazione senza nessuno al comando, che è la proprietà da cui dipende tutto il
+resto: le altre regole possono sbagliare senza chiudere fuori nessuno.
+
+**Le preferenze non sono modifiche.** Trasposizione, capotasto, velocità, dimensione e
+notazione restano aperte a ogni ruolo, viewer compresi. Non toccano il repertorio: sono
+come una persona legge sul proprio schermo, e un viewer che non potesse trasporre non
+servirebbe a niente sul palco — l'unico posto dove questa app viene usata. Verificato come
+tale: un viewer alza di un semitono e la riga arriva nel database.
+
+**Il ruolo non entra nel token.** Una sessione dura novanta giorni; un ruolo scritto lì
+dentro terrebbe i poteri di ieri per tre mesi. Le guardie rileggono la tabella a ogni
+azione, quindi retrocedere qualcuno gli toglie i controlli **dalla sua azione successiva**
+— provato spostando un editor a viewer sotto la stessa sessione e vedendo sparire
+*Modifica*.
+
+**L'interfaccia è la spiegazione, il server è la garanzia.** Le pagine sono statiche e
+precachate: sono le stesse per tutti, e nessuna può sapere al render chi la guarda. Quindi
+il ruolo arriva dopo il mount, come le preferenze, e i controlli compaiono solo quando la
+risposta è arrivata e permette — mai il contrario, perché un pulsante che appare e sparisce
+è un pulsante che qualcuno ha già premuto. Offline non arriva affatto, il che va bene:
+tutto ciò che un ruolo sblocca ha comunque bisogno della rete. Il ruolo **non** è messo in
+cache di proposito: un «admin» ricordato disegnerebbe pulsanti che rifiutano.
+
+L'unica pagina che rifiuta da sé è l'editor, l'unica generata su richiesta: a un viewer non
+manda nemmeno i campi.
+
+**Cosa è stato misurato.** Ventisette controlli con tre sessioni vere — un invitato
+temporaneo per ruolo, una sessione firmata per ciascuno, e l'app usata come quella persona:
+i controlli assenti dove devono essere assenti, le tre schermate che spiegano invece di
+offrire, un editor a cui `/utenti` non dice nemmeno chi altro esiste, e una richiesta POST
+sparata diretta a un'azione di scrittura che non cambia niente — perché un pulsante
+nascosto non è una serratura. Le due volte che il controllo ha segnalato un problema era
+il controllo a sbagliare: leggeva `document.body`, che comincia con lo script del tema, e
+cercava le parole del brano in una pagina dove Next le aveva prefetchate legittimamente
+dal link di ritorno.
+
 ### v2 — il resto
 
 Restava: scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei
@@ -1210,6 +1259,8 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Navigazione | Elenco dei canzonieri + ricerca su tutto | La prima domanda è quale canzoniere; la ricerca non appartiene a nessuno (v2.0) |
 | Offline | PWA con pagine statiche precache | Sala prove e palco spesso non hanno rete |
 | Accesso | Google OAuth + elenco in due metà | Chiude la questione copyright e dà l'identità per la sincronizzazione. Proprietari nell'ambiente, invitati in tabella (v2.0) |
+| Ruoli | admin, editor, viewer; i proprietari sono admin (v2.1) | Chi entra e cosa può fare sono due domande, e la seconda non deve poter chiudere fuori nessuno dalla prima |
+| Preferenze e ruoli | Aperte a tutti, viewer compresi | Trasporre non è modificare: è come una persona legge sul proprio schermo |
 | Sessione | 90 giorni | Un token scaduto senza rete chiuderebbe fuori dal repertorio |
 | Database | Neon via Vercel Marketplace | Variabili iniettate, zero configurazione manuale |
 | Lingua UI | Solo italiano | Un utente, nessun bisogno di i18n |

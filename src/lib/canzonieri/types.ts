@@ -16,6 +16,8 @@ export interface CanzoniereState {
 
 export type WriteFailure =
   | 'no-session'
+  /** Signed in, but this is not theirs to change: a viewer. */
+  | 'not-allowed'
   | 'no-database'
   /** The canzoniere still holds songs and no destination was given for them. */
   | 'not-empty'
@@ -39,6 +41,7 @@ export type CreateResult = { ok: true; slug: string } | { ok: false; reason: Wri
 
 export const WRITE_MESSAGE: Record<WriteFailure, string> = {
   'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
+  'not-allowed': 'Il tuo ruolo non permette di modificare il repertorio.',
   'no-database': 'Nessun database configurato: le modifiche non possono essere salvate.',
   'not-empty': 'Il canzoniere contiene ancora dei brani.',
   'not-found': 'Questo canzoniere non esiste più.',

@@ -18,6 +18,8 @@ export interface DuplicateOf {
 
 export type SaveFailure =
   | 'no-session'
+  /** Signed in, but this is not theirs to change: a viewer. */
+  | 'not-allowed'
   | 'no-database'
   | 'invalid-title'
   | 'empty-body'
@@ -45,7 +47,7 @@ export type DeleteResult = { ok: true; slug: string } | { ok: false; reason: Sav
 /** What to do when a save hits a song with the same title and artist. */
 export type Decision = 'replace' | 'add'
 
-export type PublishFailure = 'no-session' | 'no-hook' | 'failed'
+export type PublishFailure = 'no-session' | 'not-allowed' | 'no-hook' | 'failed'
 export type PublishResult = { ok: true } | { ok: false; reason: PublishFailure }
 
 export interface PendingSong {
@@ -57,6 +59,7 @@ export interface PendingSong {
 
 export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
   'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
+  'not-allowed': 'Il tuo ruolo non permette di modificare il repertorio.',
   'no-database': 'Nessun database configurato: non si può salvare.',
   'invalid-title': 'Serve un titolo.',
   'empty-body': 'Il testo è vuoto.',
@@ -67,6 +70,7 @@ export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
 
 export const PUBLISH_MESSAGE: Record<PublishFailure, string> = {
   'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
+  'not-allowed': 'Il tuo ruolo non permette di pubblicare.',
   'no-hook':
     'Deploy hook non configurato. Crealo su Vercel in Settings → Git → Deploy Hooks e mettilo in DEPLOY_HOOK_URL.',
   failed: 'Pubblicazione non riuscita. Riprova.',

@@ -8,7 +8,7 @@
 
 import { and, eq } from 'drizzle-orm'
 
-import { currentMember } from '@/lib/auth/session'
+import { currentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db/client'
 import { userPrefs, userSongPrefs } from '@/lib/db/schema'
 
@@ -33,11 +33,15 @@ import {
 export type SaveResult = 'saved' | 'no-destination' | 'failed'
 
 /**
- * Preferences belong to an address, so `currentMember` is asked for the address rather
- * than for a yes: null means nobody, no database, or somebody whose access has since
- * been taken away. All three are `no-destination` and none is `failed` — there is
- * nothing to sync to, so the queue drops the write instead of retrying it for ninety
- * days.
+ * Preferences belong to an address, so `currentUser` is asked for the address rather than
+ * for a yes: null means nobody, no database, or somebody whose access has since been
+ * taken away. All three are `no-destination` and none is `failed` — there is nothing to
+ * sync to, so the queue drops the write instead of retrying it for ninety days.
+ *
+ * **No role is checked here, and that is the design.** A transposition, a capo, a scroll
+ * speed and a font size are not modifications of anything shared: they are how this one
+ * reader reads, on their own screen. A viewer who could not save them would be a viewer
+ * who cannot use the app on stage, which is the only place it gets used.
  */
 
 export interface LoadedPrefs {
@@ -46,7 +50,7 @@ export interface LoadedPrefs {
 }
 
 export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
-  const email = await currentMember()
+  const email = (await currentUser())?.email ?? null
   if (email === null) return { global: null, song: null }
 
   const database = db()
@@ -87,7 +91,7 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
 }
 
 export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
-  const email = await currentMember()
+  const email = (await currentUser())?.email ?? null
   if (email === null) return 'no-destination'
 
   const values = {
@@ -112,7 +116,7 @@ export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
 }
 
 export async function saveSongPrefs(songSlug: string, prefs: SongPrefs): Promise<SaveResult> {
-  const email = await currentMember()
+  const email = (await currentUser())?.email ?? null
   if (email === null) return 'no-destination'
 
   const values = {

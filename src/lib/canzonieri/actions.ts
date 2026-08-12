@@ -3,14 +3,15 @@
 /**
  * Server actions for canzonieri: the app's first write path.
  *
- * Deliberately a small surface — names, membership and order, never song content —
- * and every call requires a session from the allowlist, since canzonieri are shared
- * library structure rather than per-reader preferences.
+ * Deliberately a small surface — names, membership and order, never song content — and
+ * every write requires an **editor**, since canzonieri are shared library structure
+ * rather than per-reader preferences. Reading the layer needs only a session: a viewer's
+ * home is drawn from it, and so is the name in the way back from a song.
  */
 
 import { asc, eq, sql } from 'drizzle-orm'
 
-import { currentMember } from '@/lib/auth/session'
+import { asEditor, currentUser } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
 import { canzonieri, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
@@ -18,13 +19,15 @@ import { uniqueSlug } from '@/lib/slug'
 import { sameMembers } from './order'
 import type { CanzoniereState, CreateResult, WriteResult } from './types'
 
-async function authorized(): Promise<boolean> {
-  return (await currentMember()) !== null
-}
-
-/** Reads the whole mutable layer. Null when there is nothing to read from. */
+/**
+ * Reads the whole mutable layer. Null when there is nothing to read from.
+ *
+ * Any role, deliberately. This is where the names come from — the rows on the home, the
+ * label on the way back from a song — so gating it to editors would leave a viewer
+ * looking at a screen full of nameless containers.
+ */
 export async function loadCanzonieri(): Promise<CanzoniereState | null> {
-  if (!(await authorized())) return null
+  if ((await currentUser()) === null) return null
 
   const database = db()
 
@@ -46,7 +49,8 @@ export async function loadCanzonieri(): Promise<CanzoniereState | null> {
 
 export async function createCanzoniere(name: string): Promise<CreateResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
@@ -72,7 +76,8 @@ export async function createCanzoniere(name: string): Promise<CreateResult> {
 /** Renames without touching the slug, so nothing that points at it moves. */
 export async function renameCanzoniere(slug: string, name: string): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
@@ -93,7 +98,8 @@ export async function renameCanzoniere(slug: string, name: string): Promise<Writ
 
 export async function moveSong(songSlug: string, canzoniereSlug: string): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   try {
     const updated = await db()
@@ -133,7 +139,8 @@ export async function moveSong(songSlug: string, canzoniereSlug: string): Promis
  */
 export async function reorderCanzoniere(slug: string, order: string[]): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   try {
     return await db().transaction(async (tx) => {
@@ -175,7 +182,8 @@ export async function removeCanzoniere(
   moveTo: string | null,
 ): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  if (!(await authorized())) return { ok: false, reason: 'no-session' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
   if (moveTo === slug) return { ok: false, reason: 'invalid-name' }
 
   try {

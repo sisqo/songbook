@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
 
+import { RoleProvider } from '@/components/RoleProvider'
 import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 
 import './globals.css'
@@ -80,7 +81,13 @@ export default function RootLayout({
     <html lang="it">
       <body className={`${sans.variable} ${mono.variable} antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        {children}
+
+        {/*
+          * Here rather than in each page: one answer about who is looking, asked once and
+          * kept across navigations. It gates what the screens offer, never what the server
+          * allows — see RoleProvider.
+          */}
+        <RoleProvider>{children}</RoleProvider>
       </body>
     </html>
   )

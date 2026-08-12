@@ -2,7 +2,8 @@
 
 Testi e accordi del proprio repertorio, da leggere su tablet e telefono: zoom,
 scorrimento automatico, cambio di tonalità, capotasto e notazione italiana o
-internazionale. Entra solo chi è in elenco, e l'elenco si gestisce dall'app.
+internazionale. Entra solo chi è in elenco, e l'elenco — con i ruoli — si gestisce
+dall'app.
 
 - Produzione: https://songs.sisqo.dev
 - Repo: https://github.com/sisqo/songs
@@ -365,6 +366,39 @@ chi è in elenco. L'elenco ha due metà, e la differenza fra loro è il punto.
   `/utenti`, voce *Utenti* nel menù. Valgono dal loro prossimo ingresso: nessun deploy,
   nessuna ricostruzione.
 
+### I ruoli
+
+Tre, e la linea che li separa è **cosa possono cambiare**:
+
+| | Legge tutto | Modifica il repertorio | Decide chi entra |
+|---|---|---|---|
+| **Admin** | sì | sì | sì |
+| **Editor** | sì | sì | no |
+| **Viewer** | sì | no | no |
+
+I proprietari sono **Admin per definizione**, e non è una scorciatoia: la stessa cosa che
+li rende non rimovibili — l'app non può scrivere l'ambiente — li rende non retrocedibili.
+Così non esiste una versione di questa installazione senza nessuno che la comandi. Gli
+invitati hanno il ruolo che gli dai in `/utenti`, **Viewer** appena arrivati perché è il
+meno che possa servire, e si cambia da lì con un menù per riga.
+
+Cosa **non** conta come modifica: la trasposizione, il capotasto, la velocità di
+scorrimento, la dimensione del testo, la notazione. Non cambiano il repertorio, sono il
+modo in cui una persona legge sul proprio schermo — e un Viewer che non potesse trasporre
+non servirebbe a niente sul palco, che è l'unico posto dove l'app viene usata davvero.
+
+Un cambio di ruolo vale **dall'azione successiva**, non dal prossimo accesso: la guardia
+rilegge la tabella ogni volta. È anche il motivo per cui il ruolo non sta nel token della
+sessione, che dura novanta giorni e si porterebbe dietro i poteri di ieri.
+
+Quello che un ruolo non può fare non compare: nessun *Modifica* sotto lo spartito per un
+Viewer, nessun *Riordina*, e nel menù solo le voci che servono. Ma l'interfaccia è la
+**spiegazione**, non la garanzia — le pagine sono statiche e precachate, quindi sono le
+stesse per tutti, e chi arriva digitando l'indirizzo trova una frase che dice quale ruolo
+servirebbe e qual è il suo. La garanzia sta nelle azioni sul server, che rileggono il
+ruolo a ogni chiamata. L'unica pagina che rifiuta da sé è l'editor, perché è l'unica
+generata su richiesta: a un Viewer non manda nemmeno i campi.
+
 Le due metà si incontrano in una funzione sola, `isAllowed`, e da lì rispondono sia al
 callback di login sia alla guardia davanti a ogni scrittura. Due risposte separate alla
 domanda «questa persona può stare qui» sono il modo in cui una delle due finisce
@@ -422,7 +456,7 @@ Due dettagli che costano tempo se non si sanno:
 |---|---|
 | `AUTH_SECRET` | Firma delle sessioni |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Client OAuth Google |
-| `ALLOWED_EMAILS` | I **proprietari**: sempre ammessi, separati da virgola, non rimovibili dall'app. Vuota, e con `members` vuota, nega tutti |
+| `ALLOWED_EMAILS` | I **proprietari**: sempre ammessi e sempre Admin, separati da virgola, non rimovibili né retrocedibili dall'app. Vuota, e con `members` vuota, nega tutti |
 | `AUTH_URL` | Su Vercel: `https://songs.sisqo.dev`, così il callback OAuth combacia |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
 | `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |

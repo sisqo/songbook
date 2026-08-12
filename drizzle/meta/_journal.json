@@ -57,6 +57,13 @@
       "when": 1786520282743,
       "tag": "0007_lame_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786523203660,
+      "tag": "0008_long_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

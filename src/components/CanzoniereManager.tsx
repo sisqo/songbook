@@ -3,6 +3,8 @@
 import { useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { RoleNotice } from '@/components/RoleNotice'
+import { useRole } from '@/components/RoleProvider'
 import {
   IconChevronDown,
   IconOffline,
@@ -22,6 +24,7 @@ import { WRITE_MESSAGE, type WriteResult, countBySlug } from '@/lib/canzonieri/t
 export function CanzoniereManager() {
   const state = useCanzonieri()
   const { canzonieri, online } = state
+  const { known, mayEdit } = useRole()
   const counts = countBySlug(state)
 
   const [busy, setBusy] = useState(false)
@@ -49,6 +52,10 @@ export function CanzoniereManager() {
   }
 
   const others = (slug: string) => canzonieri.filter((entry) => entry.slug !== slug)
+
+  // Reading a canzoniere is what the home is for; this screen only changes them.
+  if (!known) return null
+  if (!mayEdit) return <RoleNotice needed="Editor" what="creare, rinominare o rimuovere canzonieri" />
 
   return (
     <div>

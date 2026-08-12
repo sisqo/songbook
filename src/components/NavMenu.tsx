@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { InstrumentPicker } from '@/components/InstrumentPicker'
+import { useRole } from '@/components/RoleProvider'
 import { ThemePicker } from '@/components/ThemePicker'
 import {
   IconBooks,
@@ -30,6 +31,10 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  * Sign-out arrives as `children`: it is a server component wrapping a server
  * action, and passing it in is what lets this component be interactive without
  * turning that action into a client-side call.
+ *
+ * Three of the entries depend on what the reader may do, and they are absent until the
+ * answer arrives rather than present and refusing. A viewer's menu is therefore the
+ * songs, the tuner, and how they like to read — which is everything a viewer has.
  */
 export function NavMenu({
   current,
@@ -39,6 +44,7 @@ export function NavMenu({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const { mayEdit, mayManageUsers } = useRole()
 
   useEffect(() => {
     if (!open) return
@@ -76,35 +82,41 @@ export function NavMenu({
               Tutte le canzoni
             </Link>
 
-            <Link
-              href="/importa"
-              className={item('importa')}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-            >
-              <IconImport size={17} />
-              Importa
-            </Link>
+            {mayEdit && (
+              <>
+                <Link
+                  href="/importa"
+                  className={item('importa')}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                >
+                  <IconImport size={17} />
+                  Importa
+                </Link>
 
-            <Link
-              href="/canzonieri"
-              className={item('canzonieri')}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-            >
-              <IconBooks size={17} />
-              Canzonieri
-            </Link>
+                <Link
+                  href="/canzonieri"
+                  className={item('canzonieri')}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                >
+                  <IconBooks size={17} />
+                  Canzonieri
+                </Link>
+              </>
+            )}
 
-            <Link
-              href="/utenti"
-              className={item('utenti')}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-            >
-              <IconUsers size={17} />
-              Utenti
-            </Link>
+            {mayManageUsers && (
+              <Link
+                href="/utenti"
+                className={item('utenti')}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+              >
+                <IconUsers size={17} />
+                Utenti
+              </Link>
+            )}
 
             {/*
               * The tuner, which is another app on another domain.

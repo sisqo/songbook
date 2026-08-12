@@ -61,22 +61,6 @@ export function isAllowed(
   return allowed.includes(normalizeEmail(email))
 }
 
-/**
- * Whether this address may be here: the whole policy, in one testable place.
- *
- * The order is the policy. An owner is admitted on the strength of the environment alone,
- * so a table that answered null — unreadable, or absent — cannot lock out the people who
- * cannot be removed either. Everyone else needs a table that answered, and answered with
- * their name in it.
- */
-export function mayEnter(
-  email: string | null | undefined,
-  raw: string | undefined | null,
-  members: readonly string[] | null,
-): boolean {
-  if (isOwner(email, raw)) return true
-  return isAllowed(email, raw, members)
-}
 
 /** Whether this address is one of the owners, who cannot be removed from inside the app. */
 export function isOwner(email: string | null | undefined, raw: string | undefined | null): boolean {
