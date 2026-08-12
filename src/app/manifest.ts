@@ -1,10 +1,12 @@
 import type { MetadataRoute } from 'next'
 
+import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'songs — testi e accordi',
-    short_name: 'songs',
-    description: 'Testi e accordi, con trasposizione, notazione e scorrimento automatico.',
+    name: `${APP_NAME} — testi e accordi del repertorio`,
+    short_name: APP_NAME,
+    description: `${APP_PAYOFF}. Testi e accordi, con trasposizione, notazione e scorrimento automatico.`,
     lang: 'it',
     start_url: '/',
     display: 'standalone',

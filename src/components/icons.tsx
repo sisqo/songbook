@@ -408,6 +408,36 @@ export function IconOffline(props: IconProps) {
   )
 }
 
+/**
+ * Installabile, e leggibile senza rete: a phone with the repertoire already on it.
+ *
+ * Not `IconOffline` — that one is drawn as a warning, a crossed signal, and every one
+ * of its uses in the app is inside a notice saying something is disabled. This is the
+ * opposite claim, so it needed a glyph of its own: a device with a check, nothing
+ * crossed out.
+ */
+export function IconOnStage(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />
+      <path d="M10.5 19h3" />
+      <path d="m9 11 2.3 2.3L15 9" />
+    </Icon>
+  )
+}
+
+/** A chord's shape on the neck: four strings, three frets, two fingers down. */
+export function IconChordShape(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 4v16M11 4v16M15 4v16M19 4v16" />
+      <path d="M5 8h16M5 12h16M5 16h16" />
+      <circle cx="11" cy="8" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
 export function IconPublish(props: IconProps) {
   return (
     <Icon {...props}>

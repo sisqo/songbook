@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
 
 import { RoleProvider } from '@/components/RoleProvider'
+import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 
 import './globals.css'
@@ -25,9 +26,9 @@ const mono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'songs', template: '%s · songs' },
-  description: 'Testi e accordi, con trasposizione, notazione e scorrimento automatico.',
-  applicationName: 'songs',
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  description: `${APP_PAYOFF}. Testi e accordi del repertorio, con trasposizione, notazione e scorrimento automatico.`,
+  applicationName: APP_NAME,
   /**
    * Declared rather than left to convention.
    *

@@ -1,4 +1,9 @@
-# songs — Piano di implementazione
+# Songbook — Piano di implementazione
+
+> Il progetto si chiamava **songs** fino alla v2.4. Il repo, il dominio
+> (`songs.sisqo.dev`) e la tabella `songs` nel database restano quello che sono — è un
+> rebranding del nome mostrato, non un trasloco — quindi il resto di questo piano lo
+> nomina ancora quando parla di quelle cose, di proposito.
 
 > **Stato:** v1, **v1.1 — canzonieri**, **v1.2 — import e modifica** e **v1.3 — le
 > modifiche si vedono subito** sono consegnate e in produzione su
@@ -1359,6 +1364,33 @@ effetti di layout girano prima nei figli che nei genitori e in quell'istante le 
 sono ancora quelle del build; e i conteggi appartengono alla lista viva, non
 all'intestazione generata al build, o le due metà dello stesso schermo direbbero due cose
 diverse.
+
+### v2.4 — Songbook
+
+Un nome e un payoff, non una funzione: **songs** diventa **Songbook**, con «Where every
+fire needs a melody» accanto al titolo. Deliberatamente non tradotto — un payoff si
+ascolta, non si legge per il significato — su una app che per il resto parla italiano.
+
+Una sola fonte, `lib/brand.ts`, con `APP_NAME` e `APP_PAYOFF`: il nome compariva già in
+quattro posti che non si vedono l'un l'altro — il titolo della pagina, il manifest della
+PWA, il marchio nell'header, e ora la pagina pubblica — e un nome scritto a mano in
+quattro punti è un nome che la prossima modifica dimentica in uno dei quattro.
+
+**`/login` diventa anche la pagina pubblica del progetto**, perché lo era già per
+costruzione: `middleware.ts` manda lì chiunque non ha una sessione, prima di questa
+versione e dopo, quindi non c'è una seconda rotta da inventare. Sotto il nome e il payoff
+resta esattamente il modulo di accesso di prima — Google, poi email e password, entrambi i
+rifiuti in una frase sola — perché chi entra ogni giorno non è un visitatore e non deve
+scorrere una vetrina per arrivarci. Sotto il modulo, una vetrina di sei caratteristiche,
+in una frase ciascuna: canzonieri e sezioni, tonalità e capotasto, la forma di ogni
+accordo, zoom e scorrimento, l'uso offline, i ruoli. Sei fatti verificabili nel codice, non
+un elenco copiato dal README.
+
+Un'icona nuova, `IconOnStage`, per l'unica caratteristica per cui nessuna icona esistente
+andava bene: `IconOffline` esiste già, ma è disegnata come un avviso — un segnale
+attraversato da una riga — e ogni sua chiamata nell'app è dentro un banner che dice che
+qualcosa è disabilitato. Usarla per una caratteristica positiva avrebbe detto il contrario
+di quel che c'entrava.
 
 ### v2 — il resto
 

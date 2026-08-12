@@ -693,6 +693,88 @@
     background: var(--edge);
   }
 
+  /*
+   * The name, on the public page: bigger than a screen title, because this is the
+   * one screen that is a title page rather than a place to read from. Responsive by
+   * hand rather than by stacking a Tailwind size utility on `.screen-title` — the two
+   * rules would land at equal specificity, and which one wins would depend on where
+   * Tailwind's own layer happens to sit in the sheet.
+   */
+  .landing-title {
+    font-size: 2.25rem;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  @media (min-width: 640px) {
+    .landing-title {
+      font-size: 3rem;
+    }
+  }
+
+  /*
+   * The payoff. Not the same voice as a description: a payoff is heard, not read for
+   * information, so it gets the accent colour and none of the muted tones every other
+   * caption on this page uses — the one line here that is not explaining anything.
+   */
+  .landing-payoff {
+    color: var(--accent);
+    font-size: 1.0625rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  @media (min-width: 640px) {
+    .landing-payoff {
+      font-size: 1.25rem;
+    }
+  }
+
+  /* ---- Feature grid, on the public page -------------------------------- */
+
+  /*
+   * One card per capability, laid out for a phone first — this app's own reader is
+   * one — and given room to breathe into a grid once there is width for it.
+   */
+  .feature-grid {
+    display: grid;
+    gap: 0.875rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .feature-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .feature-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-1);
+    padding: 1.25rem;
+  }
+
+  /* Same shape as `.login-mark`, at the size a card next to five others allows. */
+  .feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
   /* ---- Headings ------------------------------------------------------- */
 
   /*

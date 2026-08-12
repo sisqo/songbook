@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
+import { APP_NAME } from '@/lib/brand'
 
 export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti' | 'password'
 
@@ -39,11 +40,11 @@ export function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-inner">
-        <Link href="/" className="brand" aria-label="songs, tutte le canzoni">
+        <Link href="/" className="brand" aria-label={`${APP_NAME}, tutte le canzoni`}>
           <span className="brand-mark">
             <IconNote size={15} />
           </span>
-          <span>songs</span>
+          <span>{APP_NAME}</span>
         </Link>
 
         {back !== undefined && (

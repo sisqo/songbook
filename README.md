@@ -1,9 +1,15 @@
-# songs
+# Songbook
+
+*Where every fire needs a melody.*
 
 Testi e accordi del proprio repertorio, da leggere su tablet e telefono: zoom,
 scorrimento automatico, cambio di tonalità, capotasto e notazione italiana o
 internazionale. Si entra con Google o con email e password; entra solo chi è in elenco, e
-l'elenco — con i ruoli — si gestisce dall'app.
+l'elenco — con i ruoli — si gestisce dall'app. `/login` è anche la pagina pubblica del
+progetto: chiunque non ha una sessione ci arriva, con o senza account.
+
+Il nome mostrato è cambiato in v2.4; repo, dominio e tabelle sono ancora `songs` — vedi la
+nota in testa a [PLAN.md](PLAN.md).
 
 - Produzione: https://songs.sisqo.dev
 - Repo: https://github.com/sisqo/songs

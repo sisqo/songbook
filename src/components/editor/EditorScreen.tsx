@@ -254,9 +254,9 @@ export function EditorScreen({ song }: { song: Song }) {
         {/*
           * Where you are, and the two things you do to what you changed.
           *
-          * The title is here because the header above says "songs" and nothing else
-          * on this screen says which song is open — in the graphic mode the words are
-          * the song, and its name is not among them.
+          * The title is here because the header above says the app's own name and
+          * nothing else on this screen says which song is open — in the graphic mode
+          * the words are the song, and its name is not among them.
           */}
         <div className="editor-bar">
           <Link
