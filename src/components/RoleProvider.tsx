@@ -48,7 +48,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true
 
-    void (async () => {
+    const ask = async () => {
       try {
         const answer = await loadRole()
         if (alive) {
@@ -58,10 +58,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       } catch {
         // Offline, or signed out: nothing is offered, which is the safe direction.
       }
-    })()
+    }
 
+    void ask()
+
+    /*
+     * And again when the network comes back.
+     *
+     * Without this, one failed attempt was the last word for the life of the document: open
+     * the app in a tunnel and an editor would have no way into the editor even after the
+     * signal returned, until they reloaded by hand. Asking again on `online` also picks up a
+     * role changed while the tab sat open — the actions were already re-checking it, so this
+     * only brings the screen into line with what the server would have said anyway.
+     */
+    window.addEventListener('online', ask)
     return () => {
       alive = false
+      window.removeEventListener('online', ask)
     }
   }, [])
 

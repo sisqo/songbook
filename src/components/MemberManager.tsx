@@ -262,6 +262,13 @@ export function MemberManager() {
             {list.members.map((member) => {
               const isRemoving = removing === member.email
               const isYou = member.email === list.you
+              /*
+               * A row whose address has since been put in `ALLOWED_EMAILS`. It grants
+               * nothing — the environment already made them admin — so its role is not
+               * offered, and it is said out loud rather than left looking like a second
+               * account. Removing it is allowed, and is the tidy thing to do.
+               */
+              const overridden = list.owners.includes(member.email)
 
               return (
                 <li key={member.email} className="card p-[0.875rem] sm:px-4">
@@ -283,7 +290,24 @@ export function MemberManager() {
                       {hasPassword(member.email) ? 'password' : 'Google'}
                     </span>
 
-                    {isYou ? (
+                    {overridden ? (
+                      <>
+                        <span className="meta-chip">proprietario</span>
+                        <button
+                          type="button"
+                          className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
+                          disabled={!online || busy}
+                          onClick={() => {
+                            setRemoving(isRemoving ? null : member.email)
+                            setError(null)
+                          }}
+                          aria-label={`Rimuovi la riga di ${member.email}`}
+                          aria-expanded={isRemoving}
+                        >
+                          <IconTrash size={17} />
+                        </button>
+                      </>
+                    ) : isYou ? (
                       <>
                         <span className="meta-chip">tu</span>
                         <span className="meta-chip">{ROLE_NAME[member.role]}</span>
@@ -344,10 +368,20 @@ export function MemberManager() {
                   {isRemoving && (
                     <div className="panel mt-3.5 p-3.5 text-sm">
                       <p>
-                        Rimuovere <span className="whitespace-nowrap">{member.email}</span>? Da
-                        subito non potrà più cambiare niente. La sessione che ha già aperto resta
-                        valida fino al prossimo ingresso, e le pagine che ha scaricato restano sul
-                        suo dispositivo.
+                        {overridden ? (
+                          <>
+                            Questo indirizzo è fra i proprietari, quindi questa riga non gli dà
+                            niente: rimuoverla non cambia il suo accesso, e lo toglie il giorno in
+                            cui uscisse dalla configurazione del server.
+                          </>
+                        ) : (
+                          <>
+                            Rimuovere <span className="whitespace-nowrap">{member.email}</span>? Da
+                            subito non potrà più cambiare niente. La sessione che ha già aperto
+                            resta valida fino al prossimo ingresso, e le pagine che ha scaricato
+                            restano sul suo dispositivo.
+                          </>
+                        )}
                       </p>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button

@@ -96,13 +96,17 @@ export async function removeMember(email: string): Promise<MemberResult> {
 
   const address = normalizeEmail(email)
   /*
-   * Two refusals that are not defensiveness. Removing yourself is how a member who is
-   * not an owner would end their own access with no way back; removing an owner is
-   * asking this table to override the environment, which it cannot do — the row does
-   * not exist, so the delete would report success and change nothing.
+   * Removing yourself is how a member who is not an owner would end their own access with
+   * no way back, so it is refused.
+   *
+   * Removing an **owner's** row, on the other hand, is allowed — and it took a second look
+   * to see why. An owner's access comes from the environment, so deleting a row of theirs
+   * takes nothing away; what it does take away is a row that grants nothing *today* and
+   * would grant something the day their address leaves `ALLOWED_EMAILS`. Refusing here
+   * meant that row could never be cleaned up. An owner with no row at all still gets a
+   * truthful answer: `not-found`, because that is what it is.
    */
   if (address === you) return { ok: false, reason: 'yourself' }
-  if (isOwner(address, process.env.ALLOWED_EMAILS)) return { ok: false, reason: 'is-owner' }
 
   try {
     const removed = await db()
