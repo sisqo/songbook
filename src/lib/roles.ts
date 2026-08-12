@@ -5,7 +5,7 @@
  *
  * - **admin** — everything, including who else may enter.
  * - **editor** — the repertoire: import, edit, delete, publish, and the shape of the
- *   canzonieri. Not the list of people.
+ *   songbooks. Not the list of people.
  * - **viewer** — reads, and nothing shared. Their own transposition, capo, speed, zoom
  *   and notation are *not* modifications: they are how this reader reads, they touch
  *   nobody else's screen, and a viewer who could not transpose would be no use on stage.
@@ -62,7 +62,7 @@ export function roleOf(
   return found === undefined ? null : readRole(found.role)
 }
 
-/** May change the repertoire: songs, canzonieri, their order, publishing. */
+/** May change the repertoire: songs, songbooks, their order, publishing. */
 export function canEdit(role: Role | null): boolean {
   return role === 'admin' || role === 'editor'
 }

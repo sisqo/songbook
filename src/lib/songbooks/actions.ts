@@ -1,14 +1,14 @@
 'use server'
 
 /**
- * Server actions for canzonieri: the app's first write path.
+ * Server actions for songbooks: the app's first write path.
  *
  * Deliberately a small surface — names, membership and order, never song content — and
- * every write requires an **editor**, since canzonieri are shared library structure
+ * every write requires an **editor**, since songbooks are shared library structure
  * rather than per-reader preferences. Reading the layer needs only a session: a viewer's
  * home is drawn from it, and so is the name in the way back from a song.
  *
- * The sections of a canzoniere are next door, in `lib/sections/actions.ts`. The line
+ * The sections of a songbook are next door, in `lib/sections/actions.ts`. The line
  * between the two files is which thing is being changed: the containers here, what is
  * inside them there.
  */
@@ -18,10 +18,10 @@ import { asc, eq, inArray, max, sql } from 'drizzle-orm'
 import { asEditor, currentUser } from '@/lib/auth/session'
 import { DEFAULT_SECTION } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { canzonieri, sections, songs } from '@/lib/db/schema'
+import { songbooks, sections, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
-import type { CanzoniereState, CreateResult, WriteResult } from './types'
+import type { SongbookState, CreateResult, WriteResult } from './types'
 
 /**
  * Reads the whole mutable layer. Null when there is nothing to read from.
@@ -30,25 +30,25 @@ import type { CanzoniereState, CreateResult, WriteResult } from './types'
  * label on the way back from a song — so gating it to editors would leave a viewer
  * looking at a screen full of nameless containers.
  */
-export async function loadCanzonieri(): Promise<CanzoniereState | null> {
+export async function loadSongbooks(): Promise<SongbookState | null> {
   if ((await currentUser()) === null) return null
 
   const database = db()
 
   const [entries, divisions, assigned] = await Promise.all([
     database
-      .select({ slug: canzonieri.slug, name: canzonieri.name })
-      .from(canzonieri)
-      .orderBy(asc(canzonieri.name)),
+      .select({ slug: songbooks.slug, name: songbooks.name })
+      .from(songbooks)
+      .orderBy(asc(songbooks.name)),
     database
       .select({
         id: sections.id,
-        canzoniereSlug: sections.canzoniereSlug,
+        songbookSlug: sections.songbookSlug,
         name: sections.name,
         position: sections.position,
       })
       .from(sections)
-      .orderBy(asc(sections.canzoniereSlug), asc(sections.position)),
+      .orderBy(asc(sections.songbookSlug), asc(sections.position)),
     database.select({ slug: songs.slug, sectionId: songs.sectionId }).from(songs),
   ])
 
@@ -57,19 +57,19 @@ export async function loadCanzonieri(): Promise<CanzoniereState | null> {
     if (row.sectionId !== null) assignments[row.slug] = row.sectionId
   }
 
-  return { canzonieri: entries, sections: divisions, assignments }
+  return { songbooks: entries, sections: divisions, assignments }
 }
 
 /**
- * Creates a canzoniere, and with it the section it is born with.
+ * Creates a songbook, and with it the section it is born with.
  *
- * Both or neither, in one transaction. A canzoniere with no sections would be a
- * canzoniere nothing can be filed into: its page shows «nessun brano» and the import
+ * Both or neither, in one transaction. A songbook with no sections would be a
+ * songbook nothing can be filed into: its page shows «no songs» and the import
  * would have to invent a section behind the reader's back. Being born with one also
- * means the invariant — every song in exactly one section — holds for every canzoniere
+ * means the invariant — every song in exactly one section — holds for every songbook
  * from its first instant, rather than from its first import.
  */
-export async function createCanzoniere(name: string): Promise<CreateResult> {
+export async function createSongbook(name: string): Promise<CreateResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
   const editor = await asEditor()
   if (!editor.ok) return { ok: false, reason: editor.reason }
@@ -79,7 +79,7 @@ export async function createCanzoniere(name: string): Promise<CreateResult> {
 
   try {
     return await db().transaction(async (tx) => {
-      const existing = await tx.select({ slug: canzonieri.slug }).from(canzonieri)
+      const existing = await tx.select({ slug: songbooks.slug }).from(songbooks)
 
       // The slug is generated once, here, and never changes again.
       const slug = uniqueSlug(
@@ -87,21 +87,21 @@ export async function createCanzoniere(name: string): Promise<CreateResult> {
         existing.map((row) => row.slug),
       )
 
-      await tx.insert(canzonieri).values({ slug, name: trimmed })
+      await tx.insert(songbooks).values({ slug, name: trimmed })
       await tx
         .insert(sections)
-        .values({ canzoniereSlug: slug, name: DEFAULT_SECTION, position: 1 })
+        .values({ songbookSlug: slug, name: DEFAULT_SECTION, position: 1 })
 
       return { ok: true, slug } as CreateResult
     })
   } catch (error) {
-    console.error('createCanzoniere failed', error)
+    console.error('createSongbook failed', error)
     return { ok: false, reason: 'failed' }
   }
 }
 
 /** Renames without touching the slug, so nothing that points at it moves. */
-export async function renameCanzoniere(slug: string, name: string): Promise<WriteResult> {
+export async function renameSongbook(slug: string, name: string): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
   const editor = await asEditor()
   if (!editor.ok) return { ok: false, reason: editor.reason }
@@ -111,22 +111,22 @@ export async function renameCanzoniere(slug: string, name: string): Promise<Writ
 
   try {
     const updated = await db()
-      .update(canzonieri)
+      .update(songbooks)
       .set({ name: trimmed, updatedAt: new Date() })
-      .where(eq(canzonieri.slug, slug))
-      .returning({ slug: canzonieri.slug })
+      .where(eq(songbooks.slug, slug))
+      .returning({ slug: songbooks.slug })
 
     return updated.length === 0 ? { ok: false, reason: 'not-found' } : { ok: true }
   } catch (error) {
-    console.error('renameCanzoniere failed', error)
+    console.error('renameSongbook failed', error)
     return { ok: false, reason: 'failed' }
   }
 }
 
 /**
- * Sends one song to a section — of this canzoniere or of another one.
+ * Sends one song to a section — of this songbook or of another one.
  *
- * The canzoniere is not a parameter: it is read from the section, so the two columns
+ * The songbook is not a parameter: it is read from the section, so the two columns
  * cannot be set to disagree. The composite foreign key would refuse the row anyway,
  * which is the point of it, but refusing here means the caller gets `not-found`
  * instead of a constraint violation.
@@ -140,7 +140,7 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
     const database = db()
 
     const destination = await database
-      .select({ canzoniereSlug: sections.canzoniereSlug })
+      .select({ songbookSlug: sections.songbookSlug })
       .from(sections)
       .where(eq(sections.id, sectionId))
       .limit(1)
@@ -152,7 +152,7 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
       // Unplaced in its new section, so it arrives at the end: the number it held
       // was a place among other songs, and those are not these songs.
       .set({
-        canzoniereSlug: destination[0].canzoniereSlug,
+        songbookSlug: destination[0].songbookSlug,
         sectionId,
         position: null,
         updatedAt: sql`now()`,
@@ -168,7 +168,7 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
 }
 
 /**
- * Removes a canzoniere, moving its songs first when a destination is given.
+ * Removes a songbook, moving its songs first when a destination is given.
  *
  * Refuses outright if it still holds songs and no destination was named. The
  * database would refuse anyway — the foreign key is `on delete restrict` — but
@@ -185,7 +185,7 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
  * composite key cascades on update, and their `position` is already relative to the
  * section they are in.
  */
-export async function removeCanzoniere(
+export async function removeSongbook(
   slug: string,
   moveTo: string | null,
 ): Promise<WriteResult> {
@@ -201,21 +201,21 @@ export async function removeCanzoniere(
       const held = await tx
         .select({ slug: songs.slug })
         .from(songs)
-        .where(eq(songs.canzoniereSlug, slug))
+        .where(eq(songs.songbookSlug, slug))
 
       const mine = await tx
         .select({ id: sections.id, name: sections.name, position: sections.position })
         .from(sections)
-        .where(eq(sections.canzoniereSlug, slug))
+        .where(eq(sections.songbookSlug, slug))
         .orderBy(asc(sections.position))
 
       if (held.length > 0) {
         if (moveTo === null) return { ok: false, reason: 'not-empty' } as WriteResult
 
         const destination = await tx
-          .select({ slug: canzonieri.slug })
-          .from(canzonieri)
-          .where(eq(canzonieri.slug, moveTo))
+          .select({ slug: songbooks.slug })
+          .from(songbooks)
+          .where(eq(songbooks.slug, moveTo))
           .limit(1)
 
         if (destination.length === 0) return { ok: false, reason: 'not-found' } as WriteResult
@@ -223,13 +223,13 @@ export async function removeCanzoniere(
         const theirs = await tx
           .select({ id: sections.id, name: sections.name })
           .from(sections)
-          .where(eq(sections.canzoniereSlug, moveTo))
+          .where(eq(sections.songbookSlug, moveTo))
 
         const idByName = new Map(theirs.map((row) => [row.name, row.id]))
         const last = await tx
           .select({ position: max(sections.position) })
           .from(sections)
-          .where(eq(sections.canzoniereSlug, moveTo))
+          .where(eq(sections.songbookSlug, moveTo))
 
         let next = (last[0]?.position ?? 0) + 1
 
@@ -240,14 +240,14 @@ export async function removeCanzoniere(
             // Nothing of that name over there: the section itself moves, songs and all.
             await tx
               .update(sections)
-              .set({ canzoniereSlug: moveTo, position: next })
+              .set({ songbookSlug: moveTo, position: next })
               .where(eq(sections.id, section.id))
             next += 1
 
             /*
              * The songs came along without being written — the composite key cascades —
-             * so they are stamped here on purpose. **Stamping follows the canzoniere,
-             * not the section**: a song that changed canzoniere is on a different page
+             * so they are stamped here on purpose. **Stamping follows the songbook,
+             * not the section**: a song that changed songbook is on a different page
              * now and belongs in the publish list, which is the same line the existing
              * code drew between moving a song and merely reordering one.
              */
@@ -266,7 +266,7 @@ export async function removeCanzoniere(
           await tx
             .update(songs)
             .set({
-              canzoniereSlug: moveTo,
+              songbookSlug: moveTo,
               sectionId: twin,
               position: null,
               updatedAt: sql`now()`,
@@ -276,14 +276,14 @@ export async function removeCanzoniere(
       }
 
       /*
-       * Whatever is left of this canzoniere's sections is empty by now — either it never
+       * Whatever is left of this songbook's sections is empty by now — either it never
        * held songs, or they were handed to a section of the same name over there. Empty
-       * sections are the canzoniere's own, so they go with it.
+       * sections are the songbook's own, so they go with it.
        */
       const leftovers = await tx
         .select({ id: sections.id })
         .from(sections)
-        .where(eq(sections.canzoniereSlug, slug))
+        .where(eq(sections.songbookSlug, slug))
 
       if (leftovers.length > 0) {
         await tx.delete(sections).where(
@@ -295,16 +295,16 @@ export async function removeCanzoniere(
       }
 
       const removed = await tx
-        .delete(canzonieri)
-        .where(eq(canzonieri.slug, slug))
-        .returning({ slug: canzonieri.slug })
+        .delete(songbooks)
+        .where(eq(songbooks.slug, slug))
+        .returning({ slug: songbooks.slug })
 
       return (removed.length === 0
         ? { ok: false, reason: 'not-found' }
         : { ok: true }) as WriteResult
     })
   } catch (error) {
-    console.error('removeCanzoniere failed', error)
+    console.error('removeSongbook failed', error)
     return { ok: false, reason: 'failed' }
   }
 }

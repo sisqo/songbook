@@ -21,13 +21,13 @@ import {
 } from 'drizzle-orm/pg-core'
 
 /**
- * A canzoniere is a container: every song belongs to exactly one.
+ * A songbook is a container: every song belongs to exactly one.
  *
  * The slug is generated once from the initial name and never changes — renaming
  * touches `name` only. That is what makes a rename free: no foreign key to
  * update, no URL that moves, no precache entry to regenerate.
  */
-export const canzonieri = pgTable('canzonieri', {
+export const songbooks = pgTable('songbooks', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -35,33 +35,33 @@ export const canzonieri = pgTable('canzonieri', {
 })
 
 /**
- * A canzoniere is divided into sections, and every song is in exactly one of them.
+ * A songbook is divided into sections, and every song is in exactly one of them.
  *
  * A serial id, not a slug: a section has no route of its own, so it needs no readable
  * key — and an id that does not derive from the name is what keeps renaming free
  * without having to freeze anything.
  *
- * Two unique constraints, each doing a different job. `(canzoniere_slug, name)` says
- * two sections of the same canzoniere cannot share a name: that is not two things, it
+ * Two unique constraints, each doing a different job. `(songbook_slug, name)` says
+ * two sections of the same songbook cannot share a name: that is not two things, it
  * is a typo or a double tap — and it lets the import address a section *by name*
- * without ever creating a twin. `(id, canzoniere_slug)` exists only to be referenced:
+ * without ever creating a twin. `(id, songbook_slug)` exists only to be referenced:
  * see the composite key on `songs`.
  */
 export const sections = pgTable(
   'sections',
   {
     id: serial('id').primaryKey(),
-    canzoniereSlug: text('canzoniere_slug')
+    songbookSlug: text('songbook_slug')
       .notNull()
-      .references(() => canzonieri.slug, { onDelete: 'restrict' }),
+      .references(() => songbooks.slug, { onDelete: 'restrict' }),
     name: text('name').notNull(),
-    /** Renumbered 1..N across the canzoniere on every arrangement, like the songs. */
+    /** Renumbered 1..N across the songbook on every arrangement, like the songs. */
     position: integer('position').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    unique('sections_canzoniere_name').on(table.canzoniereSlug, table.name),
-    unique('sections_id_canzoniere').on(table.id, table.canzoniereSlug),
+    unique('sections_songbook_name').on(table.songbookSlug, table.name),
+    unique('sections_id_songbook').on(table.id, table.songbookSlug),
   ],
 )
 
@@ -74,20 +74,20 @@ export const songs = pgTable(
     tags: text('tags').array().notNull().default([]),
     body: text('body').notNull(),
     /**
-     * `restrict` puts the "refuse to delete a non-empty canzoniere" rule in the
+     * `restrict` puts the "refuse to delete a non-empty songbook" rule in the
      * database rather than only in the UI, so no code path can orphan a song.
      *
      * Not null since v2.3: it was nullable so the column could be added to a
      * populated table, and in the whole life of the table it never held a null —
-     * every way a song can arrive gives it a canzoniere. With the section
+     * every way a song can arrive gives it a songbook. With the section
      * mandatory it is also derivable from `section_id`, so a null would be a state
      * that no longer means anything.
      */
-    canzoniereSlug: text('canzoniere_slug')
+    songbookSlug: text('songbook_slug')
       .notNull()
-      .references(() => canzonieri.slug, { onDelete: 'restrict' }),
+      .references(() => songbooks.slug, { onDelete: 'restrict' }),
     /**
-     * Which section of that canzoniere holds the song. Every song has one.
+     * Which section of that songbook holds the song. Every song has one.
      *
      * It was nullable for exactly one deploy, which is what made the migration
      * additive: the code then in production knew nothing about this column, so it
@@ -117,15 +117,15 @@ export const songs = pgTable(
   },
   (table) => [
     /**
-     * The canzoniere of a song is written twice — here, and on its section — and this
+     * The songbook of a song is written twice — here, and on its section — and this
      * is what makes the two copies impossible to disagree: a song cannot point at a
-     * section of another canzoniere. The alternative was trusting the code, and the
+     * section of another songbook. The alternative was trusting the code, and the
      * code is where mistakes live.
      *
      * `on update cascade` is not decoration: it is the only thing that lets a section
-     * move to another canzoniere. Measured on a scratch schema — with `no action` the
+     * move to another songbook. Measured on a scratch schema — with `no action` the
      * update is refused whichever row goes first, because the constraint is checked
-     * per statement, not per transaction. With the cascade, `sections.canzoniere_slug`
+     * per statement, not per transaction. With the cascade, `sections.songbook_slug`
      * is updated and the songs follow. `on delete` stays `restrict`: a section holding
      * songs may not be deleted.
      *
@@ -133,9 +133,9 @@ export const songs = pgTable(
      * SIMPLE`), which is exactly what the additive phase of the migration needs.
      */
     foreignKey({
-      columns: [table.sectionId, table.canzoniereSlug],
-      foreignColumns: [sections.id, sections.canzoniereSlug],
-      name: 'songs_section_canzoniere_fk',
+      columns: [table.sectionId, table.songbookSlug],
+      foreignColumns: [sections.id, sections.songbookSlug],
+      name: 'songs_section_songbook_fk',
     })
       .onDelete('restrict')
       .onUpdate('cascade'),
@@ -207,7 +207,7 @@ export const credentials = pgTable('credentials', {
 export const userPrefs = pgTable('user_prefs', {
   userEmail: text('user_email').primaryKey(),
   zoomStep: integer('zoom_step').notNull().default(2),
-  notation: text('notation').notNull().default('it'),
+  notation: text('notation').notNull().default('int'),
   /**
    * Which instrument the chord diagrams are drawn for.
    *
@@ -216,7 +216,7 @@ export const userPrefs = pgTable('user_prefs', {
    * on the phone and on the tablet. Defaulted rather than nullable so every existing
    * row already answers the question.
    */
-  instrument: text('instrument').notNull().default('chitarra'),
+  instrument: text('instrument').notNull().default('guitar'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

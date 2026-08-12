@@ -12,11 +12,11 @@ import { and, asc, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { asEditor } from '@/lib/auth/session'
-import { placeAfter } from '@/lib/canzonieri/order'
+import { placeAfter } from '@/lib/songbooks/order'
 import { rowToSong } from '@/lib/data/db'
 import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { builds, canzonieri, sections, songs } from '@/lib/db/schema'
+import { builds, songbooks, sections, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
 import { choproFilename, toChoproFile } from './export'
@@ -43,44 +43,44 @@ import type {
  */
 
 /**
- * A canzoniere and a section of it that certainly exist.
+ * A songbook and a section of it that certainly exist.
  *
  * Both columns are a foreign key — one composite, so they are checked *together* — and
  * an empty or unknown value would fail the insert and surface as a generic "could not
  * save" with nothing to act on. Answering with something real turns that into a song
  * that simply needs filing.
  *
- * The section decides when it is a real one, because it carries its canzoniere with it
+ * The section decides when it is a real one, because it carries its songbook with it
  * and it is the more specific of the two answers: the editor's two menus cannot
- * disagree, since choosing a canzoniere repopulates the sections, so a pair that does
- * disagree is a stale form rather than a decision. Failing that: the canzoniere asked
+ * disagree, since choosing a songbook repopulates the sections, so a pair that does
+ * disagree is a stale form rather than a decision. Failing that: the songbook asked
  * for, or the unfiled one, and its first section — created as «Brani» if it somehow has
- * none, which is the same section the migration and `createCanzoniere` make.
+ * none, which is the same section the migration and `createSongbook` make.
  */
 async function resolveSection(
-  canzoniereSlug: string,
+  songbookSlug: string,
   sectionId: number | null,
-): Promise<{ canzoniereSlug: string; sectionId: number }> {
+): Promise<{ songbookSlug: string; sectionId: number }> {
   const database = db()
 
   if (sectionId !== null) {
     const found = await database
-      .select({ id: sections.id, canzoniereSlug: sections.canzoniereSlug })
+      .select({ id: sections.id, songbookSlug: sections.songbookSlug })
       .from(sections)
       .where(eq(sections.id, sectionId))
       .limit(1)
 
-    if (found.length > 0) return { canzoniereSlug: found[0].canzoniereSlug, sectionId: found[0].id }
+    if (found.length > 0) return { songbookSlug: found[0].songbookSlug, sectionId: found[0].id }
   }
 
-  const wanted = canzoniereSlug.trim()
+  const wanted = songbookSlug.trim()
   let slug: string = UNFILED.slug
 
   if (wanted !== '') {
     const found = await database
-      .select({ slug: canzonieri.slug })
-      .from(canzonieri)
-      .where(eq(canzonieri.slug, wanted))
+      .select({ slug: songbooks.slug })
+      .from(songbooks)
+      .where(eq(songbooks.slug, wanted))
       .limit(1)
 
     if (found.length > 0) slug = found[0].slug
@@ -88,33 +88,33 @@ async function resolveSection(
 
   if (slug === UNFILED.slug) {
     await database
-      .insert(canzonieri)
+      .insert(songbooks)
       .values({ slug: UNFILED.slug, name: UNFILED.name })
-      .onConflictDoNothing({ target: canzonieri.slug })
+      .onConflictDoNothing({ target: songbooks.slug })
   }
 
   const first = await database
     .select({ id: sections.id })
     .from(sections)
-    .where(eq(sections.canzoniereSlug, slug))
+    .where(eq(sections.songbookSlug, slug))
     .orderBy(asc(sections.position))
     .limit(1)
 
-  if (first.length > 0) return { canzoniereSlug: slug, sectionId: first[0].id }
+  if (first.length > 0) return { songbookSlug: slug, sectionId: first[0].id }
 
   const created = await database
     .insert(sections)
-    .values({ canzoniereSlug: slug, name: DEFAULT_SECTION, position: 1 })
+    .values({ songbookSlug: slug, name: DEFAULT_SECTION, position: 1 })
     .returning({ id: sections.id })
 
-  return { canzoniereSlug: slug, sectionId: created[0].id }
+  return { songbookSlug: slug, sectionId: created[0].id }
 }
 
 /**
  * Drops the server's cached copy of every page this song appears on.
  *
- * Three: its own, the canzoniere that lists it, and the home, whose counts change when
- * a song arrives or leaves. The canzoniere is passed in rather than looked up, because
+ * Three: its own, the songbook that lists it, and the home, whose counts change when
+ * a song arrives or leaves. The songbook is passed in rather than looked up, because
  * a delete has already removed the row by the time this runs.
  *
  * This is not what makes an edit visible: a browser that installed the app keeps
@@ -127,10 +127,10 @@ async function resolveSection(
  * point, and reporting failure would invite a retry that, for a new song, would
  * save it twice.
  */
-function revalidateSong(slug: string, canzoniereSlug: string | null): void {
+function revalidateSong(slug: string, songbookSlug: string | null): void {
   try {
-    revalidatePath(`/canzoni/${slug}`)
-    if (canzoniereSlug !== null) revalidatePath(`/canzonieri/${canzoniereSlug}`)
+    revalidatePath(`/songs/${slug}`)
+    if (songbookSlug !== null) revalidatePath(`/songbooks/${songbookSlug}`)
     revalidatePath('/')
   } catch (error) {
     console.warn(`could not revalidate ${slug}; the server keeps its cached page`, error)
@@ -138,7 +138,7 @@ function revalidateSong(slug: string, canzoniereSlug: string | null): void {
 }
 
 function saved(song: Song): SaveResult {
-  revalidateSong(song.slug, song.canzoniereSlug)
+  revalidateSong(song.slug, song.songbookSlug)
   return { ok: true, song }
 }
 
@@ -151,8 +151,8 @@ function saved(song: Song): SaveResult {
  * numbering them changes no song, so none of these updates touches `updated_at`:
  * they would otherwise all appear in the publish list with nothing new to publish.
  *
- * The section, not the canzoniere, since v2.3: `position` counts within one division,
- * so numbering a whole canzoniere here would number songs against songs they are not
+ * The section, not the songbook, since v2.3: `position` counts within one division,
+ * so numbering a whole songbook here would number songs against songs they are not
  * ordered against.
  */
 async function placeLast(
@@ -206,7 +206,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       title,
       artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
-      ...(await resolveSection(input.canzoniereSlug, input.sectionId)),
+      ...(await resolveSection(input.songbookSlug, input.sectionId)),
       body: input.body,
       /**
        * The database's clock, not this server's.
@@ -237,8 +237,8 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
          * of it — the same place an import would. Keeping the old number would have
          * it claim a place among songs it has never been ordered against, tying with
          * whichever song already holds that number. The section is what is asked
-         * about rather than the canzoniere: changing canzoniere changes section too,
-         * and moving between two sections of one canzoniere moves it just as much.
+         * about rather than the songbook: changing songbook changes section too,
+         * and moving between two sections of one songbook moves it just as much.
          */
         const moved = before[0].sectionId !== values.sectionId
 
@@ -294,7 +294,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     const slug = uniqueSlug(title, taken)
 
     /*
-     * One transaction: the place is worked out from what the canzoniere holds, and a
+     * One transaction: the place is worked out from what the songbook holds, and a
      * second import landing between that read and this insert would be given the same
      * number.
      */
@@ -322,13 +322,13 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
     const removed = await db()
       .delete(songs)
       .where(eq(songs.slug, slug))
-      // The canzoniere comes back with the deletion because the page that lists this
+      // The songbook comes back with the deletion because the page that lists this
       // song has to be dropped too, and afterwards there is no row left to ask.
-      .returning({ slug: songs.slug, canzoniereSlug: songs.canzoniereSlug })
+      .returning({ slug: songs.slug, songbookSlug: songs.songbookSlug })
 
     if (removed.length === 0) return { ok: false, reason: 'not-found' }
 
-    revalidateSong(slug, removed[0].canzoniereSlug)
+    revalidateSong(slug, removed[0].songbookSlug)
     return { ok: true, slug: removed[0].slug }
   } catch (error) {
     console.error('deleteSong failed', error)
@@ -415,7 +415,7 @@ export async function exportAll(): Promise<ExportedFile[] | null> {
   const database = db()
   const [rows, names, divisions] = await Promise.all([
     database.select().from(songs).orderBy(songs.slug),
-    database.select({ slug: canzonieri.slug, name: canzonieri.name }).from(canzonieri),
+    database.select({ slug: songbooks.slug, name: songbooks.name }).from(songbooks),
     database.select({ id: sections.id, name: sections.name }).from(sections),
   ])
 
@@ -426,7 +426,7 @@ export async function exportAll(): Promise<ExportedFile[] | null> {
     name: choproFilename(row.slug),
     content: toChoproFile(
       rowToSong(row),
-      nameBySlug.get(row.canzoniereSlug) ?? null,
+      nameBySlug.get(row.songbookSlug) ?? null,
       row.sectionId === null ? null : (nameById.get(row.sectionId) ?? null),
     ),
   }))

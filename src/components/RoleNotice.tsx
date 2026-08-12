@@ -24,8 +24,8 @@ export function RoleNotice({ needed, what }: { needed: 'Editor' | 'Admin'; what:
     <p className="notice notice-accent" role="status">
       <IconInfo />
       <span>
-        Serve il ruolo <strong>{needed}</strong> per {what}.
-        {role !== null && ` Il tuo è ${NAME[role]}.`}
+        You need the <strong>{needed}</strong> role to {what}.
+        {role !== null && ` Yours is ${NAME[role]}.`}
       </span>
     </p>
   )

@@ -26,7 +26,7 @@ function assertVoicing(
   family: string,
   frets: (number | null)[],
   where: string,
-  instrument: Instrument = 'chitarra',
+  instrument: Instrument = 'guitar',
 ) {
   const spec = FAMILIES[family]
   const allowed = new Set(spec.intervals.map((interval) => mod12(root + interval)))
@@ -88,7 +88,7 @@ describe('every shape is a voicing of its chord', () => {
     }
 
     const all = Object.keys(FAMILIES).length * 12
-    assert.equal(covered('chitarra'), all)
+    assert.equal(covered('guitar'), all)
     assert.equal(covered('ukulele'), all - 1)
   })
 

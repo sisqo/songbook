@@ -1,4 +1,4 @@
-import type { Canzoniere, Section } from '@/lib/data/types'
+import type { Songbook, Section } from '@/lib/data/types'
 
 /**
  * The mutable layer.
@@ -8,17 +8,17 @@ import type { Canzoniere, Section } from '@/lib/data/types'
  * bake a snapshot of this so the first paint is already right; this overlay then
  * refreshes it.
  */
-export interface CanzoniereState {
-  canzonieri: Canzoniere[]
+export interface SongbookState {
+  songbooks: Songbook[]
   sections: Section[]
   /**
-   * songSlug → sectionId. The canzoniere is *not* here: it is written on the section,
+   * songSlug → sectionId. The songbook is *not* here: it is written on the section,
    * so asking twice would mean two answers that could disagree.
    *
    * A song missing from this map has no section yet, which can only happen in the one
    * deploy where the column is still nullable — see `db/schema.ts`. Such a song is
-   * briefly absent from its canzoniere's page and from the home's count; the
-   * contracting migration files it into «Brani» minutes later.
+   * briefly absent from its songbook's page and from the home's count; the
+   * contracting migration files it into «Songs» minutes later.
    */
   assignments: Record<string, number>
 }
@@ -28,13 +28,13 @@ export type WriteFailure =
   /** Signed in, but this is not theirs to change: a viewer. */
   | 'not-allowed'
   | 'no-database'
-  /** The canzoniere still holds songs and no destination was given for them. */
+  /** The songbook still holds songs and no destination was given for them. */
   | 'not-empty'
   | 'not-found'
   | 'invalid-name'
-  /** A section of this canzoniere already carries that name. */
+  /** A section of this songbook already carries that name. */
   | 'duplicate-name'
-  /** The songs or the sections sent no longer match what the canzoniere holds. */
+  /** The songs or the sections sent no longer match what the songbook holds. */
   | 'stale'
   | 'failed'
 
@@ -58,47 +58,47 @@ export type CreateResult = { ok: true; slug: string } | { ok: false; reason: Wri
 export type CreateSectionResult = { ok: true; id: number } | { ok: false; reason: WriteFailure }
 
 export const WRITE_MESSAGE: Record<WriteFailure, string> = {
-  'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
-  'not-allowed': 'Il tuo ruolo non permette di modificare il repertorio.',
-  'no-database': 'Nessun database configurato: le modifiche non possono essere salvate.',
-  'not-empty': 'Contiene ancora dei brani.',
-  'not-found': 'Questo canzoniere non esiste più.',
-  'invalid-name': 'Serve un nome.',
-  'duplicate-name': 'C’è già una sezione con questo nome in questo canzoniere.',
-  stale: 'Il canzoniere è cambiato altrove. Ricarica la pagina e riprova.',
-  failed: 'Salvataggio non riuscito. Riprova.',
+  'no-session': 'Session expired. Reload the page and sign in again.',
+  'not-allowed': 'Your role does not allow editing the repertoire.',
+  'no-database': 'No database configured: changes cannot be saved.',
+  'not-empty': 'Still contains songs.',
+  'not-found': 'This songbook no longer exists.',
+  'invalid-name': 'A name is required.',
+  'duplicate-name': 'A section with this name already exists in this songbook.',
+  stale: 'The songbook changed elsewhere. Reload the page and try again.',
+  failed: 'Save failed. Please try again.',
 }
 
-/** The sections of one canzoniere, in the order it is played through. */
-export function sectionsOf(state: CanzoniereState, canzoniereSlug: string): Section[] {
+/** The sections of one songbook, in the order it is played through. */
+export function sectionsOf(state: SongbookState, songbookSlug: string): Section[] {
   return state.sections
-    .filter((section) => section.canzoniereSlug === canzoniereSlug)
+    .filter((section) => section.songbookSlug === songbookSlug)
     .sort((one, other) => one.position - other.position)
 }
 
 /**
- * Which canzoniere a song is in, by way of its section.
+ * Which songbook a song is in, by way of its section.
  *
  * The one place that walk happens, so every screen answers it the same way — and
  * so the day the map holds something else, only this has to change.
  */
-export function canzoniereOf(state: CanzoniereState, songSlug: string): string | null {
+export function songbookOf(state: SongbookState, songSlug: string): string | null {
   const sectionId = state.assignments[songSlug]
   if (sectionId === undefined) return null
 
-  return state.sections.find((section) => section.id === sectionId)?.canzoniereSlug ?? null
+  return state.sections.find((section) => section.id === sectionId)?.songbookSlug ?? null
 }
 
-export function countBySlug(state: CanzoniereState): Record<string, number> {
+export function countBySlug(state: SongbookState): Record<string, number> {
   const counts: Record<string, number> = {}
-  for (const entry of state.canzonieri) counts[entry.slug] = 0
+  for (const entry of state.songbooks) counts[entry.slug] = 0
 
-  const canzoniereById = new Map(
-    state.sections.map((section) => [section.id, section.canzoniereSlug]),
+  const songbookById = new Map(
+    state.sections.map((section) => [section.id, section.songbookSlug]),
   )
 
   for (const sectionId of Object.values(state.assignments)) {
-    const slug = canzoniereById.get(sectionId)
+    const slug = songbookById.get(sectionId)
     if (slug !== undefined) counts[slug] = (counts[slug] ?? 0) + 1
   }
   return counts

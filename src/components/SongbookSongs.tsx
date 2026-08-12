@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
-import { ArrangeCanzoniere } from '@/components/ArrangeCanzoniere'
-import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { ArrangeSongbook } from '@/components/ArrangeSongbook'
+import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
 import { IconChevronDown, IconChevronRight, IconGrip } from '@/components/icons'
-import { applyOrder } from '@/lib/canzonieri/order'
+import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
 import type { SongIndexRow } from '@/lib/search-index'
 import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/folds'
 
 /**
- * The songs of one canzoniere, under the section each belongs to.
+ * The songs of one songbook, under the section each belongs to.
  *
  * Which songs those are, and which section holds them, comes from the mutable layer
  * rather than from the page: a song moved since the last build belongs where it is now,
@@ -21,26 +21,26 @@ import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/
  * the build used, so this list and the arrows inside a song agree about what "next"
  * means.
  *
- * Sections open and close, and they start **closed**: a canzoniere reads as an index of
+ * Sections open and close, and they start **closed**: a songbook reads as an index of
  * its parts, and you open the part you need. Two exceptions keep that from being
  * annoying, and both give way to anything the reader has actually chosen:
  *
- * 1. a canzoniere with a single section opens it — a fold with one compartment is not a
- *    choice, and it is the state of every canzoniere until somebody divides it;
+ * 1. a songbook with a single section opens it — a fold with one compartment is not a
+ *    choice, and it is the state of every songbook until somebody divides it;
  * 2. arriving from a song opens the section that song is in, so the way back lands you
  *    where you were rather than in front of a closed list.
  *
  * Arranging is a mode rather than a handle on every row for the rest of the app's life,
  * because this is a list you read far more often than you rearrange.
  */
-export function CanzoniereSongs({
+export function SongbookSongs({
   slug,
   songs: baked,
 }: {
   slug: string
   songs: SongIndexRow[]
 }) {
-  const { assignments, online, divisionsOf } = useCanzonieri()
+  const { assignments, online, divisionsOf } = useSongbooks()
   const { mayEdit } = useRole()
 
   const [rows, setRows] = useLiveRows(baked)
@@ -53,7 +53,7 @@ export function CanzoniereSongs({
   const divisions = useMemo(() => divisionsOf(slug), [divisionsOf, slug])
 
   /**
-   * This canzoniere's songs, grouped by section, in the order the list holds them.
+   * This songbook's songs, grouped by section, in the order the list holds them.
    *
    * Membership is asked of the mutable layer rather than of the rows, because that is
    * where the answer changes: a song can be moved into another section without its own
@@ -112,13 +112,13 @@ export function CanzoniereSongs({
   useEffect(() => {
     if (arrived === null || asked === null) return
 
-    document.getElementById(`brano-${asked}`)?.scrollIntoView({ block: 'center' })
+    document.getElementById(`song-${asked}`)?.scrollIntoView({ block: 'center' })
   }, [arrived, asked])
 
   if (organizing) {
     return (
-      <ArrangeCanzoniere
-        canzoniereSlug={slug}
+      <ArrangeSongbook
+        songbookSlug={slug}
         rows={rows}
         onDone={() => setOrganizing(false)}
         onApplied={(order) => setRows((current) => applyOrder(current, order))}
@@ -127,7 +127,7 @@ export function CanzoniereSongs({
   }
 
   if (divisions.length === 0 && total === 0) {
-    return <p className="panel p-3.5 text-sm text-muted">Nessun brano in questo canzoniere.</p>
+    return <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
   }
 
   return (
@@ -137,8 +137,8 @@ export function CanzoniereSongs({
         * static header above says only the name for that reason.
         */}
       <p className="mb-3 text-sm text-muted">
-        {total} {total === 1 ? 'brano' : 'brani'}
-        {divisions.length > 1 && ` · ${divisions.length} sezioni`}
+        {total} {total === 1 ? 'song' : 'songs'}
+        {divisions.length > 1 && ` · ${divisions.length} sections`}
       </p>
 
       {/*
@@ -170,13 +170,13 @@ export function CanzoniereSongs({
               {open &&
                 (songs.length === 0 ? (
                   <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
-                    Nessun brano in questa sezione.
+                    No songs in this section.
                   </p>
                 ) : (
                   <ul>
                     {songs.map((song) => (
                       // The id is what the way back from a song points at.
-                      <li key={song.slug} id={`brano-${song.slug}`}>
+                      <li key={song.slug} id={`song-${song.slug}`}>
                         <SongRow song={song} />
                       </li>
                     ))}
@@ -188,7 +188,7 @@ export function CanzoniereSongs({
       </ul>
 
       {/*
-        * Only for someone whose canzoniere it is to arrange, and only with a network to
+        * Only for someone whose songbook it is to arrange, and only with a network to
         * save it over. No minimum number of songs any more: with sections there is a
         * layout to change with one song — moving it to another section — and with none at
         * all, which is making the first division.
@@ -201,7 +201,7 @@ export function CanzoniereSongs({
             onClick={() => setOrganizing(true)}
           >
             <IconGrip size={16} />
-            Organizza
+            Arrange
           </button>
         </div>
       )}

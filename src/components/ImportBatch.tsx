@@ -8,18 +8,18 @@ import type { PreparedSong } from '@/lib/import/prepare'
 import { SAVE_MESSAGE, type Decision } from '@/lib/import/types'
 
 const FORMAT_LABEL: Record<string, string> = {
-  chordpro: 'già ChordPro',
-  'chords-above': 'accordi sopra il testo, convertiti',
-  'lyrics-only': 'nessun accordo trovato',
+  chordpro: 'already ChordPro',
+  'chords-above': 'chords above lyrics, converted',
+  'lyrics-only': 'no chords found',
 }
 
 /** What to do about a song that is already in the repertoire. */
 type Policy = 'skip' | 'replace' | 'add'
 
 const POLICY_LABEL: Record<Policy, string> = {
-  skip: 'salta quelli già presenti',
-  replace: 'sostituisci quelli già presenti',
-  add: 'aggiungili comunque, come doppioni',
+  skip: 'skip the ones already present',
+  replace: 'replace the ones already present',
+  add: 'add them anyway, as duplicates',
 }
 
 type Outcome =
@@ -60,8 +60,8 @@ const settled = (row: Row) => row.outcome.state === 'saved' || row.outcome.state
  */
 export function ImportBatch({
   songs,
-  canzoniereSlug,
-  canzoniereName,
+  songbookSlug,
+  songbookName,
   sectionId,
   sectionName,
   online,
@@ -70,8 +70,8 @@ export function ImportBatch({
 }: {
   songs: PreparedSong[]
   /** Where all of them go: chosen once, at the top of the screen. */
-  canzoniereSlug: string
-  canzoniereName: string
+  songbookSlug: string
+  songbookName: string
   /** And into which section of it, chosen in the same breath. */
   sectionId: number | null
   sectionName: string | null
@@ -113,7 +113,7 @@ export function ImportBatch({
             title: row.title,
             artist: row.artist,
             tags: row.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
-            canzoniereSlug,
+            songbookSlug,
             sectionId,
             body: row.body,
           },
@@ -144,17 +144,17 @@ export function ImportBatch({
   return (
     <div className="card p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="section-title">{songs.length} brani in questo testo</h2>
+        <h2 className="section-title">{songs.length} songs in this text</h2>
         <button type="button" className="text-sm underline underline-offset-2" onClick={onReset}>
-          incolla altro
+          paste more
         </button>
       </div>
 
       <p className="mt-1 text-sm text-muted">
-        Controlla titolo e artista di ognuno: sono ricavati dalle prime righe, e su qualche
-        brano saranno sbagliati. Vanno tutti in{' '}
+        Check each one&apos;s title and artist: they&apos;re pulled from the first lines, and some
+        songs will have them wrong. They all go into{' '}
         <strong className="font-medium">
-          {canzoniereName}
+          {songbookName}
           {sectionName !== null && ` · ${sectionName}`}
         </strong>
         .
@@ -166,7 +166,7 @@ export function ImportBatch({
             key={row.id}
             row={row}
             index={index}
-            canzoniereName={canzoniereName}
+            songbookName={songbookName}
             sectionName={sectionName}
             busy={busy}
             onPatch={patch}
@@ -175,7 +175,7 @@ export function ImportBatch({
       </ol>
 
       <label className="mt-4 block">
-        <span className="field-label">Se un brano è già in archivio</span>
+        <span className="field-label">If a song is already in the archive</span>
         <select
           value={policy}
           onChange={(event) => setPolicy(event.target.value as Policy)}
@@ -194,8 +194,8 @@ export function ImportBatch({
         <p className="notice notice-accent mt-4" role="status">
           <IconInfo />
           {untitled === 1
-            ? 'Un brano non ha titolo: dagliene uno, oppure escludilo.'
-            : `${untitled} brani non hanno titolo: dagliene uno, oppure escludili.`}
+            ? 'One song has no title: give it one, or exclude it.'
+            : `${untitled} songs have no title: give them one, or exclude them.`}
         </p>
       )}
 
@@ -203,7 +203,7 @@ export function ImportBatch({
         {/* Once everything chosen is written, the only thing left to do is paste more. */}
         {done ? (
           <button type="button" className="btn btn-primary" onClick={onReset}>
-            Incolla altri brani
+            Paste more songs
           </button>
         ) : (
           <button
@@ -213,18 +213,18 @@ export function ImportBatch({
             onClick={() => void run()}
           >
             {busy
-              ? 'Importazione…'
+              ? 'Importing…'
               : attempts.length === 1
-                ? `${ran ? 'Riprova con' : 'Importa'} 1 brano`
-                : `${ran ? 'Riprova con' : 'Importa'} ${attempts.length} brani`}
+                ? `${ran ? 'Retry with' : 'Import'} 1 song`
+                : `${ran ? 'Retry with' : 'Import'} ${attempts.length} songs`}
           </button>
         )}
 
         {ran && !busy && (
           <span className="text-sm text-muted" role="status">
-            {counted('saved')} salvati
-            {counted('skipped') > 0 && `, ${counted('skipped')} già presenti`}
-            {counted('failed') > 0 && `, ${counted('failed')} non riusciti`}.
+            {counted('saved')} saved
+            {counted('skipped') > 0 && `, ${counted('skipped')} already present`}
+            {counted('failed') > 0 && `, ${counted('failed')} failed`}.
           </span>
         )}
       </div>
@@ -242,14 +242,14 @@ export function ImportBatch({
 function BatchRow({
   row,
   index,
-  canzoniereName,
+  songbookName,
   sectionName,
   busy,
   onPatch,
 }: {
   row: Row
   index: number
-  canzoniereName: string
+  songbookName: string
   sectionName: string | null
   busy: boolean
   onPatch: (id: number, change: Partial<Row>) => void
@@ -266,21 +266,21 @@ function BatchRow({
 
         <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
           <label className="block">
-            <span className="sr-only">Titolo del brano {number}</span>
+            <span className="sr-only">Title of song {number}</span>
             <input
               value={row.title}
               onChange={(event) => onPatch(row.id, { title: event.target.value })}
-              placeholder="Titolo"
+              placeholder="Title"
               disabled={locked}
               className="form-field font-medium"
             />
           </label>
           <label className="block">
-            <span className="sr-only">Artista del brano {number}</span>
+            <span className="sr-only">Artist of song {number}</span>
             <input
               value={row.artist}
               onChange={(event) => onPatch(row.id, { artist: event.target.value })}
-              placeholder="Artista"
+              placeholder="Artist"
               disabled={locked}
               className="form-field text-sm"
             />
@@ -293,7 +293,7 @@ function BatchRow({
             className="btn btn-quiet btn-sm"
             disabled={busy}
             onClick={() => onPatch(row.id, { include: !row.include })}
-            aria-label={row.include ? `Non importare il brano ${number}` : `Importa il brano ${number}`}
+            aria-label={row.include ? `Don't import song ${number}` : `Import song ${number}`}
           >
             {row.include ? <IconClose size={15} /> : <IconPlus size={15} />}
           </button>
@@ -303,24 +303,24 @@ function BatchRow({
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
         <span>{FORMAT_LABEL[row.format] ?? row.format}</span>
         {/* Said, not obeyed: the destination above is the answer. */}
-        {row.declares !== null && row.declares !== canzoniereName && (
-          <span>il testo dice «{row.declares}»</span>
+        {row.declares !== null && row.declares !== songbookName && (
+          <span>the text says «{row.declares}»</span>
         )}
         {row.declaresSection !== null && row.declaresSection !== sectionName && (
-          <span>sezione dichiarata «{row.declaresSection}»</span>
+          <span>declared section «{row.declaresSection}»</span>
         )}
         <Status outcome={row.outcome} include={row.include} />
       </p>
 
       <details className="mt-2">
-        <summary className="cursor-pointer text-xs text-muted">Testo e accordi</summary>
+        <summary className="cursor-pointer text-xs text-muted">Lyrics and chords</summary>
         <textarea
           value={row.body}
           onChange={(event) => onPatch(row.id, { body: event.target.value })}
           rows={8}
           spellCheck={false}
           disabled={locked}
-          aria-label={`Corpo ChordPro del brano ${number}`}
+          aria-label={`ChordPro body of song ${number}`}
           className="form-field mt-2 font-mono text-xs"
         />
       </details>
@@ -330,22 +330,22 @@ function BatchRow({
 
 /** What became of one song, in the row's own line of small print. */
 function Status({ outcome, include }: { outcome: Outcome; include: boolean }) {
-  if (!include) return <span>escluso</span>
+  if (!include) return <span>excluded</span>
 
   switch (outcome.state) {
     case 'waiting':
       return null
     case 'saving':
-      return <span>salvataggio…</span>
+      return <span>saving…</span>
     case 'saved':
       return (
         <span className="inline-flex items-center gap-1 text-accent">
           <IconCheck size={12} />
-          salvato
+          saved
         </span>
       )
     case 'skipped':
-      return <span>già in archivio come «{outcome.existing}»</span>
+      return <span>already in the archive as «{outcome.existing}»</span>
     case 'failed':
       return <span className="text-danger">{outcome.message}</span>
   }

@@ -10,7 +10,7 @@ const song: Song = {
   title: 'Certe notti',
   artist: 'Ligabue',
   tags: ['lento'],
-  canzoniereSlug: 'repertorio',
+  songbookSlug: 'repertorio',
   sectionId: 3,
   body: '{title: Vecchio titolo}\n{key: G}\n\n[Am]Certe notti',
   // An export is a file: nothing in it says which version it came from.
@@ -56,8 +56,8 @@ describe('toChoproFile', () => {
     assert.equal(parsed.title, 'Certe notti')
     assert.equal(parsed.artist, 'Ligabue')
     assert.deepEqual(parsed.tags, ['lento'])
-    assert.equal(parsed.canzoniere, 'Repertorio')
-    assert.equal(parsed.sezione, 'Prima parte')
+    assert.equal(parsed.songbookName, 'Repertorio')
+    assert.equal(parsed.sectionName, 'Prima parte')
     assert.equal(parsed.sections.length, 1)
   })
 

@@ -28,8 +28,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * answers for Google answers here, and it does not know this table exists.
      *
      * Everything that can fail returns the same null. No password set, a wrong one typed,
-     * or an address taken off the list this morning — the caller is told "email o password
-     * non corretti" and nothing more, because otherwise this form would answer the question
+     * or an address taken off the list this morning — the caller is told "wrong email or
+     * password" and nothing more, because otherwise this form would answer the question
      * "does this person have an account here", which no login page should answer.
      * `verifyAgainstNothing` is what stops the *timing* from answering it either.
      */

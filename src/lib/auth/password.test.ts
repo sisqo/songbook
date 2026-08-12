@@ -77,7 +77,7 @@ describe('what counts as a password', () => {
   })
 
   it('has no opinion about what is in it', () => {
-    assert.equal(isPasswordAcceptable('tutte minuscole senza numeri'), true)
+    assert.equal(isPasswordAcceptable('all lowercase no numbers'), true)
     assert.equal(isPasswordAcceptable('               '), true, 'spaces are characters')
   })
 })

@@ -35,7 +35,7 @@ describe('uniqueSlug', () => {
   })
 
   it('falls back to a usable slug when the name has no letters', () => {
-    assert.equal(uniqueSlug('!!!', []), 'canzoniere')
-    assert.equal(uniqueSlug('!!!', ['canzoniere']), 'canzoniere-2')
+    assert.equal(uniqueSlug('!!!', []), 'songbook')
+    assert.equal(uniqueSlug('!!!', ['songbook']), 'songbook-2')
   })
 })

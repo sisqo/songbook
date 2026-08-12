@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ControlBar } from '@/components/ControlBar'
 import { SongFields, type SongFieldValues } from '@/components/SongFields'
 import { SongSheet } from '@/components/SongSheet'
-import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { useSongbooks } from '@/components/SongbookProvider'
 import { type Caret, GraphicEditor } from '@/components/editor/GraphicEditor'
 import { UnsavedGuard } from '@/components/editor/UnsavedGuard'
 import {
@@ -37,9 +37,9 @@ import { dropEdit, writeEdit } from '@/lib/library/store'
 type Mode = 'graphic' | 'source' | 'preview'
 
 const MODES: { mode: Mode; label: string; icon: typeof IconPencil }[] = [
-  { mode: 'graphic', label: 'Grafico', icon: IconPencil },
-  { mode: 'source', label: 'Sorgente', icon: IconCode },
-  { mode: 'preview', label: 'Anteprima', icon: IconEye },
+  { mode: 'graphic', label: 'Graphic', icon: IconPencil },
+  { mode: 'source', label: 'Source', icon: IconCode },
+  { mode: 'preview', label: 'Preview', icon: IconEye },
 ]
 
 /**
@@ -56,18 +56,18 @@ const COMMANDS: {
   act: (line: number) => (document: SongDocument) => SongDocument
 }[] = [
   {
-    label: 'Ritornello',
+    label: 'Chorus',
     icon: IconChorus,
     act: (line) => (document) => toggleSection(document, line, 'chorus'),
   },
   {
-    label: 'Ponte',
+    label: 'Bridge',
     icon: IconBridge,
     act: (line) => (document) => toggleSection(document, line, 'bridge'),
   },
-  { label: 'Commento', icon: IconComment, act: (line) => (document) => toggleComment(document, line) },
+  { label: 'Comment', icon: IconComment, act: (line) => (document) => toggleComment(document, line) },
   {
-    label: 'Elimina riga',
+    label: 'Delete line',
     icon: IconRemoveLine,
     act: (line) => (document) => removeLine(document, line),
   },
@@ -99,7 +99,7 @@ function caretFromRaw(source: string, rawAt: number): Caret {
  */
 export function EditorScreen({ song }: { song: Song }) {
   const router = useRouter()
-  const { canzonieri, sections, refresh: refreshCanzonieri } = useCanzonieri()
+  const { songbooks, sections, refresh: refreshSongbooks } = useSongbooks()
 
   const [mode, setMode] = useState<Mode>('graphic')
   const [source, setSource] = useState(song.body)
@@ -107,7 +107,7 @@ export function EditorScreen({ song }: { song: Song }) {
     title: song.title,
     artist: song.artist ?? '',
     tags: song.tags.join(', '),
-    canzoniereSlug: song.canzoniereSlug,
+    songbookSlug: song.songbookSlug,
     sectionId: song.sectionId === null ? '' : String(song.sectionId),
   })
 
@@ -209,7 +209,7 @@ export function EditorScreen({ song }: { song: Song }) {
         title: fields.title,
         artist: fields.artist,
         tags: fields.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
-        canzoniereSlug: fields.canzoniereSlug,
+        songbookSlug: fields.songbookSlug,
         sectionId: fields.sectionId === '' ? null : Number(fields.sectionId),
         body: source,
       })
@@ -222,8 +222,8 @@ export function EditorScreen({ song }: { song: Song }) {
       // The reading page reads this before it asks the server anything.
       writeEdit(result.song)
       saved.current = { source, fields }
-      setNotice('Salvato. Si vede subito nel brano; pubblica per averlo anche offline.')
-      await refreshCanzonieri()
+      setNotice('Saved. It shows right away in the song; publish it to have it offline too.')
+      await refreshSongbooks()
     } catch {
       setError(SAVE_MESSAGE.failed)
     } finally {
@@ -260,26 +260,26 @@ export function EditorScreen({ song }: { song: Song }) {
           */}
         <div className="editor-bar">
           <Link
-            href={`/canzoni/${song.slug}`}
+            href={`/songs/${song.slug}`}
             className="icon-button"
-            title="Torna al brano"
-            aria-label="Torna al brano"
+            title="Back to song"
+            aria-label="Back to song"
           >
             <IconChevronLeft size={20} />
           </Link>
 
-          <span className="editor-title">{fields.title.trim() === '' ? 'senza titolo' : fields.title}</span>
+          <span className="editor-title">{fields.title.trim() === '' ? 'untitled' : fields.title}</span>
 
           <button
             type="button"
             className="btn btn-quiet btn-sm"
             disabled={history.length === 0}
             onClick={undo}
-            title="Annulla l'ultima modifica"
-            aria-label="Annulla l'ultima modifica"
+            title="Undo last edit"
+            aria-label="Undo last edit"
           >
             <IconUndo size={15} />
-            Annulla
+            Undo
           </button>
 
           {/* Enabled means there is something unsaved: no second label for it. */}
@@ -290,19 +290,19 @@ export function EditorScreen({ song }: { song: Song }) {
             onClick={() => void save()}
           >
             <IconCheck size={14} />
-            Salva
+            Save
           </button>
         </div>
 
         {/*
           * Three ways of looking at the same song, as icons.
           *
-          * Words here cost the row: "Grafico · Sorgente · Anteprima" filled it on its
+          * Words here cost the row: "Graphic · Source · Preview" filled it on its
           * own, which is what pushed the title and the commands onto lines of their
           * own and made the whole block too tall to keep in place. Each still carries
           * its name for a pointer and for a screen reader.
           */}
-        <div className="editor-modes" role="tablist" aria-label="Modalità di modifica">
+        <div className="editor-modes" role="tablist" aria-label="Edit mode">
           <div className="segment">
             {MODES.map((entry) => (
               <button
@@ -331,7 +331,7 @@ export function EditorScreen({ song }: { song: Song }) {
                 */}
               <button type="button" className="btn btn-inset btn-sm" onClick={insertChord}>
                 <IconPlus size={15} />
-                Accordo
+                Chord
               </button>
 
               {COMMANDS.map((entry) => (
@@ -372,10 +372,10 @@ export function EditorScreen({ song }: { song: Song }) {
         <summary>
           <IconChevronRight size={14} className="editor-data-arrow" />
           <span className="text-sm font-medium">
-            Dati del brano
+            Song data
             <span className="text-muted">
               {' — '}
-              {fields.title || 'senza titolo'}
+              {fields.title || 'untitled'}
               {fields.artist !== '' && ` · ${fields.artist}`}
             </span>
           </span>
@@ -384,7 +384,7 @@ export function EditorScreen({ song }: { song: Song }) {
         <div className="mt-4">
           <SongFields
             values={fields}
-            canzonieri={canzonieri}
+            songbooks={songbooks}
             sections={sections}
             onChange={(field, value) => setFields((current) => ({ ...current, [field]: value }))}
           />
@@ -415,7 +415,7 @@ export function EditorScreen({ song }: { song: Song }) {
           onSelect={(event) =>
             setCaret(caretFromRaw(source, event.currentTarget.selectionStart))
           }
-          aria-label="Sorgente ChordPro"
+          aria-label="ChordPro source"
         />
       )}
 
@@ -434,12 +434,12 @@ export function EditorScreen({ song }: { song: Song }) {
       <div className="mt-10 flex flex-wrap items-center gap-2 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
         {confirming ? (
           <>
-            <span className="text-sm text-muted">Eliminare questo brano?</span>
+            <span className="text-sm text-muted">Delete this song?</span>
             <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => void remove()}>
-              Elimina
+              Delete
             </button>
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirming(false)}>
-              Annulla
+              Cancel
             </button>
           </>
         ) : (
@@ -450,7 +450,7 @@ export function EditorScreen({ song }: { song: Song }) {
            */
           <button type="button" className="btn btn-ink btn-sm" onClick={() => setConfirming(true)}>
             <IconTrash size={16} />
-            Elimina
+            Delete
           </button>
         )}
       </div>

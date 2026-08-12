@@ -5,13 +5,13 @@ import { SignOutButton } from '@/components/SignOutButton'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
-export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti' | 'password'
+export type Section = 'songs' | 'import' | 'songbooks' | 'users' | 'password'
 
 /**
  * The header, on every screen inside the app.
  *
  * The sections live in a menu rather than in the bar itself: five labels never
- * fit a phone — the first version proved it by cutting "Esci" off the right edge
+ * fit a phone — the first version proved it by cutting "Sign out" off the right edge
  * — and icons alone said too little.
  *
  * The brand is on every screen, including inside a song. It used to be swapped
@@ -19,7 +19,7 @@ export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti' | 'passwor
  * thing that says which app this is — on a phone, in standalone mode, with no
  * browser chrome around it. So `back` is now something the bar gains rather than
  * something that displaces the mark, and it is only worth passing when it leads
- * somewhere the brand does not: from inside a song, the canzoniere it came from,
+ * somewhere the brand does not: from inside a song, the songbook it came from,
  * which is one level below the home the brand leads to.
  *
  * The active section arrives as a prop rather than from `usePathname`, so the
@@ -40,7 +40,7 @@ export function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-inner">
-        <Link href="/" className="brand" aria-label={`${APP_NAME}, tutte le canzoni`}>
+        <Link href="/" className="brand" aria-label={`${APP_NAME}, all songs`}>
           <span className="brand-mark">
             <IconNote size={15} />
           </span>
@@ -62,8 +62,8 @@ export function TopBar({
          */}
         {steps !== undefined && (
           <div className="flex items-center gap-1.5">
-            <Step href={steps.previous} label="Canzone precedente" direction="previous" />
-            <Step href={steps.next} label="Canzone successiva" direction="next" />
+            <Step href={steps.previous} label="Previous song" direction="previous" />
+            <Step href={steps.next} label="Next song" direction="next" />
           </div>
         )}
 

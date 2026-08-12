@@ -43,8 +43,8 @@ const serwist = new Serwist({
   precacheOptions: {
     plugins: [rejectUnauthenticated],
     /**
-     * `c` used to say which canzoniere was open on the home page, while opening one
-     * meant unfolding it in place. A canzoniere is a page of its own now, so nothing
+     * `c` used to say which songbook was open on the home page, while opening one
+     * meant unfolding it in place. A songbook is a page of its own now, so nothing
      * produces the parameter any more — but `/?c=repertorio` still has to resolve to
      * the precached `/` so an old bookmark opens offline instead of missing. The two
      * defaults are restated because setting this replaces them.
@@ -66,7 +66,7 @@ const serwist = new Serwist({
    */
   runtimeCaching: [
     {
-      matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('/modifica'),
+      matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('/edit'),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

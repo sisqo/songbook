@@ -35,22 +35,23 @@ export interface ParsedSong {
   artist: string | null
   tags: string[]
   /**
-   * Name of the canzoniere this song *starts* in. Only ever an initial value:
+   * Name of the songbook this song *starts* in. Only ever an initial value:
    * the seed applies it on insert, or when the column is still empty, and
    * ignores it afterwards. From then on the database owns the assignment, or a
    * reseed would wipe every rename and move made in the app.
    */
-  canzoniere: string | null
+  songbookName: string | null
   /**
-   * Name of the section of that canzoniere the song *starts* in, on the same terms as
+   * Name of the section of that songbook the song *starts* in, on the same terms as
    * the line above: an initial value, never an instruction.
    *
    * Only `{sezione: ...}` is read, deliberately not `{section: ...}`. Other tools write
    * that one to mean a block of the song — `{section: chorus}` — and reading it here
    * would file the song into a section called «chorus». What this app exports it also
-   * reads back, and it exports `{sezione}`.
+   * reads back, and it exports `{sezione}` — the directive keyword stays Italian on
+   * purpose, so it never collides with that other meaning.
    */
-  sezione: string | null
+  sectionName: string | null
   sections: Section[]
 }
 
@@ -65,9 +66,9 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   artist: 'artist',
   tags: 'tags',
   tag: 'tags',
-  canzoniere: 'canzoniere',
-  songbook: 'canzoniere',
-  sezione: 'sezione',
+  canzoniere: 'songbookName',
+  songbook: 'songbookName',
+  sezione: 'sectionName',
   c: 'comment',
   comment: 'comment',
   soc: 'start_of_chorus',
@@ -85,8 +86,8 @@ export function parseChordPro(source: string): ParsedSong {
     title: null,
     artist: null,
     tags: [],
-    canzoniere: null,
-    sezione: null,
+    songbookName: null,
+    sectionName: null,
     sections: [],
   }
 
@@ -120,11 +121,11 @@ export function parseChordPro(source: string): ParsedSong {
             .map((tag) => tag.trim())
             .filter((tag) => tag !== '')
           break
-        case 'canzoniere':
-          song.canzoniere = value || null
+        case 'songbookName':
+          song.songbookName = value || null
           break
-        case 'sezione':
-          song.sezione = value || null
+        case 'sectionName':
+          song.sectionName = value || null
           break
         case 'comment':
           section ??= openSection(forcedKind ?? 'verse')

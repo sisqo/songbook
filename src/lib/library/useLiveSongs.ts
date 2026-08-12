@@ -10,7 +10,7 @@ import type { SongIndexEntry, SongIndexRow } from '../search-index'
  * What the database holds now, over the list the build baked in.
  *
  * Every screen that lists songs needs this and needs it to behave the same way, which
- * is why it is one hook and not an effect copied three times: the home, a canzoniere,
+ * is why it is one hook and not an effect copied three times: the home, a songbook,
  * and whatever lists songs next.
  *
  * Nothing is cached. A row here is a promise that tapping it opens something, and a
@@ -72,7 +72,7 @@ export function useLiveIndex(
  * Every song as the database has them, for a screen that shows some of them.
  *
  * No merge: with nothing to search there is nothing in the baked row worth keeping over
- * the live one. The caller filters — which canzoniere a song is in is the mutable layer's
+ * the live one. The caller filters — which songbook a song is in is the mutable layer's
  * answer, not this list's.
  */
 export function useLiveRows(

@@ -119,7 +119,7 @@ export function IconDownload(props: IconProps) {
   )
 }
 
-/** Canzonieri: stacked books. */
+/** Songbooks: stacked books. */
 export function IconBooks(props: IconProps) {
   return (
     <Icon {...props}>
@@ -138,7 +138,7 @@ export function IconBooks(props: IconProps) {
  * guess, and this app has already learnt that lesson twice.
  */
 
-/** Sorgente: the ChordPro underneath, in angle brackets. */
+/** Source: the ChordPro underneath, in angle brackets. */
 export function IconCode(props: IconProps) {
   return (
     <Icon {...props}>
@@ -149,7 +149,7 @@ export function IconCode(props: IconProps) {
   )
 }
 
-/** Anteprima: the song as it will be read. */
+/** Preview: the song as it will be read. */
 export function IconEye(props: IconProps) {
   return (
     <Icon {...props}>
@@ -159,7 +159,7 @@ export function IconEye(props: IconProps) {
   )
 }
 
-/** Ritornello: repeat barlines, the way a score marks one. */
+/** Chorus: repeat barlines, the way a score marks one. */
 export function IconChorus(props: IconProps) {
   return (
     <Icon {...props}>
@@ -173,7 +173,7 @@ export function IconChorus(props: IconProps) {
   )
 }
 
-/** Ponte: an arch with its piers. */
+/** Bridge: an arch with its piers. */
 export function IconBridge(props: IconProps) {
   return (
     <Icon {...props}>
@@ -184,7 +184,7 @@ export function IconBridge(props: IconProps) {
   )
 }
 
-/** Commento: something said beside the song rather than in it. */
+/** Comment: something said beside the song rather than in it. */
 export function IconComment(props: IconProps) {
   return (
     <Icon {...props}>
@@ -193,7 +193,7 @@ export function IconComment(props: IconProps) {
   )
 }
 
-/** Elimina riga: two lines closing over the gap where one was. */
+/** Remove line: two lines closing over the gap where one was. */
 export function IconRemoveLine(props: IconProps) {
   return (
     <Icon {...props}>
@@ -409,7 +409,7 @@ export function IconOffline(props: IconProps) {
 }
 
 /**
- * Installabile, e leggibile senza rete: a phone with the repertoire already on it.
+ * Installable, and readable without a network: a phone with the repertoire already on it.
  *
  * Not `IconOffline` — that one is drawn as a warning, a crossed signal, and every one
  * of its uses in the app is inside a notice saying something is disabled. This is the

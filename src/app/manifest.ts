@@ -4,10 +4,10 @@ import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${APP_NAME} — testi e accordi del repertorio`,
+    name: `${APP_NAME} — lyrics and chords for your repertoire`,
     short_name: APP_NAME,
-    description: `${APP_PAYOFF}. Testi e accordi, con trasposizione, notazione e scorrimento automatico.`,
-    lang: 'it',
+    description: `${APP_PAYOFF}. Lyrics and chords, with transposition, notation and auto-scroll.`,
+    lang: 'en',
     start_url: '/',
     display: 'standalone',
     orientation: 'any',

@@ -52,14 +52,14 @@ export type MemberFailure =
 export type MemberResult = { ok: true } | { ok: false; reason: MemberFailure }
 
 export const MEMBER_MESSAGE: Record<MemberFailure, string> = {
-  'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
-  'not-allowed': 'Serve il ruolo Admin per cambiare chi può entrare.',
-  'invalid-role': 'Ruolo sconosciuto.',
-  'no-database': 'Nessun database configurato: gli accessi non possono essere modificati.',
-  'invalid-email': 'Serve un indirizzo email.',
-  'already-allowed': 'Questo indirizzo può già entrare.',
-  'is-owner': 'Questo indirizzo è un proprietario: si cambia nella configurazione del server.',
-  yourself: 'Non puoi rimuovere né cambiare il ruolo di te stesso.',
-  'not-found': 'Questo indirizzo non è nell’elenco.',
-  failed: 'Salvataggio non riuscito. Riprova.',
+  'no-session': 'Session expired. Reload the page and sign in again.',
+  'not-allowed': 'The Admin role is required to change who may enter.',
+  'invalid-role': 'Unknown role.',
+  'no-database': 'No database configured: access cannot be changed.',
+  'invalid-email': 'An email address is required.',
+  'already-allowed': 'This address can already enter.',
+  'is-owner': 'This address is an owner: it is changed in the server configuration.',
+  yourself: 'You cannot remove or change the role of your own account.',
+  'not-found': 'This address is not on the list.',
+  failed: 'Save failed. Please try again.',
 }

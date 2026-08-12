@@ -66,7 +66,7 @@ export function NavMenu({
         className="nav-link"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={open ? 'Chiudi il menu' : 'Apri il menu'}
+        aria-label={open ? 'Close the menu' : 'Open the menu'}
         onClick={() => setOpen((value) => !value)}
       >
         <IconMenu size={20} />
@@ -78,44 +78,44 @@ export function NavMenu({
           <div className="menu-overlay" onClick={() => setOpen(false)} aria-hidden />
 
           <div className="menu-panel" role="menu">
-            <Link href="/" className={item('canzoni')} role="menuitem" onClick={() => setOpen(false)}>
+            <Link href="/" className={item('songs')} role="menuitem" onClick={() => setOpen(false)}>
               <IconNote size={17} />
-              Tutte le canzoni
+              All songs
             </Link>
 
             {mayEdit && (
               <>
                 <Link
-                  href="/importa"
-                  className={item('importa')}
+                  href="/import"
+                  className={item('import')}
                   role="menuitem"
                   onClick={() => setOpen(false)}
                 >
                   <IconImport size={17} />
-                  Importa
+                  Import
                 </Link>
 
                 <Link
-                  href="/canzonieri"
-                  className={item('canzonieri')}
+                  href="/songbooks"
+                  className={item('songbooks')}
                   role="menuitem"
                   onClick={() => setOpen(false)}
                 >
                   <IconBooks size={17} />
-                  Canzonieri
+                  Songbooks
                 </Link>
               </>
             )}
 
             {mayManageUsers && (
               <Link
-                href="/utenti"
-                className={item('utenti')}
+                href="/users"
+                className={item('users')}
                 role="menuitem"
                 onClick={() => setOpen(false)}
               >
                 <IconUsers size={17} />
-                Utenti
+                Users
               </Link>
             )}
 
@@ -154,8 +154,8 @@ export function NavMenu({
               onClick={() => setOpen(false)}
             >
               <IconTuningFork size={17} />
-              Accordatore
-              <span className="sr-only">(si apre in una nuova scheda)</span>
+              Tuner
+              <span className="sr-only">(opens in a new tab)</span>
               <IconExternal size={13} className="ms-auto" />
             </a>
 

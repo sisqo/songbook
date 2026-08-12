@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { useSongbooks } from '@/components/SongbookProvider'
 import {
   IconChevronDown,
   IconGrip,
@@ -23,8 +23,8 @@ import {
   placeAt,
   rowsOf,
   sameMembers,
-} from '@/lib/canzonieri/order'
-import { WRITE_MESSAGE, type WriteFailure } from '@/lib/canzonieri/types'
+} from '@/lib/songbooks/order'
+import { WRITE_MESSAGE, type WriteFailure } from '@/lib/songbooks/types'
 import type { SongIndexRow } from '@/lib/search-index'
 
 /** One key per drawn row, so a ref survives the rows moving under it. */
@@ -33,18 +33,18 @@ function keyOf(row: ArrangeRow): string {
 }
 
 /**
- * A canzoniere with its divisions in your hands: the order of the sections, the order of
+ * A songbook with its divisions in your hands: the order of the sections, the order of
  * the songs, and which section each song is in.
  *
  * Dragging is done with pointer events rather than the HTML drag-and-drop API, which does
  * not exist on a touchscreen — and a touchscreen is where this app is used. The same
- * handles answer the arrow keys when they have focus, so a canzoniere can be arranged
+ * handles answer the arrow keys when they have focus, so a songbook can be arranged
  * without a pointer at all; dragging alone would have made this the one thing in the app
  * a keyboard cannot do.
  *
  * **A song crosses a heading by being carried over it.** One gesture for two things —
  * where the song sits and which section it is in — because they are one fact. The
- * arithmetic for it is in `lib/canzonieri/order.ts` and under test there: which row the
+ * arithmetic for it is in `lib/songbooks/order.ts` and under test there: which row the
  * finger is over, and what place that row means, are the two things a screenshot cannot
  * check.
  *
@@ -53,23 +53,23 @@ function keyOf(row: ArrangeRow): string {
  * same finger position always means the same arrangement, and a slow drag cannot
  * accumulate a different answer than a fast one.
  */
-export function ArrangeCanzoniere({
-  canzoniereSlug,
+export function ArrangeSongbook({
+  songbookSlug,
   rows: songs,
   onDone,
   onApplied,
 }: {
-  canzoniereSlug: string
+  songbookSlug: string
   /** Every song, in the order the index holds them; the layout is read off these. */
   rows: SongIndexRow[]
   onDone: () => void
   /** A saved order, flattened, for the list around this one to adopt. */
   onApplied: (slugs: string[]) => void
 }) {
-  const state = useCanzonieri()
+  const state = useSongbooks()
   const { assignments, divisionsOf } = state
 
-  const divisions = useMemo(() => divisionsOf(canzoniereSlug), [divisionsOf, canzoniereSlug])
+  const divisions = useMemo(() => divisionsOf(songbookSlug), [divisionsOf, songbookSlug])
   const nameById = useMemo(
     () => new Map(divisions.map((section) => [section.id, section.name])),
     [divisions],
@@ -107,7 +107,7 @@ export function ArrangeCanzoniere({
   const queue = useRef<Promise<unknown>>(Promise.resolve())
 
   /*
-   * Adopt the canzoniere again when its parts change under us — an import, a song moved
+   * Adopt the songbook again when its parts change under us — an import, a song moved
    * out, a section removed on another device — but keep the local order while they are the
    * same parts. Comparing membership rather than order is what makes that possible: the
    * order on screen is deliberately ahead of the order the server has been told about.
@@ -135,7 +135,7 @@ export function ArrangeCanzoniere({
     setError(null)
     queue.current = queue.current.then(async () => {
       try {
-        const result = await state.arrange(canzoniereSlug, next)
+        const result = await state.arrange(songbookSlug, next)
         if (result.ok) {
           onApplied(next.flatMap((group) => group.slugs))
           return
@@ -274,7 +274,7 @@ export function ArrangeCanzoniere({
                       onKeyDown={(event) => {
                         if (event.key === 'Escape') setRenaming(null)
                       }}
-                      aria-label={`Nuovo nome per ${name}`}
+                      aria-label={`New name for ${name}`}
                       className="form-field flex-1"
                     />
                     <button
@@ -287,14 +287,14 @@ export function ArrangeCanzoniere({
                         }
                       }}
                     >
-                      Salva
+                      Save
                     </button>
                     <button
                       type="button"
                       className="btn btn-quiet btn-sm"
                       onClick={() => setRenaming(null)}
                     >
-                      Annulla
+                      Cancel
                     </button>
                   </>
                 ) : (
@@ -314,7 +314,7 @@ export function ArrangeCanzoniere({
                           save(next)
                         })
                       }
-                      aria-label={`Sposta la sezione ${name}: ${place + 1} di ${layout.length}`}
+                      aria-label={`Move section ${name}: ${place + 1} of ${layout.length}`}
                     >
                       <IconGrip size={17} />
                     </button>
@@ -332,7 +332,7 @@ export function ArrangeCanzoniere({
                         setRemoving(null)
                         setError(null)
                       }}
-                      aria-label={`Rinomina ${name}`}
+                      aria-label={`Rename ${name}`}
                     >
                       <IconPencil size={17} />
                     </button>
@@ -347,7 +347,7 @@ export function ArrangeCanzoniere({
                         setRenaming(null)
                         setError(null)
                       }}
-                      aria-label={`Rimuovi ${name}`}
+                      aria-label={`Remove ${name}`}
                       aria-expanded={isRemoving}
                     >
                       <IconTrash size={17} />
@@ -369,7 +369,7 @@ export function ArrangeCanzoniere({
                 className="row row-nested text-sm text-faint"
               >
                 {/* A line to aim at: a section with no row could never be filled. */}
-                Vuota. Trascina qui un brano.
+                Empty. Drag a song here.
               </li>
             )
           }
@@ -403,9 +403,9 @@ export function ArrangeCanzoniere({
                     save(next)
                   })
                 }
-                aria-label={`Sposta ${song?.title ?? row.slug}: ${
+                aria-label={`Move ${song?.title ?? row.slug}: ${
                   inside.indexOf(row.slug) + 1
-                } di ${inside.length} in ${nameById.get(row.sectionId) ?? ''}`}
+                } of ${inside.length} in ${nameById.get(row.sectionId) ?? ''}`}
               >
                 <IconGrip size={17} />
               </button>
@@ -434,7 +434,7 @@ export function ArrangeCanzoniere({
             if (held === 0) {
               return (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex-1">Rimuovere «{name}»? È vuota.</span>
+                  <span className="flex-1">Remove &quot;{name}&quot;? It&apos;s empty.</span>
                   <button
                     type="button"
                     className="btn btn-danger btn-sm"
@@ -443,14 +443,14 @@ export function ArrangeCanzoniere({
                       if (await run(() => state.removeSection(id, null))) setRemoving(null)
                     }}
                   >
-                    Rimuovi
+                    Remove
                   </button>
                   <button
                     type="button"
                     className="btn btn-quiet btn-sm"
                     onClick={() => setRemoving(null)}
                   >
-                    Annulla
+                    Cancel
                   </button>
                 </div>
               )
@@ -459,8 +459,8 @@ export function ArrangeCanzoniere({
             if (elsewhere.length === 0) {
               return (
                 <span>
-                  Contiene {held} {held === 1 ? 'brano' : 'brani'} e non c&apos;è un&apos;altra
-                  sezione dove spostarli. Creane una prima di rimuovere questa.
+                  Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s no other
+                  section to move them to. Create one before removing this one.
                 </span>
               )
             }
@@ -468,10 +468,10 @@ export function ArrangeCanzoniere({
             return (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="flex-1">
-                  Contiene {held} {held === 1 ? 'brano' : 'brani'}. Spostali in:
+                  Contains {held} {held === 1 ? 'song' : 'songs'}. Move them to:
                 </span>
                 <label className="picker picker-raised">
-                  <span className="sr-only">Sezione di destinazione</span>
+                  <span className="sr-only">Destination section</span>
                   <select
                     value={destination}
                     onChange={(event) => setDestination(event.target.value)}
@@ -495,14 +495,14 @@ export function ArrangeCanzoniere({
                     }
                   }}
                 >
-                  Sposta e rimuovi
+                  Move and remove
                 </button>
                 <button
                   type="button"
                   className="btn btn-quiet btn-sm"
                   onClick={() => setRemoving(null)}
                 >
-                  Annulla
+                  Cancel
                 </button>
               </div>
             )
@@ -514,27 +514,27 @@ export function ArrangeCanzoniere({
         className="flex gap-2 px-2.5 pb-3.5"
         onSubmit={async (event) => {
           event.preventDefault()
-          if (await run(() => state.addSection(canzoniereSlug, newName))) setNewName('')
+          if (await run(() => state.addSection(songbookSlug, newName))) setNewName('')
         }}
       >
         <label className="flex-1">
-          <span className="sr-only">Nome della nuova sezione</span>
+          <span className="sr-only">New section name</span>
           <input
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
-            placeholder="Nuova sezione"
+            placeholder="New section"
             className="form-field"
           />
         </label>
         <button type="submit" className="btn btn-primary btn-sm" disabled={busy || newName.trim() === ''}>
           <IconPlus size={16} />
-          Aggiungi
+          Add
         </button>
       </form>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-[1.125rem] pb-4">
         <button type="button" className="btn btn-sm" onClick={onDone}>
-          Fatto
+          Done
         </button>
         {/*
           * The layout is this screen's own, and it is saved as soon as a row lands. What
@@ -542,7 +542,7 @@ export function ArrangeCanzoniere({
           * in its header, which come from the pages themselves.
           */}
         <span className="text-xs text-faint">
-          Salvato subito. Le frecce dentro il brano lo seguono dopo la prossima ricostruzione.
+          Saved right away. The arrows inside the song follow it after the next rebuild.
         </span>
       </div>
     </div>

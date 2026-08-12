@@ -180,7 +180,7 @@ export function GraphicEditor({
           apply(insertLineAfter(doc, doc.blocks.length - 1))
         }}
       >
-        + riga
+        + line
       </button>
     </div>
   )
@@ -227,21 +227,21 @@ function BlockRow({
    * remove.
    */
   if (block.kind === 'blank' || block.kind === 'boundary' || block.kind === 'directive') {
-    const section = block.kind === 'boundary' && block.section === 'chorus' ? 'ritornello' : 'ponte'
+    const section = block.kind === 'boundary' && block.section === 'chorus' ? 'chorus' : 'bridge'
 
     return (
       <div className={classes} data-line={index}>
         <button type="button" className="editor-aside flex-1 text-start" onClick={() => onCaret(0)}>
-          {block.kind === 'blank' && <span className="editor-hint">— stacco —</span>}
+          {block.kind === 'blank' && <span className="editor-hint">— break —</span>}
 
           {block.kind === 'boundary' && (
             <span className="badge">
-              {block.edge === 'start' ? `inizio ${section}` : `fine ${section}`}
+              {block.edge === 'start' ? `${section} start` : `${section} end`}
             </span>
           )}
 
           {/* Shown rather than hidden: it is in the file, so it is on the screen.
-              Its text is edited in Sorgente, where a directive is just a line. */}
+              Its text is edited in Source, where a directive is just a line. */}
           {block.kind === 'directive' && <code className="editor-hint">{block.raw.trim()}</code>}
         </button>
 
@@ -251,10 +251,10 @@ function BlockRow({
           onClick={onRemove}
           aria-label={
             block.kind === 'blank'
-              ? 'Elimina questo stacco'
+              ? 'Delete this break'
               : block.kind === 'boundary'
-                ? 'Elimina questa marcatura'
-                : 'Elimina questa direttiva'
+                ? 'Delete this marker'
+                : 'Delete this directive'
           }
         >
           ×
@@ -272,7 +272,7 @@ function BlockRow({
               className="line-input italic"
               style={{ color: 'var(--muted)' }}
               value={block.text}
-              placeholder="commento"
+              placeholder="comment"
               onChange={(event) => onText(event.target.value, event.target.selectionStart ?? 0)}
               onFocus={(event) => onCaret(event.currentTarget.selectionStart ?? 0)}
               onClick={(event) => onCaret(event.currentTarget.selectionStart ?? 0)}
@@ -284,7 +284,7 @@ function BlockRow({
                   onSplit(event.currentTarget.selectionStart ?? block.text.length)
                 }
               }}
-              aria-label={`Commento alla riga ${index + 1}`}
+              aria-label={`Comment on line ${index + 1}`}
             />
           </div>
         </div>
@@ -309,7 +309,7 @@ function BlockRow({
           <input
             className="line-input"
             value={block.text}
-            placeholder={index === 0 ? 'Scrivi il testo…' : undefined}
+            placeholder={index === 0 ? 'Write the lyrics…' : undefined}
             onChange={(event) => onText(event.target.value, event.target.selectionStart ?? 0)}
             /*
              * Four ways the caret moves, all reported: taking focus, a click that
@@ -339,7 +339,7 @@ function BlockRow({
                 onJoin()
               }
             }}
-            aria-label={`Testo della riga ${index + 1}`}
+            aria-label={`Text of line ${index + 1}`}
           />
         </div>
       </div>
@@ -404,7 +404,7 @@ function ChordRow({
               event.stopPropagation()
               onEdit(chord.index)
             }}
-            aria-label={`Accordo ${chord.name || 'vuoto'}, modifica`}
+            aria-label={`Chord ${chord.name || 'empty'}, edit`}
           >
             {chord.name || '—'}
           </button>
@@ -458,7 +458,7 @@ function ChordRow({
                   event.stopPropagation()
                   onEdit(chord.index)
                 }}
-                aria-label={`Accordo ${chord.name || 'vuoto'}, modifica`}
+                aria-label={`Chord ${chord.name || 'empty'}, edit`}
               >
                 {chord.name || '—'}
               </button>
@@ -541,14 +541,14 @@ function ChordField({
             onDone(name)
           }
         }}
-        aria-label="Nome dell'accordo"
+        aria-label="Chord name"
       />
 
       <button
         type="button"
         className="chord-nudge"
         onMouseDown={nudge(-1)}
-        aria-label="Sposta l'accordo di una lettera a sinistra"
+        aria-label="Move the chord one letter left"
       >
         ‹
       </button>
@@ -556,7 +556,7 @@ function ChordField({
         type="button"
         className="chord-nudge"
         onMouseDown={nudge(1)}
-        aria-label="Sposta l'accordo di una lettera a destra"
+        aria-label="Move the chord one letter right"
       >
         ›
       </button>

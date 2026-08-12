@@ -3,7 +3,7 @@
 /**
  * Local copy of the songs whose database version is newer than the page.
  *
- * Kept for the same reason as the preferences and canzonieri caches: the pages
+ * Kept for the same reason as the preferences and songbooks caches: the pages
  * are static and precached, so without it an edit would be visible until the tab
  * was closed and then apparently lost again — which is exactly the bug this
  * layer exists to fix.

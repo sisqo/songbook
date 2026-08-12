@@ -27,7 +27,7 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: `${APP_PAYOFF}. Testi e accordi del repertorio, con trasposizione, notazione e scorrimento automatico.`,
+  description: `${APP_PAYOFF}. Lyrics and chords for your repertoire, with transposition, notation and auto-scroll.`,
   applicationName: APP_NAME,
   /**
    * Declared rather than left to convention.
@@ -79,7 +79,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="it">
+    <html lang="en">
       <body className={`${sans.variable} ${mono.variable} antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
 

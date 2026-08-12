@@ -79,7 +79,7 @@ describe('suggesting a capo', () => {
   const EB_SONG = ['Eb', 'Ab', 'Bb', 'Cm']
 
   it('finds the fret that opens the most chords', () => {
-    const found = suggestCapo(EB_SONG, 0, 0, 'chitarra')
+    const found = suggestCapo(EB_SONG, 0, 0, 'guitar')
 
     assert.ok(found !== null)
     // Capo 1 reads them as D, G, A, Bm — three of the four have open shapes.
@@ -89,7 +89,7 @@ describe('suggesting a capo', () => {
   })
 
   it('says nothing when the song is already all open chords', () => {
-    assert.equal(suggestCapo(['C', 'G', 'Am', 'D7'], 0, 0, 'chitarra'), null)
+    assert.equal(suggestCapo(['C', 'G', 'Am', 'D7'], 0, 0, 'guitar'), null)
   })
 
   /**
@@ -112,7 +112,7 @@ describe('suggesting a capo', () => {
     let offered = 0
 
     for (const song of songs) {
-      for (const instrument of ['chitarra', 'ukulele'] as const) {
+      for (const instrument of ['guitar', 'ukulele'] as const) {
         for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
           const found = suggestCapo(song, 0, capo, instrument)
           if (found === null) continue
@@ -134,15 +134,15 @@ describe('suggesting a capo', () => {
   })
 
   it('says nothing about a song with no chords in it', () => {
-    assert.equal(suggestCapo([], 0, 0, 'chitarra'), null)
-    assert.equal(suggestCapo(['x2', 'assolo'], 0, 0, 'chitarra'), null)
+    assert.equal(suggestCapo([], 0, 0, 'guitar'), null)
+    assert.equal(suggestCapo(['x2', 'assolo'], 0, 0, 'guitar'), null)
   })
 
   it('compares against the capo already on, not against a bare neck', () => {
     // With the capo where the suggestion would send it, there is nothing left to say.
-    const first = suggestCapo(EB_SONG, 0, 0, 'chitarra')
+    const first = suggestCapo(EB_SONG, 0, 0, 'guitar')
     assert.ok(first !== null)
-    assert.equal(suggestCapo(EB_SONG, 0, first.fret, 'chitarra'), null)
+    assert.equal(suggestCapo(EB_SONG, 0, first.fret, 'guitar'), null)
   })
 
   it('takes the transposition into account, since it moves the shapes too', () => {
@@ -150,7 +150,7 @@ describe('suggesting a capo', () => {
      * The same song read a semitone higher already needs no capo: +1 puts it in E, A, B,
      * C#m, and the suggestion must not offer the fret that was right before.
      */
-    const moved = suggestCapo(EB_SONG, 1, 0, 'chitarra')
+    const moved = suggestCapo(EB_SONG, 1, 0, 'guitar')
     assert.notEqual(moved?.fret, 1)
   })
 
@@ -165,7 +165,7 @@ describe('suggesting a capo', () => {
 
   it('never suggests the fret it was given', () => {
     for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
-      const found = suggestCapo(EB_SONG, 0, capo, 'chitarra')
+      const found = suggestCapo(EB_SONG, 0, capo, 'guitar')
       assert.notEqual(found?.fret, capo)
     }
   })

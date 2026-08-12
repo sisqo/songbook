@@ -17,14 +17,14 @@ import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 
 const TITLE = `${APP_NAME} — ${APP_PAYOFF}`
 const DESCRIPTION =
-  'Testi e accordi del repertorio, in notazione italiana o internazionale, con tonalità, capotasto e scorrimento automatico — pronti per il palco, anche senza rete.'
+  'Lyrics and chords for your repertoire, in Italian or international notation, with key, capo and auto-scroll — ready for the stage, even with no network.'
 
 export const metadata: Metadata = {
   // `absolute`, not the root template: this page names itself, and "· Songbook" after
   // its own payoff would repeat the name in the same breath.
   title: { absolute: TITLE },
   description: DESCRIPTION,
-  openGraph: { title: TITLE, description: DESCRIPTION, locale: 'it_IT', type: 'website' },
+  openGraph: { title: TITLE, description: DESCRIPTION, locale: 'en_US', type: 'website' },
   twitter: { card: 'summary', title: TITLE, description: DESCRIPTION },
 }
 
@@ -45,33 +45,33 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     icon: <IconBooks size={20} />,
-    title: 'Canzonieri e sezioni',
-    text: 'Il repertorio si divide in canzonieri, e ogni canzoniere in sezioni che si aprono e chiudono al bisogno: sempre il brano che serve, non un elenco infinito.',
+    title: 'Songbooks and sections',
+    text: 'The repertoire is split into songbooks, and each songbook into sections that open and close as needed: always the song you need, never an endless list.',
   },
   {
     icon: <IconTuningFork size={20} />,
-    title: 'Tonalità e capotasto',
-    text: 'Trasponi con un tocco per cantare nella tonalità giusta. Il capotasto mostra le forme da fare, non quelle che suonano, e suggerisce il tasto con più accordi aperti.',
+    title: 'Key and capo',
+    text: 'Transpose with a tap to sing in the right key. The capo shows the shapes to play, not the ones that sound, and suggests the fret with the most open chords.',
   },
   {
     icon: <IconChordShape size={20} />,
-    title: 'La forma di ogni accordo',
-    text: 'Ogni accordo sullo spartito è un bottone: un tocco apre la sua forma per chitarra o ukulele, pronta da suonare.',
+    title: 'The shape of every chord',
+    text: 'Every chord on the sheet is a button: a tap opens its shape for guitar or ukulele, ready to play.',
   },
   {
     icon: <IconSliders size={20} />,
-    title: 'Zoom e scorrimento',
-    text: 'Ingrandisci il testo e lascialo scorrere da solo, alla velocità che preferisci: le mani restano sullo strumento.',
+    title: 'Zoom and scroll',
+    text: 'Enlarge the text and let it scroll on its own, at the speed you prefer: your hands stay on the instrument.',
   },
   {
     icon: <IconOnStage size={20} />,
-    title: 'Sempre con te, anche offline',
-    text: 'Installala sul telefono: una volta pubblicato, il repertorio resta leggibile anche sul palco, senza una rete.',
+    title: 'Always with you, even offline',
+    text: 'Install it on your phone: once published, the repertoire stays readable on stage, with no network at all.',
   },
   {
     icon: <IconUsers size={20} />,
-    title: 'Ruoli su misura',
-    text: 'Admin, Editor o Viewer: decidi chi può leggere, chi può modificare il repertorio e chi gestisce chi entra.',
+    title: 'Roles that fit',
+    text: 'Admin, Editor or Viewer: decide who can read, who can edit the repertoire, and who manages who gets in.',
   },
 ]
 
@@ -89,7 +89,7 @@ const FEATURES: Feature[] = [
  * an address and a password, for whoever would rather not hand Google another sign-in —
  * or whose address is not a Google account at all.
  *
- * Both refusals are one sentence. "Email o password non corretti" covers a wrong
+ * Both refusals are one sentence. "Wrong email or password" covers a wrong
  * password, an address with no password, and an address that is not on the list,
  * because telling those apart is telling a stranger which addresses exist here.
  */
@@ -98,12 +98,12 @@ export default async function LoginPage({ searchParams }: Props) {
 
   const message =
     failed !== undefined
-      ? 'Email o password non corretti.'
+      ? 'Wrong email or password.'
       : error === undefined
         ? null
         : error === 'AccessDenied'
-          ? 'Questo account non è fra quelli autorizzati.'
-          : 'Accesso non riuscito. Riprova.'
+          ? 'This account is not among the ones allowed in.'
+          : 'Sign-in failed. Please try again.'
 
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
@@ -140,12 +140,12 @@ export default async function LoginPage({ searchParams }: Props) {
           >
             <button type="submit" className="btn is-page w-full justify-center py-3 text-base">
               <IconGoogle />
-              Entra con Google
+              Sign in with Google
             </button>
           </form>
 
           <div className="login-or">
-            <span>oppure</span>
+            <span>or</span>
           </div>
 
           <form
@@ -194,22 +194,22 @@ export default async function LoginPage({ searchParams }: Props) {
             </label>
 
             <button type="submit" className="btn btn-primary mt-1 w-full justify-center py-3">
-              Entra
+              Sign in
             </button>
           </form>
         </div>
 
         <p className="mt-4 text-center text-xs text-faint">
-          L&apos;accesso è riservato agli indirizzi autorizzati.
+          Access is reserved to authorized addresses.
         </p>
       </div>
 
       <section className="mt-11 w-full max-w-4xl lg:mt-16">
         <div className="text-center">
-          <h2 className="landing-feature-title">Fatta per il palco, non per il divano</h2>
+          <h2 className="landing-feature-title">Built for the stage, not the couch</h2>
           <p className="mx-auto mt-2 max-w-[26rem] text-sm leading-[1.45] text-muted lg:mt-2.5 lg:max-w-[30rem] lg:text-[15px] lg:leading-[1.5]">
-            Ogni controllo è pensato per un pollice, non per un mouse — e per una mano che
-            in quel momento sta tenendo uno strumento.
+            Every control is built for a thumb, not a mouse — and for a hand that is
+            holding an instrument at that very moment.
           </p>
         </div>
 

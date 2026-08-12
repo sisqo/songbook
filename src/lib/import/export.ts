@@ -21,20 +21,20 @@ const METADATA =
 
 /**
  * The section is written too, and it is not symmetry for its own sake: without that
- * line an export and a re-import would lose how every canzoniere is divided, and the
+ * line an export and a re-import would lose how every songbook is divided, and the
  * export *is* what this repo calls a restore.
  */
 export function toChoproFile(
   song: Song,
-  canzoniereName: string | null,
-  sezioneName: string | null,
+  songbookName: string | null,
+  sectionName: string | null,
 ): string {
   const head: string[] = [`{title: ${song.title}}`]
 
   if (song.artist !== null && song.artist !== '') head.push(`{artist: ${song.artist}}`)
   if (song.tags.length > 0) head.push(`{tags: ${song.tags.join(', ')}}`)
-  if (canzoniereName !== null) head.push(`{canzoniere: ${canzoniereName}}`)
-  if (sezioneName !== null) head.push(`{sezione: ${sezioneName}}`)
+  if (songbookName !== null) head.push(`{canzoniere: ${songbookName}}`)
+  if (sectionName !== null) head.push(`{sezione: ${sectionName}}`)
 
   const body = song.body
     .split(/\r?\n/)

@@ -193,7 +193,7 @@ function SheetChord({
       type="button"
       className="sheet-chord"
       onClick={() => onPick(chord)}
-      aria-label={`${label}, mostra la forma`}
+      aria-label={`${label}, show the shape`}
     >
       {label}
     </button>

@@ -16,7 +16,7 @@ describe('fileRepository', () => {
     assert.equal(song?.title, 'Le luci di via Ostiense')
     assert.equal(song?.artist, 'Placeholder')
     assert.deepEqual(song?.tags, ['lento'])
-    assert.equal(song?.canzoniereSlug, 'repertorio')
+    assert.equal(song?.songbookSlug, 'repertorio')
   })
 
   it('returns null for an unknown slug', async () => {
@@ -27,7 +27,7 @@ describe('fileRepository', () => {
    * Section first, then title — the same order the database reads.
    *
    * It used to be title alone, and the change is the point rather than a detail: the
-   * arrows inside a song step through this list, so a canzoniere divided into sections
+   * arrows inside a song step through this list, so a songbook divided into sections
    * has to come out section by section. Within a section there is nothing on disk that
    * could say where a song sits, so it stays alphabetical.
    */
@@ -49,28 +49,28 @@ describe('fileRepository', () => {
   })
 })
 
-describe('sezioni from the files', () => {
-  it('derives the declared ones, and «Brani» where no file says', async () => {
+describe('sections from the files', () => {
+  it('derives the declared ones, and «Songs» where no file says', async () => {
     const sections = await fileRepository.listSections()
 
     assert.deepEqual(
-      sections.map((section) => [section.canzoniereSlug, section.name, section.position]),
+      sections.map((section) => [section.songbookSlug, section.name, section.position]),
       [
-        ['da-imparare', 'Brani', 1],
+        ['da-imparare', 'Songs', 1],
         ['repertorio', 'Prima parte', 1],
         ['repertorio', 'Seconda parte', 2],
       ],
     )
   })
 
-  it('gives every song a section of its own canzoniere', async () => {
+  it('gives every song a section of its own songbook', async () => {
     const sections = await fileRepository.listSections()
     const byId = new Map(sections.map((section) => [section.id, section]))
 
     for (const song of await fileRepository.listSongs()) {
       const section = byId.get(song.sectionId ?? -1)
       assert.ok(section, `${song.slug} has no section`)
-      assert.equal(section?.canzoniereSlug, song.canzoniereSlug, `${song.slug} points elsewhere`)
+      assert.equal(section?.songbookSlug, song.songbookSlug, `${song.slug} points elsewhere`)
     }
   })
 
@@ -84,13 +84,13 @@ describe('sezioni from the files', () => {
 
     assert.equal(sectionOf('ferma-il-tram'), 'Prima parte')
     assert.equal(sectionOf('le-luci-di-via-ostiense'), 'Seconda parte')
-    assert.equal(sectionOf('novembre-in-cortile'), 'Brani')
+    assert.equal(sectionOf('novembre-in-cortile'), 'Songs')
   })
 })
 
-describe('canzonieri from the files', () => {
+describe('songbooks from the files', () => {
   it('derives one entry per distinct directive', async () => {
-    const list = await fileRepository.listCanzonieri()
+    const list = await fileRepository.listSongbooks()
     assert.deepEqual(
       list.map((entry) => entry.slug),
       ['da-imparare', 'repertorio'],
@@ -101,17 +101,17 @@ describe('canzonieri from the files', () => {
     )
   })
 
-  it('assigns every song to a canzoniere', async () => {
-    const known = new Set((await fileRepository.listCanzonieri()).map((entry) => entry.slug))
+  it('assigns every song to a songbook', async () => {
+    const known = new Set((await fileRepository.listSongbooks()).map((entry) => entry.slug))
     for (const song of await fileRepository.listSongs()) {
-      assert.ok(song.canzoniereSlug, `${song.slug} has no canzoniere`)
-      assert.ok(known.has(song.canzoniereSlug!), `${song.slug} points outside the list`)
+      assert.ok(song.songbookSlug, `${song.slug} has no songbook`)
+      assert.ok(known.has(song.songbookSlug!), `${song.slug} points outside the list`)
     }
   })
 
   it('splits the fixtures the way the tags did', async () => {
     const songs = await fileRepository.listSongs()
-    const bySlug = new Map(songs.map((song) => [song.slug, song.canzoniereSlug]))
+    const bySlug = new Map(songs.map((song) => [song.slug, song.songbookSlug]))
 
     assert.equal(bySlug.get('ferma-il-tram'), 'repertorio')
     assert.equal(bySlug.get('le-luci-di-via-ostiense'), 'repertorio')
@@ -119,7 +119,7 @@ describe('canzonieri from the files', () => {
     assert.equal(bySlug.get('quasi-domenica'), 'da-imparare')
   })
 
-  it('no longer carries the tags that became canzonieri', async () => {
+  it('no longer carries the tags that became songbooks', async () => {
     for (const song of await fileRepository.listSongs()) {
       assert.ok(!song.tags.includes('repertorio'), `${song.slug} still tagged repertorio`)
       assert.ok(!song.tags.includes('da imparare'), `${song.slug} still tagged da imparare`)

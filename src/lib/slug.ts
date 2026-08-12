@@ -1,7 +1,7 @@
 /**
- * Slug generation for canzoniere names.
+ * Slug generation for songbook names.
  *
- * A canzoniere's slug is generated once and then frozen, so this only ever runs
+ * A songbook's slug is generated once and then frozen, so this only ever runs
  * at creation. Renaming deliberately does not touch it.
  */
 
@@ -19,12 +19,12 @@ export function slugify(value: string): string {
 }
 
 /**
- * A slug that is not already taken. Two canzonieri may legitimately be named
+ * A slug that is not already taken. Two songbooks may legitimately be named
  * the same way — a numeric suffix keeps the key unique without refusing the
  * name the reader asked for.
  */
 export function uniqueSlug(value: string, taken: Iterable<string>): string {
-  const base = slugify(value) || 'canzoniere'
+  const base = slugify(value) || 'songbook'
   const used = new Set(taken)
 
   if (!used.has(base)) return base

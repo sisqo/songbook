@@ -46,14 +46,14 @@ export function sameMembers<T>(a: T[], b: T[]): boolean {
 /**
  * Puts a saved order back into the flat list the whole screen is drawn from.
  *
- * That list holds every song, of every canzoniere, and the reorder only spoke for
+ * That list holds every song, of every songbook, and the reorder only spoke for
  * one of them. So the slots the named songs already occupy are kept and refilled in
- * the new order: whatever sits between them — a song of another canzoniere, which
+ * the new order: whatever sits between them — a song of another songbook, which
  * nothing here should move — stays exactly where it was.
  *
  * It rearranges exactly the names it is given and asks no questions about the rest,
  * because it cannot answer them: whether a song missing from the order belongs to the
- * same canzoniere is known on the server, and that is where a partial order is
+ * same songbook is known on the server, and that is where a partial order is
  * refused. What it does refuse is a name the list has not got, which would otherwise
  * mean dropping a row to make the count fit.
  */
@@ -73,7 +73,7 @@ export function applyOrder<T extends { slug: string }>(items: T[], order: string
   return next
 }
 
-/** A song already in the canzoniere, in the order the list shows it. */
+/** A song already in the songbook, in the order the list shows it. */
 export interface Placed {
   slug: string
   position: number | null
@@ -94,7 +94,7 @@ export interface Placed {
  *
  * `existing` must arrive in display order — `position` first, then title, which is
  * how every query here reads it. Any other order would renumber the section into
- * an order nobody asked for. It was the whole canzoniere until v2.3, and the
+ * an order nobody asked for. It was the whole songbook until v2.3, and the
  * arithmetic did not change with it: `position` simply counts within a section now.
  */
 export function placeAfter(
@@ -114,7 +114,7 @@ export function placeAfter(
 }
 
 /**
- * A canzoniere's layout: its sections in order, each holding its songs in order.
+ * A songbook's layout: its sections in order, each holding its songs in order.
  *
  * The shape the whole arrangement travels in — from the rows on screen to the single
  * action that writes it — because a song dragged across a section heading changes where
@@ -287,13 +287,13 @@ export function bandAt(bands: Band[], y: number): number {
 }
 
 /**
- * The layout of a canzoniere, read off the two lists a screen already has: its sections,
+ * The layout of a songbook, read off the two lists a screen already has: its sections,
  * and the songs in the order the index holds them.
  *
  * Both the reading list and the arrange mode derive it this way, which is the point of it
  * being here: the groups the eye sees and the groups the drag arithmetic works on come
  * from one function, so they cannot disagree. Songs whose section is not among those
- * given are simply not in the layout — the way a song of another canzoniere is not.
+ * given are simply not in the layout — the way a song of another songbook is not.
  */
 export function arrangementOf(
   divisions: { id: number }[],

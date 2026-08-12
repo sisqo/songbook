@@ -57,7 +57,23 @@ function publicEntries(): PrecacheEntry[] {
   }
 }
 
-const nextConfig: NextConfig = {}
+const nextConfig: NextConfig = {
+  /**
+   * The app's routes were renamed from Italian to English (`/canzonieri` →
+   * `/songbooks`, and so on). These carry anyone with an old bookmark or a
+   * shared link forward instead of a 404.
+   */
+  async redirects() {
+    return [
+      { source: '/canzonieri', destination: '/songbooks', permanent: true },
+      { source: '/canzonieri/:slug', destination: '/songbooks/:slug', permanent: true },
+      { source: '/canzoni/:slug', destination: '/songs/:slug', permanent: true },
+      { source: '/canzoni/:slug/modifica', destination: '/songs/:slug/edit', permanent: true },
+      { source: '/utenti', destination: '/users', permanent: true },
+      { source: '/importa', destination: '/import', permanent: true },
+    ]
+  },
+}
 
 export default withSerwistInit({
   swSrc: 'src/app/sw.ts',

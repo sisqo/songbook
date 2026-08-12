@@ -22,7 +22,7 @@ export interface PreparedSong {
   body: string
   format: InputFormat
   /**
-   * The canzoniere the source claims, when it claims one.
+   * The songbook the source claims, when it claims one.
    *
    * Not obeyed — the destination chosen on the screen is — but worth saying out
    * loud: re-importing an export means every song carries the filing it had, and
@@ -45,8 +45,8 @@ export function prepareSongs(text: string): PreparedSong[] {
       tags: found.tags.join(', '),
       body: found.body,
       format: converted.format,
-      declares: found.canzoniere,
-      declaresSection: found.sezione,
+      declares: found.songbookName,
+      declaresSection: found.sectionName,
     }
   })
 }

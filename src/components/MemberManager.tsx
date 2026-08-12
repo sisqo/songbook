@@ -20,9 +20,9 @@ const ROLE_NAME: Record<Role, string> = {
 }
 
 const ROLE_HINT: Record<Role, string> = {
-  admin: 'tutto, compreso chi entra',
-  editor: 'modifica il repertorio',
-  viewer: 'solo lettura',
+  admin: 'everything, including who can sign in',
+  editor: 'edits the repertoire',
+  viewer: 'read-only',
 }
 
 /**
@@ -34,7 +34,7 @@ const ROLE_HINT: Record<Role, string> = {
  * offline this screen says it cannot tell, which is the truth.
  *
  * The role is checked before the list is even asked for. Otherwise a non-admin who
- * reached this address would be told "non è stato possibile leggere l'elenco", which is
+ * reached this address would be told "could not read the list", which is
  * the wrong sentence: the question could have been asked, it simply was not theirs to ask.
  */
 export function MemberManager() {
@@ -103,11 +103,11 @@ export function MemberManager() {
 
   if (!known) return null
   if (!mayManageUsers) {
-    return <RoleNotice needed="Admin" what="vedere e cambiare chi può entrare" />
+    return <RoleNotice needed="Admin" what="see and change who can sign in" />
   }
 
   if (!asked) {
-    return <p className="text-sm text-muted">Un momento…</p>
+    return <p className="text-sm text-muted">One moment…</p>
   }
 
   if (list === null) {
@@ -115,8 +115,8 @@ export function MemberManager() {
       <p className="notice notice-accent">
         <IconOffline />
         {online
-          ? 'Non è stato possibile leggere chi può entrare. Ricarica la pagina.'
-          : 'Serve la rete per vedere e cambiare chi può entrare.'}
+          ? 'Could not read who can sign in. Reload the page.'
+          : 'You need a connection to see and change who can sign in.'}
       </p>
     )
   }
@@ -143,7 +143,7 @@ export function MemberManager() {
         setPassword('')
         setError(null)
       }}
-      aria-label={hasPassword(email) ? `Cambia la password di ${email}` : `Dai una password a ${email}`}
+      aria-label={hasPassword(email) ? `Change the password for ${email}` : `Give ${email} a password`}
       aria-expanded={pairing === email}
     >
       <IconKey size={17} />
@@ -155,13 +155,13 @@ export function MemberManager() {
       <div className="panel mt-3 p-3.5 text-sm">
         <p>
           {hasPassword(email)
-            ? 'Sostituire la password di questo indirizzo?'
-            : 'Dare una password a questo indirizzo?'}{' '}
-          Servirà per entrare senza Google, che resta comunque valido.
+            ? 'Replace the password for this address?'
+            : 'Give this address a password?'}{' '}
+          It lets them sign in without Google, which still works too.
         </p>
 
         <label className="mt-3 block max-w-sm">
-          <span className="field-label">Nuova password — almeno {MIN_PASSWORD} caratteri</span>
+          <span className="field-label">New password — at least {MIN_PASSWORD} characters</span>
           <input
             type="password"
             autoComplete="new-password"
@@ -181,7 +181,7 @@ export function MemberManager() {
               if (await runPassword(() => setPasswordFor(email, password))) closePassword()
             }}
           >
-            Salva la password
+            Save password
           </button>
 
           {hasPassword(email) && (
@@ -193,12 +193,12 @@ export function MemberManager() {
                 if (await runPassword(() => removePasswordFor(email))) closePassword()
               }}
             >
-              Rimuovi la password
+              Remove password
             </button>
           )}
 
           <button type="button" className="btn btn-quiet btn-sm" onClick={closePassword}>
-            Annulla
+            Cancel
           </button>
         </div>
       </div>
@@ -213,11 +213,11 @@ export function MemberManager() {
       )}
 
       <section>
-        <h2 className="section-title">Proprietari</h2>
+        <h2 className="section-title">Owners</h2>
         <p className="mb-2.5 text-sm leading-[1.45] text-muted">
-          Vengono dalla configurazione del server e non si rimuovono da qui, quindi sono
-          <strong> Admin</strong> per definizione: è la stessa cosa che rende impossibile
-          chiudersi fuori dalla propria applicazione.
+          They come from the server configuration and can&apos;t be removed from here, so they are
+          <strong> Admin</strong> by definition: it&apos;s the same thing that makes it impossible
+          to lock yourself out of your own application.
         </p>
 
         <ul className="row-list card">
@@ -225,7 +225,7 @@ export function MemberManager() {
             <li key={email}>
               <div className="row">
                 <span className="min-w-0 flex-1 truncate">{email}</span>
-                {email === list.you && <span className="meta-chip">tu</span>}
+                {email === list.you && <span className="meta-chip">you</span>}
                 <span className="meta-chip">{hasPassword(email) ? 'password' : 'Google'}</span>
                 <span className="meta-chip">Admin</span>
                 {/* Your own, and no one else's: see `keyButton`. */}
@@ -238,11 +238,11 @@ export function MemberManager() {
       </section>
 
       <section className="mt-7">
-        <h2 className="section-title">Invitati</h2>
+        <h2 className="section-title">Invited</h2>
         <p className="mb-2.5 text-sm leading-[1.45] text-muted">
-          Entrano con il loro account Google, oppure con una password che dai loro da qui, e
-          con il ruolo che scegli. Ogni cambio vale dalla loro azione successiva: non serve che
-          escano e rientrino.
+          They sign in with their Google account, or with a password you give them here, and
+          with the role you choose. Every change takes effect from their next action: they don&apos;t
+          need to sign out and back in.
         </p>
 
         <ul className="mb-3.5 grid gap-1 text-sm text-muted">
@@ -255,7 +255,7 @@ export function MemberManager() {
 
         {list.members.length === 0 ? (
           <p className="panel p-3.5 text-sm text-muted">
-            Nessuno, per ora. Solo i proprietari possono entrare.
+            No one yet. Only owners can sign in.
           </p>
         ) : (
           <ul className="card-stack">
@@ -276,7 +276,7 @@ export function MemberManager() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{member.email}</span>
                       <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
-                        {member.addedBy === null ? 'aggiunto' : `aggiunto da ${member.addedBy}`} ·{' '}
+                        {member.addedBy === null ? 'added' : `added by ${member.addedBy}`} ·{' '}
                         {when(member.createdAt)}
                       </span>
                     </span>
@@ -292,7 +292,7 @@ export function MemberManager() {
 
                     {overridden ? (
                       <>
-                        <span className="meta-chip">proprietario</span>
+                        <span className="meta-chip">owner</span>
                         <button
                           type="button"
                           className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
@@ -301,7 +301,7 @@ export function MemberManager() {
                             setRemoving(isRemoving ? null : member.email)
                             setError(null)
                           }}
-                          aria-label={`Rimuovi la riga di ${member.email}`}
+                          aria-label={`Remove the row for ${member.email}`}
                           aria-expanded={isRemoving}
                         >
                           <IconTrash size={17} />
@@ -309,14 +309,14 @@ export function MemberManager() {
                       </>
                     ) : isYou ? (
                       <>
-                        <span className="meta-chip">tu</span>
+                        <span className="meta-chip">you</span>
                         <span className="meta-chip">{ROLE_NAME[member.role]}</span>
                         {keyButton(member.email)}
                       </>
                     ) : (
                       <>
                         <label className="picker">
-                          <span className="sr-only">Ruolo di {member.email}</span>
+                          <span className="sr-only">Role of {member.email}</span>
                           <select
                             value={member.role}
                             disabled={!online || busy}
@@ -346,7 +346,7 @@ export function MemberManager() {
                             setRemoving(isRemoving ? null : member.email)
                             setError(null)
                           }}
-                          aria-label={`Rimuovi ${member.email}`}
+                          aria-label={`Remove ${member.email}`}
                           aria-expanded={isRemoving}
                         >
                           <IconTrash size={17} />
@@ -370,16 +370,16 @@ export function MemberManager() {
                       <p>
                         {overridden ? (
                           <>
-                            Questo indirizzo è fra i proprietari, quindi questa riga non gli dà
-                            niente: rimuoverla non cambia il suo accesso, e lo toglie il giorno in
-                            cui uscisse dalla configurazione del server.
+                            This address is among the owners, so this row doesn&apos;t grant it
+                            anything: removing it doesn&apos;t change their access, and it only
+                            takes it away the day they leave the server configuration.
                           </>
                         ) : (
                           <>
-                            Rimuovere <span className="whitespace-nowrap">{member.email}</span>? Da
-                            subito non potrà più cambiare niente. La sessione che ha già aperto
-                            resta valida fino al prossimo ingresso, e le pagine che ha scaricato
-                            restano sul suo dispositivo.
+                            Remove <span className="whitespace-nowrap">{member.email}</span>? From
+                            now on they won&apos;t be able to change anything. The session they
+                            already have stays valid until their next sign-in, and the pages
+                            they&apos;ve downloaded stay on their device.
                           </>
                         )}
                       </p>
@@ -392,14 +392,14 @@ export function MemberManager() {
                             if (await run(() => removeMember(member.email))) setRemoving(null)
                           }}
                         >
-                          Rimuovi
+                          Remove
                         </button>
                         <button
                           type="button"
                           className="btn btn-quiet btn-sm"
                           onClick={() => setRemoving(null)}
                         >
-                          Annulla
+                          Cancel
                         </button>
                       </div>
                     </div>
@@ -426,21 +426,21 @@ export function MemberManager() {
             * second one. From `sm` up all three fit, so they sit together again.
             */}
           <label className="basis-full sm:basis-auto sm:flex-1">
-            <span className="sr-only">Indirizzo da ammettere</span>
+            <span className="sr-only">Address to admit</span>
             <input
               type="email"
               inputMode="email"
               autoComplete="off"
               value={invited}
               onChange={(event) => setInvited(event.target.value)}
-              placeholder="nome@example.com"
+              placeholder="name@example.com"
               className="form-field min-h-12 rounded-pill px-[1.125rem]"
             />
           </label>
 
           {/* Viewer to begin with: the least a new arrival could need, raised on purpose. */}
           <label className="picker picker-raised">
-            <span className="sr-only">Ruolo del nuovo utente</span>
+            <span className="sr-only">Role of the new user</span>
             <select
               value={invitedRole}
               onChange={(event) => setInvitedRole(event.target.value as Role)}
@@ -461,14 +461,14 @@ export function MemberManager() {
             disabled={!online || busy || invited.trim() === ''}
           >
             <IconPlus size={16} />
-            Ammetti
+            Admit
           </button>
         </form>
 
         {!online && (
           <p className="notice notice-accent mt-4">
             <IconOffline />
-            Senza connessione l&apos;elenco si può solo leggere.
+            Without a connection the list can only be read.
           </p>
         )}
       </section>
@@ -480,5 +480,5 @@ export function MemberManager() {
 function when(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
+  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
 }

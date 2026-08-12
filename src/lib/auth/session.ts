@@ -11,7 +11,7 @@
  * What this cannot do is end a session that already exists. The cookie is a ninety-day
  * JWT and the pages are precached, so a reader who has been removed, or moved down to
  * viewer, keeps whatever their browser already holds until they sign in again. These
- * guards are what stop them changing anything shared in the meantime; `/utenti` says so
+ * guards are what stop them changing anything shared in the meantime; `/users` says so
  * in as many words.
  *
  * The table is read on every call, and that is the point rather than an oversight: it is
@@ -71,7 +71,7 @@ async function permit(allows: (role: Role) => boolean): Promise<Permission> {
   return { ok: true, email: user.email, role: user.role }
 }
 
-/** Permission to change the repertoire: songs, canzonieri, order, publishing. */
+/** Permission to change the repertoire: songs, songbooks, order, publishing. */
 export function asEditor(): Promise<Permission> {
   return permit(canEdit)
 }

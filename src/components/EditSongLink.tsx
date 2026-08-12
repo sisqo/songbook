@@ -35,9 +35,9 @@ export function EditSongLink({ slug }: { slug: string }) {
 
   return (
     <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
-      <Link href={`/canzoni/${slug}/modifica`} className="btn is-inset">
+      <Link href={`/songs/${slug}/edit`} className="btn is-inset">
         <IconPencil size={16} />
-        Modifica
+        Edit
       </Link>
     </div>
   )

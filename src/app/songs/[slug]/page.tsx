@@ -21,7 +21,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const song = await repository.getSong(slug)
-  if (!song) return { title: 'Canzone non trovata' }
+  if (!song) return { title: 'Song not found' }
 
   return {
     title: song.artist === null ? song.title : `${song.title} · ${song.artist}`,

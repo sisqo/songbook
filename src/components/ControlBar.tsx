@@ -74,7 +74,7 @@ export function ControlBar({
   const lastSpeed = SCROLL_SPEEDS.length - 1
 
   return (
-    <nav className="control-bar" aria-label="Controlli di lettura">
+    <nav className="control-bar" aria-label="Reading controls">
       {/* Catches the tap that means "never mind". Inside the bar, so it does not
           count as the manual gesture that pauses the scroll. */}
       {open && <div className="menu-overlay" onClick={() => setOpen(false)} aria-hidden />}
@@ -99,7 +99,7 @@ export function ControlBar({
           className="control-button control-play"
           onClick={toggle}
           aria-pressed={running}
-          aria-label={running ? 'Ferma lo scorrimento' : 'Avvia lo scorrimento'}
+          aria-label={running ? 'Stop scrolling' : 'Start scrolling'}
         >
           {running ? <IconPause size={16} /> : <IconPlay size={16} />}
         </button>
@@ -120,8 +120,8 @@ export function ControlBar({
              * is handed to CSS and each engine takes the half it understands.
              */
             style={{ '--fill': `${(song.scrollSpeed / lastSpeed) * 100}%` } as React.CSSProperties}
-            aria-label="Velocità di scorrimento"
-            aria-valuetext={`${song.scrollSpeed + 1} di ${SCROLL_SPEEDS.length}`}
+            aria-label="Scroll speed"
+            aria-valuetext={`${song.scrollSpeed + 1} of ${SCROLL_SPEEDS.length}`}
           />
           <IconHare size={24} />
         </div>
@@ -138,14 +138,14 @@ export function ControlBar({
            * the visual half and the words join the label.
            */
           aria-label={
-            (open ? 'Chiudi accordi e testo' : 'Accordi e testo') +
-            (pending > 0 ? ', modifica non ancora salvata' : '')
+            (open ? 'Close chords and text' : 'Chords and text') +
+            (pending > 0 ? ', unsaved change' : '')
           }
         >
           <IconSliders size={20} />
 
           {/* A queued change is visible, so nothing is ever lost in silence. */}
-          {pending > 0 && <span className="pending-dot" title="Non salvato" aria-hidden />}
+          {pending > 0 && <span className="pending-dot" title="Unsaved" aria-hidden />}
         </button>
       </div>
     </nav>
@@ -160,18 +160,18 @@ export function ControlBar({
  * The sign is the typographic minus, so it lines up with the buttons beside it.
  */
 function formatSemitones(semitones: number): string {
-  if (semitones === 0) return '0 semitoni'
+  if (semitones === 0) return '0 semitones'
   const sign = semitones > 0 ? '+' : '−'
   const size = Math.abs(semitones)
-  return `${sign}${size} ${size === 1 ? 'semitono' : 'semitoni'}`
+  return `${sign}${size} ${size === 1 ? 'semitone' : 'semitones'}`
 }
 
 /**
  * What the song is read in, rather than how it is read: the key, the notation the
  * chords are named in, and how big the words are.
  *
- * Grouped by what they act on — the chords, then the text — because "notazione"
- * and "dimensione" are both settings of the same sheet and nothing else on the
+ * Grouped by what they act on — the chords, then the text — because "notation"
+ * and "size" are both settings of the same sheet and nothing else on the
  * screen says which part of it each one changes.
  */
 function ReadingPanel({
@@ -197,11 +197,11 @@ function ReadingPanel({
 }) {
   return (
     <div className="control-panel">
-      <span className="group-label">Accordi</span>
+      <span className="group-label">Chords</span>
 
       <div className="control-row">
         <span className="control-name">
-          <span className="control-name-label">Tonalità</span>
+          <span className="control-name-label">Key</span>
           <span className={semitones === 0 ? 'control-name-value' : 'control-name-value is-changed'}>
             {formatSemitones(semitones)}
           </span>
@@ -212,7 +212,7 @@ function ReadingPanel({
             type="button"
             className="segment-button"
             onClick={() => setSemitones(semitones - 1)}
-            aria-label="Abbassa di un semitono"
+            aria-label="Lower by a semitone"
           >
             <span aria-hidden>−1</span>
           </button>
@@ -223,8 +223,8 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setSemitones(0)}
             disabled={semitones === 0}
-            aria-label="Torna alla tonalità scritta"
-            title={semitones === 0 ? undefined : 'Torna alla tonalità scritta'}
+            aria-label="Return to the written key"
+            title={semitones === 0 ? undefined : 'Return to the written key'}
           >
             <IconUndo size={15} />
           </button>
@@ -233,7 +233,7 @@ function ReadingPanel({
             type="button"
             className="segment-button"
             onClick={() => setSemitones(semitones + 1)}
-            aria-label="Alza di un semitono"
+            aria-label="Raise by a semitone"
           >
             <span aria-hidden>+1</span>
           </button>
@@ -242,9 +242,9 @@ function ReadingPanel({
 
       <div className="control-row">
         <span className="control-name">
-          <span className="control-name-label">Capotasto</span>
+          <span className="control-name-label">Capo</span>
           <span className={capo === 0 ? 'control-name-value' : 'control-name-value is-changed'}>
-            {capo === 0 ? 'nessuno' : `${capo}° tasto`}
+            {capo === 0 ? 'none' : `fret ${capo}`}
           </span>
         </span>
 
@@ -254,7 +254,7 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setCapo(capo - 1)}
             disabled={capo === 0}
-            aria-label="Abbassa il capotasto di un tasto"
+            aria-label="Lower the capo by one fret"
           >
             <span aria-hidden>−</span>
           </button>
@@ -264,8 +264,8 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setCapo(0)}
             disabled={capo === 0}
-            aria-label="Togli il capotasto"
-            title={capo === 0 ? undefined : 'Togli il capotasto'}
+            aria-label="Remove the capo"
+            title={capo === 0 ? undefined : 'Remove the capo'}
           >
             <IconUndo size={15} />
           </button>
@@ -275,7 +275,7 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setCapo(capo + 1)}
             disabled={capo === MAX_CAPO}
-            aria-label="Alza il capotasto di un tasto"
+            aria-label="Raise the capo by one fret"
           >
             <span aria-hidden>+</span>
           </button>
@@ -293,21 +293,21 @@ function ReadingPanel({
         <div className="control-hint">
           <span>
             {suggestion.easy === suggestion.total
-              ? `Col ${suggestion.fret}° tasto tutti gli accordi sono aperti.`
-              : `Col ${suggestion.fret}° tasto ${suggestion.easy} accordi su ${suggestion.total} sono aperti.`}
+              ? `With capo at fret ${suggestion.fret}, all chords are open.`
+              : `With capo at fret ${suggestion.fret}, ${suggestion.easy} of ${suggestion.total} chords are open.`}
           </span>
           <button type="button" className="btn btn-sm" onClick={() => setCapo(suggestion.fret)}>
-            Metti
+            Apply
           </button>
         </div>
       )}
 
       <div className="control-row">
         <span className="control-name">
-          <span className="control-name-label">Notazione</span>
+          <span className="control-name-label">Notation</span>
         </span>
 
-        <span className="segment" role="group" aria-label="Notazione degli accordi">
+        <span className="segment" role="group" aria-label="Chord notation">
           <button
             type="button"
             className={notation === 'it' ? 'segment-button is-on' : 'segment-button'}
@@ -329,11 +329,11 @@ function ReadingPanel({
 
       <div className="control-divider" />
 
-      <span className="group-label">Testo</span>
+      <span className="group-label">Text</span>
 
       <div className="control-row">
         <span className="control-name">
-          <span className="control-name-label">Dimensione</span>
+          <span className="control-name-label">Size</span>
           <span className="control-name-value">{ZOOM_STEPS[zoomStep]} px</span>
         </span>
 
@@ -343,7 +343,7 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setZoomStep(zoomStep - 1)}
             disabled={zoomStep === 0}
-            aria-label="Riduci il testo"
+            aria-label="Decrease text size"
           >
             <span aria-hidden>A−</span>
           </button>
@@ -352,7 +352,7 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setZoomStep(zoomStep + 1)}
             disabled={zoomStep === ZOOM_STEPS.length - 1}
-            aria-label="Ingrandisci il testo"
+            aria-label="Increase text size"
           >
             <span aria-hidden>A+</span>
           </button>

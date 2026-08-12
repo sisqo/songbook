@@ -19,8 +19,8 @@ import { chordTokens } from '@/lib/chordpro'
  * Where this song sits in the sequence it is being read in.
  *
  * `within` names the **section** the song is in, while the two numbers count the whole
- * canzoniere — which is what the arrows step through, so it is what they should count.
- * The canzoniere itself is named by the way back at the top of the screen, one line above,
+ * songbook — which is what the arrows step through, so it is what they should count.
+ * The songbook itself is named by the way back at the top of the screen, one line above,
  * so saying it again here would be the same word twice on a phone-width line.
  */
 export interface Place {
@@ -49,7 +49,7 @@ export function SongHeading({ place }: { place: Place | null }) {
         {place !== null && (
           <span className="text-faint">
             {place.within !== null && `${place.within} · `}
-            {place.position} di {place.total}
+            {place.position} of {place.total}
           </span>
         )}
       </p>
@@ -62,7 +62,7 @@ export function SongHeading({ place }: { place: Place | null }) {
         */}
       {deleted && (
         <p className="notice notice-accent mt-3" role="status">
-          Questo brano è stato eliminato. Resta leggibile qui, ma sparirà dall’elenco.
+          This song has been deleted. It stays readable here, but will disappear from the list.
         </p>
       )}
     </header>
@@ -91,7 +91,7 @@ function CapoNote() {
   return (
     <p className="capo-note mt-2.5">
       <IconNote size={13} />
-      capotasto {prefs.capo}° tasto · gli accordi sono già quelli da fare
+      capo on fret {prefs.capo} · the chords are already what to play
     </p>
   )
 }

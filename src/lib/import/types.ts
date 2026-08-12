@@ -6,9 +6,9 @@ export interface SongInput {
   title: string
   artist: string | null
   tags: string[]
-  canzoniereSlug: string
+  songbookSlug: string
   /**
-   * The section within it, or null for «wherever this canzoniere files things first».
+   * The section within it, or null for «wherever this songbook files things first».
    *
    * Nullable so a caller that has no opinion does not have to invent one: the import
    * screen and the editor both ask, but the fallback is a real place — see
@@ -38,7 +38,7 @@ export type SaveFailure =
  * A save carries back the row it wrote, not just its slug.
  *
  * The screen shows that row immediately, so it has to be the row the database
- * holds rather than the values that were sent: `canzoniereSlug` can come back
+ * holds rather than the values that were sent: `songbookSlug` can come back
  * different when the one asked for does not exist, and `updatedAt` is the
  * database's own clock — the value every later comparison is made against. Echoing
  * the input with a timestamp from the browser would risk a guess that outranks the
@@ -66,20 +66,20 @@ export interface PendingSong {
 }
 
 export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
-  'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
-  'not-allowed': 'Il tuo ruolo non permette di modificare il repertorio.',
-  'no-database': 'Nessun database configurato: non si può salvare.',
-  'invalid-title': 'Serve un titolo.',
-  'empty-body': 'Il testo è vuoto.',
-  'not-found': 'Questo brano non esiste più.',
-  duplicate: 'Esiste già un brano con questo titolo e artista.',
-  failed: 'Salvataggio non riuscito. Riprova.',
+  'no-session': 'Session expired. Reload the page and sign in again.',
+  'not-allowed': 'Your role does not allow editing the repertoire.',
+  'no-database': 'No database configured: cannot save.',
+  'invalid-title': 'A title is required.',
+  'empty-body': 'The text is empty.',
+  'not-found': 'This song no longer exists.',
+  duplicate: 'A song with this title and artist already exists.',
+  failed: 'Save failed. Please try again.',
 }
 
 export const PUBLISH_MESSAGE: Record<PublishFailure, string> = {
-  'no-session': 'Sessione scaduta. Ricarica la pagina ed entra di nuovo.',
-  'not-allowed': 'Il tuo ruolo non permette di pubblicare.',
+  'no-session': 'Session expired. Reload the page and sign in again.',
+  'not-allowed': 'Your role does not allow publishing.',
   'no-hook':
-    'Deploy hook non configurato. Crealo su Vercel in Settings → Git → Deploy Hooks e mettilo in DEPLOY_HOOK_URL.',
-  failed: 'Pubblicazione non riuscita. Riprova.',
+    'No deploy hook configured. Create one on Vercel under Settings → Git → Deploy Hooks and put it in DEPLOY_HOOK_URL.',
+  failed: 'Publish failed. Please try again.',
 }

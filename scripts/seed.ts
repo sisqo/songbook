@@ -21,12 +21,12 @@ import { loadEnv } from './load-env'
 async function main() {
   loadEnv()
 
-  const { readCanzoniereFiles, readSectionFiles, readSongFiles } = await import(
+  const { readSongbookFiles, readSectionFiles, readSongFiles } = await import(
     '../src/lib/data/files'
   )
   const { DEFAULT_SECTION, UNFILED } = await import('../src/lib/data/types')
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
-  const { canzonieri, sections, songs } = await import('../src/lib/db/schema')
+  const { songbooks, sections, songs } = await import('../src/lib/db/schema')
   const { and, asc, eq } = await import('drizzle-orm')
 
   if (!hasDatabase) {
@@ -34,9 +34,9 @@ async function main() {
     process.exit(1)
   }
 
-  const [songFiles, canzoniereFiles, sectionFiles] = await Promise.all([
+  const [songFiles, songbookFiles, sectionFiles] = await Promise.all([
     readSongFiles(),
-    readCanzoniereFiles(),
+    readSongbookFiles(),
     readSectionFiles(),
   ])
 
@@ -53,48 +53,48 @@ async function main() {
   const database = db()
 
   /**
-   * Canzonieri named by the files, plus the unfiled one, created if missing.
+   * Songbooks named by the files, plus the unfiled one, created if missing.
    *
-   * `doNothing` on conflict, not an update: a canzoniere renamed in the app must
+   * `doNothing` on conflict, not an update: a songbook renamed in the app must
    * keep its new name. The directive only ever decides where a song is born.
-   * And unlike songs, canzonieri are never pruned — they can be created in the
+   * And unlike songs, songbooks are never pruned — they can be created in the
    * app, so rows legitimately exist that no file ever declared.
    */
-  const declared = [...canzoniereFiles, UNFILED]
-  for (const canzoniere of declared) {
+  const declared = [...songbookFiles, UNFILED]
+  for (const songbook of declared) {
     await database
-      .insert(canzonieri)
-      .values({ slug: canzoniere.slug, name: canzoniere.name })
-      .onConflictDoNothing({ target: canzonieri.slug })
+      .insert(songbooks)
+      .values({ slug: songbook.slug, name: songbook.name })
+      .onConflictDoNothing({ target: songbooks.slug })
   }
-  console.log(`Canzonieri present (created if missing): ${declared.length}`)
+  console.log(`Songbooks present (created if missing): ${declared.length}`)
 
   /**
-   * The sections named by the files, plus a «Brani» for the unfiled canzoniere.
+   * The sections named by the files, plus a «Songs» for the unfiled songbook.
    *
    * Matched **by name**, never by id: the ids in `sectionFiles` were invented by the file
    * repository for this run — see `data/files.ts` — and the database has its own. So the
    * name is the only thing the two sides can agree on, which is also why a section's name
-   * is unique within its canzoniere.
+   * is unique within its songbook.
    *
-   * `doNothing` on conflict, for the same reason as the canzonieri: a section renamed or
+   * `doNothing` on conflict, for the same reason as the songbooks: a section renamed or
    * reordered in the app keeps what it was given. The position a file can claim is only
    * ever the position it would be born with.
    */
   const wanted = [
     ...sectionFiles.map((section) => ({
-      canzoniereSlug: section.canzoniereSlug,
+      songbookSlug: section.songbookSlug,
       name: section.name,
       position: section.position,
     })),
-    { canzoniereSlug: UNFILED.slug, name: DEFAULT_SECTION, position: 1 },
+    { songbookSlug: UNFILED.slug, name: DEFAULT_SECTION, position: 1 },
   ]
 
   for (const section of wanted) {
     await database
       .insert(sections)
       .values(section)
-      .onConflictDoNothing({ target: [sections.canzoniereSlug, sections.name] })
+      .onConflictDoNothing({ target: [sections.songbookSlug, sections.name] })
   }
   console.log(`Sections present (created if missing): ${wanted.length}`)
 
@@ -102,9 +102,9 @@ async function main() {
    * Which section each song goes into, in the database's own numbering.
    *
    * A file's section is a name, so this is where that name becomes an id. A song whose
-   * canzoniere has no section by that name — impossible from these files, possible from a
-   * hand-edited one — lands in the first section of its canzoniere. Null only if that
-   * canzoniere has no sections at all, which the loop above has just made impossible;
+   * songbook has no section by that name — impossible from these files, possible from a
+   * hand-edited one — lands in the first section of its songbook. Null only if that
+   * songbook has no sections at all, which the loop above has just made impossible;
    * the caller says so out loud and skips the song rather than crashing a restore.
    */
   const sectionIdOf = async (song: (typeof songFiles)[number]): Promise<number | null> => {
@@ -115,7 +115,7 @@ async function main() {
         .select({ id: sections.id })
         .from(sections)
         .where(
-          and(eq(sections.canzoniereSlug, song.canzoniereSlug), eq(sections.name, name)),
+          and(eq(sections.songbookSlug, song.songbookSlug), eq(sections.name, name)),
         )
         .limit(1)
 
@@ -125,7 +125,7 @@ async function main() {
     const first = await database
       .select({ id: sections.id })
       .from(sections)
-      .where(eq(sections.canzoniereSlug, song.canzoniereSlug))
+      .where(eq(sections.songbookSlug, song.songbookSlug))
       .orderBy(asc(sections.position))
       .limit(1)
 
@@ -146,7 +146,7 @@ async function main() {
   for (const song of songFiles) {
     const sectionId = await sectionIdOf(song)
     if (sectionId === null) {
-      console.warn(`Skipped ${song.slug}: ${song.canzoniereSlug} has no section to file it in.`)
+      console.warn(`Skipped ${song.slug}: ${song.songbookSlug} has no section to file it in.`)
       skipped += 1
       continue
     }
@@ -158,7 +158,7 @@ async function main() {
         title: song.title,
         artist: song.artist,
         tags: song.tags,
-        canzoniereSlug: song.canzoniereSlug,
+        songbookSlug: song.songbookSlug,
         sectionId,
         body: song.body,
       })

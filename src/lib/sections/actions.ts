@@ -1,21 +1,21 @@
 'use server'
 
 /**
- * Server actions for the sections of a canzoniere: the divisions, and what is in them.
+ * Server actions for the sections of a songbook: the divisions, and what is in them.
  *
- * Same rules as the canzonieri next door — an **editor** for every write, no offline
+ * Same rules as the songbooks next door — an **editor** for every write, no offline
  * queue, shared structure so last-write-wins between two devices is not acceptable —
- * and one addition of its own: `arrangeCanzoniere`, which writes a whole canzoniere's
+ * and one addition of its own: `arrangeSongbook`, which writes a whole songbook's
  * layout at once rather than patching the rows that moved.
  */
 
 import { and, asc, eq, max } from 'drizzle-orm'
 
 import { asEditor } from '@/lib/auth/session'
-import { type ArrangedSection, sameMembers } from '@/lib/canzonieri/order'
-import type { CreateSectionResult, WriteResult } from '@/lib/canzonieri/types'
+import { type ArrangedSection, sameMembers } from '@/lib/songbooks/order'
+import type { CreateSectionResult, WriteResult } from '@/lib/songbooks/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { canzonieri, sections, songs } from '@/lib/db/schema'
+import { songbooks, sections, songs } from '@/lib/db/schema'
 
 /** Postgres' code for a unique violation, which on this table can only be the name. */
 const DUPLICATE = '23505'
@@ -27,8 +27,8 @@ const DUPLICATE = '23505'
  * code actually is: drizzle wraps the driver's error in one of its own — «Failed query:
  * insert into "sections"…» — and hangs the original off `cause`. Found by causing a real
  * duplicate and reading what came out, not by assuming: without the walk, typing a name
- * that already exists answered «salvataggio non riuscito», which tells somebody nothing
- * they can act on.
+ * that already exists answered «save failed», which tells somebody nothing they can
+ * act on.
  */
 function isDuplicate(error: unknown): boolean {
   let step: unknown = error
@@ -41,9 +41,9 @@ function isDuplicate(error: unknown): boolean {
   return false
 }
 
-/** A new section at the end of its canzoniere. */
+/** A new section at the end of its songbook. */
 export async function createSection(
-  canzoniereSlug: string,
+  songbookSlug: string,
   name: string,
 ): Promise<CreateSectionResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
@@ -56,9 +56,9 @@ export async function createSection(
   try {
     return await db().transaction(async (tx) => {
       const home = await tx
-        .select({ slug: canzonieri.slug })
-        .from(canzonieri)
-        .where(eq(canzonieri.slug, canzoniereSlug))
+        .select({ slug: songbooks.slug })
+        .from(songbooks)
+        .where(eq(songbooks.slug, songbookSlug))
         .limit(1)
 
       if (home.length === 0) return { ok: false, reason: 'not-found' } as CreateSectionResult
@@ -66,12 +66,12 @@ export async function createSection(
       const last = await tx
         .select({ position: max(sections.position) })
         .from(sections)
-        .where(eq(sections.canzoniereSlug, canzoniereSlug))
+        .where(eq(sections.songbookSlug, songbookSlug))
 
       const created = await tx
         .insert(sections)
         .values({
-          canzoniereSlug,
+          songbookSlug,
           name: trimmed,
           position: (last[0]?.position ?? 0) + 1,
         })
@@ -87,7 +87,7 @@ export async function createSection(
 }
 
 /**
- * Renames a section. Free, like renaming a canzoniere, and for a stronger reason:
+ * Renames a section. Free, like renaming a songbook, and for a stronger reason:
  * a section is keyed by a number, so its name is not an address at all.
  */
 export async function renameSection(id: number, name: string): Promise<WriteResult> {
@@ -116,13 +116,13 @@ export async function renameSection(id: number, name: string): Promise<WriteResu
 /**
  * Removes a section, moving its songs first when a destination is given.
  *
- * The same shape as removing a canzoniere, and the same reason: nothing here destroys
+ * The same shape as removing a songbook, and the same reason: nothing here destroys
  * anything quietly. A section holding songs with no destination named answers
  * `not-empty` so the screen can ask where they should go; the database would refuse it
  * regardless, since the composite key is `on delete restrict`.
  *
- * The destination has to be a section of the same canzoniere. Elsewhere would be a move
- * between canzonieri disguised as a tidy-up — that is `moveSong`, one song at a time,
+ * The destination has to be a section of the same songbook. Elsewhere would be a move
+ * between songbooks disguised as a tidy-up — that is `moveSong`, one song at a time,
  * where the person can see what they are doing.
  */
 export async function removeSection(id: number, moveTo: number | null): Promise<WriteResult> {
@@ -134,7 +134,7 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
   try {
     return await db().transaction(async (tx) => {
       const mine = await tx
-        .select({ canzoniereSlug: sections.canzoniereSlug })
+        .select({ songbookSlug: sections.songbookSlug })
         .from(sections)
         .where(eq(sections.id, id))
         .limit(1)
@@ -150,7 +150,7 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
           .select({ id: sections.id })
           .from(sections)
           .where(
-            and(eq(sections.id, moveTo), eq(sections.canzoniereSlug, mine[0].canzoniereSlug)),
+            and(eq(sections.id, moveTo), eq(sections.songbookSlug, mine[0].songbookSlug)),
           )
           .limit(1)
 
@@ -158,8 +158,8 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
 
         /*
          * Unplaced where they land, so they queue at the end of the destination. No
-         * timestamp: they stay in the same canzoniere, so no page they were on stops
-         * listing them — see the rule in `removeCanzoniere`.
+         * timestamp: they stay in the same songbook, so no page they were on stops
+         * listing them — see the rule in `removeSongbook`.
          */
         await tx
           .update(songs)
@@ -173,7 +173,7 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
       const rest = await tx
         .select({ id: sections.id })
         .from(sections)
-        .where(eq(sections.canzoniereSlug, mine[0].canzoniereSlug))
+        .where(eq(sections.songbookSlug, mine[0].songbookSlug))
         .orderBy(asc(sections.position))
 
       for (const [index, section] of rest.entries()) {
@@ -192,33 +192,33 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
 }
 
 /**
- * Writes a whole canzoniere's layout: the order of its sections, the order of the songs
+ * Writes a whole songbook's layout: the order of its sections, the order of the songs
  * inside each, and which section each song is in.
  *
  * All of it at once, and that is the design rather than convenience. A song dragged
  * across a section heading changes three things together — where it came from, where it
  * went, and which section it belongs to — and writing those with two calls would leave a
- * moment where the song is in neither place. A canzoniere is twenty-odd songs, so sending
+ * moment where the song is in neither place. A songbook is twenty-odd songs, so sending
  * the whole arrangement costs nothing, and in exchange:
  *
  * - **one transaction and one renumbering.** Sections 1..N, songs 1..N inside each, so
  *   gaps and ties stay impossible by construction rather than by care;
  * - **one staleness check, over both sets.** It refuses unless the sections and the songs
- *   named are exactly the ones the canzoniere holds. That is not defensiveness about a
+ *   named are exactly the ones the songbook holds. That is not defensiveness about a
  *   bad caller: it is the case where somebody imported a song, or removed a section,
  *   while these rows were open. Numbering what the browser remembers would file the
  *   newcomer nowhere;
  * - **no timestamps.** Arranging changes no song, it changes the shape of the set. The
- *   songs stay in the same canzoniere, so nothing they used to be listed on stops listing
+ *   songs stay in the same songbook, so nothing they used to be listed on stops listing
  *   them; what the new arrangement does need is a rebuild, for the arrows inside each
- *   song, and that is what «Ricostruisci ora» is for.
+ *   song, and that is what «Rebuild now» is for.
  *
- * An empty canzoniere is not a missing one: emptied of songs, or of sections, it answers
- * `stale` like every other "these are no longer its parts" case, because «questo
- * canzoniere non esiste più» would send somebody looking for what is in front of them.
+ * An empty songbook is not a missing one: emptied of songs, or of sections, it answers
+ * `stale` like every other "these are no longer its parts" case, because «this
+ * songbook no longer exists» would send somebody looking for what is in front of them.
  */
-export async function arrangeCanzoniere(
-  canzoniereSlug: string,
+export async function arrangeSongbook(
+  songbookSlug: string,
   groups: ArrangedSection[],
 ): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
@@ -230,12 +230,12 @@ export async function arrangeCanzoniere(
       const held = await tx
         .select({ id: sections.id })
         .from(sections)
-        .where(eq(sections.canzoniereSlug, canzoniereSlug))
+        .where(eq(sections.songbookSlug, songbookSlug))
 
       const heldSongs = await tx
         .select({ slug: songs.slug })
         .from(songs)
-        .where(eq(songs.canzoniereSlug, canzoniereSlug))
+        .where(eq(songs.songbookSlug, songbookSlug))
 
       const bothMatch =
         sameMembers(
@@ -266,7 +266,7 @@ export async function arrangeCanzoniere(
       return { ok: true } as WriteResult
     })
   } catch (error) {
-    console.error('arrangeCanzoniere failed', error)
+    console.error('arrangeSongbook failed', error)
     return { ok: false, reason: 'failed' }
   }
 }

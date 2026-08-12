@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { useSongbooks } from '@/components/SongbookProvider'
 import { RoleNotice } from '@/components/RoleNotice'
 import { useRole } from '@/components/RoleProvider'
 import {
@@ -12,18 +12,18 @@ import {
   IconPlus,
   IconTrash,
 } from '@/components/icons'
-import { WRITE_MESSAGE, type WriteResult, countBySlug } from '@/lib/canzonieri/types'
+import { WRITE_MESSAGE, type WriteResult, countBySlug } from '@/lib/songbooks/types'
 
 /**
- * Create, rename and remove canzonieri.
+ * Create, rename and remove songbooks.
  *
- * Removal never destroys anything: a canzoniere holding songs asks where to move
+ * Removal never destroys anything: a songbook holding songs asks where to move
  * them first. The database enforces the same rule with `on delete restrict`, so
  * this UI is the explanation, not the guarantee.
  */
-export function CanzoniereManager() {
-  const state = useCanzonieri()
-  const { canzonieri, online } = state
+export function SongbookManager() {
+  const state = useSongbooks()
+  const { songbooks, online } = state
   const { known, mayEdit } = useRole()
   const counts = countBySlug(state)
 
@@ -51,19 +51,19 @@ export function CanzoniereManager() {
     }
   }
 
-  const others = (slug: string) => canzonieri.filter((entry) => entry.slug !== slug)
+  const others = (slug: string) => songbooks.filter((entry) => entry.slug !== slug)
 
-  // Reading a canzoniere is what the home is for; this screen only changes them.
+  // Reading a songbook is what the home is for; this screen only changes them.
   if (!known) return null
-  if (!mayEdit) return <RoleNotice needed="Editor" what="creare, rinominare o rimuovere canzonieri" />
+  if (!mayEdit) return <RoleNotice needed="Editor" what="create, rename or remove songbooks" />
 
   return (
     <div>
       {!online && (
         <p className="notice notice-accent mb-4">
           <IconOffline />
-          Senza connessione i canzonieri si possono solo consultare. Sono una struttura
-          condivisa, quindi le modifiche richiedono la rete.
+          Without a connection, songbooks can only be viewed. They&apos;re a shared structure,
+          so changes require a connection.
         </p>
       )}
 
@@ -74,18 +74,18 @@ export function CanzoniereManager() {
       )}
 
       {/*
-        * A card each. A canzoniere is a container, not a line in an index — and the
+        * A card each. A songbook is a container, not a line in an index — and the
         * step that asks where its songs should go opens inside its own card, under
         * the row it belongs to, rather than in a list where it could belong to any.
         */}
       <ul className="card-stack">
-        {canzonieri.map((canzoniere) => {
-          const count = counts[canzoniere.slug] ?? 0
-          const isRenaming = renaming === canzoniere.slug
-          const isRemoving = removing === canzoniere.slug
+        {songbooks.map((songbook) => {
+          const count = counts[songbook.slug] ?? 0
+          const isRenaming = renaming === songbook.slug
+          const isRemoving = removing === songbook.slug
 
           return (
-            <li key={canzoniere.slug} className="card p-[0.875rem] sm:px-4">
+            <li key={songbook.slug} className="card p-[0.875rem] sm:px-4">
               <div className="flex items-center gap-2.5">
                 {isRenaming ? (
                   <>
@@ -96,7 +96,7 @@ export function CanzoniereManager() {
                       onKeyDown={(event) => {
                         if (event.key === 'Escape') setRenaming(null)
                       }}
-                      aria-label={`Nuovo nome per ${canzoniere.name}`}
+                      aria-label={`New name for ${songbook.name}`}
                       className="form-field flex-1"
                     />
                     <button
@@ -104,27 +104,27 @@ export function CanzoniereManager() {
                       className="btn btn-primary btn-sm"
                       disabled={busy || draft.trim() === ''}
                       onClick={async () => {
-                        if (await run(() => state.rename(canzoniere.slug, draft))) {
+                        if (await run(() => state.rename(songbook.slug, draft))) {
                           setRenaming(null)
                         }
                       }}
                     >
-                      Salva
+                      Save
                     </button>
                     <button
                       type="button"
                       className="btn btn-quiet btn-sm"
                       onClick={() => setRenaming(null)}
                     >
-                      Annulla
+                      Cancel
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{canzoniere.name}</span>
+                      <span className="block truncate font-medium">{songbook.name}</span>
                       <span className="meta-chip mt-1.5">
-                        {count} {count === 1 ? 'brano' : 'brani'}
+                        {count} {count === 1 ? 'song' : 'songs'}
                       </span>
                     </span>
                     <button
@@ -132,12 +132,12 @@ export function CanzoniereManager() {
                       className="icon-button"
                       disabled={!online || busy}
                       onClick={() => {
-                        setRenaming(canzoniere.slug)
-                        setDraft(canzoniere.name)
+                        setRenaming(songbook.slug)
+                        setDraft(songbook.name)
                         setRemoving(null)
                         setError(null)
                       }}
-                      aria-label={`Rinomina ${canzoniere.name}`}
+                      aria-label={`Rename ${songbook.name}`}
                     >
                       <IconPencil size={17} />
                     </button>
@@ -150,12 +150,12 @@ export function CanzoniereManager() {
                       className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
                       disabled={!online || busy}
                       onClick={() => {
-                        setRemoving(isRemoving ? null : canzoniere.slug)
-                        setDestination(others(canzoniere.slug)[0]?.slug ?? '')
+                        setRemoving(isRemoving ? null : songbook.slug)
+                        setDestination(others(songbook.slug)[0]?.slug ?? '')
                         setRenaming(null)
                         setError(null)
                       }}
-                      aria-label={`Rimuovi ${canzoniere.name}`}
+                      aria-label={`Remove ${songbook.name}`}
                       aria-expanded={isRemoving}
                     >
                       <IconTrash size={17} />
@@ -168,45 +168,45 @@ export function CanzoniereManager() {
                 <div className="panel mt-3.5 p-3.5 text-sm">
                   {count === 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex-1">Rimuovere «{canzoniere.name}»? È vuoto.</span>
+                      <span className="flex-1">Remove &quot;{songbook.name}&quot;? It&apos;s empty.</span>
                       <button
                         type="button"
                         className="btn btn-danger btn-sm"
                         disabled={busy}
                         onClick={async () => {
-                          if (await run(() => state.remove(canzoniere.slug, null))) {
+                          if (await run(() => state.remove(songbook.slug, null))) {
                             setRemoving(null)
                           }
                         }}
                       >
-                        Rimuovi
+                        Remove
                       </button>
                       <button
                         type="button"
                         className="btn btn-quiet btn-sm"
                         onClick={() => setRemoving(null)}
                       >
-                        Annulla
+                        Cancel
                       </button>
                     </div>
-                  ) : others(canzoniere.slug).length === 0 ? (
+                  ) : others(songbook.slug).length === 0 ? (
                     <span>
-                      Contiene {count} {count === 1 ? 'brano' : 'brani'} e non c&apos;è un altro
-                      canzoniere dove spostarli. Creane uno prima di rimuovere questo.
+                      Contains {count} {count === 1 ? 'song' : 'songs'} and there&apos;s no other
+                      songbook to move them to. Create one before removing this one.
                     </span>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="flex-1">
-                        Contiene {count} {count === 1 ? 'brano' : 'brani'}. Spostali in:
+                        Contains {count} {count === 1 ? 'song' : 'songs'}. Move them to:
                       </span>
                       <label className="picker picker-raised">
-                        <span className="sr-only">Canzoniere di destinazione</span>
+                        <span className="sr-only">Destination songbook</span>
                         <select
                           value={destination}
                           onChange={(event) => setDestination(event.target.value)}
                           className="picker-select"
                         >
-                          {others(canzoniere.slug).map((entry) => (
+                          {others(songbook.slug).map((entry) => (
                             <option key={entry.slug} value={entry.slug}>
                               {entry.name}
                             </option>
@@ -219,19 +219,19 @@ export function CanzoniereManager() {
                         className="btn btn-danger btn-sm"
                         disabled={busy || destination === ''}
                         onClick={async () => {
-                          if (await run(() => state.remove(canzoniere.slug, destination))) {
+                          if (await run(() => state.remove(songbook.slug, destination))) {
                             setRemoving(null)
                           }
                         }}
                       >
-                        Sposta e rimuovi
+                        Move and remove
                       </button>
                       <button
                         type="button"
                         className="btn btn-quiet btn-sm"
                         onClick={() => setRemoving(null)}
                       >
-                        Annulla
+                        Cancel
                       </button>
                     </div>
                   )}
@@ -250,11 +250,11 @@ export function CanzoniereManager() {
         }}
       >
         <label className="flex-1">
-          <span className="sr-only">Nome del nuovo canzoniere</span>
+          <span className="sr-only">New songbook name</span>
           <input
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
-            placeholder="Nuovo canzoniere"
+            placeholder="New songbook"
             className="form-field min-h-12 rounded-pill px-[1.125rem]"
           />
         </label>
@@ -264,7 +264,7 @@ export function CanzoniereManager() {
           disabled={!online || busy || newName.trim() === ''}
         >
           <IconPlus size={16} />
-          Crea
+          Create
         </button>
       </form>
     </div>

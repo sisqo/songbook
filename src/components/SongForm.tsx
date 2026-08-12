@@ -6,7 +6,7 @@ import { SongFields, type SongFieldValues } from '@/components/SongFields'
 import { SongSheet } from '@/components/SongSheet'
 import { IconTrash } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
-import type { Canzoniere, Section } from '@/lib/data/types'
+import type { Songbook, Section } from '@/lib/data/types'
 import { SAVE_MESSAGE, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
 
 export interface FormValues extends SongFieldValues {
@@ -22,18 +22,18 @@ export interface FormValues extends SongFieldValues {
  */
 export function SongForm({
   initial,
-  canzonieri,
+  songbooks,
   sections,
-  showCanzoniere = true,
+  showSongbook = true,
   slug,
   onSave,
   onDelete,
 }: {
   initial: FormValues
-  canzonieri: Canzoniere[]
+  songbooks: Songbook[]
   sections: Section[]
-  /** False when the screen around this form already asked which canzoniere. */
-  showCanzoniere?: boolean
+  /** False when the screen around this form already asked which songbook. */
+  showSongbook?: boolean
   /** Set when editing an existing song. */
   slug?: string
   onSave: (input: SongInput, decision?: Decision) => Promise<SaveResult>
@@ -57,8 +57,8 @@ export function SongForm({
     title: values.title,
     artist: values.artist,
     tags: values.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
-    canzoniereSlug: values.canzoniereSlug,
-    // An empty menu — a canzoniere with no sections at all — leaves the answer to the
+    songbookSlug: values.songbookSlug,
+    // An empty menu — a songbook with no sections at all — leaves the answer to the
     // server, which files the song in the first one it can and creates it if it must.
     sectionId: values.sectionId === '' ? null : Number(values.sectionId),
     body: values.body,
@@ -95,15 +95,15 @@ export function SongForm({
 
       <SongFields
         values={values}
-        canzonieri={canzonieri}
+        songbooks={songbooks}
         sections={sections}
-        showCanzoniere={showCanzoniere}
+        showSongbook={showSongbook}
         onChange={set}
       />
 
       <div className="mt-5 grid gap-3 lg:grid-cols-2">
         <label className="block">
-          <span className="field-label">Corpo ChordPro</span>
+          <span className="field-label">ChordPro body</span>
           <textarea
             value={values.body}
             onChange={(event) => set('body', event.target.value)}
@@ -114,7 +114,7 @@ export function SongForm({
         </label>
 
         <div>
-          <span className="field-label">Come apparirà</span>
+          <span className="field-label">Preview</span>
           <div className="card max-h-[26rem] overflow-auto p-3">
             <SongSheet song={parsed} />
           </div>
@@ -124,8 +124,8 @@ export function SongForm({
       {duplicate !== null && (
         <div className="notice-accent mt-4 rounded-[var(--r-lg)] p-4 text-sm" role="alert">
           <p>
-            Esiste già «{duplicate.title}»
-            {duplicate.artist !== null && ` di ${duplicate.artist}`}.
+            &quot;{duplicate.title}&quot; already exists
+            {duplicate.artist !== null && ` by ${duplicate.artist}`}.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -134,7 +134,7 @@ export function SongForm({
               disabled={busy}
               onClick={() => void save('replace')}
             >
-              Sostituisci
+              Replace
             </button>
             <button
               type="button"
@@ -142,15 +142,15 @@ export function SongForm({
               disabled={busy}
               onClick={() => void save('add')}
             >
-              Aggiungi comunque
+              Add anyway
             </button>
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => setDuplicate(null)}>
-              Annulla
+              Cancel
             </button>
           </div>
           <p className="mt-3 text-xs">
-            Sostituire conserva lo slug, quindi la trasposizione e la velocità che avevi salvato
-            per quel brano restano.
+            Replacing keeps the slug, so the transposition and speed you&apos;d saved for that
+            song stay.
           </p>
         </div>
       )}
@@ -162,7 +162,7 @@ export function SongForm({
           disabled={busy || values.title.trim() === '' || values.body.trim() === ''}
           onClick={() => void save()}
         >
-          {slug === undefined ? 'Salva il brano' : 'Salva le modifiche'}
+          {slug === undefined ? 'Save song' : 'Save changes'}
         </button>
 
         {onDelete !== undefined && (
@@ -170,7 +170,7 @@ export function SongForm({
             <span className="flex-1" />
             {confirmDelete ? (
               <>
-                <span className="text-sm text-muted">Eliminare questo brano?</span>
+                <span className="text-sm text-muted">Delete this song?</span>
                 <button
                   type="button"
                   className="btn btn-danger"
@@ -181,16 +181,16 @@ export function SongForm({
                     setBusy(false)
                   }}
                 >
-                  Elimina
+                  Delete
                 </button>
                 <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(false)}>
-                  Annulla
+                  Cancel
                 </button>
               </>
             ) : (
               <button type="button" className="btn btn-quiet" onClick={() => setConfirmDelete(true)}>
                 <IconTrash size={16} />
-                Elimina
+                Delete
               </button>
             )}
           </>

@@ -4,7 +4,7 @@ import { MemberManager } from '@/components/MemberManager'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 
-export const metadata: Metadata = { title: 'Utenti' }
+export const metadata: Metadata = { title: 'Users' }
 
 /**
  * Who may enter.
@@ -14,18 +14,18 @@ export const metadata: Metadata = { title: 'Utenti' }
  * where being offline has to be admitted rather than papered over — a cached list of
  * who has access could say yes about someone who no longer does.
  */
-export default function UtentiPage() {
+export default function UsersPage() {
   return (
     // The menu in the header holds a reader preference, so it needs this here too.
     <PrefsProvider songSlug={null}>
-      <TopBar current="utenti" />
+      <TopBar current="users" />
 
       <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
         <header className="mb-[1.125rem]">
-          <h1 className="screen-title">Utenti</h1>
+          <h1 className="screen-title">Users</h1>
           <p className="mt-2 text-sm leading-[1.45] text-muted">
-            Il repertorio è materiale protetto, quindi entrare è un elenco: un account Google
-            valido, da solo, non apre niente.
+            The repertoire is protected material, so entry is a list: a valid Google account,
+            on its own, doesn&apos;t open anything.
           </p>
         </header>
 

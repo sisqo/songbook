@@ -6,7 +6,7 @@ import type { SongIndexRow } from '@/lib/search-index'
  * One song, as a row that opens it.
  *
  * Shared by the two lists that show songs — the search results on the home page and a
- * canzoniere's own page — so a song looks the same wherever it is found. `under` is
+ * songbook's own page — so a song looks the same wherever it is found. `under` is
  * what the search adds: found from anywhere, a row has to say where it lives.
  */
 export function SongRow({
@@ -14,13 +14,13 @@ export function SongRow({
   under,
 }: {
   song: SongIndexRow
-  /** A second line under the title, used by search results to say which canzoniere. */
+  /** A second line under the title, used by search results to say which songbook. */
   under?: string | null
 }) {
   const where = under ?? null
 
   return (
-    <Link href={`/canzoni/${song.slug}`} className="row">
+    <Link href={`/songs/${song.slug}`} className="row">
       <span className="min-w-0 flex-1">
         <span className="block truncate">{song.title}</span>
         {(song.artist !== null || where !== null) && (

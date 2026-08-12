@@ -17,7 +17,7 @@ export function UnsavedGuard({ when }: { when: boolean }) {
   useEffect(() => {
     if (!when) return
 
-    const ask = () => window.confirm('Ci sono modifiche non salvate. Uscire comunque?')
+    const ask = () => window.confirm('There are unsaved changes. Leave anyway?')
 
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey) return

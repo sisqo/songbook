@@ -14,58 +14,58 @@ import {
 import { useOnline } from '@/lib/useOnline'
 
 import {
-  createCanzoniere,
-  loadCanzonieri,
+  createSongbook,
+  loadSongbooks,
   moveSong,
-  removeCanzoniere,
-  renameCanzoniere,
-} from '@/lib/canzonieri/actions'
-import { readCanzoniereCache, writeCanzoniereCache } from '@/lib/canzonieri/store'
+  removeSongbook,
+  renameSongbook,
+} from '@/lib/songbooks/actions'
+import { readSongbookCache, writeSongbookCache } from '@/lib/songbooks/store'
 import {
-  type CanzoniereState,
+  type SongbookState,
   type CreateResult,
   type CreateSectionResult,
   type WriteResult,
-  canzoniereOf,
+  songbookOf,
   sectionsOf,
-} from '@/lib/canzonieri/types'
-import type { ArrangedSection } from '@/lib/canzonieri/order'
+} from '@/lib/songbooks/types'
+import type { ArrangedSection } from '@/lib/songbooks/order'
 import type { Section } from '@/lib/data/types'
 import {
-  arrangeCanzoniere,
+  arrangeSongbook,
   createSection,
   removeSection,
   renameSection,
 } from '@/lib/sections/actions'
 
-interface CanzoniereContextValue extends CanzoniereState {
+interface SongbookContextValue extends SongbookState {
   /** False while the browser reports no connection: management is disabled. */
   online: boolean
-  /** Re-reads the layer. Exposed because saving a song can change its canzoniere. */
+  /** Re-reads the layer. Exposed because saving a song can change its songbook. */
   refresh: () => Promise<void>
 
   create: (name: string) => Promise<CreateResult>
   rename: (slug: string, name: string) => Promise<WriteResult>
   remove: (slug: string, moveTo: string | null) => Promise<WriteResult>
-  /** Sends a song to a section, of this canzoniere or of another. */
+  /** Sends a song to a section, of this songbook or of another. */
   move: (songSlug: string, sectionId: number) => Promise<WriteResult>
 
-  addSection: (canzoniereSlug: string, name: string) => Promise<CreateSectionResult>
+  addSection: (songbookSlug: string, name: string) => Promise<CreateSectionResult>
   renameSection: (id: number, name: string) => Promise<WriteResult>
   removeSection: (id: number, moveTo: number | null) => Promise<WriteResult>
-  arrange: (canzoniereSlug: string, groups: ArrangedSection[]) => Promise<WriteResult>
+  arrange: (songbookSlug: string, groups: ArrangedSection[]) => Promise<WriteResult>
 
   nameOf: (slug: string | null | undefined) => string | null
-  /** The sections of one canzoniere, in the order it is played through. */
-  divisionsOf: (canzoniereSlug: string) => Section[]
-  /** Which canzoniere a song is in, by way of its section. */
+  /** The sections of one songbook, in the order it is played through. */
+  divisionsOf: (songbookSlug: string) => Section[]
+  /** Which songbook a song is in, by way of its section. */
   homeOf: (songSlug: string) => string | null
 }
 
-const CanzoniereContext = createContext<CanzoniereContextValue | null>(null)
+const SongbookContext = createContext<SongbookContextValue | null>(null)
 
 /**
- * Holds the mutable canzoniere layer.
+ * Holds the mutable songbook layer.
  *
  * Three sources, applied in this order: the snapshot baked into the static page,
  * then the local cache (which can be newer than the last build), then the
@@ -73,20 +73,20 @@ const CanzoniereContext = createContext<CanzoniereContextValue | null>(null)
  * out of render — that would differ from the server markup and trip hydration —
  * while still landing before the browser paints.
  */
-export function CanzoniereProvider({
+export function SongbookProvider({
   initial,
   refreshOnMount = true,
   children,
 }: {
   /** Snapshot from build time, so the first paint is already right. */
-  initial: CanzoniereState
+  initial: SongbookState
   /**
    * False on the reading pages, where the round trip is spent on the song itself.
    *
    * A song page asks the server for its own content, because words and chords that
    * disagree with the database are the bug this layer exists to prevent. Which
-   * canzoniere the song sits in is a different matter: the header would then name
-   * a canzoniere whose songs the arrows still step through as they were at build
+   * songbook the song sits in is a different matter: the header would then name
+   * a songbook whose songs the arrows still step through as they were at build
    * time, so one strip of the page would contradict the pages it links to.
    *
    * A write refreshes anyway — including a save that moves the song — because then
@@ -95,20 +95,20 @@ export function CanzoniereProvider({
   refreshOnMount?: boolean
   children: ReactNode
 }) {
-  const [state, setState] = useState<CanzoniereState>(initial)
+  const [state, setState] = useState<SongbookState>(initial)
   const online = useOnline()
 
   useLayoutEffect(() => {
-    const cached = readCanzoniereCache()
+    const cached = readSongbookCache()
     if (cached !== null) setState(cached)
   }, [])
 
   const refresh = useCallback(async () => {
     try {
-      const fresh = await loadCanzonieri()
+      const fresh = await loadSongbooks()
       if (fresh !== null) {
         setState(fresh)
-        writeCanzoniereCache(fresh)
+        writeSongbookCache(fresh)
       }
     } catch {
       // Offline or signed out: the cache and the baked snapshot still stand.
@@ -134,38 +134,38 @@ export function CanzoniereProvider({
     [refresh],
   )
 
-  const value = useMemo<CanzoniereContextValue>(
+  const value = useMemo<SongbookContextValue>(
     () => ({
       ...state,
       online,
       refresh,
-      create: async (name) => afterWrite(await createCanzoniere(name)),
-      rename: async (slug, name) => afterWrite(await renameCanzoniere(slug, name)),
-      remove: async (slug, moveTo) => afterWrite(await removeCanzoniere(slug, moveTo)),
+      create: async (name) => afterWrite(await createSongbook(name)),
+      rename: async (slug, name) => afterWrite(await renameSongbook(slug, name)),
+      remove: async (slug, moveTo) => afterWrite(await removeSongbook(slug, moveTo)),
       move: async (songSlug, sectionId) => afterWrite(await moveSong(songSlug, sectionId)),
 
-      addSection: async (canzoniereSlug, name) =>
-        afterWrite(await createSection(canzoniereSlug, name)),
+      addSection: async (songbookSlug, name) =>
+        afterWrite(await createSection(songbookSlug, name)),
       renameSection: async (id, name) => afterWrite(await renameSection(id, name)),
       removeSection: async (id, moveTo) => afterWrite(await removeSection(id, moveTo)),
-      arrange: async (canzoniereSlug, groups) =>
-        afterWrite(await arrangeCanzoniere(canzoniereSlug, groups)),
+      arrange: async (songbookSlug, groups) =>
+        afterWrite(await arrangeSongbook(songbookSlug, groups)),
 
       nameOf: (slug) =>
-        slug == null ? null : (state.canzonieri.find((entry) => entry.slug === slug)?.name ?? null),
-      divisionsOf: (canzoniereSlug) => sectionsOf(state, canzoniereSlug),
-      homeOf: (songSlug) => canzoniereOf(state, songSlug),
+        slug == null ? null : (state.songbooks.find((entry) => entry.slug === slug)?.name ?? null),
+      divisionsOf: (songbookSlug) => sectionsOf(state, songbookSlug),
+      homeOf: (songSlug) => songbookOf(state, songSlug),
     }),
     [state, online, refresh, afterWrite],
   )
 
-  return <CanzoniereContext.Provider value={value}>{children}</CanzoniereContext.Provider>
+  return <SongbookContext.Provider value={value}>{children}</SongbookContext.Provider>
 }
 
-export function useCanzonieri(): CanzoniereContextValue {
-  const context = useContext(CanzoniereContext)
+export function useSongbooks(): SongbookContextValue {
+  const context = useContext(SongbookContext)
   if (context === null) {
-    throw new Error('useCanzonieri must be used inside a CanzoniereProvider')
+    throw new Error('useSongbooks must be used inside a SongbookProvider')
   }
   return context
 }

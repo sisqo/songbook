@@ -6,8 +6,8 @@
 import { asc, eq } from 'drizzle-orm'
 
 import { db } from '../db/client'
-import { canzonieri, sections, songs } from '../db/schema'
-import type { Canzoniere, Section, Song, SongRepository } from './types'
+import { songbooks, sections, songs } from '../db/schema'
+import type { Songbook, Section, Song, SongRepository } from './types'
 
 /**
  * One row as the app's `Song`.
@@ -22,7 +22,7 @@ export function rowToSong(row: typeof songs.$inferSelect): Song {
     title: row.title,
     artist: row.artist,
     tags: row.tags,
-    canzoniereSlug: row.canzoniereSlug,
+    songbookSlug: row.songbookSlug,
     sectionId: row.sectionId,
     body: row.body,
     updatedAt: row.updatedAt.toISOString(),
@@ -31,7 +31,7 @@ export function rowToSong(row: typeof songs.$inferSelect): Song {
 
 export const dbRepository: SongRepository = {
   /**
-   * In the order the canzonieri are played through: section by section, and inside
+   * In the order the songbooks are played through: section by section, and inside
    * each section the order the songs were put in, then by title.
    *
    * `position` is null until someone arranges a section, and Postgres sorts nulls last
@@ -62,25 +62,25 @@ export const dbRepository: SongRepository = {
     return rows.length > 0 ? rowToSong(rows[0]) : null
   },
 
-  async listCanzonieri() {
+  async listSongbooks() {
     const rows = await db()
-      .select({ slug: canzonieri.slug, name: canzonieri.name })
-      .from(canzonieri)
-      .orderBy(asc(canzonieri.name))
+      .select({ slug: songbooks.slug, name: songbooks.name })
+      .from(songbooks)
+      .orderBy(asc(songbooks.name))
 
-    return rows satisfies Canzoniere[]
+    return rows satisfies Songbook[]
   },
 
   async listSections() {
     const rows = await db()
       .select({
         id: sections.id,
-        canzoniereSlug: sections.canzoniereSlug,
+        songbookSlug: sections.songbookSlug,
         name: sections.name,
         position: sections.position,
       })
       .from(sections)
-      .orderBy(asc(sections.canzoniereSlug), asc(sections.position))
+      .orderBy(asc(sections.songbookSlug), asc(sections.position))
 
     return rows satisfies Section[]
   },

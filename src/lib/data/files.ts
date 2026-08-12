@@ -6,7 +6,7 @@
  * all. It is not a fallback for a database that failed: the choice is made once,
  * in `data/index.ts`, by whether DATABASE_URL is set.
  *
- * Canzonieri and their sections are derived here from the `{canzoniere:}` and
+ * Songbooks and their sections are derived here from the `{canzoniere:}` and
  * `{sezione:}` directives, so the app looks the same before a database exists. Once one
  * does, the database owns both and these directives are only an initial value.
  */
@@ -17,10 +17,10 @@ import path from 'node:path'
 import { parseChordPro } from '../chordpro'
 import { slugify } from '../slug'
 import {
-  type Canzoniere,
   DEFAULT_SECTION,
   type Section,
   type Song,
+  type Songbook,
   type SongRepository,
   UNFILED,
 } from './types'
@@ -31,13 +31,13 @@ interface ParsedFile {
   /** Everything but the section, which cannot be known one file at a time. */
   song: Omit<Song, 'sectionId'>
   /** Names as written in the directives, needed to build the two lists. */
-  canzoniereName: string
-  sezioneName: string
+  songbookName: string
+  sectionName: string
 }
 
 function toSong(slug: string, body: string): ParsedFile {
   const parsed = parseChordPro(body)
-  const canzoniereName = parsed.canzoniere ?? UNFILED.name
+  const songbookName = parsed.songbookName ?? UNFILED.name
 
   return {
     song: {
@@ -46,14 +46,14 @@ function toSong(slug: string, body: string): ParsedFile {
       title: parsed.title ?? slug,
       artist: parsed.artist,
       tags: parsed.tags,
-      canzoniereSlug: slugify(canzoniereName) || UNFILED.slug,
+      songbookSlug: slugify(songbookName) || UNFILED.slug,
       body,
       // No versions to compare without a database, and nothing to compare them
       // against: with no database there is no runtime copy of a song either.
       updatedAt: null,
     },
-    canzoniereName,
-    sezioneName: parsed.sezione ?? DEFAULT_SECTION,
+    songbookName,
+    sectionName: parsed.sectionName ?? DEFAULT_SECTION,
   }
 }
 
@@ -75,13 +75,13 @@ async function readFiles(): Promise<ParsedFile[]> {
   )
 }
 
-const key = (canzoniereSlug: string, name: string) => `${canzoniereSlug}\n${name}`
+const key = (songbookSlug: string, name: string) => `${songbookSlug}\n${name}`
 
 /**
  * The whole library as the three lists the pages ask for, built together.
  *
  * Together because they cannot be built apart: a song's section is an id, and the ids
- * only exist once every file has been read and the sections of each canzoniere are
+ * only exist once every file has been read and the sections of each songbook are
  * known. Reading the directory three times to answer three questions was already what
  * this file did; what is new is that the answers have to agree.
  *
@@ -92,18 +92,18 @@ const key = (canzoniereSlug: string, name: string) => `${canzoniereSlug}\n${name
  */
 async function readLibrary(): Promise<{
   songs: Song[]
-  canzonieri: Canzoniere[]
+  songbooks: Songbook[]
   sections: Section[]
 }> {
   const files = await readFiles()
 
-  const byCanzoniere = new Map<string, Canzoniere>()
-  for (const { song, canzoniereName } of files) {
-    if (!byCanzoniere.has(song.canzoniereSlug)) {
-      byCanzoniere.set(song.canzoniereSlug, { slug: song.canzoniereSlug, name: canzoniereName })
+  const bySongbook = new Map<string, Songbook>()
+  for (const { song, songbookName } of files) {
+    if (!bySongbook.has(song.songbookSlug)) {
+      bySongbook.set(song.songbookSlug, { slug: song.songbookSlug, name: songbookName })
     }
   }
-  const canzonieri = [...byCanzoniere.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'))
+  const songbooks = [...bySongbook.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'))
 
   const sections: Section[] = []
   const idOf = new Map<string, number>()
@@ -115,29 +115,29 @@ async function readLibrary(): Promise<{
    * from the same list of files, and this is how that guarantee is expressed in the code
    * instead of in a comment.
    */
-  const ensure = (canzoniereSlug: string, name: string): number => {
-    const held = idOf.get(key(canzoniereSlug, name))
+  const ensure = (songbookSlug: string, name: string): number => {
+    const held = idOf.get(key(songbookSlug, name))
     if (held !== undefined) return held
 
     const id = sections.length + 1
-    sections.push({ id, canzoniereSlug, name, position: 0 })
-    idOf.set(key(canzoniereSlug, name), id)
+    sections.push({ id, songbookSlug, name, position: 0 })
+    idOf.set(key(songbookSlug, name), id)
     return id
   }
 
   const songs = files.map((entry) => ({
     ...entry.song,
-    sectionId: ensure(entry.song.canzoniereSlug, entry.sezioneName),
+    sectionId: ensure(entry.song.songbookSlug, entry.sectionName),
   }))
 
   /*
-   * Then the order: alphabetical within each canzoniere. That is the honest answer rather
+   * Then the order: alphabetical within each songbook. That is the honest answer rather
    * than a poor one — with no database there is nowhere an order could have been written,
    * so there is no order to respect.
    */
-  for (const canzoniere of canzonieri) {
+  for (const songbook of songbooks) {
     sections
-      .filter((section) => section.canzoniereSlug === canzoniere.slug)
+      .filter((section) => section.songbookSlug === songbook.slug)
       .sort((a, b) => a.name.localeCompare(b.name, 'it'))
       .forEach((section, index) => {
         section.position = index + 1
@@ -159,25 +159,23 @@ async function readLibrary(): Promise<{
   })
 
   /*
-   * Handed back in the same order the database hands them back — by canzoniere, then by
+   * Handed back in the same order the database hands them back — by songbook, then by
    * position — because the two implementations have to be interchangeable row by row.
    * `ensure` produced them in the order the files happened to be read, which is no order
    * at all.
    */
-  sections.sort(
-    (a, b) => a.canzoniereSlug.localeCompare(b.canzoniereSlug) || a.position - b.position,
-  )
+  sections.sort((a, b) => a.songbookSlug.localeCompare(b.songbookSlug) || a.position - b.position)
 
-  return { songs, canzonieri, sections }
+  return { songs, songbooks, sections }
 }
 
 export async function readSongFiles(): Promise<Song[]> {
   return (await readLibrary()).songs
 }
 
-/** The canzonieri named by the files, in alphabetical order. */
-export async function readCanzoniereFiles(): Promise<Canzoniere[]> {
-  return (await readLibrary()).canzonieri
+/** The songbooks named by the files, in alphabetical order. */
+export async function readSongbookFiles(): Promise<Songbook[]> {
+  return (await readLibrary()).songbooks
 }
 
 /** The sections named by the files, with the ids this module invented for them. */
@@ -193,6 +191,6 @@ export const fileRepository: SongRepository = {
     return songs.find((song) => song.slug === slug) ?? null
   },
 
-  listCanzonieri: readCanzoniereFiles,
+  listSongbooks: readSongbookFiles,
   listSections: readSectionFiles,
 }

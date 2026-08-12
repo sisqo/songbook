@@ -1,6 +1,6 @@
-import type { Canzoniere, Section, Song } from '@/lib/data/types'
+import type { Songbook, Section, Song } from '@/lib/data/types'
 
-import type { CanzoniereState } from './types'
+import type { SongbookState } from './types'
 
 /**
  * The mutable layer as the build saw it, for a page to hand its provider.
@@ -10,15 +10,15 @@ import type { CanzoniereState } from './types'
  * baked a half-state would teach the local cache that no song is filed anywhere, since
  * the provider caches whatever it is holding.
  *
- * Songs without a section are simply left out of the map: see `CanzoniereState`.
+ * Songs without a section are simply left out of the map: see `SongbookState`.
  */
 export function snapshot(
   songs: Song[],
-  canzonieri: Canzoniere[],
+  songbooks: Songbook[],
   sections: Section[],
-): CanzoniereState {
+): SongbookState {
   return {
-    canzonieri,
+    songbooks,
     sections,
     assignments: Object.fromEntries(
       songs

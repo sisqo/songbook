@@ -28,7 +28,7 @@ export interface SongIndexEntry extends SongIndexRow {
   haystack: string
 }
 
-/** The row on its own, for a list with nothing to search — a single canzoniere's. */
+/** The row on its own, for a list with nothing to search — a single songbook's. */
 export function toIndexRow(song: Song): SongIndexRow {
   return {
     slug: song.slug,

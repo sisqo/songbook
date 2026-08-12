@@ -130,21 +130,21 @@ describe('parseChordPro', () => {
   })
 
   it('reads the canzoniere directive', () => {
-    assert.equal(parseChordPro('{canzoniere: Repertorio}').canzoniere, 'Repertorio')
-    assert.equal(parseChordPro('{songbook: Repertorio}').canzoniere, 'Repertorio')
-    assert.equal(parseChordPro('{canzoniere: }').canzoniere, null)
-    assert.equal(parseChordPro('[C]niente').canzoniere, null)
+    assert.equal(parseChordPro('{canzoniere: Repertorio}').songbookName, 'Repertorio')
+    assert.equal(parseChordPro('{songbook: Repertorio}').songbookName, 'Repertorio')
+    assert.equal(parseChordPro('{canzoniere: }').songbookName, null)
+    assert.equal(parseChordPro('[C]niente').songbookName, null)
   })
 
-  it('keeps the canzoniere name verbatim, spaces and case included', () => {
+  it('keeps the songbook name verbatim, spaces and case included', () => {
     // The name is what the reader sees; slugging happens once, elsewhere.
-    assert.equal(parseChordPro('{canzoniere: Da imparare}').canzoniere, 'Da imparare')
+    assert.equal(parseChordPro('{canzoniere: Da imparare}').songbookName, 'Da imparare')
   })
 
   it('reads the sezione directive', () => {
-    assert.equal(parseChordPro('{sezione: Prima parte}').sezione, 'Prima parte')
-    assert.equal(parseChordPro('{sezione: }').sezione, null)
-    assert.equal(parseChordPro('[C]niente').sezione, null)
+    assert.equal(parseChordPro('{sezione: Prima parte}').sectionName, 'Prima parte')
+    assert.equal(parseChordPro('{sezione: }').sectionName, null)
+    assert.equal(parseChordPro('[C]niente').sectionName, null)
   })
 
   /**
@@ -152,9 +152,9 @@ describe('parseChordPro', () => {
    * filing would put the song in a section called «chorus», so the alias does not
    * exist — and an unknown directive is ignored rather than shown as lyrics.
    */
-  it('does not mistake {section} for a canzoniere section', () => {
+  it('does not mistake {section} for a songbook section', () => {
     const parsed = parseChordPro('{section: chorus}\n[C]parole')
-    assert.equal(parsed.sezione, null)
+    assert.equal(parsed.sectionName, null)
     assert.equal(plainLyrics(parsed), 'parole')
   })
 

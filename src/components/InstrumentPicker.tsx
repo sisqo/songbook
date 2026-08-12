@@ -4,7 +4,7 @@ import { usePrefs } from '@/components/PrefsProvider'
 import { INSTRUMENTS, INSTRUMENT_LABEL } from '@/lib/music/shapes'
 
 /**
- * Chitarra or ukulele.
+ * Guitar or ukulele.
  *
  * It changes the shapes, not the chords: a C is a C either way, so nothing on the
  * sheet moves — what changes is the diagram you get when you tap one, and the strings
@@ -20,9 +20,9 @@ export function InstrumentPicker() {
 
   return (
     <div className="px-1.5 pb-1 pt-2">
-      <span className="group-label mb-1.5">Strumento</span>
+      <span className="group-label mb-1.5">Instrument</span>
 
-      <span className="segment w-full" role="group" aria-label="Strumento per le forme degli accordi">
+      <span className="segment w-full" role="group" aria-label="Instrument for chord shapes">
         {INSTRUMENTS.map((entry) => (
           <button
             key={entry}

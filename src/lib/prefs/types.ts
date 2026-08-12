@@ -20,7 +20,7 @@ export interface SongPrefs {
   /**
    * Which fret the capo is on, 0 for none.
    *
-   * A decision about this song — "questo lo faccio col capotasto al 2" — so it sits
+   * A decision about this song — "I play this one with the capo at 2" — so it sits
    * here with the transposition rather than among the reader's global preferences: a
    * capo kept globally would silently change the chords of songs never opened.
    */
@@ -35,8 +35,8 @@ export const SCROLL_SPEEDS = [8, 13, 20, 28, 38, 50, 66, 86] as const
 
 export const DEFAULT_GLOBAL_PREFS: GlobalPrefs = {
   zoomStep: 2,
-  notation: 'it',
-  instrument: 'chitarra',
+  notation: 'int',
+  instrument: 'guitar',
 }
 
 /**
@@ -47,7 +47,7 @@ export const DEFAULT_GLOBAL_PREFS: GlobalPrefs = {
  * to show a reader no chord shapes at all.
  */
 export function readInstrument(value: unknown): Instrument {
-  return value === 'ukulele' ? 'ukulele' : 'chitarra'
+  return value === 'ukulele' ? 'ukulele' : 'guitar'
 }
 
 export const DEFAULT_SONG_PREFS: SongPrefs = { semitones: 0, scrollSpeed: 3, capo: 0 }

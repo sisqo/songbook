@@ -23,8 +23,8 @@ export default function PasswordPage() {
         <header className="mb-[1.125rem]">
           <h1 className="screen-title">Password</h1>
           <p className="mt-2 text-sm leading-[1.45] text-muted">
-            Serve per entrare senza passare da Google. Google resta comunque valido: sono due
-            modi di dimostrare lo stesso indirizzo, non due account.
+            Lets you sign in without going through Google. Google still works too: these are
+            two ways to prove the same address, not two accounts.
           </p>
         </header>
 

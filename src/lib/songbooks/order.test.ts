@@ -65,7 +65,7 @@ describe('whether two lists hold the same songs', () => {
 })
 
 describe('putting a saved order back into the whole list', () => {
-  /** Two canzonieri interleaved, which is what a list sorted some other way looks like. */
+  /** Two songbooks interleaved, which is what a list sorted some other way looks like. */
   const all = [
     { slug: 'a1' },
     { slug: 'b1' },
@@ -81,7 +81,7 @@ describe('putting a saved order back into the whole list', () => {
     )
   })
 
-  it('leaves the other canzoniere exactly where it was', () => {
+  it('leaves the other songbook exactly where it was', () => {
     const after = applyOrder(all, ['a3', 'a2', 'a1'])
     assert.equal(after[1].slug, 'b1')
     assert.equal(after[3].slug, 'b2')
@@ -94,9 +94,9 @@ describe('putting a saved order back into the whole list', () => {
   it('rearranges only the names it was given, in their own slots', () => {
     /*
      * A short list is not an error here: this function cannot know that `a2` belongs
-     * to the same canzoniere as `a1` and `a3`. Refusing a partial order is the
-     * server's job, where the canzoniere's real membership is known — see the `stale`
-     * check in `arrangeCanzoniere`.
+     * to the same songbook as `a1` and `a3`. Refusing a partial order is the
+     * server's job, where the songbook's real membership is known — see the `stale`
+     * check in `arrangeSongbook`.
      */
     assert.deepEqual(
       applyOrder(all, ['a3', 'a1']).map((item) => item.slug),
@@ -106,7 +106,7 @@ describe('putting a saved order back into the whole list', () => {
 })
 
 describe('where an imported song lands', () => {
-  it('carries on from the end of a canzoniere already in order', () => {
+  it('carries on from the end of a songbook already in order', () => {
     const existing = [
       { slug: 'a', position: 1 },
       { slug: 'b', position: 2 },
@@ -122,7 +122,7 @@ describe('where an imported song lands', () => {
     ])
   })
 
-  it('numbers a canzoniere nobody has arranged, in the order it is shown', () => {
+  it('numbers a songbook nobody has arranged, in the order it is shown', () => {
     /*
      * The alternative — leaving these null and numbering only the newcomer — would
      * put the new song *first*, because null sorts last. So the order on screen
@@ -142,7 +142,7 @@ describe('where an imported song lands', () => {
     ])
   })
 
-  it('repairs a canzoniere that is numbered but not 1..N', () => {
+  it('repairs a songbook that is numbered but not 1..N', () => {
     // Gaps and a stray null both mean the same thing: renumber, then append.
     assert.deepEqual(placeAfter([{ slug: 'a', position: 1 }, { slug: 'b', position: 5 }], ['x']), [
       { slug: 'a', position: 1 },
@@ -156,7 +156,7 @@ describe('where an imported song lands', () => {
     ])
   })
 
-  it('gives the first song of an empty canzoniere the first place', () => {
+  it('gives the first song of an empty songbook the first place', () => {
     assert.deepEqual(placeAfter([], ['only']), [{ slug: 'only', position: 1 }])
   })
 })

@@ -18,8 +18,8 @@ export const THEME_KEY = 'songs:theme'
 
 export const THEME_LABEL: Record<ThemeChoice, string> = {
   auto: 'Auto',
-  light: 'Chiaro',
-  dark: 'Scuro',
+  light: 'Light',
+  dark: 'Dark',
 }
 
 /**

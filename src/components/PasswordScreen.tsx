@@ -14,7 +14,7 @@ import { useOnline } from '@/lib/useOnline'
 /**
  * Your own way in, set by you.
  *
- * Here rather than only in `/utenti` because a password only an admin can change is a
+ * Here rather than only in `/users` because a password only an admin can change is a
  * password the admin knows. Every role has this screen — how you get in is your own
  * business, and a viewer needs it as much as an admin.
  *
@@ -69,15 +69,15 @@ export function PasswordScreen() {
     }
   }
 
-  if (!asked) return <p className="text-sm text-muted">Un momento…</p>
+  if (!asked) return <p className="text-sm text-muted">One moment…</p>
 
   if (account === null) {
     return (
       <p className="notice notice-accent">
         <IconOffline />
         {online
-          ? 'Non è stato possibile leggere il tuo account. Ricarica la pagina.'
-          : 'Serve la rete per cambiare la password.'}
+          ? "Couldn't read your account. Reload the page."
+          : 'You need a connection to change your password.'}
       </p>
     )
   }
@@ -97,10 +97,10 @@ export function PasswordScreen() {
       )}
 
       <p className="mb-4 text-sm leading-[1.45] text-muted">
-        Entri come <strong>{account.email}</strong>.{' '}
+        You sign in as <strong>{account.email}</strong>.{' '}
         {account.hasPassword
-          ? 'Puoi entrare con Google o con questa password.'
-          : 'Adesso entri con Google. Una password è un secondo modo, non un sostituto.'}
+          ? 'You can sign in with Google or with this password.'
+          : "Right now you sign in with Google. A password is a second way in, not a replacement."}
       </p>
 
       <form
@@ -109,7 +109,7 @@ export function PasswordScreen() {
           event.preventDefault()
           void run(
             () => setOwnPassword(current, next),
-            account.hasPassword ? 'Password cambiata.' : 'Password impostata.',
+            account.hasPassword ? 'Password changed.' : 'Password set.',
           )
         }}
       >
@@ -119,7 +119,7 @@ export function PasswordScreen() {
           */}
         {account.hasPassword && (
           <label className="block">
-            <span className="field-label">Password attuale</span>
+            <span className="field-label">Current password</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -133,7 +133,7 @@ export function PasswordScreen() {
 
         <label className="block">
           <span className="field-label">
-            Nuova password — almeno {MIN_PASSWORD} caratteri
+            New password — at least {MIN_PASSWORD} characters
           </span>
           <input
             type="password"
@@ -152,7 +152,7 @@ export function PasswordScreen() {
             className="btn btn-primary"
             disabled={!online || busy || next.length < MIN_PASSWORD}
           >
-            {account.hasPassword ? 'Cambia password' : 'Imposta password'}
+            {account.hasPassword ? 'Change password' : 'Set password'}
           </button>
 
           {account.hasPassword && !removing && (
@@ -162,7 +162,7 @@ export function PasswordScreen() {
               disabled={!online || busy}
               onClick={() => setRemoving(true)}
             >
-              Rimuovi la password
+              Remove password
             </button>
           )}
         </div>
@@ -171,8 +171,8 @@ export function PasswordScreen() {
       {removing && (
         <div className="panel mt-4 max-w-sm p-3.5 text-sm">
           <p>
-            Rimuovere la password? Da quel momento entri solo con Google, con questo stesso
-            indirizzo.
+            Remove the password? From then on you&apos;ll sign in only with Google, with this
+            same address.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
@@ -180,14 +180,14 @@ export function PasswordScreen() {
               className="btn btn-danger btn-sm"
               disabled={busy}
               onClick={async () => {
-                await run(() => removeOwnPassword(), 'Password rimossa.')
+                await run(() => removeOwnPassword(), 'Password removed.')
                 setRemoving(false)
               }}
             >
-              Rimuovi
+              Remove
             </button>
             <button type="button" className="btn btn-quiet btn-sm" onClick={() => setRemoving(false)}>
-              Annulla
+              Cancel
             </button>
           </div>
         </div>
@@ -196,7 +196,7 @@ export function PasswordScreen() {
       {!online && (
         <p className="notice notice-accent mt-4">
           <IconOffline />
-          Senza connessione la password non si può cambiare.
+          The password can&apos;t be changed without a connection.
         </p>
       )}
     </div>

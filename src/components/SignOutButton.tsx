@@ -12,7 +12,7 @@ export function SignOutButton() {
     >
       <button type="submit" className="menu-item w-full" role="menuitem">
         <IconExit size={17} />
-        Esci
+        Sign out
       </button>
     </form>
   )

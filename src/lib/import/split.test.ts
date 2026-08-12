@@ -110,8 +110,8 @@ describe('preparing what was pasted', () => {
     assert.deepEqual(songs.map((song) => song.format), ['chords-above', 'chords-above'])
   })
 
-  it('repeats what a song says about its canzoniere without acting on it', () => {
-    const songs = prepareSongs('{title: Uno}\n{canzoniere: Cartoni animati}\n[la]uno\n---\n{title: Due}\n[mi]due')
+  it('repeats what a song says about its songbook without acting on it', () => {
+    const songs = prepareSongs('{title: Uno}\n{songbook: Cartoni animati}\n[la]uno\n---\n{title: Due}\n[mi]due')
 
     assert.deepEqual(songs.map((song) => song.declares), ['Cartoni animati', null])
   })

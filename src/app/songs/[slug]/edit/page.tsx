@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { CanzoniereProvider } from '@/components/CanzoniereProvider'
+import { SongbookProvider } from '@/components/SongbookProvider'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { EditorScreen } from '@/components/editor/EditorScreen'
 import { IconInfo } from '@/components/icons'
 import { currentUser } from '@/lib/auth/session'
-import { snapshot } from '@/lib/canzonieri/snapshot'
+import { snapshot } from '@/lib/songbooks/snapshot'
 import { repository } from '@/lib/data'
 import { canEdit } from '@/lib/roles'
 
@@ -30,15 +30,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const song = await repository.getSong(slug)
 
-  return { title: song === null ? 'Modifica' : `Modifica · ${song.title}` }
+  return { title: song === null ? 'Edit' : `Edit · ${song.title}` }
 }
 
 export default async function EditSongPage({ params }: Props) {
   const { slug } = await params
 
-  const [song, canzonieri, sections, user] = await Promise.all([
+  const [song, songbooks, sections, user] = await Promise.all([
     repository.getSong(slug),
-    repository.listCanzonieri(),
+    repository.listSongbooks(),
     repository.listSections(),
     currentUser(),
   ])
@@ -56,14 +56,14 @@ export default async function EditSongPage({ params }: Props) {
   if (!canEdit(user?.role ?? null)) {
     return (
       <PrefsProvider songSlug={null}>
-        <TopBar current="canzoni" back={{ href: `/canzoni/${slug}`, label: 'Torna al brano' }} />
+        <TopBar current="songs" back={{ href: `/songs/${slug}`, label: 'Back to song' }} />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
-          <h1 className="screen-title mb-4">Modifica</h1>
+          <h1 className="screen-title mb-4">Edit</h1>
           <p className="notice notice-accent" role="status">
             <IconInfo />
             <span>
-              Serve il ruolo <strong>Editor</strong> per modificare un brano.
+              The <strong>Editor</strong> role is required to edit a song.
             </span>
           </p>
         </main>
@@ -75,19 +75,19 @@ export default async function EditSongPage({ params }: Props) {
    * This one song's own filing, and *every* section: the form's two menus offer the
    * whole library, since moving a song is one of the things they are for.
    */
-  const initial = snapshot([song], canzonieri, sections)
+  const initial = snapshot([song], songbooks, sections)
 
   return (
     // The preview renders a real sheet and the real control bar, both of which read
     // this song's zoom, notation and transposition from here.
     <PrefsProvider songSlug={song.slug}>
-      <CanzoniereProvider initial={initial} refreshOnMount={false}>
-        <TopBar current="canzoni" />
+      <SongbookProvider initial={initial} refreshOnMount={false}>
+        <TopBar current="songs" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12">
           <EditorScreen song={song} />
         </main>
-      </CanzoniereProvider>
+      </SongbookProvider>
     </PrefsProvider>
   )
 }

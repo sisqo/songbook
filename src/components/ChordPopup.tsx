@@ -45,11 +45,11 @@ export function ChordPopup({
   )
 
   return (
-    <div className="chord-overlay" role="dialog" aria-modal="true" aria-label="Forma dell'accordo">
+    <div className="chord-overlay" role="dialog" aria-modal="true" aria-label="Chord shape">
       <div className="chord-backdrop" onClick={onClose} aria-hidden />
 
       <div className="chord-card">
-        <button type="button" className="chord-close" onClick={onClose} aria-label="Chiudi">
+        <button type="button" className="chord-close" onClick={onClose} aria-label="Close">
           <IconClose size={18} />
         </button>
 
@@ -58,8 +58,8 @@ export function ChordPopup({
         {shape === null ? (
           <p className="mt-1 text-sm text-muted">
             {instrument === 'ukulele'
-              ? 'Nessuna forma per questo accordo su quattro corde.'
-              : 'Nessuna forma disponibile per questo accordo.'}
+              ? 'No shape for this chord on four strings.'
+              : 'No shape available for this chord.'}
           </p>
         ) : (
           <ChordDiagram shape={shape} capo={capo} />
@@ -69,14 +69,14 @@ export function ChordPopup({
 
         {shape?.simplified === true && (
           <p className="mt-2 text-xs text-faint">
-            Forma semplificata: contiene solo note dell&apos;accordo, ma non tutte quelle scritte.
+            Simplified shape: contains only notes of the chord, not all the ones written.
           </p>
         )}
 
         {chord.bassName !== null && (
           <p className="mt-2 text-xs text-faint">
-            Basso {notation === 'it' ? noteToItalian(chord.bassName) : chord.bassName}, da suonare
-            sotto questa forma.
+            Bass {notation === 'it' ? noteToItalian(chord.bassName) : chord.bassName}, to be
+            played beneath this shape.
           </p>
         )}
       </div>

@@ -37,7 +37,7 @@ describe('editing the words', () => {
   })
 
   it('edits the text of a comment', () => {
-    assert.equal(edit('{c: assolo}', (doc) => setLineText(doc, 0, 'assolo di chitarra')), '{c: assolo di chitarra}')
+    assert.equal(edit('{c: assolo}', (doc) => setLineText(doc, 0, 'assolo di guitar')), '{c: assolo di guitar}')
   })
 })
 

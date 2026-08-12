@@ -25,12 +25,12 @@
 import { type Chord, normalizeSuffix } from './chord'
 import { type PitchClass, mod12, spellPitchClass } from './notes'
 
-export type Instrument = 'chitarra' | 'ukulele'
+export type Instrument = 'guitar' | 'ukulele'
 
-export const INSTRUMENTS: Instrument[] = ['chitarra', 'ukulele']
+export const INSTRUMENTS: Instrument[] = ['guitar', 'ukulele']
 
 export const INSTRUMENT_LABEL: Record<Instrument, string> = {
-  chitarra: 'Chitarra',
+  guitar: 'Guitar',
   ukulele: 'Ukulele',
 }
 
@@ -42,7 +42,7 @@ export const INSTRUMENT_LABEL: Record<Instrument, string> = {
  * octaves never enter the arithmetic.
  */
 const TUNING: Record<Instrument, PitchClass[]> = {
-  chitarra: [4, 9, 2, 7, 11, 4],
+  guitar: [4, 9, 2, 7, 11, 4],
   ukulele: [7, 0, 4, 9],
 }
 
@@ -228,7 +228,7 @@ export function familyOf(rawSuffix: string): { family: string; simplified: boole
 }
 
 /** The notes a shape actually sounds, low to high, as pitch classes. */
-export function shapeNotes(frets: Fret[], instrument: Instrument = 'chitarra'): PitchClass[] {
+export function shapeNotes(frets: Fret[], instrument: Instrument = 'guitar'): PitchClass[] {
   const strings = TUNING[instrument]
   const notes: PitchClass[] = []
 
@@ -350,7 +350,7 @@ function ukuleleShape(root: PitchClass, family: string): Fret[] | null {
 export function candidates(
   root: PitchClass,
   family: string,
-  instrument: Instrument = 'chitarra',
+  instrument: Instrument = 'guitar',
 ): Fret[][] {
   if (instrument === 'ukulele') {
     const found = ukuleleShape(root, family)
@@ -384,14 +384,14 @@ function highestFret(frets: Fret[]): number {
  * sits lowest on the neck, which is what keeps a Bb from being drawn at the tenth fret
  * when the sixth will do. On a ukulele the search has already chosen.
  */
-export function shapeFor(chord: Chord, instrument: Instrument = 'chitarra'): ChordShape | null {
+export function shapeFor(chord: Chord, instrument: Instrument = 'guitar'): ChordShape | null {
   const resolved = familyOf(chord.suffix)
   if (resolved === null) return null
 
   const options = candidates(chord.root, resolved.family, instrument)
   if (options.length === 0) return null
 
-  const openShape = instrument === 'chitarra' ? OPEN[`${mod12(chord.root)}:${resolved.family}`] : undefined
+  const openShape = instrument === 'guitar' ? OPEN[`${mod12(chord.root)}:${resolved.family}`] : undefined
   const best =
     openShape !== undefined
       ? openShape

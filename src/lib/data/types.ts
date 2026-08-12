@@ -6,14 +6,14 @@
  * derived shape that could drift from the source.
  */
 
-export interface Canzoniere {
+export interface Songbook {
   /** Generated once from the initial name and then frozen. */
   slug: string
   name: string
 }
 
 /**
- * One division of a canzoniere. Every song is in exactly one.
+ * One division of a songbook. Every song is in exactly one.
  *
  * Keyed by a number rather than a slug, unlike everything else here: a section has no
  * page of its own, so nothing points at it by name and renaming stays free. Without a
@@ -22,9 +22,9 @@ export interface Canzoniere {
  */
 export interface Section {
   id: number
-  canzoniereSlug: string
+  songbookSlug: string
   name: string
-  /** 1..N within its canzoniere, in the order it is played through. */
+  /** 1..N within its songbook, in the order it is played through. */
   position: number
 }
 
@@ -34,16 +34,16 @@ export interface Song {
   artist: string | null
   tags: string[]
   /**
-   * The canzoniere at build time. A snapshot, not the truth: names and
+   * The songbook at build time. A snapshot, not the truth: names and
    * assignments can change at runtime, so the client refreshes this from the
    * mutable layer. Baking it in means the first paint is already right.
    */
-  canzoniereSlug: string
+  songbookSlug: string
   /**
-   * The section of that canzoniere, same snapshot and same caveat.
+   * The section of that songbook, same snapshot and same caveat.
    *
    * Never null: the column is `not null`, and with no database the section is derived
-   * from the file — a song whose file names none belongs to that canzoniere's «Brani».
+   * from the file — a song whose file names none belongs to that songbook's «Songs».
    * There is no «unfiled» state to represent on either side.
    */
   sectionId: number
@@ -64,20 +64,20 @@ export interface Song {
 export interface SongRepository {
   listSongs(): Promise<Song[]>
   getSong(slug: string): Promise<Song | null>
-  listCanzonieri(): Promise<Canzoniere[]>
+  listSongbooks(): Promise<Songbook[]>
   listSections(): Promise<Section[]>
 }
 
-/** The canzoniere a song lands in when its file does not say. */
-export const UNFILED = { slug: 'da-ordinare', name: 'Da ordinare' } as const
+/** The songbook a song lands in when its file does not say. */
+export const UNFILED = { slug: 'da-ordinare', name: 'Unfiled' } as const
 
 /**
- * The section a canzoniere is born with, and the one a song lands in when nothing says
+ * The section a songbook is born with, and the one a song lands in when nothing says
  * otherwise.
  *
  * One name in one place, because four things have to agree on it: the migration that
- * gave every existing canzoniere its first section, `createCanzoniere`, the import's
- * fallback, and the file repository. A canzoniere that has no section is a canzoniere
+ * gave every existing songbook its first section, `createSongbook`, the import's
+ * fallback, and the file repository. A songbook that has no section is a songbook
  * nothing can be filed into.
  */
-export const DEFAULT_SECTION = 'Brani'
+export const DEFAULT_SECTION = 'Songs'

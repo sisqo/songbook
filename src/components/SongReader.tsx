@@ -6,13 +6,13 @@ import { TopBar } from '@/components/TopBar'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
 
-/** The canzoniere this song is in: where the header's way back leads. */
+/** The songbook this song is in: where the header's way back leads. */
 interface Home {
   slug: string
   name: string
 }
 
-/** Where a song sits among the others of its canzoniere. */
+/** Where a song sits among the others of its songbook. */
 interface Series {
   position: number
   total: number
@@ -21,19 +21,19 @@ interface Series {
 }
 
 /**
- * The canzoniere, the section, and the song's place in the sequence. Three answers, not
+ * The songbook, the section, and the song's place in the sequence. Three answers, not
  * one.
  *
  * The first two used to be computed together and returned as a single null-or-not, which
- * was a bug waiting for its first victim: a canzoniere holding one song has no sequence to
+ * was a bug waiting for its first victim: a songbook holding one song has no sequence to
  * step through, and returning null for both would have taken away the way back as well.
- * The sequence needs two songs; the way back needs only a canzoniere; the section needs
+ * The sequence needs two songs; the way back needs only a songbook; the section needs
  * only the song.
  *
- * **The arrows do not stop at a section.** The siblings are the whole canzoniere in the
+ * **The arrows do not stop at a section.** The siblings are the whole songbook in the
  * order `listSongs` reads it — section by section, and inside each the order somebody put
  * them in — so the last song of one section is followed by the first of the next. A
- * canzoniere stays one sequence and the sections are its structure: stopping at a boundary
+ * songbook stays one sequence and the sections are its structure: stopping at a boundary
  * would mean going back and reopening a section in the middle of an evening.
  *
  * All three are built from build-time data, unlike the song's own words, which are
@@ -48,17 +48,17 @@ interface Series {
 async function placeOf(
   song: Song,
 ): Promise<{ home: Home | null; section: string | null; series: Series | null }> {
-  const [songs, canzonieri, sections] = await Promise.all([
+  const [songs, songbooks, sections] = await Promise.all([
     repository.listSongs(),
-    repository.listCanzonieri(),
+    repository.listSongbooks(),
     repository.listSections(),
   ])
 
-  const found = canzonieri.find((entry) => entry.slug === song.canzoniereSlug)
+  const found = songbooks.find((entry) => entry.slug === song.songbookSlug)
   const home = found === undefined ? null : { slug: found.slug, name: found.name }
   const section = sections.find((entry) => entry.id === song.sectionId)?.name ?? null
 
-  const siblings = songs.filter((entry) => entry.canzoniereSlug === song.canzoniereSlug)
+  const siblings = songs.filter((entry) => entry.songbookSlug === song.songbookSlug)
   const index = siblings.findIndex((entry) => entry.slug === song.slug)
   if (index === -1 || siblings.length < 2) return { home, section, series: null }
 
@@ -100,30 +100,30 @@ export async function SongReader({ song }: { song: Song }) {
         */}
       <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
         <TopBar
-          current="canzoni"
+          current="songs"
           /*
-            * The way back to the canzoniere, which is not where the brand leads: the
-            * brand goes to the list of canzonieri, one level above the one you came
-            * from. A song with no canzoniere has nowhere in between, so it gets no
+            * The way back to the songbook, which is not where the brand leads: the
+            * brand goes to the list of songbooks, one level above the one you came
+            * from. A song with no songbook has nowhere in between, so it gets no
             * second link.
             *
             * It carries this song in a **fragment**, and that is what opens the section
-            * holding it on arrival — the canzoniere's sections are closed otherwise. A
+            * holding it on arrival — the songbook's sections are closed otherwise. A
             * fragment rather than a query parameter because it never reaches the service
             * worker, so the page it leads to is still the precached one: a query string
             * would make the way back from a song stop working offline, which is exactly
             * when it is needed. It is also why the phone's own back gesture lands on the
-            * canzoniere as you left it — that gesture carries no fragment, and restoring
+            * songbook as you left it — that gesture carries no fragment, and restoring
             * the previous screen is what it is for.
             */
           back={
             home === null
               ? undefined
-              : { href: `/canzonieri/${home.slug}#brano-${song.slug}`, label: home.name }
+              : { href: `/songbooks/${home.slug}#song-${song.slug}`, label: home.name }
           }
           steps={{
-            previous: series?.previous ? `/canzoni/${series.previous}` : null,
-            next: series?.next ? `/canzoni/${series.next}` : null,
+            previous: series?.previous ? `/songs/${series.previous}` : null,
+            next: series?.next ? `/songs/${series.next}` : null,
           }}
         />
 
@@ -136,9 +136,9 @@ export async function SongReader({ song }: { song: Song }) {
           */}
         <main className="song-card">
           {/*
-            * The section, and the place in the canzoniere: «Prima parte · 3 di 12». The
+            * The section, and the place in the songbook: «Prima parte · 3 of 12». The
             * name says which division you are reading; the numbers count what the arrows
-            * count, which is the whole canzoniere — a number that counted the section
+            * count, which is the whole songbook — a number that counted the section
             * while the arrow led out of it would be two different stories on one line.
             */}
           <SongHeading
