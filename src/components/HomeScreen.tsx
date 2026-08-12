@@ -11,12 +11,6 @@ import { useLiveIndex } from '@/lib/library/useLiveSongs'
 import type { SongIndexEntry } from '@/lib/search-index'
 
 /**
- * The key songs with no canzoniere share. No real slug can be empty, so they group
- * together instead of vanishing.
- */
-const UNGROUPED = ''
-
-/**
  * The first screen: the canzonieri, and a way to search across all of them.
  *
  * A canzoniere is a link, not a drawer. It used to open in place, and the list of songs
@@ -30,7 +24,7 @@ const UNGROUPED = ''
  * lives, and the list comes back when the box is emptied.
  */
 export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
-  const { canzonieri, assignments, nameOf } = useCanzonieri()
+  const { canzonieri, sections, assignments, nameOf } = useCanzonieri()
   const { mayEdit } = useRole()
 
   const [songs] = useLiveIndex(baked)
@@ -56,27 +50,34 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   }, [songs, deferred])
 
   /**
-   * The canzonieri with their counts, and anything unfiled after them.
+   * Which canzoniere each song is in, by way of its section.
    *
-   * An unfiled song has no page to lead to — a canzoniere is what a page is made from —
-   * so those rows are the songs themselves. In practice there are none: every way a song
-   * can arrive gives it a canzoniere. It is here because the column allows null, and a
-   * song that cannot be reached from the first screen would be a song nobody finds.
+   * A map rather than a walk per song: the answer is two lookups, and this screen asks
+   * it once per song for the counts and again for every search result.
    */
-  const groups = useMemo(() => {
-    const countOf = (key: string) =>
-      songs.filter((song) => (assignments[song.slug] ?? UNGROUPED) === key).length
+  const homeOf = useMemo(() => {
+    const canzoniereById = new Map(
+      sections.map((section) => [section.id, section.canzoniereSlug]),
+    )
+    return (slug: string) => canzoniereById.get(assignments[slug] ?? -1) ?? null
+  }, [sections, assignments])
 
-    return canzonieri.map((canzoniere) => ({
-      slug: canzoniere.slug,
-      name: canzoniere.name,
-      count: countOf(canzoniere.slug),
-    }))
-  }, [songs, canzonieri, assignments])
-
-  const unfiled = useMemo(
-    () => songs.filter((song) => (assignments[song.slug] ?? UNGROUPED) === UNGROUPED),
-    [songs, assignments],
+  /**
+   * The canzonieri with their counts.
+   *
+   * There used to be a group of unfiled songs after them, for songs whose canzoniere was
+   * null. That state no longer exists — the column is `not null`, and a song's canzoniere
+   * now comes from its section — so the group went with it rather than being carried
+   * around as a case nobody would ever see.
+   */
+  const groups = useMemo(
+    () =>
+      canzonieri.map((canzoniere) => ({
+        slug: canzoniere.slug,
+        name: canzoniere.name,
+        count: songs.filter((song) => homeOf(song.slug) === canzoniere.slug).length,
+      })),
+    [songs, canzonieri, homeOf],
   )
 
   const searching = deferred.trim() !== ''
@@ -109,7 +110,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
             <ul className="row-list card">
               {results.map((song) => (
                 <li key={song.slug}>
-                  <SongRow song={song} under={nameOf(assignments[song.slug])} />
+                  <SongRow song={song} under={nameOf(homeOf(song.slug))} />
                 </li>
               ))}
             </ul>
@@ -143,18 +144,6 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
             </ul>
           )}
 
-          {unfiled.length > 0 && (
-            <section className="mt-6">
-              <h2 className="group-label mb-2 px-1">Senza canzoniere</h2>
-              <ul className="row-list card">
-                {unfiled.map((song) => (
-                  <li key={song.slug}>
-                    <SongRow song={song} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </>
       )}
     </div>

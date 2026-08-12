@@ -16,14 +16,25 @@ import type { Song } from '../data/types'
  * from elsewhere may carry it, and a stripped directive the app ignores is tidier in
  * an exported file than one left in the middle of the words.
  */
-const METADATA = /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook)\s*:[^}]*\}\s*$/i
+const METADATA =
+  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|sezione)\s*:[^}]*\}\s*$/i
 
-export function toChoproFile(song: Song, canzoniereName: string | null): string {
+/**
+ * The section is written too, and it is not symmetry for its own sake: without that
+ * line an export and a re-import would lose how every canzoniere is divided, and the
+ * export *is* what this repo calls a restore.
+ */
+export function toChoproFile(
+  song: Song,
+  canzoniereName: string | null,
+  sezioneName: string | null,
+): string {
   const head: string[] = [`{title: ${song.title}}`]
 
   if (song.artist !== null && song.artist !== '') head.push(`{artist: ${song.artist}}`)
   if (song.tags.length > 0) head.push(`{tags: ${song.tags.join(', ')}}`)
   if (canzoniereName !== null) head.push(`{canzoniere: ${canzoniereName}}`)
+  if (sezioneName !== null) head.push(`{sezione: ${sezioneName}}`)
 
   const body = song.body
     .split(/\r?\n/)

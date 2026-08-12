@@ -99,7 +99,7 @@ function caretFromRaw(source: string, rawAt: number): Caret {
  */
 export function EditorScreen({ song }: { song: Song }) {
   const router = useRouter()
-  const { canzonieri, refresh: refreshCanzonieri } = useCanzonieri()
+  const { canzonieri, sections, refresh: refreshCanzonieri } = useCanzonieri()
 
   const [mode, setMode] = useState<Mode>('graphic')
   const [source, setSource] = useState(song.body)
@@ -107,7 +107,8 @@ export function EditorScreen({ song }: { song: Song }) {
     title: song.title,
     artist: song.artist ?? '',
     tags: song.tags.join(', '),
-    canzoniereSlug: song.canzoniereSlug ?? canzonieri[0]?.slug ?? '',
+    canzoniereSlug: song.canzoniereSlug,
+    sectionId: song.sectionId === null ? '' : String(song.sectionId),
   })
 
   const [caret, setCaret] = useState<Caret>({ line: 0, at: 0 })
@@ -209,6 +210,7 @@ export function EditorScreen({ song }: { song: Song }) {
         artist: fields.artist,
         tags: fields.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
         canzoniereSlug: fields.canzoniereSlug,
+        sectionId: fields.sectionId === '' ? null : Number(fields.sectionId),
         body: source,
       })
 
@@ -383,6 +385,7 @@ export function EditorScreen({ song }: { song: Song }) {
           <SongFields
             values={fields}
             canzonieri={canzonieri}
+            sections={sections}
             onChange={(field, value) => setFields((current) => ({ ...current, [field]: value }))}
           />
         </div>

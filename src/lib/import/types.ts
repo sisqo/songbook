@@ -7,6 +7,14 @@ export interface SongInput {
   artist: string | null
   tags: string[]
   canzoniereSlug: string
+  /**
+   * The section within it, or null for «wherever this canzoniere files things first».
+   *
+   * Nullable so a caller that has no opinion does not have to invent one: the import
+   * screen and the editor both ask, but the fallback is a real place — see
+   * `resolveSection` — rather than a song with no section at all.
+   */
+  sectionId: number | null
   body: string
 }
 

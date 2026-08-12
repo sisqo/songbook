@@ -21,17 +21,24 @@ import { loadEnv } from './load-env'
 async function main() {
   loadEnv()
 
-  const { readCanzoniereFiles, readSongFiles } = await import('../src/lib/data/files')
-  const { UNFILED } = await import('../src/lib/data/types')
+  const { readCanzoniereFiles, readSectionFiles, readSongFiles } = await import(
+    '../src/lib/data/files'
+  )
+  const { DEFAULT_SECTION, UNFILED } = await import('../src/lib/data/types')
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
-  const { canzonieri, songs } = await import('../src/lib/db/schema')
+  const { canzonieri, sections, songs } = await import('../src/lib/db/schema')
+  const { and, asc, eq } = await import('drizzle-orm')
 
   if (!hasDatabase) {
     console.error('DATABASE_URL is not set. Run `vercel env pull .env.local` first.')
     process.exit(1)
   }
 
-  const [songFiles, canzoniereFiles] = await Promise.all([readSongFiles(), readCanzoniereFiles()])
+  const [songFiles, canzoniereFiles, sectionFiles] = await Promise.all([
+    readSongFiles(),
+    readCanzoniereFiles(),
+    readSectionFiles(),
+  ])
 
   /**
    * An empty `content/` is legitimate now: once the repertoire is imported and
@@ -63,6 +70,67 @@ async function main() {
   console.log(`Canzonieri present (created if missing): ${declared.length}`)
 
   /**
+   * The sections named by the files, plus a «Brani» for the unfiled canzoniere.
+   *
+   * Matched **by name**, never by id: the ids in `sectionFiles` were invented by the file
+   * repository for this run — see `data/files.ts` — and the database has its own. So the
+   * name is the only thing the two sides can agree on, which is also why a section's name
+   * is unique within its canzoniere.
+   *
+   * `doNothing` on conflict, for the same reason as the canzonieri: a section renamed or
+   * reordered in the app keeps what it was given. The position a file can claim is only
+   * ever the position it would be born with.
+   */
+  const wanted = [
+    ...sectionFiles.map((section) => ({
+      canzoniereSlug: section.canzoniereSlug,
+      name: section.name,
+      position: section.position,
+    })),
+    { canzoniereSlug: UNFILED.slug, name: DEFAULT_SECTION, position: 1 },
+  ]
+
+  for (const section of wanted) {
+    await database
+      .insert(sections)
+      .values(section)
+      .onConflictDoNothing({ target: [sections.canzoniereSlug, sections.name] })
+  }
+  console.log(`Sections present (created if missing): ${wanted.length}`)
+
+  /**
+   * Which section each song goes into, in the database's own numbering.
+   *
+   * A file's section is a name, so this is where that name becomes an id. A song whose
+   * canzoniere has no section by that name — impossible from these files, possible from a
+   * hand-edited one — lands in the first section of its canzoniere rather than nowhere.
+   */
+  const sectionIdOf = async (song: (typeof songFiles)[number]): Promise<number | null> => {
+    const name = sectionFiles.find((entry) => entry.id === song.sectionId)?.name
+
+    if (name !== undefined) {
+      const found = await database
+        .select({ id: sections.id })
+        .from(sections)
+        .where(
+          and(eq(sections.canzoniereSlug, song.canzoniereSlug), eq(sections.name, name)),
+        )
+        .limit(1)
+
+      if (found.length > 0) return found[0].id
+    }
+
+    const first = await database
+      .select({ id: sections.id })
+      .from(sections)
+      .where(eq(sections.canzoniereSlug, song.canzoniereSlug))
+      .orderBy(asc(sections.position))
+      .limit(1)
+
+    return first[0]?.id ?? null
+  }
+
+  /**
    * Insert-only. `doNothing` rather than `doUpdate`, because an existing row may
    * carry an edit made in the app, and the file's version is not more correct —
    * it is only older.
@@ -81,6 +149,7 @@ async function main() {
         artist: song.artist,
         tags: song.tags,
         canzoniereSlug: song.canzoniereSlug,
+        sectionId: await sectionIdOf(song),
         body: song.body,
       })
       .onConflictDoNothing({ target: songs.slug })

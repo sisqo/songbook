@@ -6,8 +6,8 @@
 import { asc, eq } from 'drizzle-orm'
 
 import { db } from '../db/client'
-import { canzonieri, songs } from '../db/schema'
-import type { Canzoniere, Song, SongRepository } from './types'
+import { canzonieri, sections, songs } from '../db/schema'
+import type { Canzoniere, Section, Song, SongRepository } from './types'
 
 /**
  * One row as the app's `Song`.
@@ -23,6 +23,7 @@ export function rowToSong(row: typeof songs.$inferSelect): Song {
     artist: row.artist,
     tags: row.tags,
     canzoniereSlug: row.canzoniereSlug,
+    sectionId: row.sectionId,
     body: row.body,
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -30,22 +31,30 @@ export function rowToSong(row: typeof songs.$inferSelect): Song {
 
 export const dbRepository: SongRepository = {
   /**
-   * In the order the canzonieri were put in, then by title.
+   * In the order the canzonieri are played through: section by section, and inside
+   * each section the order the songs were put in, then by title.
    *
-   * `position` is null until someone drags a song, and Postgres sorts nulls last in
-   * an ascending order — so a canzoniere nobody has arranged is alphabetical, and one
+   * `position` is null until someone arranges a section, and Postgres sorts nulls last
+   * in an ascending order — so a section nobody has arranged is alphabetical, and one
    * that has been arranged keeps the songs added since at the end. This order is what
    * the arrows in the song header step through, which is why it is fixed here rather
    * than in the component: those arrows lead to other static pages, and every one of
    * them was generated from this same list.
+   *
+   * A **left** join, not an inner one. For one deploy `section_id` can be null — a song
+   * imported by the code already in production, between the additive migration and this
+   * code going live — and an inner join would drop it from the static params and from
+   * the index, which is to say delete it from the app without deleting it from the
+   * database. Nulls sort last, so it waits at the end until someone files it.
    */
   async listSongs() {
     const rows = await db()
-      .select()
+      .select({ song: songs, sectionPosition: sections.position })
       .from(songs)
-      .orderBy(asc(songs.position), asc(songs.title))
+      .leftJoin(sections, eq(songs.sectionId, sections.id))
+      .orderBy(asc(sections.position), asc(songs.position), asc(songs.title))
 
-    return rows.map(rowToSong)
+    return rows.map((row) => rowToSong(row.song))
   },
 
   async getSong(slug) {
@@ -60,5 +69,19 @@ export const dbRepository: SongRepository = {
       .orderBy(asc(canzonieri.name))
 
     return rows satisfies Canzoniere[]
+  },
+
+  async listSections() {
+    const rows = await db()
+      .select({
+        id: sections.id,
+        canzoniereSlug: sections.canzoniereSlug,
+        name: sections.name,
+        position: sections.position,
+      })
+      .from(sections)
+      .orderBy(asc(sections.canzoniereSlug), asc(sections.position))
+
+    return rows satisfies Section[]
   },
 }

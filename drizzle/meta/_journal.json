@@ -71,6 +71,13 @@
       "when": 1786524764641,
       "tag": "0009_yellow_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786542547931,
+      "tag": "0010_volatile_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

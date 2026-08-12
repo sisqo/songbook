@@ -21,7 +21,22 @@ import {
   renameCanzoniere,
 } from '@/lib/canzonieri/actions'
 import { readCanzoniereCache, writeCanzoniereCache } from '@/lib/canzonieri/store'
-import type { CanzoniereState, CreateResult, WriteResult } from '@/lib/canzonieri/types'
+import {
+  type CanzoniereState,
+  type CreateResult,
+  type CreateSectionResult,
+  type WriteResult,
+  canzoniereOf,
+  sectionsOf,
+} from '@/lib/canzonieri/types'
+import type { ArrangedSection } from '@/lib/canzonieri/order'
+import type { Section } from '@/lib/data/types'
+import {
+  arrangeCanzoniere,
+  createSection,
+  removeSection,
+  renameSection,
+} from '@/lib/sections/actions'
 
 interface CanzoniereContextValue extends CanzoniereState {
   /** False while the browser reports no connection: management is disabled. */
@@ -32,8 +47,19 @@ interface CanzoniereContextValue extends CanzoniereState {
   create: (name: string) => Promise<CreateResult>
   rename: (slug: string, name: string) => Promise<WriteResult>
   remove: (slug: string, moveTo: string | null) => Promise<WriteResult>
-  move: (songSlug: string, canzoniereSlug: string) => Promise<WriteResult>
+  /** Sends a song to a section, of this canzoniere or of another. */
+  move: (songSlug: string, sectionId: number) => Promise<WriteResult>
+
+  addSection: (canzoniereSlug: string, name: string) => Promise<CreateSectionResult>
+  renameSection: (id: number, name: string) => Promise<WriteResult>
+  removeSection: (id: number, moveTo: number | null) => Promise<WriteResult>
+  arrange: (canzoniereSlug: string, groups: ArrangedSection[]) => Promise<WriteResult>
+
   nameOf: (slug: string | null | undefined) => string | null
+  /** The sections of one canzoniere, in the order it is played through. */
+  divisionsOf: (canzoniereSlug: string) => Section[]
+  /** Which canzoniere a song is in, by way of its section. */
+  homeOf: (songSlug: string) => string | null
 }
 
 const CanzoniereContext = createContext<CanzoniereContextValue | null>(null)
@@ -100,8 +126,8 @@ export function CanzoniereProvider({
    * as it is on one reader's transposition.
    */
   const afterWrite = useCallback(
-    // Generic so a create can carry its new slug back out through here.
-    async <T extends WriteResult | CreateResult>(result: T): Promise<T> => {
+    // Generic so a create can carry its new slug or id back out through here.
+    async <T extends WriteResult | CreateResult | CreateSectionResult>(result: T): Promise<T> => {
       if (result.ok) await refresh()
       return result
     },
@@ -116,10 +142,19 @@ export function CanzoniereProvider({
       create: async (name) => afterWrite(await createCanzoniere(name)),
       rename: async (slug, name) => afterWrite(await renameCanzoniere(slug, name)),
       remove: async (slug, moveTo) => afterWrite(await removeCanzoniere(slug, moveTo)),
-      move: async (songSlug, canzoniereSlug) =>
-        afterWrite(await moveSong(songSlug, canzoniereSlug)),
+      move: async (songSlug, sectionId) => afterWrite(await moveSong(songSlug, sectionId)),
+
+      addSection: async (canzoniereSlug, name) =>
+        afterWrite(await createSection(canzoniereSlug, name)),
+      renameSection: async (id, name) => afterWrite(await renameSection(id, name)),
+      removeSection: async (id, moveTo) => afterWrite(await removeSection(id, moveTo)),
+      arrange: async (canzoniereSlug, groups) =>
+        afterWrite(await arrangeCanzoniere(canzoniereSlug, groups)),
+
       nameOf: (slug) =>
         slug == null ? null : (state.canzonieri.find((entry) => entry.slug === slug)?.name ?? null),
+      divisionsOf: (canzoniereSlug) => sectionsOf(state, canzoniereSlug),
+      homeOf: (songSlug) => canzoniereOf(state, songSlug),
     }),
     [state, online, refresh, afterWrite],
   )

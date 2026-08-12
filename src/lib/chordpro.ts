@@ -41,6 +41,16 @@ export interface ParsedSong {
    * reseed would wipe every rename and move made in the app.
    */
   canzoniere: string | null
+  /**
+   * Name of the section of that canzoniere the song *starts* in, on the same terms as
+   * the line above: an initial value, never an instruction.
+   *
+   * Only `{sezione: ...}` is read, deliberately not `{section: ...}`. Other tools write
+   * that one to mean a block of the song — `{section: chorus}` — and reading it here
+   * would file the song into a section called «chorus». What this app exports it also
+   * reads back, and it exports `{sezione}`.
+   */
+  sezione: string | null
   sections: Section[]
 }
 
@@ -57,6 +67,7 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   tag: 'tags',
   canzoniere: 'canzoniere',
   songbook: 'canzoniere',
+  sezione: 'sezione',
   c: 'comment',
   comment: 'comment',
   soc: 'start_of_chorus',
@@ -75,6 +86,7 @@ export function parseChordPro(source: string): ParsedSong {
     artist: null,
     tags: [],
     canzoniere: null,
+    sezione: null,
     sections: [],
   }
 
@@ -110,6 +122,9 @@ export function parseChordPro(source: string): ParsedSong {
           break
         case 'canzoniere':
           song.canzoniere = value || null
+          break
+        case 'sezione':
+          song.sezione = value || null
           break
         case 'comment':
           section ??= openSection(forcedKind ?? 'verse')

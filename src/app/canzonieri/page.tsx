@@ -4,7 +4,7 @@ import { CanzoniereManager } from '@/components/CanzoniereManager'
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
-import type { CanzoniereState } from '@/lib/canzonieri/types'
+import { snapshot } from '@/lib/canzonieri/snapshot'
 import { repository } from '@/lib/data'
 
 export const metadata: Metadata = { title: 'Canzonieri' }
@@ -17,19 +17,13 @@ export const metadata: Metadata = { title: 'Canzonieri' }
  * than move through it, which is why it lives behind the menu instead of on the way in.
  */
 export default async function CanzonieriPage() {
-  const [songs, canzonieri] = await Promise.all([
+  const [songs, canzonieri, sections] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
+    repository.listSections(),
   ])
 
-  const initial: CanzoniereState = {
-    canzonieri,
-    assignments: Object.fromEntries(
-      songs
-        .filter((song) => song.canzoniereSlug !== null)
-        .map((song) => [song.slug, song.canzoniereSlug as string]),
-    ),
-  }
+  const initial = snapshot(songs, canzonieri, sections)
 
   return (
     // The menu in the header holds a reader preference, so it needs this here too.

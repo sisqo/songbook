@@ -17,7 +17,7 @@ import { asc, eq } from 'drizzle-orm'
 import { currentUser } from '@/lib/auth/session'
 import { rowToSong } from '@/lib/data/db'
 import { db } from '@/lib/db/client'
-import { songs } from '@/lib/db/schema'
+import { sections, songs } from '@/lib/db/schema'
 
 import type { SongIndexRow } from '@/lib/search-index'
 
@@ -70,9 +70,11 @@ export async function loadSongIndex(): Promise<SongIndexRow[] | null> {
         updatedAt: songs.updatedAt,
       })
       .from(songs)
-      // The same order as the build used, or the list would rearrange itself the
-      // moment this answers.
-      .orderBy(asc(songs.position), asc(songs.title))
+      // The same join and the same order as the build used — see `listSongs`, including
+      // why it is a left join — or the list would rearrange itself, and lose a row,
+      // the moment this answers.
+      .leftJoin(sections, eq(songs.sectionId, sections.id))
+      .orderBy(asc(sections.position), asc(songs.position), asc(songs.title))
 
     return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }))
   } catch (error) {

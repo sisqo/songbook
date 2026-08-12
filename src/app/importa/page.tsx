@@ -4,6 +4,7 @@ import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { ImportScreen } from '@/components/ImportScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
+import { snapshot } from '@/lib/canzonieri/snapshot'
 import { UNFILED, repository } from '@/lib/data'
 
 export const metadata: Metadata = { title: 'Importa' }
@@ -18,9 +19,10 @@ export const metadata: Metadata = { title: 'Importa' }
  * the same bug as a stale song — the build is not the authority on what exists.
  */
 export default async function ImportPage() {
-  const [canzonieri, songs] = await Promise.all([
+  const [canzonieri, songs, sections] = await Promise.all([
     repository.listCanzonieri(),
     repository.listSongs(),
+    repository.listSections(),
   ])
 
   const preferred =
@@ -28,20 +30,11 @@ export default async function ImportPage() {
     canzonieri[0]?.slug ??
     UNFILED.slug
 
-  /*
-   * A truthful snapshot, assignments included. The provider caches whatever it
-   * holds for the other screens to read, so handing it a half-state here would
-   * teach the cache that no song is filed anywhere.
-   */
-  const assignments: Record<string, string> = {}
-  for (const song of songs) {
-    if (song.canzoniereSlug !== null) assignments[song.slug] = song.canzoniereSlug
-  }
 
   return (
     // The preview renders a real sheet, which reads zoom and notation from here.
     <PrefsProvider songSlug={null}>
-      <CanzoniereProvider initial={{ canzonieri, assignments }}>
+      <CanzoniereProvider initial={snapshot(songs, canzonieri, sections)}>
         <TopBar current="importa" />
 
         <main className="mx-auto max-w-5xl px-4 pb-12 pt-3">

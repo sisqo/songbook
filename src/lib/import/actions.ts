@@ -14,9 +14,9 @@ import { revalidatePath } from 'next/cache'
 import { asEditor } from '@/lib/auth/session'
 import { placeAfter } from '@/lib/canzonieri/order'
 import { rowToSong } from '@/lib/data/db'
-import { UNFILED, type Song } from '@/lib/data/types'
+import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { builds, canzonieri, songs } from '@/lib/db/schema'
+import { builds, canzonieri, sections, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
 import { choproFilename, toChoproFile } from './export'
@@ -43,16 +43,38 @@ import type {
  */
 
 /**
- * A canzoniere slug that certainly exists.
+ * A canzoniere and a section of it that certainly exist.
  *
- * `songs.canzoniere_slug` is a foreign key, so an empty or unknown value would
- * fail the insert and surface as a generic "could not save" with nothing to act
- * on. Falling back to the unfiled canzoniere — creating it if this database has
- * never had one — turns that into a song that simply needs filing.
+ * Both columns are a foreign key — one composite, so they are checked *together* — and
+ * an empty or unknown value would fail the insert and surface as a generic "could not
+ * save" with nothing to act on. Answering with something real turns that into a song
+ * that simply needs filing.
+ *
+ * The section decides when it is a real one, because it carries its canzoniere with it
+ * and it is the more specific of the two answers: the editor's two menus cannot
+ * disagree, since choosing a canzoniere repopulates the sections, so a pair that does
+ * disagree is a stale form rather than a decision. Failing that: the canzoniere asked
+ * for, or the unfiled one, and its first section — created as «Brani» if it somehow has
+ * none, which is the same section the migration and `createCanzoniere` make.
  */
-async function resolveCanzoniere(slug: string): Promise<string> {
+async function resolveSection(
+  canzoniereSlug: string,
+  sectionId: number | null,
+): Promise<{ canzoniereSlug: string; sectionId: number }> {
   const database = db()
-  const wanted = slug.trim()
+
+  if (sectionId !== null) {
+    const found = await database
+      .select({ id: sections.id, canzoniereSlug: sections.canzoniereSlug })
+      .from(sections)
+      .where(eq(sections.id, sectionId))
+      .limit(1)
+
+    if (found.length > 0) return { canzoniereSlug: found[0].canzoniereSlug, sectionId: found[0].id }
+  }
+
+  const wanted = canzoniereSlug.trim()
+  let slug: string = UNFILED.slug
 
   if (wanted !== '') {
     const found = await database
@@ -61,15 +83,31 @@ async function resolveCanzoniere(slug: string): Promise<string> {
       .where(eq(canzonieri.slug, wanted))
       .limit(1)
 
-    if (found.length > 0) return found[0].slug
+    if (found.length > 0) slug = found[0].slug
   }
 
-  await database
-    .insert(canzonieri)
-    .values({ slug: UNFILED.slug, name: UNFILED.name })
-    .onConflictDoNothing({ target: canzonieri.slug })
+  if (slug === UNFILED.slug) {
+    await database
+      .insert(canzonieri)
+      .values({ slug: UNFILED.slug, name: UNFILED.name })
+      .onConflictDoNothing({ target: canzonieri.slug })
+  }
 
-  return UNFILED.slug
+  const first = await database
+    .select({ id: sections.id })
+    .from(sections)
+    .where(eq(sections.canzoniereSlug, slug))
+    .orderBy(asc(sections.position))
+    .limit(1)
+
+  if (first.length > 0) return { canzoniereSlug: slug, sectionId: first[0].id }
+
+  const created = await database
+    .insert(sections)
+    .values({ canzoniereSlug: slug, name: DEFAULT_SECTION, position: 1 })
+    .returning({ id: sections.id })
+
+  return { canzoniereSlug: slug, sectionId: created[0].id }
 }
 
 /**
@@ -105,23 +143,27 @@ function saved(song: Song): SaveResult {
 }
 
 /**
- * Gives an arriving song the place after the ones already in its canzoniere.
+ * Gives an arriving song the place after the ones already in its section.
  *
  * Without this, importing five songs would file them alphabetically the moment the
  * page reloaded, which is not what pasting them in an order means. The songs already
  * there may have to be numbered for that to be possible — see `placeAfter` — and
  * numbering them changes no song, so none of these updates touches `updated_at`:
  * they would otherwise all appear in the publish list with nothing new to publish.
+ *
+ * The section, not the canzoniere, since v2.3: `position` counts within one division,
+ * so numbering a whole canzoniere here would number songs against songs they are not
+ * ordered against.
  */
 async function placeLast(
   tx: Parameters<Parameters<ReturnType<typeof db>['transaction']>[0]>[0],
-  canzoniereSlug: string,
+  sectionId: number,
   slug: string,
 ): Promise<number> {
   const siblings = await tx
     .select({ slug: songs.slug, position: songs.position })
     .from(songs)
-    .where(eq(songs.canzoniereSlug, canzoniereSlug))
+    .where(eq(songs.sectionId, sectionId))
     // Display order, which is the order the numbering must preserve.
     .orderBy(asc(songs.position), asc(songs.title))
 
@@ -164,7 +206,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       title,
       artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
-      canzoniereSlug: await resolveCanzoniere(input.canzoniereSlug),
+      ...(await resolveSection(input.canzoniereSlug, input.sectionId)),
       body: input.body,
       /**
        * The database's clock, not this server's.
@@ -183,7 +225,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     if (input.slug !== undefined) {
       const updated = await database.transaction(async (tx) => {
         const before = await tx
-          .select({ canzoniereSlug: songs.canzoniereSlug })
+          .select({ sectionId: songs.sectionId })
           .from(songs)
           .where(eq(songs.slug, input.slug as string))
           .limit(1)
@@ -191,12 +233,14 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
         if (before.length === 0) return []
 
         /*
-         * A song sent to another canzoniere arrives unplaced, so it lands at the end
+         * A song sent to another section arrives unplaced, so it lands at the end
          * of it — the same place an import would. Keeping the old number would have
          * it claim a place among songs it has never been ordered against, tying with
-         * whichever song already holds that number.
+         * whichever song already holds that number. The section is what is asked
+         * about rather than the canzoniere: changing canzoniere changes section too,
+         * and moving between two sections of one canzoniere moves it just as much.
          */
-        const moved = before[0].canzoniereSlug !== values.canzoniereSlug
+        const moved = before[0].sectionId !== values.sectionId
 
         return tx
           .update(songs)
@@ -214,7 +258,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
         slug: songs.slug,
         title: songs.title,
         artist: songs.artist,
-        canzoniereSlug: songs.canzoniereSlug,
+        sectionId: songs.sectionId,
       })
       .from(songs)
       .where(sameSong(title, values.artist))
@@ -228,14 +272,14 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       const updated = await database.transaction(async (tx) => {
         /*
          * Replacing a song's words is not moving it: one that already lives here keeps
-         * the place it was given. Only one arriving from another canzoniere is placed,
+         * the place it was given. Only one arriving from another section is placed,
          * and then at the end, like any other arrival.
          */
-        if (twin[0].canzoniereSlug === values.canzoniereSlug) {
+        if (twin[0].sectionId === values.sectionId) {
           return tx.update(songs).set(values).where(eq(songs.slug, twin[0].slug)).returning()
         }
 
-        const place = await placeLast(tx, values.canzoniereSlug, twin[0].slug)
+        const place = await placeLast(tx, values.sectionId, twin[0].slug)
         return tx
           .update(songs)
           .set({ ...values, position: place })
@@ -255,7 +299,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
      * number.
      */
     const inserted = await database.transaction(async (tx) => {
-      const place = await placeLast(tx, values.canzoniereSlug, slug)
+      const place = await placeLast(tx, values.sectionId, slug)
       return tx
         .insert(songs)
         .values({ slug, ...values, position: place })
@@ -369,18 +413,21 @@ export async function exportAll(): Promise<ExportedFile[] | null> {
   if (!(await asEditor()).ok) return null
 
   const database = db()
-  const [rows, names] = await Promise.all([
+  const [rows, names, divisions] = await Promise.all([
     database.select().from(songs).orderBy(songs.slug),
     database.select({ slug: canzonieri.slug, name: canzonieri.name }).from(canzonieri),
+    database.select({ id: sections.id, name: sections.name }).from(sections),
   ])
 
   const nameBySlug = new Map(names.map((row) => [row.slug, row.name]))
+  const nameById = new Map(divisions.map((row) => [row.id, row.name]))
 
   return rows.map((row) => ({
     name: choproFilename(row.slug),
     content: toChoproFile(
       rowToSong(row),
-      row.canzoniereSlug === null ? null : (nameBySlug.get(row.canzoniereSlug) ?? null),
+      nameBySlug.get(row.canzoniereSlug) ?? null,
+      row.sectionId === null ? null : (nameById.get(row.sectionId) ?? null),
     ),
   }))
 }

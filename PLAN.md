@@ -80,10 +80,20 @@ in un `useLayoutEffect` prima del paint.
 ```sql
 canzonieri(slug primary key, name, created_at, updated_at)
 
+sections(id serial primary key,                                      -- v2.3
+         canzoniere_slug not null references canzonieri(slug) on delete restrict,
+         name, position, created_at,
+         unique (canzoniere_slug, name),   -- l'import indirizza per nome
+         unique (id, canzoniere_slug))     -- solo per essere referenziata, sotto
+
 songs(slug primary key, title, artist, body, tags[],
-      canzoniere_slug references canzonieri(slug) on delete restrict,
+      canzoniere_slug not null references canzonieri(slug) on delete restrict,
+      section_id,                                                    -- v2.3, nullable per un deploy
       position,                                                      -- v1.6, nullable
-      created_at, updated_at)
+      created_at, updated_at,
+      foreign key (section_id, canzoniere_slug)                      -- v2.3
+        references sections(id, canzoniere_slug)
+        on delete restrict on update cascade)
       -- original_key rimossa in v2.0: la tonalità si stima dagli accordi
 
 members(email primary key, added_by, created_at,
@@ -121,8 +131,16 @@ L'`on delete restrict` è la regola "rifiuta se non è vuoto" scritta nel databa
 nella UI: nessun percorso, nemmeno un errore di programmazione, può cancellare un
 canzoniere lasciando brani orfani.
 
-**`songs.position` è nullable e resta null** finché qualcuno non riordina quel canzoniere o
-non ci importa dentro. Non è un dettaglio implementativo: `null` significa «nessuno ha detto»,
+**La chiave esterna composta è ciò che rende impossibile un brano in una sezione di un
+altro canzoniere.** Il canzoniere di un brano è scritto due volte — sul brano e sulla sua
+sezione — e invece di affidare la coerenza al codice la tiene il database. `on update
+cascade` non è decorazione: è l'unica cosa che permette a una sezione di traslocare in un
+altro canzoniere, misurato su uno schema di prova (senza, l'update è rifiutato in
+*entrambi* gli ordini, perché il vincolo si controlla per statement e non per transazione).
+`on delete` resta `restrict`: una sezione che contiene brani non si cancella.
+
+**`songs.position` è nullable e resta null** finché qualcuno non riordina quella sezione o
+non ci importa dentro. Dalla v2.3 conta **dentro una sezione**, non dentro il canzoniere. Non è un dettaglio implementativo: `null` significa «nessuno ha detto»,
 e Postgres lo mette in fondo a un ordinamento crescente, quindi l'ordine alfabetico è il
 comportamento di default senza una riga di codice che lo produca — verificato interrogando
 Postgres, non la tabella. Un riordino, e ogni import, rinumerano l'intero canzoniere da 1 a N.
@@ -350,6 +368,24 @@ sovrapponibili (`lento`, `acustico`).
 
 Si possono **creare, rinominare, spostare brani fra l'uno e l'altro e rimuovere**, e tutto
 questo dall'app, non dai file.
+
+### Le sezioni (v2.3)
+
+Un canzoniere è diviso in sezioni e ogni brano sta in una e una sola. Una sezione è un
+**oggetto del canzoniere** — nome, ordine proprio, può restare vuota — e non un'etichetta
+scritta sul brano: un'etichetta non ha ordine (e «Prima parte»/«Seconda parte» non sono in
+ordine alfabetico), non può esistere prima dei brani che la riempiranno, e un refuso ne
+creerebbe una gemella.
+
+Identificata da un numero e non da uno slug, perché non ha una pagina: nessuno la indirizza
+per nome, quindi rinominarla è gratis. Il nome è però unico dentro il canzoniere, ed è
+quello che permette all'import di crearne una per nome senza gemelle e al seed di far
+combaciare i file con il database.
+
+Nella pagina del canzoniere partono **chiuse**, con due eccezioni che cedono a qualunque
+scelta di chi legge: una sola sezione si apre da sé, e tornando da un brano si apre la sua.
+La piega sta in `localStorage`, per canzoniere: è un gesto della mano, non una preferenza
+da ritrovare altrove, e deve funzionare senza rete.
 
 ### Il canzoniere ha una rotta propria (v2.0)
 
@@ -1243,6 +1279,57 @@ costruiscono, che `/login` mostra entrambe le strade e che il middleware non è 
 
 Migrazione 0009: crea `credentials`. Solo aggiunta, quindi applicata prima del push.
 
+### v2.3 — sezioni
+
+Il canzoniere si divide, e ogni brano sta in una sezione sola. Cinque decisioni tengono su
+il resto.
+
+**La coerenza la garantisce il database, non il codice.** Il canzoniere di un brano resta
+scritto sul brano — è la colonna su cui filtrano le pagine statiche e l'overlay — e la
+sezione dice a sua volta in quale canzoniere sta. Due copie dello stesso fatto: quindi
+`unique (id, canzoniere_slug)` su `sections` e una chiave esterna **composta** su `songs`,
+che rende impossibile la riga sbagliata. Il `on update cascade` che la completa è stato
+misurato prima di scriverlo, su uno schema di prova poi rimosso, perché senza di esso far
+traslocare una sezione è rifiutato in entrambi gli ordini di update.
+
+**Una disposizione sola, in una transazione sola.** `arrangeCanzoniere` sostituisce
+`reorderCanzoniere` e scrive tutto: l'ordine delle sezioni, l'ordine dei brani dentro
+ognuna, e la sezione di ogni brano. Un brano trascinato oltre un'intestazione cambia tre
+cose insieme, e scriverle con due chiamate lascerebbe un momento in cui il brano non sta né
+qua né là. Un controllo di obsolescenza solo, su **entrambi** gli insiemi — sezioni e brani
+— perché il caso vero è qualcuno che importa o rimuove mentre le righe sono aperte.
+
+**Le frecce non si fermano a una sezione.** Il canzoniere resta una sequenza sola, percorsa
+sezione dopo sezione; l'header del brano dice la sezione e conta il canzoniere («Prima
+parte · 3 di 12»), perché il numero e la freccia devono raccontare la stessa storia.
+
+**Il ritorno da un brano porta un frammento, non un parametro.** `#brano-<slug>` è ciò che
+apre la sezione giusta all'arrivo, e un frammento non arriva al service worker: una query
+avrebbe fatto mancare la pagina nel precache, cioè avrebbe rotto il ritorno da un brano
+proprio offline.
+
+**La struttura non timbra `updated_at`.** Disporre non cambia nessun brano, cambia
+l'insieme. La riga che il codice esistente aveva già tracciato viene tenuta: si timbra chi
+**cambia canzoniere** — è su un'altra pagina, quindi va pubblicato — e non chi cambia solo
+posto o sezione. Per allineare frecce e header si usa *Ricostruisci ora*.
+
+Migrazioni 0010 (additiva: la tabella, la colonna nullable, i vincoli, `canzoniere_slug`
+`not null`, e il backfill di una sezione «Brani» per canzoniere scritto a mano sotto il DDL
+generato — la prima migrazione di questo repo che porta dati) e 0011 (contrattiva, dopo il
+deploy: ripete il backfill per la finestra fra le due e mette `section_id` `not null`).
+
+**Cosa è stato misurato.** Trentanove controlli attraverso l'interfaccia, in due passate: la
+divisione di un canzoniere, un brano portato oltre l'intestazione **col dito e con la
+tastiera**, le sezioni chiuse e le due eccezioni, la piega che resta dopo un ricarico, un
+nome già preso rifiutato con la sua ragione, la rimozione di una sezione piena che chiede
+dove, e la *stessa* richiesta di scrittura di un editor ripetuta da un viewer — con
+l'identificatore vero dell'azione, registrato da una chiamata legittima — che non cambia
+niente. Tre volte il controllo ha segnalato un problema e due volte era il controllo a
+sbagliare: misurava le coordinate del trascinamento prima di scorrere la pagina, e apriva la
+sessione del viewer nella stessa finestra dell'editor, portandogli via il cookie. La terza
+volta era vero: un nome duplicato arrivava a schermo come «salvataggio non riuscito», perché
+drizzle incapsula l'errore del driver e il codice `23505` sta su `cause`.
+
 ### v2 — il resto
 
 Restava: scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei
@@ -1306,6 +1393,10 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Decisione | Scelta | Perché |
 |---|---|---|
 | Sorgente dati | Postgres su Neon, seed da file | Fondazione per l'editor v2 senza rifare la UI |
+| Sezioni (v2.3) | Tabella `sections` per canzoniere, id seriale | Ordine proprio, sezioni vuote possibili, rinomina gratis |
+| Coerenza sezione/canzoniere | Chiave esterna composta, `on update cascade` | Il database rende impossibile la riga sbagliata; misurato, non dedotto |
+| Disposizione | Un'azione sola per tutto il canzoniere | Trascinare oltre un'intestazione cambia tre cose insieme |
+| Piega delle sezioni | `localStorage`, chiuse per default | È un gesto della mano, e deve funzionare offline |
 | Scope v1 | Sola lettura, editor in v2 | Le funzioni di valore sono tutte sul lato lettura |
 | Formato | ChordPro, accordi sopra il testo | Standard di fatto; rende trasposizione e notazione banali |
 | Sigle italiane | Stile jazz: `Do-`, `Do△7` | Scelta esplicita dell'utente |

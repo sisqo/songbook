@@ -62,6 +62,8 @@ export function ImportBatch({
   songs,
   canzoniereSlug,
   canzoniereName,
+  sectionId,
+  sectionName,
   online,
   onDone,
   onReset,
@@ -70,6 +72,9 @@ export function ImportBatch({
   /** Where all of them go: chosen once, at the top of the screen. */
   canzoniereSlug: string
   canzoniereName: string
+  /** And into which section of it, chosen in the same breath. */
+  sectionId: number | null
+  sectionName: string | null
   online: boolean
   /** Called once the run is over, so the screen can refresh what it shows. */
   onDone: () => Promise<void>
@@ -109,6 +114,7 @@ export function ImportBatch({
             artist: row.artist,
             tags: row.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
             canzoniereSlug,
+            sectionId,
             body: row.body,
           },
           decision,
@@ -146,7 +152,12 @@ export function ImportBatch({
 
       <p className="mt-1 text-sm text-muted">
         Controlla titolo e artista di ognuno: sono ricavati dalle prime righe, e su qualche
-        brano saranno sbagliati. Vanno tutti in <strong className="font-medium">{canzoniereName}</strong>.
+        brano saranno sbagliati. Vanno tutti in{' '}
+        <strong className="font-medium">
+          {canzoniereName}
+          {sectionName !== null && ` · ${sectionName}`}
+        </strong>
+        .
       </p>
 
       <ol className="mt-4 grid gap-3">
@@ -156,6 +167,7 @@ export function ImportBatch({
             row={row}
             index={index}
             canzoniereName={canzoniereName}
+            sectionName={sectionName}
             busy={busy}
             onPatch={patch}
           />
@@ -231,12 +243,14 @@ function BatchRow({
   row,
   index,
   canzoniereName,
+  sectionName,
   busy,
   onPatch,
 }: {
   row: Row
   index: number
   canzoniereName: string
+  sectionName: string | null
   busy: boolean
   onPatch: (id: number, change: Partial<Row>) => void
 }) {
@@ -291,6 +305,9 @@ function BatchRow({
         {/* Said, not obeyed: the destination above is the answer. */}
         {row.declares !== null && row.declares !== canzoniereName && (
           <span>il testo dice «{row.declares}»</span>
+        )}
+        {row.declaresSection !== null && row.declaresSection !== sectionName && (
+          <span>sezione dichiarata «{row.declaresSection}»</span>
         )}
         <Status outcome={row.outcome} include={row.include} />
       </p>

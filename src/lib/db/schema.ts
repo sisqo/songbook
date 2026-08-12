@@ -9,7 +9,16 @@
  * having one key everywhere.
  */
 
-import { integer, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  foreignKey,
+  integer,
+  pgTable,
+  primaryKey,
+  serial,
+  text,
+  timestamp,
+  unique,
+} from 'drizzle-orm/pg-core'
 
 /**
  * A canzoniere is a container: every song belongs to exactly one.
@@ -25,39 +34,111 @@ export const canzonieri = pgTable('canzonieri', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const songs = pgTable('songs', {
-  slug: text('slug').primaryKey(),
-  title: text('title').notNull(),
-  artist: text('artist'),
-  tags: text('tags').array().notNull().default([]),
-  body: text('body').notNull(),
-  /**
-   * Nullable only so the column can be added to a populated table: the seed
-   * fills it on insert *or when it is still empty*, which is how existing rows
-   * get their canzoniere without a one-off backfill script. `restrict` puts the
-   * "refuse to delete a non-empty canzoniere" rule in the database rather than
-   * only in the UI, so no code path can orphan a song.
-   */
-  canzoniereSlug: text('canzoniere_slug').references(() => canzonieri.slug, {
-    onDelete: 'restrict',
-  }),
-  /**
-   * Where the song sits inside its canzoniere, when someone has said.
-   *
-   * Null means nobody has: the song then sorts by title, after the ones that were
-   * placed by hand — which is what Postgres does with nulls in an ascending sort
-   * anyway, so the fallback needs no code. That makes this column additive in the
-   * strongest sense: every existing row is null, so the order stays alphabetical
-   * until the first drag, and a song imported into an ordered canzoniere joins at
-   * the end rather than jumping into the middle.
-   *
-   * Renumbered 1..N for the whole canzoniere on every reorder, so the values never
-   * drift into gaps or ties that would leave two songs' order undefined.
-   */
-  position: integer('position'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+/**
+ * A canzoniere is divided into sections, and every song is in exactly one of them.
+ *
+ * A serial id, not a slug: a section has no route of its own, so it needs no readable
+ * key — and an id that does not derive from the name is what keeps renaming free
+ * without having to freeze anything.
+ *
+ * Two unique constraints, each doing a different job. `(canzoniere_slug, name)` says
+ * two sections of the same canzoniere cannot share a name: that is not two things, it
+ * is a typo or a double tap — and it lets the import address a section *by name*
+ * without ever creating a twin. `(id, canzoniere_slug)` exists only to be referenced:
+ * see the composite key on `songs`.
+ */
+export const sections = pgTable(
+  'sections',
+  {
+    id: serial('id').primaryKey(),
+    canzoniereSlug: text('canzoniere_slug')
+      .notNull()
+      .references(() => canzonieri.slug, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    /** Renumbered 1..N across the canzoniere on every arrangement, like the songs. */
+    position: integer('position').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('sections_canzoniere_name').on(table.canzoniereSlug, table.name),
+    unique('sections_id_canzoniere').on(table.id, table.canzoniereSlug),
+  ],
+)
+
+export const songs = pgTable(
+  'songs',
+  {
+    slug: text('slug').primaryKey(),
+    title: text('title').notNull(),
+    artist: text('artist'),
+    tags: text('tags').array().notNull().default([]),
+    body: text('body').notNull(),
+    /**
+     * `restrict` puts the "refuse to delete a non-empty canzoniere" rule in the
+     * database rather than only in the UI, so no code path can orphan a song.
+     *
+     * Not null since v2.3: it was nullable so the column could be added to a
+     * populated table, and in the whole life of the table it never held a null —
+     * every way a song can arrive gives it a canzoniere. With the section
+     * mandatory it is also derivable from `section_id`, so a null would be a state
+     * that no longer means anything.
+     */
+    canzoniereSlug: text('canzoniere_slug')
+      .notNull()
+      .references(() => canzonieri.slug, { onDelete: 'restrict' }),
+    /**
+     * Which section of that canzoniere holds the song.
+     *
+     * Nullable for one deploy only, which is what makes the migration additive: the
+     * code already in production knows nothing about this column, so it cannot fill
+     * it, and a song imported between the migration and the deploy would fail its
+     * insert. The contracting migration that follows the deploy backfills again and
+     * makes it `not null`.
+     */
+    sectionId: integer('section_id'),
+    /**
+     * Where the song sits inside its **section**, when someone has said.
+     *
+     * Null means nobody has: the song then sorts by title, after the ones that were
+     * placed by hand — which is what Postgres does with nulls in an ascending sort
+     * anyway, so the fallback needs no code. That makes this column additive in the
+     * strongest sense: every existing row is null, so the order stays alphabetical
+     * until the first drag, and a song imported into an ordered section joins at
+     * the end rather than jumping into the middle.
+     *
+     * Renumbered 1..N within each section on every arrangement, so the values never
+     * drift into gaps or ties that would leave two songs' order undefined.
+     */
+    position: integer('position'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    /**
+     * The canzoniere of a song is written twice — here, and on its section — and this
+     * is what makes the two copies impossible to disagree: a song cannot point at a
+     * section of another canzoniere. The alternative was trusting the code, and the
+     * code is where mistakes live.
+     *
+     * `on update cascade` is not decoration: it is the only thing that lets a section
+     * move to another canzoniere. Measured on a scratch schema — with `no action` the
+     * update is refused whichever row goes first, because the constraint is checked
+     * per statement, not per transaction. With the cascade, `sections.canzoniere_slug`
+     * is updated and the songs follow. `on delete` stays `restrict`: a section holding
+     * songs may not be deleted.
+     *
+     * While `section_id` is null the pair is not checked at all (Postgres `MATCH
+     * SIMPLE`), which is exactly what the additive phase of the migration needs.
+     */
+    foreignKey({
+      columns: [table.sectionId, table.canzoniereSlug],
+      foreignColumns: [sections.id, sections.canzoniereSlug],
+      name: 'songs_section_canzoniere_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('cascade'),
+  ],
+)
 
 /**
  * One row, stamped by the build.

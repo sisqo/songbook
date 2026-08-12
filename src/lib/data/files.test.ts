@@ -23,9 +23,68 @@ describe('fileRepository', () => {
     assert.equal(await fileRepository.getSong('non-esiste'), null)
   })
 
-  it('sorts songs by title', async () => {
-    const titles = (await fileRepository.listSongs()).map((song) => song.title)
-    assert.deepEqual(titles, [...titles].sort((a, b) => a.localeCompare(b, 'it')))
+  /**
+   * Section first, then title — the same order the database reads.
+   *
+   * It used to be title alone, and the change is the point rather than a detail: the
+   * arrows inside a song step through this list, so a canzoniere divided into sections
+   * has to come out section by section. Within a section there is nothing on disk that
+   * could say where a song sits, so it stays alphabetical.
+   */
+  it('sorts songs by section, then by title', async () => {
+    const songs = await fileRepository.listSongs()
+    const sections = await fileRepository.listSections()
+
+    for (const section of sections) {
+      const titles = songs
+        .filter((song) => song.sectionId === section.id)
+        .map((song) => song.title)
+
+      assert.deepEqual(titles, [...titles].sort((a, b) => a.localeCompare(b, 'it')))
+    }
+
+    const placeOf = new Map(sections.map((section) => [section.id, section.position]))
+    const places = songs.map((song) => placeOf.get(song.sectionId ?? -1) ?? 0)
+    assert.deepEqual(places, [...places].sort((a, b) => a - b), 'sections came out interleaved')
+  })
+})
+
+describe('sezioni from the files', () => {
+  it('derives the declared ones, and «Brani» where no file says', async () => {
+    const sections = await fileRepository.listSections()
+
+    assert.deepEqual(
+      sections.map((section) => [section.canzoniereSlug, section.name, section.position]),
+      [
+        ['da-imparare', 'Brani', 1],
+        ['repertorio', 'Prima parte', 1],
+        ['repertorio', 'Seconda parte', 2],
+      ],
+    )
+  })
+
+  it('gives every song a section of its own canzoniere', async () => {
+    const sections = await fileRepository.listSections()
+    const byId = new Map(sections.map((section) => [section.id, section]))
+
+    for (const song of await fileRepository.listSongs()) {
+      const section = byId.get(song.sectionId ?? -1)
+      assert.ok(section, `${song.slug} has no section`)
+      assert.equal(section?.canzoniereSlug, song.canzoniereSlug, `${song.slug} points elsewhere`)
+    }
+  })
+
+  it('files each song where its own directive says', async () => {
+    const byId = new Map(
+      (await fileRepository.listSections()).map((section) => [section.id, section.name]),
+    )
+    const songs = await fileRepository.listSongs()
+    const sectionOf = (slug: string) =>
+      byId.get(songs.find((song) => song.slug === slug)?.sectionId ?? -1)
+
+    assert.equal(sectionOf('ferma-il-tram'), 'Prima parte')
+    assert.equal(sectionOf('le-luci-di-via-ostiense'), 'Seconda parte')
+    assert.equal(sectionOf('novembre-in-cortile'), 'Brani')
   })
 })
 

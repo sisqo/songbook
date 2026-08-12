@@ -23,13 +23,14 @@ normale di lavorare in locale: non serve un database per vedere l'app funzionare
 
 ## Aggiungere una canzone
 
-Dall'app, in `/importa`, in due passi: **prima scegli il canzoniere** dove finiranno
-i brani — è il primo campo della schermata, e da lì si può anche crearne uno nuovo —
-poi incolli il testo. L'app riconosce se è già ChordPro o se sono accordi sopra il
-testo e converte, deduce titolo e artista, e mostra il risultato prima di salvare.
+Dall'app, in `/importa`, in due passi: **prima scegli dove finiranno i brani** —
+canzoniere e sezione, i primi due campi della schermata, e da lì si possono anche creare
+sul posto — poi incolli il testo. L'app riconosce se è già ChordPro o se sono accordi sopra
+il testo e converte, deduce titolo e artista, e mostra il risultato prima di salvare.
 
-Il canzoniere scelto **vince** su quello che dice il testo: se un brano porta un
-`{canzoniere: …}` — succede reimportando un export — la riga lo segnala e lo ignora.
+La destinazione scelta **vince** su quella che dice il testo: se un brano porta un
+`{canzoniere: …}` o un `{sezione: …}` — succede reimportando un export — la riga lo
+segnala e lo ignora.
 
 ### Più brani in un colpo
 
@@ -99,6 +100,7 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {artist: Autore}
 {tags: lento}
 {canzoniere: Repertorio}
+{sezione: Prima parte}
 
 [Bb]Prima [Eb]riga del [F]testo
 
@@ -106,6 +108,13 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 [Gm7]Ritornello
 {end_of_chorus}
 ```
+
+`{sezione: …}` dice in quale sezione del canzoniere nasce il brano; senza, va nella
+sezione «Brani». Solo `{sezione}`, volutamente **non** `{section}`: altri programmi
+scrivono quella per indicare un *blocco* del brano — `{section: chorus}` — e leggerla qui
+archivierebbe la canzone in una sezione chiamata «chorus». Senza database le sezioni si
+ricavano da queste righe, in ordine alfabetico: non c'è nessun posto dove sia stato scritto
+un ordine.
 
 Gli accordi si possono scrivere in **entrambe le notazioni**: `[Bb]` e `[sib]`, `[D]`
 e `[re]`, `[Em7]` e `[mi-7]`. Vengono letti allo stesso modo e mostrati nella
@@ -183,12 +192,14 @@ una composizione più semplice invece di rimpicciolirsi in una macchia.
 
 ## Canzonieri
 
-Ogni brano appartiene a un canzoniere, e la home ne è l'elenco: una riga per
-canzoniere, col numero di brani, e un tocco porta alla **sua pagina**,
-`/canzonieri/<slug>`, dove stanno i brani nell'ordine in cui li suoni. Da lì si apre un
-brano, e nell'header del brano c'è la via di ritorno al canzoniere; il marchio accanto
-porta alla home, che è un livello sopra. Le frecce nell'header scorrono le altre canzoni
-del canzoniere.
+Ogni brano appartiene a un canzoniere, e a una **sezione** di quel canzoniere — a una e
+una sola. La home è l'elenco dei canzonieri: una riga per canzoniere, col numero di
+brani, e un tocco porta alla **sua pagina**, `/canzonieri/<slug>`, dove i brani stanno
+sotto la sezione a cui appartengono, nell'ordine in cui li suoni. Da lì si apre un brano,
+e nell'header del brano c'è la via di ritorno al canzoniere; il marchio accanto porta
+alla home, che è un livello sopra. Le frecce nell'header scorrono le altre canzoni del
+canzoniere, **attraversando le sezioni**: un canzoniere resta una sequenza sola, e le
+sezioni sono la sua struttura.
 
 Prima i canzonieri si aprivano **sul posto**, in home, e i brani comparivano sotto. Le
 due obiezioni a una rotta per canzoniere erano che uno creato dall'app non l'avrebbe
@@ -203,8 +214,10 @@ sistema.
 
 Si creano, rinominano e rimuovono da `/canzonieri`, che è la voce nel menù, e se ne crea
 uno anche in `/importa`, dove serve — appena creato è già la destinazione dell'import.
-**Spostare un brano** si fa dal campo *Canzoniere* nell'editor,
-`/canzoni/<slug>/modifica`. La rimozione di un canzoniere non vuoto chiede prima dove
+**Spostare un brano** si fa dai campi *Canzoniere* e *Sezione* nell'editor,
+`/canzoni/<slug>/modifica`: scegliendo un canzoniere le sezioni offerte cambiano con lui.
+L'import chiede le stesse due cose per tutta la pasta, e sa creare la sezione sul posto —
+incollare la scaletta di una serata la fa diventare una sezione in un colpo. La rimozione di un canzoniere non vuoto chiede prima dove
 spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a livello di
 database.
 
@@ -215,29 +228,71 @@ L'elenco dei canzonieri che `/importa` offre è quello del database, non quello 
 build: uno creato un minuto prima da `/canzonieri` non ha una pagina da aspettare, e
 una destinazione mancante all'appello sarebbe la stessa cosa di un brano vecchio.
 
-Un brano **senza canzoniere** — che nessuna strada dell'app produce, ma la colonna lo
-ammette — compare in home sotto «Senza canzoniere», come riga sua: non esiste una pagina
-dove metterlo, e un brano che non si raggiunge dalla prima schermata è un brano perso.
+Il gruppo «Senza canzoniere» che stava in fondo alla home non c'è più: la colonna è
+`not null` e il canzoniere di un brano si ricava dalla sua sezione, quindi quello stato
+non esiste più da rappresentare.
 
-### L'ordine dei brani
+### Le sezioni
 
-Nella pagina del canzoniere il pulsante **Riordina** mette una maniglia su ogni riga: si trascina col dito o col mouse, e la riga sotto il dito si sposta appena
-lo supera. Con la maniglia a fuoco funzionano anche ↑ e ↓, così l'ordine si può
-sistemare anche da tastiera. Ogni spostamento è salvato appena la riga si posa, e
-*Fatto* rimette i collegamenti al loro posto.
+Un canzoniere è diviso in sezioni: hanno un nome, un ordine loro, possono restare vuote,
+e due canzonieri possono averne una omonima senza che le due c'entrino niente l'una con
+l'altra. Rinominare una sezione è gratuito, come per un canzoniere e più di lui: una
+sezione è identificata da un numero, quindi il suo nome non è un indirizzo per nessuno.
+Nello stesso canzoniere però due sezioni non possono avere lo stesso nome — non sarebbero
+due cose, sarebbero un refuso — e questo è anche ciò che permette all'import di
+indirizzarne una *per nome* senza mai creare una gemella.
+
+Ogni canzoniere che esisteva prima ha ricevuto una sezione **«Brani»** con dentro tutti i
+suoi brani, nell'ordine che avevano; ogni canzoniere nuovo nasce con la sua. Un canzoniere
+senza sezioni sarebbe un canzoniere dove non si può archiviare niente.
+
+Nella pagina del canzoniere le sezioni si aprono e si chiudono, e **partono chiuse**: il
+canzoniere si legge come un indice delle sue parti e si apre quella che serve. La piega
+sta in `localStorage` per canzoniere, quindi funziona anche offline e non costa una
+scrittura sul server — chiudere una sezione è un gesto della mano, non una preferenza da
+ritrovare sul tablet. Due eccezioni, e valgono solo dove non hai già scelto tu:
+
+- **una sola sezione si apre da sé.** Una fisarmonica con un solo scomparto non è una
+  scelta, ed è lo stato di ogni canzoniere finché non lo dividi;
+- **tornando da un brano si apre la sua sezione**, perché il tasto «indietro» deve
+  riportarti dove eri e non davanti a un elenco chiuso. La via di ritorno porta il brano
+  in un frammento — `/canzonieri/<slug>#brano-<slug>` — e non in un parametro di query,
+  perché un frammento non arriva al service worker e non fa mancare la pagina nel
+  precache: il ritorno da un brano deve funzionare anche senza rete, che è quando serve.
+  Vale per il link in cima allo schermo, non per il gesto «indietro» del telefono, che
+  non porta frammenti e riporta il canzoniere come l'hai lasciato.
+
+### L'ordine dei brani, e come si divide un canzoniere
+
+Nella pagina del canzoniere il pulsante **Organizza** apre il modo in cui si dispone
+tutto: una maniglia su ogni sezione e su ogni brano, la matita per rinominare una
+sezione, il cestino, e *Nuova sezione*. Si trascina col dito o col mouse, e la riga sotto
+il dito si sposta appena lo supera. **Un brano cambia sezione trascinandolo oltre
+l'intestazione**: un gesto solo per le due cose, perché dove sta un brano è un fatto solo.
+Con la maniglia a fuoco funzionano anche ↑ e ↓ — e salendo oltre la prima riga di una
+sezione il brano passa in quella sopra, così anche la divisione si fa da tastiera. Ogni
+spostamento è salvato appena la riga si posa, e *Fatto* rimette i collegamenti al loro
+posto.
+
+Rimuovere una sezione piena chiede prima dove spostare i brani, come per un canzoniere, e
+per la stessa ragione: qui non si distrugge niente in silenzio. Rimuovendo un **canzoniere**
+e spostandone i brani, le sue sezioni traslocano con loro: «Messa» e «Cena» diventano
+sezioni del canzoniere che li accoglie, in fondo, con i brani nell'ordine che avevano. Se
+là c'è già una sezione con lo stesso nome, i brani si accodano a quella.
 
 Finché nessuno lo tocca l'ordine è alfabetico: la colonna `position` è `null`, e
-Postgres mette i null in fondo a un ordinamento crescente, quindi un canzoniere mai
-sistemato è in ordine di titolo. Al primo trascinamento — o al primo import — il
-canzoniere viene rinumerato tutto, da 1 a N, nell'ordine in cui era in quel momento.
+Postgres mette i null in fondo a un ordinamento crescente, quindi una sezione mai
+sistemata è in ordine di titolo. `position` conta **dentro una sezione**, non dentro il
+canzoniere: al primo trascinamento — o al primo import — le sezioni vengono rinumerate da
+1 a N e i brani di ognuna da 1 a N, nell'ordine in cui erano in quel momento.
 Da lì in poi l'ordine è esplicito: rinominare un brano non lo fa più risalire, e ogni
 brano nuovo si accoda alla fine.
 
 **I brani importati restano nell'ordine in cui li hai incollati**, ed è per questo che
 un import numera il canzoniere: se i nuovi arrivassero con un numero e i vecchi
 restassero `null`, i nuovi finirebbero *primi*, perché i null stanno in fondo.
-Spostare un brano in un altro canzoniere lo lascia invece senza numero, quindi arriva
-in coda — dove un brano che nessuno ha ancora ordinato appartiene.
+Spostare un brano in un'altra sezione — o in un altro canzoniere — lo lascia invece senza
+numero, quindi arriva in coda: dove un brano che nessuno ha ancora ordinato appartiene.
 
 La ricerca resta **alfabetica**: dentro un canzoniere l'ordine è quello che hai
 scelto, ma fra canzonieri diversi non è un ordine — i risultati arriverebbero come il
@@ -245,8 +300,9 @@ primo brano di ognuno, poi i secondi, e in una lista di risultati serve l'ordine
 si può prevedere.
 
 L'ordine su cui scorrono **le frecce** è quello del build, come i vicini di un brano
-appena spostato di canzoniere: restano quelli vecchi fino alla ricostruzione
-successiva. È l'unica parte della pagina che resta ferma al build, e volutamente: le
+appena spostato di sezione: restano quelli vecchi fino alla ricostruzione successiva —
+e con loro il nome della sezione scritto nell'header del brano, accanto al posto che
+occupa nel canzoniere («Prima parte · 3 di 12»). È l'unica parte della pagina che resta ferma al build, e volutamente: le
 frecce portano ad altre pagine statiche, generate con la stessa lista di questa,
 mentre le parole che stai leggendo arrivano dal database. Riordinare non mette i brani
 «in attesa di pubblicazione» — nessun testo è cambiato — quindi per allineare le

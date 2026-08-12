@@ -5,7 +5,7 @@ import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { CanzoniereSongs } from '@/components/CanzoniereSongs'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
-import type { CanzoniereState } from '@/lib/canzonieri/types'
+import { snapshot } from '@/lib/canzonieri/snapshot'
 import { repository } from '@/lib/data'
 import { toIndexRow } from '@/lib/search-index'
 
@@ -42,22 +42,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CanzonierePage({ params }: Props) {
   const { slug } = await params
 
-  const [songs, canzonieri] = await Promise.all([
+  const [songs, canzonieri, sections] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
+    repository.listSections(),
   ])
 
   const canzoniere = canzonieri.find((entry) => entry.slug === slug)
   if (canzoniere === undefined) notFound()
 
-  const initial: CanzoniereState = {
-    canzonieri,
-    assignments: Object.fromEntries(
-      songs
-        .filter((song) => song.canzoniereSlug !== null)
-        .map((song) => [song.slug, song.canzoniereSlug as string]),
-    ),
-  }
+  const initial = snapshot(songs, canzonieri, sections)
+  const divisions = sections.filter((section) => section.canzoniereSlug === slug)
 
   /*
    * This canzoniere's songs, in the order `listSongs` reads them — position first, then
@@ -77,6 +72,7 @@ export default async function CanzonierePage({ params }: Props) {
             <h1 className="screen-title">{canzoniere.name}</h1>
             <p className="mt-2 text-sm text-muted">
               {mine.length} {mine.length === 1 ? 'brano' : 'brani'}
+              {divisions.length > 1 && ` · ${divisions.length} sezioni`}
             </p>
           </header>
 

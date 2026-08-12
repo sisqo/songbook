@@ -43,12 +43,23 @@ const FORMAT_LABEL: Record<string, string> = {
  * until it is asked to.
  */
 export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string }) {
-  const { canzonieri, online, create, refresh: refreshCanzonieri } = useCanzonieri()
+  const {
+    canzonieri,
+    online,
+    create,
+    addSection,
+    divisionsOf,
+    refresh: refreshCanzonieri,
+  } = useCanzonieri()
   const { known, mayEdit } = useRole()
 
   const [destination, setDestination] = useState(defaultCanzoniere)
   const [naming, setNaming] = useState(false)
   const [newName, setNewName] = useState('')
+  /** The section chosen inside it, as the select holds it. */
+  const [into, setInto] = useState('')
+  const [namingSection, setNamingSection] = useState(false)
+  const [newSection, setNewSection] = useState('')
 
   const [pasted, setPasted] = useState('')
   const [prepared, setPrepared] = useState<PreparedSong[] | null>(null)
@@ -73,6 +84,17 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
     ? destination
     : (canzonieri[0]?.slug ?? '')
   const chosenName = canzonieri.find((entry) => entry.slug === chosen)?.name ?? 'Senza canzoniere'
+
+  /*
+   * And its section, resolved the same way and for the same reason: the sections on offer
+   * change with the canzoniere above, so a value held from before could name a section of
+   * somewhere else — which the database refuses outright. Falling back to the first
+   * section of the chosen canzoniere means the answer is always somewhere real.
+   */
+  const divisions = divisionsOf(chosen)
+  const chosenSection = divisions.some((section) => String(section.id) === into)
+    ? divisions.find((section) => String(section.id) === into)
+    : divisions[0]
 
   /** Null when the list could not be read, which is not the same as an empty one. */
   const refreshPending = useCallback(async (): Promise<PendingSong[] | null> => {
@@ -111,8 +133,32 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
 
     // Chosen straight away: making one here means wanting to import into it.
     setDestination(result.slug)
+    // Its own «Brani» comes with it, and the select will land on it by itself.
+    setInto('')
     setNewName('')
     setNaming(false)
+  }
+
+  /**
+   * A section made here, for this paste.
+   *
+   * Pasting the running order of an evening *is* making a section, so it can be made
+   * without leaving the screen — the same shortcut the canzoniere above has, and for the
+   * same reason. A name that is already taken is not an error here: the action answers
+   * with that section, and the songs join it.
+   */
+  const addDivision = async () => {
+    setError(null)
+    const result = await addSection(chosen, newSection)
+
+    if (!result.ok) {
+      setError(WRITE_MESSAGE[result.reason])
+      return
+    }
+
+    setInto(String(result.id))
+    setNewSection('')
+    setNamingSection(false)
   }
 
   const analyse = () => {
@@ -263,6 +309,70 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
           </select>
         </label>
 
+        <label className="mt-3 block">
+          <span className="field-label">In quale sezione</span>
+          <select
+            value={chosenSection === undefined ? '' : String(chosenSection.id)}
+            onChange={(event) => setInto(event.target.value)}
+            className="form-field"
+            disabled={divisions.length === 0}
+          >
+            {divisions.map((section) => (
+              <option key={section.id} value={String(section.id)}>
+                {section.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {namingSection ? (
+          <form
+            className="mt-2 flex flex-wrap gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void addDivision()
+            }}
+          >
+            <label className="min-w-[12rem] flex-1">
+              <span className="sr-only">Nome della nuova sezione</span>
+              <input
+                value={newSection}
+                onChange={(event) => setNewSection(event.target.value)}
+                placeholder="Nome della nuova sezione"
+                autoFocus
+                className="form-field"
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              disabled={!online || newSection.trim() === ''}
+            >
+              Crea
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm"
+              onClick={() => {
+                setNamingSection(false)
+                setNewSection('')
+              }}
+            >
+              Annulla
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm mt-2"
+            disabled={!online}
+            onClick={() => setNamingSection(true)}
+          >
+            <IconPlus size={15} />
+            Nuova sezione
+          </button>
+        )}
+
         {naming ? (
           <form
             className="mt-2 flex flex-wrap gap-2"
@@ -350,6 +460,7 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
         <div className="card mt-3 p-4 sm:p-5">
           <p className="mb-4 text-xs text-muted">
             {FORMAT_LABEL[single.format] ?? single.format} · va in {chosenName}
+            {chosenSection !== undefined && ` · ${chosenSection.name}`}
             {single.declares !== null && single.declares !== chosenName && (
               <> · il testo dice «{single.declares}»</>
             )}
@@ -365,13 +476,22 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
               artist: single.artist,
               tags: single.tags,
               canzoniereSlug: chosen,
+              sectionId: chosenSection === undefined ? '' : String(chosenSection.id),
               body: single.body,
             }}
             canzonieri={canzonieri}
+            sections={divisions}
             showCanzoniere={false}
             onSave={async (input, decision) => {
-              // The select above is the answer, even if it changed after the analysis.
-              const result = await saveSong({ ...input, canzoniereSlug: chosen }, decision)
+              // The selects above are the answer, even if they changed after the analysis.
+              const result = await saveSong(
+                {
+                  ...input,
+                  canzoniereSlug: chosen,
+                  sectionId: chosenSection?.id ?? null,
+                },
+                decision,
+              )
               if (result.ok) {
                 startOver()
                 setNotice('Salvato. È già nell’elenco; pubblica per averlo anche senza connessione.')
@@ -389,6 +509,8 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
             songs={prepared}
             canzoniereSlug={chosen}
             canzoniereName={chosenName}
+            sectionId={chosenSection?.id ?? null}
+            sectionName={chosenSection?.name ?? null}
             online={online}
             onDone={async () => {
               await Promise.all([refreshPending(), refreshCanzonieri()])

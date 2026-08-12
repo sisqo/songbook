@@ -2,26 +2,20 @@ import { CanzoniereProvider } from '@/components/CanzoniereProvider'
 import { HomeScreen } from '@/components/HomeScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
-import type { CanzoniereState } from '@/lib/canzonieri/types'
+import { snapshot } from '@/lib/canzonieri/snapshot'
 import { repository } from '@/lib/data'
 import { toIndexEntry } from '@/lib/search-index'
 
 export default async function Home() {
-  const [songs, canzonieri] = await Promise.all([
+  const [songs, canzonieri, sections] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
+    repository.listSections(),
   ])
 
   // Snapshot of the mutable layer, so the first paint already shows the right
   // names; the client refreshes it from the server after mount.
-  const initial: CanzoniereState = {
-    canzonieri,
-    assignments: Object.fromEntries(
-      songs
-        .filter((song) => song.canzoniereSlug !== null)
-        .map((song) => [song.slug, song.canzoniereSlug as string]),
-    ),
-  }
+  const initial = snapshot(songs, canzonieri, sections)
 
   return (
     <PrefsProvider songSlug={null}>

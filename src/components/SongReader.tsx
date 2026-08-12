@@ -21,42 +21,52 @@ interface Series {
 }
 
 /**
- * The canzoniere, and the song's place in it. Two answers, not one.
+ * The canzoniere, the section, and the song's place in the sequence. Three answers, not
+ * one.
  *
- * They used to be computed together and returned as a single null-or-not, which was a
- * bug waiting for its first victim: a canzoniere holding one song has no sequence to
- * step through, and returning null for both would have taken away the way back as
- * well. The sequence needs two songs; the way back needs only a canzoniere.
+ * The first two used to be computed together and returned as a single null-or-not, which
+ * was a bug waiting for its first victim: a canzoniere holding one song has no sequence to
+ * step through, and returning null for both would have taken away the way back as well.
+ * The sequence needs two songs; the way back needs only a canzoniere; the section needs
+ * only the song.
  *
- * Both are built from build-time data, unlike the song's own words, which are refreshed
- * from the database as soon as the page opens. The difference is deliberate: these
- * arrows lead to other static pages, and each of those was generated from the same list
- * this one was. Reading the live assignment here would point the arrows at songs whose
- * own pages still think they belong somewhere else.
+ * **The arrows do not stop at a section.** The siblings are the whole canzoniere in the
+ * order `listSongs` reads it — section by section, and inside each the order somebody put
+ * them in — so the last song of one section is followed by the first of the next. A
+ * canzoniere stays one sequence and the sections are its structure: stopping at a boundary
+ * would mean going back and reopening a section in the middle of an evening.
+ *
+ * All three are built from build-time data, unlike the song's own words, which are
+ * refreshed from the database as soon as the page opens. The difference is deliberate:
+ * these arrows lead to other static pages, and each of those was generated from the same
+ * list this one was. Reading the live arrangement here would point the arrows at songs
+ * whose own pages still think they sit somewhere else.
  *
  * So the neighbours are as stale as the pages they lead to — which is the only way for
  * them to agree — while what you are reading is not.
  */
-async function placeOf(song: Song): Promise<{ home: Home | null; series: Series | null }> {
-  if (song.canzoniereSlug === null) return { home: null, series: null }
-
-  const [songs, canzonieri] = await Promise.all([
+async function placeOf(
+  song: Song,
+): Promise<{ home: Home | null; section: string | null; series: Series | null }> {
+  const [songs, canzonieri, sections] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
+    repository.listSections(),
   ])
 
   const found = canzonieri.find((entry) => entry.slug === song.canzoniereSlug)
-  const home =
-    found === undefined ? null : { slug: found.slug, name: found.name }
+  const home = found === undefined ? null : { slug: found.slug, name: found.name }
+  const section = sections.find((entry) => entry.id === song.sectionId)?.name ?? null
 
   const siblings = songs.filter((entry) => entry.canzoniereSlug === song.canzoniereSlug)
   const index = siblings.findIndex((entry) => entry.slug === song.slug)
-  if (index === -1 || siblings.length < 2) return { home, series: null }
+  if (index === -1 || siblings.length < 2) return { home, section, series: null }
 
   const at = (position: number): string | null => siblings[position]?.slug ?? null
 
   return {
     home,
+    section,
     series: {
       position: index + 1,
       total: siblings.length,
@@ -79,7 +89,7 @@ async function placeOf(song: Song): Promise<{ home: Home | null; series: Series 
  */
 export async function SongReader({ song }: { song: Song }) {
   const parsed = parseChordPro(song.body)
-  const { home, series } = await placeOf(song)
+  const { home, section, series } = await placeOf(song)
 
   return (
     <PrefsProvider songSlug={song.slug}>
@@ -96,8 +106,21 @@ export async function SongReader({ song }: { song: Song }) {
             * brand goes to the list of canzonieri, one level above the one you came
             * from. A song with no canzoniere has nowhere in between, so it gets no
             * second link.
+            *
+            * It carries this song in a **fragment**, and that is what opens the section
+            * holding it on arrival — the canzoniere's sections are closed otherwise. A
+            * fragment rather than a query parameter because it never reaches the service
+            * worker, so the page it leads to is still the precached one: a query string
+            * would make the way back from a song stop working offline, which is exactly
+            * when it is needed. It is also why the phone's own back gesture lands on the
+            * canzoniere as you left it — that gesture carries no fragment, and restoring
+            * the previous screen is what it is for.
             */
-          back={home === null ? undefined : { href: `/canzonieri/${home.slug}`, label: home.name }}
+          back={
+            home === null
+              ? undefined
+              : { href: `/canzonieri/${home.slug}#brano-${song.slug}`, label: home.name }
+          }
           steps={{
             previous: series?.previous ? `/canzoni/${series.previous}` : null,
             next: series?.next ? `/canzoni/${series.next}` : null,
@@ -112,11 +135,17 @@ export async function SongReader({ song }: { song: Song }) {
           * would be a second thing to look at.
           */}
         <main className="song-card">
+          {/*
+            * The section, and the place in the canzoniere: «Prima parte · 3 di 12». The
+            * name says which division you are reading; the numbers count what the arrows
+            * count, which is the whole canzoniere — a number that counted the section
+            * while the arrow led out of it would be two different stories on one line.
+            */}
           <SongHeading
             place={
-              series === null || home === null
+              series === null
                 ? null
-                : { position: series.position, total: series.total, within: home.name }
+                : { position: series.position, total: series.total, within: section }
             }
           />
 

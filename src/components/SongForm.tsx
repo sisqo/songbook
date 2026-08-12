@@ -6,7 +6,7 @@ import { SongFields, type SongFieldValues } from '@/components/SongFields'
 import { SongSheet } from '@/components/SongSheet'
 import { IconTrash } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
-import type { Canzoniere } from '@/lib/data/types'
+import type { Canzoniere, Section } from '@/lib/data/types'
 import { SAVE_MESSAGE, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
 
 export interface FormValues extends SongFieldValues {
@@ -23,6 +23,7 @@ export interface FormValues extends SongFieldValues {
 export function SongForm({
   initial,
   canzonieri,
+  sections,
   showCanzoniere = true,
   slug,
   onSave,
@@ -30,6 +31,7 @@ export function SongForm({
 }: {
   initial: FormValues
   canzonieri: Canzoniere[]
+  sections: Section[]
   /** False when the screen around this form already asked which canzoniere. */
   showCanzoniere?: boolean
   /** Set when editing an existing song. */
@@ -56,6 +58,9 @@ export function SongForm({
     artist: values.artist,
     tags: values.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
     canzoniereSlug: values.canzoniereSlug,
+    // An empty menu — a canzoniere with no sections at all — leaves the answer to the
+    // server, which files the song in the first one it can and creates it if it must.
+    sectionId: values.sectionId === '' ? null : Number(values.sectionId),
     body: values.body,
   })
 
@@ -91,6 +96,7 @@ export function SongForm({
       <SongFields
         values={values}
         canzonieri={canzonieri}
+        sections={sections}
         showCanzoniere={showCanzoniere}
         onChange={set}
       />

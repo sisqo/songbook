@@ -1,0 +1,69 @@
+'use client'
+
+/**
+ * Which sections a reader has opened, per canzoniere.
+ *
+ * In `localStorage` and not in the database, on purpose: closing a section is a gesture
+ * of the hand, not a preference to find again on the tablet — and it has to work with no
+ * network, which is the state this app is used in most.
+ *
+ * Only what somebody has actually chosen is written down. A section that is absent from
+ * the map has not been decided about, and the screen is then free to apply its two
+ * exceptions — a canzoniere with a single section, and the section you have just come
+ * back from — without overruling anybody.
+ */
+
+const KEY = 'songs:sections'
+
+/** sectionId → open, for the sections of one canzoniere. */
+export type Folds = Record<string, boolean>
+
+type Stored = Record<string, Folds>
+
+function readAll(): Stored {
+  if (typeof window === 'undefined') return {}
+
+  try {
+    const raw = window.localStorage.getItem(KEY)
+    if (raw === null) return {}
+
+    const parsed = JSON.parse(raw) as unknown
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+
+    return parsed as Stored
+  } catch {
+    // Disabled storage, or a shape from an older version: everything stays closed.
+    return {}
+  }
+}
+
+export function readFolds(canzoniereSlug: string): Folds {
+  const held = readAll()[canzoniereSlug]
+  if (typeof held !== 'object' || held === null) return {}
+
+  return Object.fromEntries(
+    Object.entries(held).filter(([, open]) => typeof open === 'boolean'),
+  ) as Folds
+}
+
+export function writeFolds(canzoniereSlug: string, folds: Folds): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify({ ...readAll(), [canzoniereSlug]: folds }))
+  } catch {
+    // The memory is optional by design: the fold still works for this visit.
+  }
+}
+
+/**
+ * The song a link asked for, from `#brano-<slug>`.
+ *
+ * A fragment rather than a query parameter, and that is not a detail: a query string
+ * would make the URL miss its own entry in the precache, so the way back from a song
+ * would stop working offline — which is precisely when it is needed.
+ */
+export function songFromHash(hash: string): string | null {
+  const found = /^#brano-(.+)$/.exec(decodeURIComponent(hash))
+  return found === null ? null : found[1]
+}

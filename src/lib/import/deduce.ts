@@ -18,6 +18,7 @@ export interface Deduced {
   artist: string | null
   tags: string[]
   canzoniere: string | null
+  sezione: string | null
   /** The body with any consumed heading lines removed. */
   body: string
 }
@@ -68,6 +69,7 @@ export function deduce(body: string): Deduced {
     artist: parsed.artist ?? heading[1] ?? null,
     tags: parsed.tags,
     canzoniere: parsed.canzoniere,
+    sezione: parsed.sezione,
     body: consumed > 0 ? rest : body,
   }
 }

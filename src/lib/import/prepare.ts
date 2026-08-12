@@ -29,6 +29,8 @@ export interface PreparedSong {
    * silently overruling all of it would be a surprise the next morning.
    */
   declares: string | null
+  /** The section it claims, on exactly the same terms: said, not obeyed. */
+  declaresSection: string | null
 }
 
 export function prepareSongs(text: string): PreparedSong[] {
@@ -44,6 +46,7 @@ export function prepareSongs(text: string): PreparedSong[] {
       body: found.body,
       format: converted.format,
       declares: found.canzoniere,
+      declaresSection: found.sezione,
     }
   })
 }

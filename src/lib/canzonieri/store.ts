@@ -23,12 +23,28 @@ export function readCanzoniereCache(): CanzoniereState | null {
     const parsed = JSON.parse(raw) as Partial<CanzoniereState>
     if (!Array.isArray(parsed.canzonieri) || typeof parsed.assignments !== 'object') return null
     if (parsed.assignments === null) return null
+    /*
+     * A cache written before sections existed has no `sections` and its assignments
+     * point at canzoniere slugs rather than section ids. Both are caught here, and
+     * that is the whole migration: an unrecognised shape is discarded and the state
+     * falls back to the snapshot baked into the page. No key to version.
+     */
+    if (!Array.isArray(parsed.sections)) return null
 
     return {
       canzonieri: parsed.canzonieri.filter(
         (entry) => typeof entry?.slug === 'string' && typeof entry?.name === 'string',
       ),
-      assignments: parsed.assignments as Record<string, string>,
+      sections: parsed.sections.filter(
+        (entry) =>
+          typeof entry?.id === 'number' &&
+          typeof entry?.canzoniereSlug === 'string' &&
+          typeof entry?.name === 'string' &&
+          typeof entry?.position === 'number',
+      ),
+      assignments: Object.fromEntries(
+        Object.entries(parsed.assignments).filter(([, id]) => typeof id === 'number'),
+      ) as Record<string, number>,
     }
   } catch {
     // Disabled storage, or a shape from an older version: fall back to the

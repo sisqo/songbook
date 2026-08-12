@@ -141,6 +141,23 @@ describe('parseChordPro', () => {
     assert.equal(parseChordPro('{canzoniere: Da imparare}').canzoniere, 'Da imparare')
   })
 
+  it('reads the sezione directive', () => {
+    assert.equal(parseChordPro('{sezione: Prima parte}').sezione, 'Prima parte')
+    assert.equal(parseChordPro('{sezione: }').sezione, null)
+    assert.equal(parseChordPro('[C]niente').sezione, null)
+  })
+
+  /**
+   * `{section: chorus}` is how other tools name a *block of the song*. Reading it as
+   * filing would put the song in a section called «chorus», so the alias does not
+   * exist — and an unknown directive is ignored rather than shown as lyrics.
+   */
+  it('does not mistake {section} for a canzoniere section', () => {
+    const parsed = parseChordPro('{section: chorus}\n[C]parole')
+    assert.equal(parsed.sezione, null)
+    assert.equal(plainLyrics(parsed), 'parole')
+  })
+
   it('reads tags as a comma separated list', () => {
     assert.deepEqual(parseChordPro('{tags: rock, ita , da imparare}').tags, [
       'rock',

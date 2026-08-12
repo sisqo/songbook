@@ -7,7 +7,7 @@ import { TopBar } from '@/components/TopBar'
 import { EditorScreen } from '@/components/editor/EditorScreen'
 import { IconInfo } from '@/components/icons'
 import { currentUser } from '@/lib/auth/session'
-import type { CanzoniereState } from '@/lib/canzonieri/types'
+import { snapshot } from '@/lib/canzonieri/snapshot'
 import { repository } from '@/lib/data'
 import { canEdit } from '@/lib/roles'
 
@@ -36,9 +36,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EditSongPage({ params }: Props) {
   const { slug } = await params
 
-  const [song, canzonieri, user] = await Promise.all([
+  const [song, canzonieri, sections, user] = await Promise.all([
     repository.getSong(slug),
     repository.listCanzonieri(),
+    repository.listSections(),
     currentUser(),
   ])
 
@@ -70,10 +71,11 @@ export default async function EditSongPage({ params }: Props) {
     )
   }
 
-  const initial: CanzoniereState = {
-    canzonieri,
-    assignments: song.canzoniereSlug === null ? {} : { [song.slug]: song.canzoniereSlug },
-  }
+  /*
+   * This one song's own filing, and *every* section: the form's two menus offer the
+   * whole library, since moving a song is one of the things they are for.
+   */
+  const initial = snapshot([song], canzonieri, sections)
 
   return (
     // The preview renders a real sheet and the real control bar, both of which read

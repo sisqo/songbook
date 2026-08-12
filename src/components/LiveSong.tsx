@@ -18,10 +18,10 @@ import { chordTokens } from '@/lib/chordpro'
 /**
  * Where this song sits in the sequence it is being read in.
  *
- * `within` names that sequence. It used to be left unset when the song was read
- * from a canzoniere, because the chip beside it already named one and "1 di 12"
- * between the two would have looked like it belonged to the chip. That chip is
- * gone, so the name has nowhere else to be said and this is where it is said.
+ * `within` names the **section** the song is in, while the two numbers count the whole
+ * canzoniere — which is what the arrows step through, so it is what they should count.
+ * The canzoniere itself is named by the way back at the top of the screen, one line above,
+ * so saying it again here would be the same word twice on a phone-width line.
  */
 export interface Place {
   position: number
@@ -48,8 +48,8 @@ export function SongHeading({ place }: { place: Place | null }) {
         {song.artist !== null && <span>{song.artist}</span>}
         {place !== null && (
           <span className="text-faint">
+            {place.within !== null && `${place.within} · `}
             {place.position} di {place.total}
-            {place.within !== null && ` in ${place.within}`}
           </span>
         )}
       </p>
