@@ -47,8 +47,8 @@ export function CanzoniereSongs({
   const [organizing, setOrganizing] = useState(false)
 
   const [folds, setFolds] = useState<Folds>({})
-  /** The section the reader came back from, if a link said so. */
-  const [arrived, setArrived] = useState<number | null>(null)
+  /** The song a link asked for, if one did. The *song*, not its section: see below. */
+  const [asked, setAsked] = useState<string | null>(null)
 
   const divisions = useMemo(() => divisionsOf(slug), [divisionsOf, slug])
 
@@ -82,12 +82,19 @@ export function CanzoniereSongs({
    */
   useLayoutEffect(() => {
     setFolds(readFolds(slug))
-
-    const song = songFromHash(window.location.hash)
-    setArrived(song === null ? null : (assignments[song] ?? null))
-    // Only on arrival: a later change of assignments must not reopen anything.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setAsked(songFromHash(window.location.hash))
   }, [slug])
+
+  /**
+   * The section to open on arrival, worked out from the song rather than fixed when the
+   * link was followed.
+   *
+   * It has to be derived, not stored: layout effects run child before parent, so at the
+   * moment the hash is read the assignments are still the ones baked into the page — and
+   * for a song moved since the last build that is the section it *used* to be in. Deriving
+   * it means the right section opens as soon as the live answer lands, a beat later.
+   */
+  const arrived = asked === null ? null : (assignments[asked] ?? null)
 
   /** Closed unless the reader said otherwise, or one of the two exceptions applies. */
   const isOpen = useCallback(
@@ -103,13 +110,10 @@ export function CanzoniereSongs({
 
   // Bring the row you came back from into view, once the section holding it is open.
   useEffect(() => {
-    if (arrived === null) return
+    if (arrived === null || asked === null) return
 
-    const song = songFromHash(window.location.hash)
-    if (song === null) return
-
-    document.getElementById(`brano-${song}`)?.scrollIntoView({ block: 'center' })
-  }, [arrived])
+    document.getElementById(`brano-${asked}`)?.scrollIntoView({ block: 'center' })
+  }, [arrived, asked])
 
   if (organizing) {
     return (
