@@ -133,6 +133,15 @@ export function CanzoniereSongs({
   return (
     <>
       {/*
+        * How much is in here, counted from the live layer rather than from the page. The
+        * static header above says only the name for that reason.
+        */}
+      <p className="mb-3 text-sm text-muted">
+        {total} {total === 1 ? 'brano' : 'brani'}
+        {divisions.length > 1 && ` · ${divisions.length} sezioni`}
+      </p>
+
+      {/*
         * A card each. A section is a thing that opens and closes, with its own name and
         * its own songs, so it gets its own card rather than a hairline inside a shared
         * one — and a fold then has a visible container to happen in.

@@ -96,7 +96,7 @@ describe('putting a saved order back into the whole list', () => {
      * A short list is not an error here: this function cannot know that `a2` belongs
      * to the same canzoniere as `a1` and `a3`. Refusing a partial order is the
      * server's job, where the canzoniere's real membership is known — see the `stale`
-     * check in `reorderCanzoniere`.
+     * check in `arrangeCanzoniere`.
      */
     assert.deepEqual(
       applyOrder(all, ['a3', 'a1']).map((item) => item.slug),

@@ -52,7 +52,6 @@ export default async function CanzonierePage({ params }: Props) {
   if (canzoniere === undefined) notFound()
 
   const initial = snapshot(songs, canzonieri, sections)
-  const divisions = sections.filter((section) => section.canzoniereSlug === slug)
 
   /*
    * This canzoniere's songs, in the order `listSongs` reads them — position first, then
@@ -68,12 +67,14 @@ export default async function CanzonierePage({ params }: Props) {
         <TopBar current="canzonieri" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
+          {/*
+            * The name here, the counts inside: they belong to the list, and the list is
+            * the live one. Counting here would have this line and the cards below it
+            * disagree on the same screen until the next rebuild — a section created a
+            * minute ago is in the cards immediately.
+            */}
           <header className="mb-4">
             <h1 className="screen-title">{canzoniere.name}</h1>
-            <p className="mt-2 text-sm text-muted">
-              {mine.length} {mine.length === 1 ? 'brano' : 'brani'}
-              {divisions.length > 1 && ` · ${divisions.length} sezioni`}
-            </p>
           </header>
 
           <CanzoniereSongs slug={slug} songs={mine} />
