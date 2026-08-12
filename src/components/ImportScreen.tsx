@@ -78,7 +78,9 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
   const refreshPending = useCallback(async (): Promise<PendingSong[] | null> => {
     try {
       const fresh = await loadPending()
-      setPending(fresh)
+      // Null is "could not ask" — offline, signed out, or no longer an editor — so the
+      // list stays as it was. Only an answered, empty list means nothing is waiting.
+      if (fresh !== null) setPending(fresh)
       return fresh
     } catch {
       // Offline or signed out: leave the list as it is.
@@ -185,6 +187,10 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
     setNotice(null)
     try {
       const files = await exportAll()
+      if (files === null) {
+        setNotice('Export non riuscito: il server non ha risposto o il tuo ruolo non lo permette.')
+        return
+      }
       if (files.length === 0) {
         setNotice('Niente da esportare.')
         return

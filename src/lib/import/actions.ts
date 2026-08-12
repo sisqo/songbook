@@ -31,8 +31,15 @@ import type {
 
 /**
  * Everything in this file changes the repertoire or acts on it as a whole, so all of it
- * needs an editor — including the two reads: the pending list and the export belong to
- * the import screen, which a viewer has no way to reach in the first place.
+ * needs an editor — including the two reads: the pending list and the export belong to the
+ * import screen, which a viewer has no way to reach in the first place.
+ *
+ * Those two answer **null** when refused rather than an empty list, and the difference is
+ * the same one `listMembers` and `loadSongContent` make: an empty answer is a fact about
+ * the repertoire, and a refusal is not an answer at all. Returning `[]` would have the
+ * screen say "nothing waiting to be published" to somebody whose role had just been taken
+ * away with the page still open, and hand them a zip of nothing when they asked for an
+ * export.
  */
 
 /**
@@ -292,8 +299,8 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
  * actually saw. With no stamp at all — a database that has never been built
  * from — everything counts as pending, which is the truthful answer.
  */
-export async function loadPending(): Promise<PendingSong[]> {
-  if (!(await asEditor()).ok) return []
+export async function loadPending(): Promise<PendingSong[] | null> {
+  if (!(await asEditor()).ok) return null
 
   const database = db()
   const stamp = await database
@@ -358,8 +365,8 @@ export interface ExportedFile {
  * These are the files `npm run seed` reads, so this archive is also the restore
  * path: put them back in `content/`, run the seed, and what is missing returns.
  */
-export async function exportAll(): Promise<ExportedFile[]> {
-  if (!(await asEditor()).ok) return []
+export async function exportAll(): Promise<ExportedFile[] | null> {
+  if (!(await asEditor()).ok) return null
 
   const database = db()
   const [rows, names] = await Promise.all([
