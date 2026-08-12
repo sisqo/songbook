@@ -60,7 +60,7 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <IconSliders size={20} />,
-    title: 'Zoom e scorrimento automatico',
+    title: 'Zoom e scorrimento',
     text: 'Ingrandisci il testo e lascialo scorrere da solo, alla velocità che preferisci: le mani restano sullo strumento.',
   },
   {
@@ -110,19 +110,21 @@ export default async function LoginPage({ searchParams }: Props) {
       <div className="login-glow" aria-hidden />
 
       <div className="w-full max-w-sm text-center">
-        <span className="login-mark">
-          <IconNote size={28} />
+        <span className="hero-mark">
+          <span className="hero-mark-fill">
+            <IconNote />
+          </span>
         </span>
 
-        <h1 className="landing-title mt-5">{APP_NAME}</h1>
-        <p className="landing-payoff mt-2">{APP_PAYOFF}</p>
-        <p className="mx-auto mt-3 max-w-[19rem] text-sm leading-[1.45] text-muted">
+        <h1 className="landing-title mt-[18px] sm:mt-[22px]">{APP_NAME}</h1>
+        <p className="landing-payoff mt-2 sm:mt-2.5">{APP_PAYOFF}</p>
+        <p className="mx-auto mt-3 max-w-[19rem] text-sm leading-[1.45] text-muted sm:mt-3.5 sm:max-w-lg sm:text-[15px] sm:leading-[1.5]">
           {DESCRIPTION}
         </p>
       </div>
 
-      <div className="mt-9 w-full max-w-sm">
-        <div className="card p-7">
+      <div className="mt-7 w-full max-w-sm sm:mt-8">
+        <div className="card card-lead login-card p-6 sm:p-7">
           {message !== null && (
             <p className="notice notice-error text-start" role="alert">
               {message}
@@ -136,7 +138,7 @@ export default async function LoginPage({ searchParams }: Props) {
               await signIn('google', { redirectTo: '/' })
             }}
           >
-            <button type="submit" className="btn w-full justify-center py-3 text-base">
+            <button type="submit" className="btn is-page w-full justify-center py-3 text-base">
               <IconGoogle />
               Entra con Google
             </button>
@@ -202,21 +204,23 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <section className="mt-16 w-full max-w-4xl sm:mt-20">
+      <section className="mt-11 w-full max-w-4xl lg:mt-16">
         <div className="text-center">
-          <h2 className="section-title">Fatta per il palco, non per il divano</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-[1.45] text-muted">
+          <h2 className="landing-feature-title">Fatta per il palco, non per il divano</h2>
+          <p className="mx-auto mt-2 max-w-[26rem] text-sm leading-[1.45] text-muted lg:mt-2.5 lg:max-w-[30rem] lg:text-[15px] lg:leading-[1.5]">
             Ogni controllo è pensato per un pollice, non per un mouse — e per una mano che
             in quel momento sta tenendo uno strumento.
           </p>
         </div>
 
-        <div className="feature-grid mt-8">
+        <div className="feature-grid mt-6 lg:mt-8">
           {FEATURES.map((feature) => (
             <article key={feature.title} className="feature-card">
-              <span className="feature-icon">{feature.icon}</span>
-              <h3 className="mt-3.5 font-medium">{feature.title}</h3>
-              <p className="mt-1.5 text-sm leading-[1.45] text-muted">{feature.text}</p>
+              <div className="feature-head">
+                <span className="feature-icon">{feature.icon}</span>
+                <h3 className="feature-title">{feature.title}</h3>
+              </div>
+              <p className="feature-text">{feature.text}</p>
             </article>
           ))}
         </div>
