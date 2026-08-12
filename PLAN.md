@@ -90,6 +90,10 @@ members(email primary key, added_by, created_at,
         role)                                                        -- v2.1: admin|editor|viewer
       -- solo gli invitati; i proprietari restano in ALLOWED_EMAILS e sono admin per definizione
 
+credentials(email primary key, password_hash, updated_at)            -- v2.2
+      -- come si dimostra un indirizzo, non se è ammesso: tabella a parte perché
+      -- un proprietario non ha riga in members e deve poter avere una password
+
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
 user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
                 capo,                                                -- v1.8
@@ -158,7 +162,10 @@ ciò che non è archiviato si vede a colpo d'occhio.
 
 ### Autenticazione
 
-- Auth.js v5, unico provider Google, sessioni JWT (nessun adapter, nessuna tabella auth).
+- Auth.js v5, sessioni JWT (nessun adapter, nessuna tabella di utenti per l'autenticazione).
+- Due provider: **Google** e **credenziali** (email e password, v2.2). Il secondo dimostra
+  *quale indirizzo* sei e non concede niente: `roleOf` decide come sempre, e non sa che la
+  tabella delle password esista.
 - Il callback `signIn` confronta l'email con l'unione di `ALLOWED_EMAILS` (i proprietari,
   dall'ambiente) e della tabella `members` (gli invitati, gestiti da `/utenti` — v2.0);
   qualunque altro account Google valido viene respinto con una pagina dedicata.
@@ -1180,6 +1187,62 @@ il controllo a sbagliare: leggeva `document.body`, che comincia con lo script de
 cercava le parole del brano in una pagina dove Next le aveva prefetchate legittimamente
 dal link di ritorno.
 
+### v2.2 — email e password
+
+Un secondo modo di entrare, accanto a Google. Quattro decisioni, e la prima spiega la forma
+di tutte le altre.
+
+**Una tabella a parte, `credentials`, non una colonna su `members`.** Il motivo è lo stesso
+fatto che rende i proprietari impossibili da chiudere fuori: un proprietario **non ha riga**
+in `members`, quindi una colonna là non potrebbe mai contenere la sua password. Separandole,
+`members` risponde *se* puoi essere qui e `credentials` soltanto *come dimostri di essere
+quell'indirizzo*. Una riga di password non concede niente: `roleOf` decide come prima e non
+sa che questa tabella esista.
+
+**scrypt dalla libreria standard.** L'alternativa era un bcrypt in puro JS: una dipendenza
+per una funzione, in un'app che ha appena finito di cancellare una dipendenza che non usava
+più. scrypt è un KDF da password nella standard library, lento e affamato di memoria di
+proposito, e il suo costo è l'unico freno ai tentativi che questa app abbia — misurato:
+34 ms per un hash, 30 ms per una verifica, con N=16384, r=8, p=1 e 16 MiB. La stringa
+salvata porta i propri parametri (`scrypt$16384$8$1$sale$hash`), così alzarli domani non
+rompe le righe scritte ieri.
+
+**Il login non distingue mai i suoi rifiuti.** Password sbagliata, indirizzo senza password,
+indirizzo fuori elenco: una frase sola. Il controllo di ammissione sta *dentro* `authorize`
+oltre che in `signIn`, e non è ridondanza — è ciò che fa collassare due esiti diversi in uno
+visto da fuori. Altrimenti indovinare la password di qualcuno che è stato rimosso darebbe un
+errore diverso, e il modulo diventerebbe un oracolo su chi esiste. Il *tempo* di risposta
+direbbe la stessa cosa, e per quello c'è la verifica contro un hash finto quando la riga non
+c'è.
+
+**La password di un proprietario non si imposta da un'altra persona.** L'identità di un
+proprietario la garantisce Google; poter scrivere la sua password sarebbe la strada per
+entrare come qualcuno che non si può né rimuovere né retrocedere — l'unica scalata di
+privilegi che il sistema dei ruoli lasciava aperta. La propria sì, sempre, e per questo la
+regola è «tranne il tuo indirizzo» e non «solo gli invitati».
+
+E una cosa in più di quanto chiesto, da valutare: **`/password`**, dove ognuno cambia la
+propria indicando quella attuale. Una password che solo un admin può cambiare è una password
+che l'admin conosce; con quella schermata l'admin dà la prima e poi non serve più. Ogni ruolo
+ce l'ha, viewer compreso: come entri è affare tuo, e l'unica autorizzazione è che l'indirizzo
+viene dalla sessione e non da un parametro.
+
+**Cosa è stato misurato.** Ventidue controlli, e la prima metà **senza cookie forgiati**: il
+browser compila il modulo e l'app deve restituire una sessione. La password arriva nel
+database solo come hash `scrypt$…`, mai in chiaro; entra con quella giusta e non con quella
+sbagliata; un indirizzo che nessuno conosce ottiene la stessa frase di una password
+sbagliata; l'interessato la cambia da sé e la vecchia smette di funzionare; una password
+attuale sbagliata non cambia niente e lo dice; un admin invitato non si vede offrire la
+password di un proprietario; rimuovere l'utente porta via anche la password, e il modulo
+allora lo rifiuta come qualsiasi estraneo.
+
+**Cosa non è stato provato end-to-end**: il giro completo di Google, perché non si può
+guidare la sua schermata di consenso. Di quello resta verificato che i due provider si
+costruiscono, che `/login` mostra entrambe le strade e che il middleware non è cresciuto —
+`node:crypto` non è finito sull'edge.
+
+Migrazione 0009: crea `credentials`. Solo aggiunta, quindi applicata prima del push.
+
 ### v2 — il resto
 
 Restava: scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei
@@ -1260,6 +1323,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Offline | PWA con pagine statiche precache | Sala prove e palco spesso non hanno rete |
 | Accesso | Google OAuth + elenco in due metà | Chiude la questione copyright e dà l'identità per la sincronizzazione. Proprietari nell'ambiente, invitati in tabella (v2.0) |
 | Ruoli | admin, editor, viewer; i proprietari sono admin (v2.1) | Chi entra e cosa può fare sono due domande, e la seconda non deve poter chiudere fuori nessuno dalla prima |
+| Modi di entrare | Google + email e password (v2.2) | Due prove dello stesso indirizzo, non due account; scrypt dalla libreria standard, nessuna dipendenza nuova |
 | Preferenze e ruoli | Aperte a tutti, viewer compresi | Trasporre non è modificare: è come una persona legge sul proprio schermo |
 | Sessione | 90 giorni | Un token scaduto senza rete chiuderebbe fuori dal repertorio |
 | Database | Neon via Vercel Marketplace | Variabili iniettate, zero configurazione manuale |

@@ -64,6 +64,13 @@
       "when": 1786523203660,
       "tag": "0008_long_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786524764641,
+      "tag": "0009_yellow_terror",
+      "breakpoints": true
     }
   ]
 }

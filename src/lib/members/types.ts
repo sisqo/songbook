@@ -23,6 +23,13 @@ export interface MemberList {
   you: string
   /** And their role, so it can refuse to let them change their own. */
   yourRole: Role
+  /**
+   * Which addresses — owners included — can sign in with a password.
+   *
+   * Not whether they have used it, and certainly not the hash: only that a password
+   * exists, which is what decides whether the screen offers to set one or to replace it.
+   */
+  passwords: string[]
 }
 
 export type MemberFailure =

@@ -12,6 +12,7 @@
 import { eq } from 'drizzle-orm'
 
 import { isEmailShape, isOwner, normalizeEmail, parseAllowlist } from '@/lib/allowlist'
+import { deletePasswordHash, withPassword } from '@/lib/auth/credentials'
 import { asAdmin } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
 import { members } from '@/lib/db/schema'
@@ -35,11 +36,15 @@ export async function loadMembers(): Promise<MemberList | null> {
   const invited = await listMembers()
   if (invited === null) return null
 
+  const owners = parseAllowlist(process.env.ALLOWED_EMAILS)
+
   return {
-    owners: parseAllowlist(process.env.ALLOWED_EMAILS),
+    owners,
     members: invited,
     you: admin.email,
     yourRole: admin.role,
+    // Who can get in without Google. Said, so the screen can offer the right gesture.
+    passwords: [...(await withPassword([...owners, ...invited.map((row) => row.email)]))],
   }
 }
 
@@ -105,7 +110,15 @@ export async function removeMember(email: string): Promise<MemberResult> {
       .where(eq(members.email, address))
       .returning({ email: members.email })
 
-    return removed.length === 0 ? { ok: false, reason: 'not-found' } : { ok: true }
+    if (removed.length === 0) return { ok: false, reason: 'not-found' }
+
+    /*
+     * And their password with them. A hash that outlives the access it proved is a secret
+     * kept for nobody — and it would let a right guess be told from a wrong one for an
+     * address that can no longer enter, which is the one thing the login form must not say.
+     */
+    await deletePasswordHash(address)
+    return { ok: true }
   } catch (error) {
     console.error('removeMember failed', error)
     return { ok: false, reason: 'failed' }
@@ -118,10 +131,10 @@ export async function removeMember(email: string): Promise<MemberResult> {
  * The two refusals are the same ones removal has, and they are there for the same
  * reasons. An **owner** has no row: an update would touch nothing and report `not-found`,
  * which reads as a bug rather than as the rule that the environment outranks this table.
- * **Yourself** is refused because the screen you would be demoting yourself out of is
- * this one — recoverable through an owner, but not something to do with one tap and no
- * question. Owners are exempt from that particular trap by being unable to have a role
- * changed at all.
+ * **Yourself** is refused because the screen you would be demoting yourself out of is this
+ * one — recoverable through an owner, but not something to do with one tap and no question.
+ * An owner asking about their own address meets that refusal first, which is the same
+ * answer by a different name: they have no row, so there was never a role here to change.
  */
 export async function setMemberRole(email: string, role: Role): Promise<MemberResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }

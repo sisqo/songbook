@@ -2,8 +2,8 @@
 
 Testi e accordi del proprio repertorio, da leggere su tablet e telefono: zoom,
 scorrimento automatico, cambio di tonalità, capotasto e notazione italiana o
-internazionale. Entra solo chi è in elenco, e l'elenco — con i ruoli — si gestisce
-dall'app.
+internazionale. Si entra con Google o con email e password; entra solo chi è in elenco, e
+l'elenco — con i ruoli — si gestisce dall'app.
 
 - Produzione: https://songs.sisqo.dev
 - Repo: https://github.com/sisqo/songs
@@ -363,8 +363,48 @@ chi è in elenco. L'elenco ha due metà, e la differenza fra loro è il punto.
   dalla propria applicazione, e che tiene in piedi il loro accesso anche quando il
   database non risponde.
 - Gli **invitati** stanno nella tabella `members` e si aggiungono e si togliono da
-  `/utenti`, voce *Utenti* nel menù. Valgono dal loro prossimo ingresso: nessun deploy,
-  nessuna ricostruzione.
+  `/utenti`, voce *Utenti* nel menù. Un invito nuovo vale dal loro primo accesso — non
+  hanno ancora una sessione — mentre ogni cambio a chi è già dentro vale dalla sua azione
+  successiva. In nessun caso serve un deploy o una ricostruzione.
+
+### Due modi per entrare
+
+**Google**, che è il modo che non richiede di custodire niente, e **email e password**, per
+chi preferisce non dare a Google un altro accesso o non ha un account Google. Non sono due
+account: sono due modi di dimostrare lo stesso indirizzo, e l'indirizzo è tutto ciò che
+conta — chi entra e cosa può fare li decide sempre l'elenco.
+
+Una password si imposta in due posti, e non è un caso che siano due:
+
+- **Da `/utenti`**, un Admin la dà a un invitato — è così che qualcuno entra la prima volta
+  senza Google — oppure la sostituisce se è stata dimenticata. Non a un *altro*
+  proprietario: l'identità di un proprietario la garantisce Google, e poter scrivere la sua
+  password sarebbe il modo di entrare come qualcuno che non si può né rimuovere né
+  retrocedere. La propria sì.
+- **Da `/password`**, voce *Password* nel menù, ognuno cambia la propria, indicando quella
+  attuale se ce l'ha. Serve perché una password che solo un altro può cambiare è una
+  password che quell'altro conosce.
+
+Rimuovere una password lascia Google come unica via. Rimuovere un **utente** cancella anche
+la sua password: un hash che sopravvive all'accesso che dimostrava è un segreto tenuto per
+nessuno.
+
+Come sono conservate: **scrypt** dalla libreria standard di Node, senza dipendenze nuove,
+con un sale per ognuna e i parametri scritti dentro la stringa salvata — così si possono
+alzare domani senza rompere le righe di ieri. Misurato su questa macchina: 34 ms per
+calcolare un hash, 30 ms per verificarlo. Il confronto è a tempo costante, e quando
+l'indirizzo non esiste la verifica gira comunque contro un hash finto, perché altrimenti il
+*tempo* di risposta direbbe quali indirizzi esistono.
+
+La pagina di login non distingue mai i suoi rifiuti: password sbagliata, indirizzo senza
+password e indirizzo fuori elenco danno **la stessa frase**. Distinguerli vorrebbe dire
+rispondere alla domanda «questa persona ha un accesso qui», che non è una domanda a cui una
+pagina di login debba rispondere.
+
+**Non c'è alcun rate limiting**, e va detto: l'unico freno ai tentativi è il costo di scrypt
+— una trentina di millisecondi qui, probabilmente qualcosa in più su una funzione serverless
+piccola. Per un'app con una manciata di utenti è un compromesso accettato sapendolo, non una
+dimenticanza.
 
 ### I ruoli
 
@@ -460,6 +500,9 @@ Due dettagli che costano tempo se non si sanno:
 | `AUTH_URL` | Su Vercel: `https://songs.sisqo.dev`, così il callback OAuth combacia |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
 | `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |
+
+Per le password non serve nessuna variabile: stanno nella tabella `credentials`, e la firma
+delle sessioni è già `AUTH_SECRET`.
 
 ## Note
 

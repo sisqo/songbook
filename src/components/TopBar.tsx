@@ -4,7 +4,7 @@ import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 
-export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti'
+export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti' | 'password'
 
 /**
  * The header, on every screen inside the app.

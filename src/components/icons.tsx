@@ -212,6 +212,17 @@ export function IconGrip(props: IconProps) {
   )
 }
 
+/** A password: a key. */
+export function IconKey(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.8 12.2 20 3" />
+      <path d="M16.5 6.5 19 9" />
+    </Icon>
+  )
+}
+
 /** Who may enter: two people, the second half-behind the first. */
 export function IconUsers(props: IconProps) {
   return (

@@ -22,7 +22,6 @@
 
 import { auth } from '@/auth'
 import { normalizeEmail } from '@/lib/allowlist'
-import { hasDatabase } from '@/lib/db/client'
 import { listMemberships } from '@/lib/members/read'
 import { type Role, canEdit, canManageUsers, roleOf } from '@/lib/roles'
 
@@ -32,12 +31,18 @@ export interface CurrentUser {
 }
 
 /**
- * The signed-in reader and their role, or null when there is nobody, no database, or
- * somebody whose access has been taken away.
+ * The signed-in reader and their role, or null when there is nobody, or somebody whose
+ * access has been taken away.
+ *
+ * Deliberately **not** null merely because there is no database. Running from `content/`
+ * with no `DATABASE_URL` is the normal way to work locally, and an owner is an owner there
+ * too: `listMemberships` answers null, `roleOf` reads the environment, and the owners come
+ * out admin — which is the same property that keeps them in when the database is
+ * unreachable in production. What refuses in that mode is each write, with `no-database`,
+ * which is the true reason. Saying "your role does not allow this" instead would be a lie
+ * with a plausible ring to it.
  */
 export async function currentUser(): Promise<CurrentUser | null> {
-  if (!hasDatabase) return null
-
   const session = await auth()
   const email = session?.user?.email
   if (!email) return null

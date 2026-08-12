@@ -10,6 +10,7 @@ import {
   IconBooks,
   IconExternal,
   IconImport,
+  IconKey,
   IconMenu,
   IconNote,
   IconTuningFork,
@@ -117,6 +118,20 @@ export function NavMenu({
                 Utenti
               </Link>
             )}
+
+            {/*
+              * Every role has one of these: how you get in is your own business, and a
+              * viewer needs it as much as an admin.
+              */}
+            <Link
+              href="/password"
+              className={item('password')}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <IconKey size={17} />
+              Password
+            </Link>
 
             {/*
               * The tuner, which is another app on another domain.

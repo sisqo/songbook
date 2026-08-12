@@ -40,28 +40,6 @@ export function isEmailShape(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email))
 }
 
-/**
- * An empty list on both sides denies everyone rather than admitting everyone: a
- * forgotten environment variable and an empty table must fail closed, not publish
- * the site.
- *
- * `members` may be null, meaning the table could not be read. It counts as nobody, for
- * the same reason: an unreachable database is not permission.
- */
-export function isAllowed(
-  email: string | null | undefined,
-  raw: string | undefined | null,
-  members: readonly string[] | null = null,
-): boolean {
-  if (!email) return false
-
-  const allowed = [...parseAllowlist(raw), ...(members ?? []).map(normalizeEmail)]
-  if (allowed.length === 0) return false
-
-  return allowed.includes(normalizeEmail(email))
-}
-
-
 /** Whether this address is one of the owners, who cannot be removed from inside the app. */
 export function isOwner(email: string | null | undefined, raw: string | undefined | null): boolean {
   if (!email) return false

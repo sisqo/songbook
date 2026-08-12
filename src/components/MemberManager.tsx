@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { RoleNotice } from '@/components/RoleNotice'
 import { useRole } from '@/components/RoleProvider'
-import { IconChevronDown, IconOffline, IconPlus, IconTrash } from '@/components/icons'
+import { IconChevronDown, IconKey, IconOffline, IconPlus, IconTrash } from '@/components/icons'
+import { removePasswordFor, setPasswordFor } from '@/lib/auth/actions'
+import { MIN_PASSWORD, PASSWORD_MESSAGE, type PasswordResult } from '@/lib/auth/types'
 import { addMember, loadMembers, removeMember, setMemberRole } from '@/lib/members/actions'
 import { MEMBER_MESSAGE, type MemberList, type MemberResult } from '@/lib/members/types'
 import { ROLES, type Role } from '@/lib/roles'
@@ -47,6 +49,9 @@ export function MemberManager() {
   const [invited, setInvited] = useState('')
   const [invitedRole, setInvitedRole] = useState<Role>('viewer')
   const [removing, setRemoving] = useState<string | null>(null)
+  /** Whose password is being set, and to what. One at a time, like the removals. */
+  const [pairing, setPairing] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
 
   const refresh = useCallback(async () => {
     try {
@@ -79,6 +84,23 @@ export function MemberManager() {
     }
   }
 
+  /** The same, for the actions that answer with a password failure instead of a member one. */
+  const runPassword = async (action: () => Promise<PasswordResult>) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await action()
+      if (result.ok) await refresh()
+      else setError(PASSWORD_MESSAGE[result.reason])
+      return result.ok
+    } catch {
+      setError(PASSWORD_MESSAGE.failed)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (!known) return null
   if (!mayManageUsers) {
     return <RoleNotice needed="Admin" what="vedere e cambiare chi può entrare" />
@@ -98,6 +120,89 @@ export function MemberManager() {
       </p>
     )
   }
+
+  const hasPassword = (email: string) => list.passwords.includes(email)
+
+  const closePassword = () => {
+    setPairing(null)
+    setPassword('')
+  }
+
+  /**
+   * The key beside a row, for the two addresses an admin may give a password to: an invited
+   * member, or themselves. Another owner's is refused by the server, so it is not offered
+   * here — their access answers to the environment and their identity to Google.
+   */
+  const keyButton = (email: string) => (
+    <button
+      type="button"
+      className="icon-button"
+      disabled={!online || busy}
+      onClick={() => {
+        setPairing(pairing === email ? null : email)
+        setPassword('')
+        setError(null)
+      }}
+      aria-label={hasPassword(email) ? `Cambia la password di ${email}` : `Dai una password a ${email}`}
+      aria-expanded={pairing === email}
+    >
+      <IconKey size={17} />
+    </button>
+  )
+
+  const passwordPanel = (email: string) =>
+    pairing !== email ? null : (
+      <div className="panel mt-3 p-3.5 text-sm">
+        <p>
+          {hasPassword(email)
+            ? 'Sostituire la password di questo indirizzo?'
+            : 'Dare una password a questo indirizzo?'}{' '}
+          Servirà per entrare senza Google, che resta comunque valido.
+        </p>
+
+        <label className="mt-3 block max-w-sm">
+          <span className="field-label">Nuova password — almeno {MIN_PASSWORD} caratteri</span>
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="form-field"
+            minLength={MIN_PASSWORD}
+          />
+        </label>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={busy || password.length < MIN_PASSWORD}
+            onClick={async () => {
+              if (await runPassword(() => setPasswordFor(email, password))) closePassword()
+            }}
+          >
+            Salva la password
+          </button>
+
+          {hasPassword(email) && (
+            <button
+              type="button"
+              className="btn btn-danger btn-sm"
+              disabled={busy}
+              onClick={async () => {
+                if (await runPassword(() => removePasswordFor(email))) closePassword()
+              }}
+            >
+              Rimuovi la password
+            </button>
+          )}
+
+          <button type="button" className="btn btn-quiet btn-sm" onClick={closePassword}>
+            Annulla
+          </button>
+        </div>
+      </div>
+    )
 
   return (
     <div>
@@ -121,8 +226,12 @@ export function MemberManager() {
               <div className="row">
                 <span className="min-w-0 flex-1 truncate">{email}</span>
                 {email === list.you && <span className="meta-chip">tu</span>}
+                <span className="meta-chip">{hasPassword(email) ? 'password' : 'Google'}</span>
                 <span className="meta-chip">Admin</span>
+                {/* Your own, and no one else's: see `keyButton`. */}
+                {email === list.you && keyButton(email)}
               </div>
+              {passwordPanel(email)}
             </li>
           ))}
         </ul>
@@ -131,8 +240,9 @@ export function MemberManager() {
       <section className="mt-7">
         <h2 className="section-title">Invitati</h2>
         <p className="mb-2.5 text-sm leading-[1.45] text-muted">
-          Entrano come i proprietari, con il loro account Google, e con il ruolo che dai loro
-          qui. Ogni cambio vale dalla loro azione successiva: non serve che escano e rientrino.
+          Entrano con il loro account Google, oppure con una password che dai loro da qui, e
+          con il ruolo che scegli. Ogni cambio vale dalla loro azione successiva: non serve che
+          escano e rientrino.
         </p>
 
         <ul className="mb-3.5 grid gap-1 text-sm text-muted">
@@ -169,10 +279,15 @@ export function MemberManager() {
                       * the screen you are standing on, with one tap and no question, is not
                       * a gesture worth having. An owner can always put it back.
                       */}
+                    <span className="meta-chip">
+                      {hasPassword(member.email) ? 'password' : 'Google'}
+                    </span>
+
                     {isYou ? (
                       <>
                         <span className="meta-chip">tu</span>
                         <span className="meta-chip">{ROLE_NAME[member.role]}</span>
+                        {keyButton(member.email)}
                       </>
                     ) : (
                       <>
@@ -197,6 +312,8 @@ export function MemberManager() {
                           <IconChevronDown size={14} />
                         </label>
 
+                        {keyButton(member.email)}
+
                         <button
                           type="button"
                           className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
@@ -213,6 +330,8 @@ export function MemberManager() {
                       </>
                     )}
                   </div>
+
+                  {passwordPanel(member.email)}
 
                   {/*
                     * What removal actually does, said where it is about to be done.

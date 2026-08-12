@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useDeferredValue, useMemo, useState } from 'react'
 
 import { useCanzonieri } from '@/components/CanzoniereProvider'
+import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
 import { IconChevronRight, IconSearch } from '@/components/icons'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
@@ -30,6 +31,7 @@ const UNGROUPED = ''
  */
 export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   const { canzonieri, assignments, nameOf } = useCanzonieri()
+  const { mayEdit } = useRole()
 
   const [songs] = useLiveIndex(baked)
   const [query, setQuery] = useState('')
@@ -116,8 +118,16 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
       ) : (
         <>
           {groups.length === 0 ? (
+            /*
+              * An empty library, said differently to the two people who can be looking at
+              * it. Telling a viewer to create a canzoniere from a menu entry their role does
+              * not draw would send them hunting for something that is not there — and the
+              * action behind it would refuse them anyway.
+              */
             <p className="mt-8 text-center text-sm text-muted">
-              Nessun canzoniere. Creane uno dal menu, alla voce Canzonieri.
+              {mayEdit
+                ? 'Nessun canzoniere. Creane uno dal menu, alla voce Canzonieri.'
+                : 'Nessun canzoniere, per ora. Quando ne arriva uno compare qui.'}
             </p>
           ) : (
             <ul className="row-list card mt-4">

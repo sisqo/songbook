@@ -102,6 +102,24 @@ export const members = pgTable('members', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/**
+ * How somebody proves they are the address they claim, when it is not Google saying so.
+ *
+ * A table of its own rather than a column on `members`, and the reason is the same fact
+ * that makes the owners un-lockoutable: an owner has no row in `members`, so a column
+ * there could never hold their password. Membership answers *whether* you may be here;
+ * this answers only *how you prove you are that address*. A row here grants nothing —
+ * `roleOf` still decides, and it does not consult this table.
+ *
+ * The hash carries its own parameters (see `lib/auth/password.ts`), so this column is
+ * opaque text on purpose: nothing but that module should read its shape.
+ */
+export const credentials = pgTable('credentials', {
+  email: text('email').primaryKey(),
+  passwordHash: text('password_hash').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 /** Global preferences: one row per person. */
 export const userPrefs = pgTable('user_prefs', {
   userEmail: text('user_email').primaryKey(),
