@@ -14,17 +14,17 @@
 
 import { asc, eq } from 'drizzle-orm'
 
-import { auth } from '@/auth'
+import { currentMember } from '@/lib/auth/session'
 import { rowToSong } from '@/lib/data/db'
-import { db, hasDatabase } from '@/lib/db/client'
+import { db } from '@/lib/db/client'
 import { songs } from '@/lib/db/schema'
 
-import type { SongContent, SongIndexRow } from './overlay'
+import type { SongIndexRow } from '@/lib/search-index'
+
+import type { SongContent } from './overlay'
 
 async function authorized(): Promise<boolean> {
-  if (!hasDatabase) return false
-  const session = await auth()
-  return Boolean(session?.user?.email)
+  return (await currentMember()) !== null
 }
 
 /**
@@ -65,7 +65,6 @@ export async function loadSongIndex(): Promise<SongIndexRow[] | null> {
         slug: songs.slug,
         title: songs.title,
         artist: songs.artist,
-        originalKey: songs.originalKey,
         tags: songs.tags,
         updatedAt: songs.updatedAt,
       })

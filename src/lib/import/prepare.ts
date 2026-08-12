@@ -17,9 +17,6 @@ export interface PreparedSong {
   id: number
   title: string
   artist: string
-  /** International spelling, or empty when nothing said and nothing could be guessed. */
-  originalKey: string
-  keyIsGuess: boolean
   /** Comma-separated, as the fields hold them. */
   tags: string
   body: string
@@ -43,8 +40,6 @@ export function prepareSongs(text: string): PreparedSong[] {
       id: index,
       title: found.title,
       artist: found.artist ?? '',
-      originalKey: found.key ?? '',
-      keyIsGuess: found.keyIsGuess,
       tags: found.tags.join(', '),
       body: found.body,
       format: converted.format,

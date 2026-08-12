@@ -18,10 +18,9 @@ export const metadata: Metadata = { title: 'Importa' }
  * the same bug as a stale song — the build is not the authority on what exists.
  */
 export default async function ImportPage() {
-  const [canzonieri, songs, setlists] = await Promise.all([
+  const [canzonieri, songs] = await Promise.all([
     repository.listCanzonieri(),
     repository.listSongs(),
-    repository.listSetlists(),
   ])
 
   const preferred =
@@ -43,7 +42,7 @@ export default async function ImportPage() {
     // The preview renders a real sheet, which reads zoom and notation from here.
     <PrefsProvider songSlug={null}>
       <CanzoniereProvider initial={{ canzonieri, assignments }}>
-        <TopBar current="importa" showSetlists={setlists.length > 0} />
+        <TopBar current="importa" />
 
         <main className="mx-auto max-w-5xl px-4 pb-12 pt-3">
           <h1 className="screen-title mb-4">Importa</h1>

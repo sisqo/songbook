@@ -915,53 +915,30 @@
   }
 
   /*
-   * The head of a card that opens: a canzoniere, with its songs underneath. It
-   * fills the card rather than sitting in it, so it takes the card's own corners
-   * and there is one shape to press instead of a row inside a frame.
-   */
-  .row-head {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    padding: 1rem 1.125rem;
-    border-radius: var(--r-xl);
-    text-align: start;
-  }
-
-  @media (hover: hover) {
-    .row-head:hover {
-      background: var(--surface-3);
-    }
-  }
-
-  /*
    * One card holding rows, where the rows belong to each other: the songs of a
-   * setlist, the matches of a search. The card gives the padding and the rows keep
-   * their corners inside it, so a hover never squares off against the card's edge.
+   * canzoniere, the matches of a search, the canzonieri themselves. The card gives the
+   * padding and the rows keep their corners inside it, so a hover never squares off
+   * against the card's edge.
    *
-   * There is no hairline between them any more. Rows that are separate things —
-   * a canzoniere, a setlist — are separate cards now instead (see .card-stack),
-   * and inside one card the rows are close enough that a rule only adds noise.
+   * There is no hairline between them. Inside one card the rows are close enough that a
+   * rule only adds noise; rows that are separate things — a member of the household,
+   * with its own confirmation opening underneath — are separate cards instead (see
+   * .card-stack).
    */
   .row-list {
     padding: 0.5rem;
   }
 
   /*
-   * A song inside an open canzoniere. A filled row rather than an indent with a
-   * rule: the fill says "inside this card" without drawing a second frame in it,
-   * and it survives dark mode, where a one-pixel indent line disappears.
+   * A song being arranged. A filled row rather than an indent with a rule: the fill
+   * says "this is an object you can take hold of" without drawing a second frame
+   * inside the card, and it survives dark mode, where a one-pixel indent line
+   * disappears. Nothing else is nested any more — a canzoniere is a page now, not a
+   * fold — so this shape belongs to the reorder list alone.
    */
   .row-nested {
     margin: 0 0.625rem 0.625rem;
     background: var(--surface-3);
-  }
-
-  @media (hover: hover) {
-    a.row-nested:hover {
-      background: color-mix(in srgb, var(--surface-3) 70%, var(--surface-2));
-    }
   }
 
   /*
@@ -1008,7 +985,7 @@
     }
   }
 
-  /* The key a song is written in. */
+  /* A small accent label: the start of a chorus in the editor. */
   .badge {
     display: inline-flex;
     align-items: center;
@@ -1025,8 +1002,8 @@
 
   /*
    * How many songs are in there. Accent-soft, because it is the answer to the
-   * question the row is asking — a canzoniere or a setlist is worth opening in
-   * proportion to what is in it.
+   * question the row is asking — a canzoniere is worth opening in proportion to what
+   * is in it.
    */
   .count-badge {
     display: inline-flex;

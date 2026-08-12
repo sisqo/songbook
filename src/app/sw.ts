@@ -43,11 +43,11 @@ const serwist = new Serwist({
   precacheOptions: {
     plugins: [rejectUnauthenticated],
     /**
-     * `c` used to select a canzoniere on the song list. Nothing in the interface
-     * produces it any more — a canzoniere is now a link to its first song — but
-     * `/?c=repertorio` still has to resolve to the precached `/` so an old
-     * bookmark opens offline. The two defaults are restated because setting this
-     * replaces them.
+     * `c` used to say which canzoniere was open on the home page, while opening one
+     * meant unfolding it in place. A canzoniere is a page of its own now, so nothing
+     * produces the parameter any more — but `/?c=repertorio` still has to resolve to
+     * the precached `/` so an old bookmark opens offline instead of missing. The two
+     * defaults are restated because setting this replaces them.
      */
     ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^c$/],
   },

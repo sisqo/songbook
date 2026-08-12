@@ -1,48 +1,48 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { formatChord, formatKey, parseChord, transposeChord } from './chord'
-import {
-  MAX_CAPO,
-  clampCapo,
-  easeOf,
-  readKey,
-  readShift,
-  soundingKey,
-  suggestCapo,
-} from './capo'
-import { C_MAJOR, parseKey } from './notes'
+import { formatChord, parseChord, transposeChord } from './chord'
+import { MAX_CAPO, clampCapo, easeOf, readKey, readShift, suggestCapo } from './capo'
+import { type Key, keyFor, transposeKey } from './notes'
 
 /** What the sheet would print for a chord, at a given transposition and capo. */
-function onPage(token: string, original: string, semitones: number, capo: number): string {
+function onPage(token: string, written: Key, semitones: number, capo: number): string {
   const chord = parseChord(token)
   assert.ok(chord !== null)
 
   const shift = readShift(semitones, capo)
-  const key = readKey(parseKey(original) ?? C_MAJOR, semitones, capo)
-  return formatChord(transposeChord(chord, shift, key), 'int')
+  return formatChord(transposeChord(chord, shift, readKey(written, semitones, capo)), 'int')
 }
 
 describe('what the capo moves and what it leaves alone', () => {
-  const D = parseKey('D') ?? C_MAJOR
+  const D = keyFor(2, 'major')
+  const Eb = keyFor(3, 'major')
 
+  /*
+   * The capo is the whole difference between the hand and the sound. Nothing computes a
+   * sounding key any more — no screen names one — so the invariant is stated where it
+   * still lives: put the fret back and what is left is the transposition, which is the
+   * only thing that moves what comes out.
+   */
   it('leaves the sound where it was, at every fret', () => {
     for (let capo = 0; capo <= MAX_CAPO; capo += 1) {
-      assert.equal(formatKey(soundingKey(D, 0), 'int'), 'D', `capo ${capo} changed the sound`)
+      for (const semitones of [-3, 0, 2]) {
+        assert.equal(readShift(semitones, capo) + capo, semitones, `capo ${capo} moved the sound`)
+      }
     }
   })
 
   it('moves the page down by the fret the capo is on', () => {
     // A song in D, capo 2: the shapes are the ones of C.
-    assert.equal(formatKey(readKey(D, 0, 2), 'int'), 'C')
-    assert.equal(onPage('D', 'D', 0, 2), 'C')
-    assert.equal(onPage('G', 'D', 0, 2), 'F')
-    assert.equal(onPage('A', 'D', 0, 2), 'G')
+    assert.equal(readKey(D, 0, 2).name, 'C')
+    assert.equal(onPage('D', D, 0, 2), 'C')
+    assert.equal(onPage('G', D, 0, 2), 'F')
+    assert.equal(onPage('A', D, 0, 2), 'G')
   })
 
   it('is the transposition that moves the sound, not the capo', () => {
-    assert.equal(formatKey(soundingKey(D, 2), 'int'), 'E')
-    assert.equal(formatKey(soundingKey(D, -3), 'int'), 'B')
+    assert.equal(transposeKey(D, 2).name, 'E')
+    assert.equal(transposeKey(D, -3).name, 'B')
   })
 
   /**
@@ -54,18 +54,17 @@ describe('what the capo moves and what it leaves alone', () => {
    */
   it('shows the written chords when the transposition and the capo cancel', () => {
     assert.equal(readShift(2, 2), 0)
-    assert.equal(onPage('D', 'D', 2, 2), 'D')
-    assert.equal(onPage('Bm', 'D', 2, 2), 'Bm')
-    assert.equal(formatKey(soundingKey(D, 2), 'int'), 'E')
-    assert.equal(formatKey(readKey(D, 2, 2), 'int'), 'D')
+    assert.equal(onPage('D', D, 2, 2), 'D')
+    assert.equal(onPage('Bm', D, 2, 2), 'Bm')
+    assert.equal(transposeKey(D, 2).name, 'E')
+    assert.equal(readKey(D, 2, 2).name, 'D')
   })
 
   it('spells the page in the key of the page', () => {
     // Sounding Eb, capo 1, so the shapes are in D: sharps, not the flats of Eb.
-    const Eb = parseKey('Eb') ?? C_MAJOR
-    assert.equal(formatKey(readKey(Eb, 0, 1), 'int'), 'D')
-    assert.equal(onPage('Ab', 'Eb', 0, 1), 'G')
-    assert.equal(onPage('Bb', 'Eb', 0, 1), 'A')
+    assert.equal(readKey(Eb, 0, 1).name, 'D')
+    assert.equal(onPage('Ab', Eb, 0, 1), 'G')
+    assert.equal(onPage('Bb', Eb, 0, 1), 'A')
   })
 
   it('keeps the fret on the neck', () => {

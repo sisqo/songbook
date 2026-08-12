@@ -23,7 +23,6 @@ export interface FormValues extends SongFieldValues {
 export function SongForm({
   initial,
   canzonieri,
-  keyIsGuess = false,
   showCanzoniere = true,
   slug,
   onSave,
@@ -31,8 +30,6 @@ export function SongForm({
 }: {
   initial: FormValues
   canzonieri: Canzoniere[]
-  /** Shows the key as an estimate, since a wrong key changes the transposed spelling. */
-  keyIsGuess?: boolean
   /** False when the screen around this form already asked which canzoniere. */
   showCanzoniere?: boolean
   /** Set when editing an existing song. */
@@ -57,7 +54,6 @@ export function SongForm({
     slug,
     title: values.title,
     artist: values.artist,
-    originalKey: values.originalKey,
     tags: values.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
     canzoniereSlug: values.canzoniereSlug,
     body: values.body,
@@ -95,7 +91,6 @@ export function SongForm({
       <SongFields
         values={values}
         canzonieri={canzonieri}
-        keyIsGuess={keyIsGuess && values.originalKey === initial.originalKey}
         showCanzoniere={showCanzoniere}
         onChange={set}
       />
@@ -115,7 +110,7 @@ export function SongForm({
         <div>
           <span className="field-label">Come apparirà</span>
           <div className="card max-h-[26rem] overflow-auto p-3">
-            <SongSheet song={parsed} originalKey={values.originalKey || null} />
+            <SongSheet song={parsed} />
           </div>
         </div>
       </div>

@@ -11,9 +11,7 @@ import {
   IconTurtle,
   IconUndo,
 } from '@/components/icons'
-import { type CapoOption, MAX_CAPO, readKey, suggestCapo } from '@/lib/music/capo'
-import { formatKey } from '@/lib/music/chord'
-import { C_MAJOR, parseKey } from '@/lib/music/notes'
+import { type CapoOption, MAX_CAPO, suggestCapo } from '@/lib/music/capo'
 import { SCROLL_SPEEDS, ZOOM_STEPS } from '@/lib/prefs/types'
 import { useAutoScroll } from '@/lib/useAutoScroll'
 
@@ -24,16 +22,14 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * the ones a hand reaches for with a guitar in the other, and the eight controls
  * that used to sit here wrapped onto a second line on every phone.
  *
- * Everything else — the key, the notation, the size of the text — is set once
- * before the song starts and lives in a panel behind the last button. The cost is
- * named and accepted: with the panel closed, the bar no longer says which key you
- * are reading in. The sheet does, in the chords themselves.
+ * Everything else — how far the song has been moved, the notation, the size of the
+ * text — is set once before the song starts and lives in a panel behind the last
+ * button. The cost is named and accepted: with the panel closed, the bar says nothing
+ * about how the song has been moved. The sheet does, in the chords themselves.
  */
 export function ControlBar({
-  originalKey,
   chords = [],
 }: {
-  originalKey: string | null
   /**
    * Every chord token of the song, for the capo suggestion. Empty is a fine answer —
    * the suggestion then has nothing to say and says nothing.
@@ -64,29 +60,6 @@ export function ControlBar({
   }, [open])
 
   /*
-   * The key the song was written in, named in the notation being read. Only the
-   * original: what it has been moved to is on every chord of the sheet, and the
-   * panel says the distance rather than repeating the destination.
-   */
-  const home = useMemo(
-    () => formatKey(parseKey(originalKey) ?? C_MAJOR, global.notation),
-    [originalKey, global.notation],
-  )
-
-  /*
-   * What the shapes on the page are, once the capo has moved them. Named only when a
-   * capo is on: without one it is the key every chord of the sheet already spells out.
-   */
-  const reading = useMemo(
-    () =>
-      formatKey(
-        readKey(parseKey(originalKey) ?? C_MAJOR, song.semitones, song.capo),
-        global.notation,
-      ),
-    [originalKey, song.semitones, song.capo, global.notation],
-  )
-
-  /*
    * Only while the panel is open, because that is the only place it is shown — and
    * because on a ukulele the answer is searched rather than looked up: about thirteen
    * thousand fingerings per chord, cached after the first time, but the first time is
@@ -109,8 +82,6 @@ export function ControlBar({
       <div className="control-dock">
         {open && (
           <ReadingPanel
-            home={home}
-            reading={reading}
             semitones={song.semitones}
             capo={song.capo}
             suggestion={suggestion}
@@ -204,8 +175,6 @@ function formatSemitones(semitones: number): string {
  * screen says which part of it each one changes.
  */
 function ReadingPanel({
-  home,
-  reading,
   semitones,
   capo,
   suggestion,
@@ -216,10 +185,6 @@ function ReadingPanel({
   setNotation,
   setZoomStep,
 }: {
-  /** The key the song was written in, for the label on the way back to it. */
-  home: string
-  /** The key the shapes on the page are in, which the capo moves and nothing else does. */
-  reading: string
   semitones: number
   capo: number
   suggestion: CapoOption | null
@@ -258,8 +223,8 @@ function ReadingPanel({
             className="segment-button"
             onClick={() => setSemitones(0)}
             disabled={semitones === 0}
-            aria-label={`Torna alla tonalità originale, ${home}`}
-            title={semitones === 0 ? undefined : `Torna a ${home}`}
+            aria-label="Torna alla tonalità scritta"
+            title={semitones === 0 ? undefined : 'Torna alla tonalità scritta'}
           >
             <IconUndo size={15} />
           </button>
@@ -279,7 +244,7 @@ function ReadingPanel({
         <span className="control-name">
           <span className="control-name-label">Capotasto</span>
           <span className={capo === 0 ? 'control-name-value' : 'control-name-value is-changed'}>
-            {capo === 0 ? 'nessuno' : `${capo}° tasto · leggi in ${reading}`}
+            {capo === 0 ? 'nessuno' : `${capo}° tasto`}
           </span>
         </span>
 

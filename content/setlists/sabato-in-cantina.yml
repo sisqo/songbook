@@ -1,9 +1,0 @@
-# Una scaletta è un nome e un elenco ordinato di slug dei brani.
-# Lo slug è il nome del file .chopro senza estensione.
-name: Sabato in cantina
-position: 1
-songs:
-  - ferma-il-tram
-  - le-luci-di-via-ostiense
-  - novembre-in-cortile
-  - quasi-domenica

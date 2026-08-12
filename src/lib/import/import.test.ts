@@ -3,7 +3,6 @@ import { describe, it } from 'node:test'
 
 import { parseChordPro, plainLyrics } from '../chordpro'
 import { convert, isChordLine, looksLikeChordPro } from './convert'
-import { estimateKey } from './key'
 
 describe('isChordLine', () => {
   it('accepts a line of nothing but chords', () => {
@@ -125,30 +124,5 @@ describe('convert', () => {
     const lyrics = 'Certe notti la macchina sembra una donna'
     const result = convert(['Am        F         C', lyrics].join('\n'))
     assert.equal(plainLyrics(parseChordPro(result.body)), lyrics)
-  })
-})
-
-describe('estimateKey', () => {
-  it('reads the fixtures the way their directives declare them', () => {
-    // The same chord sets the four content files use.
-    assert.equal(estimateKey(['Bb', 'Eb', 'F', 'Gm7', 'Bb/D', 'Fsus4', 'Bb'])?.name, 'Bb')
-    assert.equal(estimateKey(['D', 'A', 'G', 'Dmaj7', 'Bm', 'F#dim', 'A', 'D'])?.name, 'D')
-    assert.equal(estimateKey(['Am', 'F', 'C', 'G', 'Dm', 'E7', 'Am'])?.name, 'Am')
-    assert.equal(estimateKey(['F#m', 'C#m', 'D', 'E', 'Bm7b5', 'A6/9', 'F#m'])?.name, 'F#m')
-  })
-
-  it('distinguishes a major key from its relative minor by where it lands', () => {
-    assert.equal(estimateKey(['C', 'Am', 'F', 'G', 'C'])?.name, 'C')
-    assert.equal(estimateKey(['Am', 'F', 'C', 'G', 'Am'])?.name, 'Am')
-  })
-
-  it('returns null when there is nothing to go on', () => {
-    assert.equal(estimateKey([]), null)
-    assert.equal(estimateKey(['Ritornello', 'x2']), null)
-  })
-
-  it('survives a single chord', () => {
-    assert.equal(estimateKey(['C'])?.name, 'C')
-    assert.equal(estimateKey(['Am'])?.name, 'Am')
   })
 })

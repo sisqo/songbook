@@ -10,9 +10,9 @@ describe('deduce', () => {
 
     assert.equal(result.title, 'Certe notti')
     assert.equal(result.artist, 'Ligabue')
-    assert.equal(result.key, 'G')
-    assert.equal(result.keyIsGuess, false)
-    // Nothing was consumed, so the body is untouched.
+    // Nothing was consumed, so the body is untouched — including the key directive,
+    // which nothing reads and nothing therefore has to strip.
+    assert.ok(result.body.includes('{key: G}'))
     assert.ok(result.body.includes('{title: Certe notti}'))
   })
 
@@ -45,21 +45,7 @@ describe('deduce', () => {
     assert.equal(result.body, '[Am]subito il testo')
   })
 
-  it('guesses the key and says that it guessed', () => {
-    const result = deduce('[Am]a [F]b [C]c [G]d [Am]e')
-    assert.equal(result.key, 'Am')
-    assert.equal(result.keyIsGuess, true)
-  })
-
-  it('leaves the key empty when there are no chords', () => {
-    const result = deduce('solo parole\n\nnessun accordo')
-    assert.equal(result.key, null)
-    assert.equal(result.keyIsGuess, false)
-  })
-
   it('works on the output of the converter', () => {
-    // Ends on the tonic, as songs do. A two-chord fragment closing on F would be
-    // read as F major, and reasonably so — the estimator leans on the last chord.
     const pasted = [
       'Certe notti',
       'Ligabue',
@@ -73,8 +59,6 @@ describe('deduce', () => {
 
     assert.equal(result.title, 'Certe notti')
     assert.equal(result.artist, 'Ligabue')
-    assert.equal(result.key, 'Am')
-    assert.equal(result.keyIsGuess, true)
     assert.ok(result.body.startsWith('[Am]'))
   })
 })

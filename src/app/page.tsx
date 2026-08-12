@@ -1,15 +1,14 @@
 import { CanzoniereProvider } from '@/components/CanzoniereProvider'
+import { HomeScreen } from '@/components/HomeScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
-import { SongList } from '@/components/SongList'
 import { TopBar } from '@/components/TopBar'
 import type { CanzoniereState } from '@/lib/canzonieri/types'
 import { repository } from '@/lib/data'
 import { toIndexEntry } from '@/lib/search-index'
 
 export default async function Home() {
-  const [songs, setlists, canzonieri] = await Promise.all([
+  const [songs, canzonieri] = await Promise.all([
     repository.listSongs(),
-    repository.listSetlists(),
     repository.listCanzonieri(),
   ])
 
@@ -27,12 +26,18 @@ export default async function Home() {
   return (
     <PrefsProvider songSlug={null}>
       <CanzoniereProvider initial={initial}>
-        <TopBar current="canzoni" showSetlists={setlists.length > 0} />
+        <TopBar current="canzoni" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
           <h1 className="screen-title mb-4">Canzoni</h1>
 
-          <SongList songs={songs.map(toIndexEntry)} />
+          {/*
+            * Every song's searchable text, even though this screen lists canzonieri: the
+            * search box is here, and it searches the words. That is also why the whole
+            * index is baked in rather than fetched — a search that needs the network is
+            * no use on stage.
+            */}
+          <HomeScreen songs={songs.map(toIndexEntry)} />
         </main>
       </CanzoniereProvider>
     </PrefsProvider>

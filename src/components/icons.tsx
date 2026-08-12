@@ -130,7 +130,6 @@ export function IconBooks(props: IconProps) {
   )
 }
 
-/** Setlists: an ordered list. */
 /*
  * The editor's six, drawn for the redesign of that screen: the three ways of looking
  * at a song, and the commands that had to give up their words to fit one row.
@@ -213,11 +212,14 @@ export function IconGrip(props: IconProps) {
   )
 }
 
-export function IconSetlist(props: IconProps) {
+/** Who may enter: two people, the second half-behind the first. */
+export function IconUsers(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M9 6h11M9 12h11M9 18h11" />
-      <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20v-1.2a4.2 4.2 0 0 1 4.2-4.2h3.6a4.2 4.2 0 0 1 4.2 4.2V20" />
+      <path d="M16.4 5.4a3.2 3.2 0 0 1 0 5.2" />
+      <path d="M17.6 14.8a4.2 4.2 0 0 1 3.4 4.1V20" />
     </Icon>
   )
 }

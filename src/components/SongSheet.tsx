@@ -4,10 +4,11 @@ import { Fragment, useMemo, useState } from 'react'
 
 import { ChordPopup } from '@/components/ChordPopup'
 import { usePrefs } from '@/components/PrefsProvider'
-import type { Line, ParsedSong } from '@/lib/chordpro'
+import { type Line, type ParsedSong, chordTokens } from '@/lib/chordpro'
 import { type Chord, type Notation, formatChord, parseChord, transposeChord } from '@/lib/music/chord'
 import { readKey, readShift } from '@/lib/music/capo'
-import { type Key, C_MAJOR, parseKey } from '@/lib/music/notes'
+import { estimateKey } from '@/lib/music/key'
+import { type Key, C_MAJOR } from '@/lib/music/notes'
 import { ZOOM_STEPS } from '@/lib/prefs/types'
 
 const BLANK = ' '
@@ -28,22 +29,31 @@ const BLANK = ' '
  * In a song with chords, every line keeps the chord row above it whether it has
  * chords or not, so the spacing between lines is even.
  */
-export function SongSheet({ song, originalKey }: { song: ParsedSong; originalKey: string | null }) {
+export function SongSheet({ song }: { song: ParsedSong }) {
   const { global, song: songPrefs } = usePrefs()
   const [shown, setShown] = useState<Chord | null>(null)
+
+  /*
+   * The key the song is written in, read off its own chords.
+   *
+   * Nothing stores this and nothing shows it. It exists for one decision: moved chords
+   * have to be spelled either sharp or flat, and the key they land in is what settles
+   * that — so a song in Bb transposed up gets `Ab`, not `G#`. Memoised on the song
+   * rather than on the shift, because the written key does not move when the reader does.
+   */
+  const written = useMemo(() => estimateKey(chordTokens(song)) ?? C_MAJOR, [song])
 
   /*
    * The key whose letters go on the page, which is not always the key that sounds.
    *
    * Transposing moves both; a capo moves only this one, downwards, because the shapes
-   * you finger behind a capo are lower than what comes out of the instrument. So the
-   * sheet is written in `read` and the header says what `sounding` is — see
+   * you finger behind a capo are lower than what comes out of the instrument — see
    * `lib/music/capo.ts`, where the two shifts are named and tested.
    */
   const shift = readShift(songPrefs.semitones, songPrefs.capo)
   const currentKey = useMemo(
-    () => readKey(parseKey(originalKey) ?? C_MAJOR, songPrefs.semitones, songPrefs.capo),
-    [originalKey, songPrefs.semitones, songPrefs.capo],
+    () => readKey(written, songPrefs.semitones, songPrefs.capo),
+    [written, songPrefs.semitones, songPrefs.capo],
   )
 
   /**

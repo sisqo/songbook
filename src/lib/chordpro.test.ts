@@ -83,7 +83,16 @@ describe('parseChordPro', () => {
   it('reads the metadata directives', () => {
     assert.equal(song.title, 'Prova')
     assert.equal(song.artist, 'Nessuno')
-    assert.equal(song.key, 'Bb')
+  })
+
+  /*
+   * The source above still carries `{key: Bb}`, because pasted and exported files do.
+   * Nothing reads it any more, and what matters is that an ignored directive stays
+   * ignored rather than turning up as the first line of the words.
+   */
+  it('ignores a key directive without printing it', () => {
+    assert.equal(song.sections[0].lines.length, 2)
+    assert.deepEqual(shape(song.sections[0].lines[0]), ['[Bb]Prima', '[Eb]riga'])
   })
 
   it('groups lines into sections split by blank lines', () => {
@@ -116,7 +125,6 @@ describe('parseChordPro', () => {
   it('does not require any metadata', () => {
     const bare = parseChordPro('[C]solo accordi')
     assert.equal(bare.title, null)
-    assert.equal(bare.key, null)
     assert.deepEqual(bare.tags, [])
     assert.equal(bare.sections.length, 1)
   })

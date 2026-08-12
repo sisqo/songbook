@@ -6,8 +6,7 @@ import { IconGrip } from '@/components/icons'
 import { reorderCanzoniere } from '@/lib/canzonieri/actions'
 import { type Band, bandAt, moveItem, sameMembers } from '@/lib/canzonieri/order'
 import { WRITE_MESSAGE } from '@/lib/canzonieri/types'
-import { keyLabel } from '@/lib/music/chord'
-import type { SongIndexEntry } from '@/lib/search-index'
+import type { SongIndexRow } from '@/lib/search-index'
 
 /**
  * The songs of one canzoniere, in the order you put them.
@@ -24,12 +23,10 @@ import type { SongIndexEntry } from '@/lib/search-index'
 export function ReorderSongs({
   songs,
   canzoniereSlug,
-  notation,
   onApplied,
 }: {
-  songs: SongIndexEntry[]
+  songs: SongIndexRow[]
   canzoniereSlug: string
-  notation: 'it' | 'int'
   /** A saved order, for the list around this one to adopt. */
   onApplied: (slugs: string[]) => void
 }) {
@@ -60,7 +57,7 @@ export function ReorderSongs({
     )
   }, [songs])
 
-  const save = (next: SongIndexEntry[]) => {
+  const save = (next: SongIndexRow[]) => {
     const slugs = next.map((song) => song.slug)
     if (slugs.join('\n') === songs.map((song) => song.slug).join('\n')) return
 
@@ -165,10 +162,6 @@ export function ReorderSongs({
                 </span>
               )}
             </span>
-
-            {song.originalKey !== null && (
-              <span className="badge">{keyLabel(song.originalKey, notation)}</span>
-            )}
           </li>
         ))}
       </ul>

@@ -107,7 +107,6 @@ export function ImportBatch({
           {
             title: row.title,
             artist: row.artist,
-            originalKey: row.originalKey,
             tags: row.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
             canzoniereSlug,
             body: row.body,
@@ -289,12 +288,6 @@ function BatchRow({
 
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
         <span>{FORMAT_LABEL[row.format] ?? row.format}</span>
-        {row.originalKey !== '' && (
-          <span>
-            {row.originalKey}
-            {row.keyIsGuess && ' (stimata)'}
-          </span>
-        )}
         {/* Said, not obeyed: the destination above is the answer. */}
         {row.declares !== null && row.declares !== canzoniereName && (
           <span>il testo dice «{row.declares}»</span>

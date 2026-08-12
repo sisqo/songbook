@@ -26,7 +26,6 @@ import {
   mod12,
   noteToItalian,
   noteToPitchClass,
-  parseKey,
   readRoots,
   spellPitchClass,
 } from './notes'
@@ -192,23 +191,12 @@ export function formatChord(chord: Chord, notation: Notation): string {
   return root + suffix + bass
 }
 
-/** Formats a key name itself, e.g. `Bb` as `Sib` or `Am` as `La-`. */
-export function formatKey(key: Key, notation: Notation): string {
-  const root = formatNote(key.name.replace(/m$/, ''), notation)
-  if (key.mode === 'major') return root
-  return root + formatSuffix('m', notation)
-}
-
-/**
- * A stored key as a reader sees it, or exactly as written when it cannot be read.
- *
- * Falling back to the raw text rather than to nothing: the column holds whatever was
- * typed at import, and a key nobody can parse is still what someone meant to write.
+/*
+ * There is no `formatKey` and no `keyLabel` here any more, and their absence is the
+ * point: a key is now an internal fact about the chords, worked out to decide an
+ * accidental. Nothing writes one down and nothing prints one, so nothing has to turn one
+ * into text — the only names on screen are the chords' own.
  */
-export function keyLabel(raw: string, notation: Notation): string {
-  const key = parseKey(raw)
-  return key === null ? raw : formatKey(key, notation)
-}
 
 /**
  * Convenience for the common path: parse, transpose and format in one go.

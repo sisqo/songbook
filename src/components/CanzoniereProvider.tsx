@@ -11,6 +11,8 @@ import {
   useState,
 } from 'react'
 
+import { useOnline } from '@/lib/useOnline'
+
 import {
   createCanzoniere,
   loadCanzonieri,
@@ -68,7 +70,7 @@ export function CanzoniereProvider({
   children: ReactNode
 }) {
   const [state, setState] = useState<CanzoniereState>(initial)
-  const [online, setOnline] = useState(true)
+  const online = useOnline()
 
   useLayoutEffect(() => {
     const cached = readCanzoniereCache()
@@ -90,18 +92,6 @@ export function CanzoniereProvider({
   useEffect(() => {
     if (refreshOnMount) void refresh()
   }, [refresh, refreshOnMount])
-
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine)
-    update()
-
-    window.addEventListener('online', update)
-    window.addEventListener('offline', update)
-    return () => {
-      window.removeEventListener('online', update)
-      window.removeEventListener('offline', update)
-    }
-  }, [])
 
   /**
    * Writes go to the server and the whole layer is re-read afterwards, rather

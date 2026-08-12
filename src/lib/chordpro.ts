@@ -33,7 +33,6 @@ export interface Section {
 export interface ParsedSong {
   title: string | null
   artist: string | null
-  key: string | null
   tags: string[]
   /**
    * Name of the canzoniere this song *starts* in. Only ever an initial value:
@@ -54,7 +53,6 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   st: 'artist',
   subtitle: 'artist',
   artist: 'artist',
-  key: 'key',
   tags: 'tags',
   tag: 'tags',
   canzoniere: 'canzoniere',
@@ -75,7 +73,6 @@ export function parseChordPro(source: string): ParsedSong {
   const song: ParsedSong = {
     title: null,
     artist: null,
-    key: null,
     tags: [],
     canzoniere: null,
     sections: [],
@@ -104,9 +101,6 @@ export function parseChordPro(source: string): ParsedSong {
           break
         case 'artist':
           song.artist = value || null
-          break
-        case 'key':
-          song.key = value || null
           break
         case 'tags':
           song.tags = value

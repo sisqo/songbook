@@ -1,15 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import {
-  formatChord,
-  formatKey,
-  normalizeSuffix,
-  parseChord,
-  renderChord,
-  transposeChord,
-} from './chord'
-import { keyFor, parseKey, transposeKey } from './notes'
+import { formatChord, normalizeSuffix, parseChord, renderChord, transposeChord } from './chord'
+import { keyFor, transposeKey } from './notes'
 
 const C = keyFor(0, 'major')
 
@@ -214,17 +207,6 @@ describe('chords written in Italian', () => {
     assert.equal(renderChord('la', 2, 'int', keyFor(4, 'major')), 'B')
     assert.equal(renderChord('sol', 2, 'it', keyFor(4, 'major')), 'La')
   })
-
-  it('reads a key directive written in Italian', () => {
-    assert.equal(parseKey('Re')?.name, 'D')
-    assert.equal(parseKey('la-')?.name, 'Am')
-    assert.equal(parseKey('sib')?.name, 'Bb')
-    assert.equal(parseKey('fa#m')?.name, 'F#m')
-    // The international spellings keep working, lowercase included.
-    assert.equal(parseKey('bb')?.name, 'Bb')
-    assert.equal(parseKey('Am')?.name, 'Am')
-    assert.equal(parseKey('C')?.name, 'C')
-  })
 })
 
 describe('transposeChord', () => {
@@ -279,28 +261,11 @@ describe('enharmonic spelling follows the target key', () => {
   })
 
   it('treats minor keys by their own signatures', () => {
-    const am = parseKey('Am')!
+    const am = keyFor(9, 'minor')
     assert.equal(am.name, 'Am')
     assert.equal(transposeKey(am, 1).name, 'Bbm')
     assert.equal(transposeKey(am, 2).name, 'Bm')
     assert.equal(transposeKey(am, 3).name, 'Cm')
-  })
-})
-
-describe('parseKey', () => {
-  it('reads major and minor keys', () => {
-    assert.equal(parseKey('C')?.name, 'C')
-    assert.equal(parseKey('Am')?.name, 'Am')
-    assert.equal(parseKey('Bb')?.name, 'Bb')
-    assert.equal(parseKey('F#m')?.name, 'F#m')
-    assert.equal(parseKey('  Gm  ')?.name, 'Gm')
-  })
-
-  it('returns null for nonsense instead of guessing', () => {
-    assert.equal(parseKey('H'), null)
-    assert.equal(parseKey('banana'), null)
-    assert.equal(parseKey(null), null)
-    assert.equal(parseKey(''), null)
   })
 })
 
@@ -343,17 +308,6 @@ describe('international notation', () => {
     assert.equal(renderChord('Cmin7', 0, 'int', C), 'Cm7')
     assert.equal(renderChord('C-7', 0, 'int', C), 'Cm7')
     assert.equal(renderChord('CΔ7', 0, 'int', C), 'Cmaj7')
-  })
-})
-
-describe('formatKey', () => {
-  it('names the current key in both notations', () => {
-    assert.equal(formatKey(C, 'it'), 'Do')
-    assert.equal(formatKey(C, 'int'), 'C')
-    assert.equal(formatKey(parseKey('Bb')!, 'it'), 'Sib')
-    assert.equal(formatKey(parseKey('Am')!, 'it'), 'La-')
-    assert.equal(formatKey(parseKey('Am')!, 'int'), 'Am')
-    assert.equal(formatKey(parseKey('F#m')!, 'int'), 'F#m')
   })
 })
 

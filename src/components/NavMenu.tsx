@@ -11,8 +11,8 @@ import {
   IconImport,
   IconMenu,
   IconNote,
-  IconSetlist,
   IconTuningFork,
+  IconUsers,
 } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 
@@ -33,11 +33,9 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  */
 export function NavMenu({
   current,
-  showSetlists,
   children,
 }: {
   current: Section
-  showSetlists: boolean
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -98,17 +96,15 @@ export function NavMenu({
               Canzonieri
             </Link>
 
-            {showSetlists && (
-              <Link
-                href="/scalette"
-                className={item('scalette')}
-                role="menuitem"
-                onClick={() => setOpen(false)}
-              >
-                <IconSetlist size={17} />
-                Scalette
-              </Link>
-            )}
+            <Link
+              href="/utenti"
+              className={item('utenti')}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <IconUsers size={17} />
+              Utenti
+            </Link>
 
             {/*
               * The tuner, which is another app on another domain.

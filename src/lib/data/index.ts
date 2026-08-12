@@ -17,4 +17,4 @@ export const repository: SongRepository = hasDatabase ? dbRepository : fileRepos
 export const repositoryKind: 'database' | 'files' = hasDatabase ? 'database' : 'files'
 
 export { UNFILED } from './types'
-export type { Canzoniere, Setlist, Song, SongRepository } from './types'
+export type { Canzoniere, Song, SongRepository } from './types'

@@ -8,8 +8,8 @@
 
 import { and, eq } from 'drizzle-orm'
 
-import { auth } from '@/auth'
-import { db, hasDatabase } from '@/lib/db/client'
+import { currentMember } from '@/lib/auth/session'
+import { db } from '@/lib/db/client'
 import { userPrefs, userSongPrefs } from '@/lib/db/schema'
 
 import {
@@ -32,14 +32,13 @@ import {
  */
 export type SaveResult = 'saved' | 'no-destination' | 'failed'
 
-/** The signed-in address, or null when there is nobody or no database. */
-async function currentEmail(): Promise<string | null> {
-  if (!hasDatabase) return null
-
-  const session = await auth()
-  const email = session?.user?.email
-  return email ? email.toLowerCase() : null
-}
+/**
+ * Preferences belong to an address, so `currentMember` is asked for the address rather
+ * than for a yes: null means nobody, no database, or somebody whose access has since
+ * been taken away. All three are `no-destination` and none is `failed` — there is
+ * nothing to sync to, so the queue drops the write instead of retrying it for ninety
+ * days.
+ */
 
 export interface LoadedPrefs {
   global: GlobalPrefs | null
@@ -47,7 +46,7 @@ export interface LoadedPrefs {
 }
 
 export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
-  const email = await currentEmail()
+  const email = await currentMember()
   if (email === null) return { global: null, song: null }
 
   const database = db()
@@ -88,7 +87,7 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
 }
 
 export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
-  const email = await currentEmail()
+  const email = await currentMember()
   if (email === null) return 'no-destination'
 
   const values = {
@@ -113,7 +112,7 @@ export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
 }
 
 export async function saveSongPrefs(songSlug: string, prefs: SongPrefs): Promise<SaveResult> {
-  const email = await currentEmail()
+  const email = await currentMember()
   if (email === null) return 'no-destination'
 
   const values = {

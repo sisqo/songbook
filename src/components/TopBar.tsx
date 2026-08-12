@@ -4,7 +4,7 @@ import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 
-export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'scalette'
+export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'utenti'
 
 /**
  * The header, on every screen inside the app.
@@ -18,8 +18,8 @@ export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'scalette'
  * thing that says which app this is — on a phone, in standalone mode, with no
  * browser chrome around it. So `back` is now something the bar gains rather than
  * something that displaces the mark, and it is only worth passing when it leads
- * somewhere the brand does not: inside a setlist it also carries the position,
- * "‹ Sabato in cantina · 2 di 12".
+ * somewhere the brand does not: from inside a song, the canzoniere it came from,
+ * which is one level below the home the brand leads to.
  *
  * The active section arrives as a prop rather than from `usePathname`, so the
  * server renders it: these pages are statically generated and precached, and
@@ -27,12 +27,10 @@ export type Section = 'canzoni' | 'importa' | 'canzonieri' | 'scalette'
  */
 export function TopBar({
   current,
-  showSetlists = true,
   back,
   steps,
 }: {
   current: Section
-  showSetlists?: boolean
   /** A second way out, next to the brand. Leave unset when it would lead home too. */
   back?: { href: string; label: string }
   /** Previous and next song, when this screen is part of a sequence. */
@@ -68,7 +66,7 @@ export function TopBar({
           </div>
         )}
 
-        <NavMenu current={current} showSetlists={showSetlists}>
+        <NavMenu current={current}>
           <SignOutButton />
         </NavMenu>
       </div>

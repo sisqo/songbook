@@ -29,7 +29,6 @@ export const songs = pgTable('songs', {
   slug: text('slug').primaryKey(),
   title: text('title').notNull(),
   artist: text('artist'),
-  originalKey: text('original_key'),
   tags: text('tags').array().notNull().default([]),
   body: text('body').notNull(),
   /**
@@ -60,27 +59,6 @@ export const songs = pgTable('songs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const setlists = pgTable('setlists', {
-  slug: text('slug').primaryKey(),
-  name: text('name').notNull(),
-  position: integer('position').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
-
-export const setlistSongs = pgTable(
-  'setlist_songs',
-  {
-    setlistSlug: text('setlist_slug')
-      .notNull()
-      .references(() => setlists.slug, { onDelete: 'cascade' }),
-    songSlug: text('song_slug')
-      .notNull()
-      .references(() => songs.slug, { onDelete: 'cascade' }),
-    position: integer('position').notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.setlistSlug, table.position] })],
-)
-
 /**
  * One row, stamped by the build.
  *
@@ -92,6 +70,26 @@ export const setlistSongs = pgTable(
 export const builds = pgTable('builds', {
   id: text('id').primaryKey().default('last'),
   builtAt: timestamp('built_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * Everyone the owners have let in.
+ *
+ * The owners themselves are not here: they come from `ALLOWED_EMAILS`, which the app
+ * cannot edit — see `lib/allowlist.ts` for why the list has two halves. So this table
+ * being empty is the ordinary state, not a locked door, and a row removed from it
+ * cannot take the last person's access away.
+ *
+ * The email is the key, because that is what Google hands back and therefore the only
+ * thing the gate can compare. Stored already lowercased by the action that writes it,
+ * so the primary key is doing real work: the same address cannot be added twice in two
+ * different cases.
+ */
+export const members = pgTable('members', {
+  email: text('email').primaryKey(),
+  /** Which owner or member let them in, kept as a plain address for the same reason. */
+  addedBy: text('added_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 /** Global preferences: one row per person. */

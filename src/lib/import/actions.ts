@@ -11,7 +11,7 @@
 import { and, asc, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
-import { auth } from '@/auth'
+import { currentMember } from '@/lib/auth/session'
 import { placeAfter } from '@/lib/canzonieri/order'
 import { rowToSong } from '@/lib/data/db'
 import { UNFILED, type Song } from '@/lib/data/types'
@@ -30,9 +30,7 @@ import type {
 } from './types'
 
 async function authorized(): Promise<boolean> {
-  if (!hasDatabase) return false
-  const session = await auth()
-  return Boolean(session?.user?.email)
+  return (await currentMember()) !== null
 }
 
 /**
@@ -66,12 +64,11 @@ async function resolveCanzoniere(slug: string): Promise<string> {
 }
 
 /**
- * Drops the server's cached copy of the song's own page and of the list.
+ * Drops the server's cached copy of every page this song appears on.
  *
- * Not of `/scalette/<scaletta>/<brano>`, which shows the same song: reaching those
- * would mean looking up every setlist the song is in. The runtime overlay covers
- * them, so what is left behind is the server's cache for a visit with no service
- * worker — a narrower gap than the round trip to find them.
+ * Three: its own, the canzoniere that lists it, and the home, whose counts change when
+ * a song arrives or leaves. The canzoniere is passed in rather than looked up, because
+ * a delete has already removed the row by the time this runs.
  *
  * This is not what makes an edit visible: a browser that installed the app keeps
  * serving the page precached at the last deploy, and only the runtime overlay
@@ -83,9 +80,10 @@ async function resolveCanzoniere(slug: string): Promise<string> {
  * point, and reporting failure would invite a retry that, for a new song, would
  * save it twice.
  */
-function revalidateSong(slug: string): void {
+function revalidateSong(slug: string, canzoniereSlug: string | null): void {
   try {
     revalidatePath(`/canzoni/${slug}`)
+    if (canzoniereSlug !== null) revalidatePath(`/canzonieri/${canzoniereSlug}`)
     revalidatePath('/')
   } catch (error) {
     console.warn(`could not revalidate ${slug}; the server keeps its cached page`, error)
@@ -93,7 +91,7 @@ function revalidateSong(slug: string): void {
 }
 
 function saved(song: Song): SaveResult {
-  revalidateSong(song.slug)
+  revalidateSong(song.slug, song.canzoniereSlug)
   return { ok: true, song }
 }
 
@@ -155,10 +153,6 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
     const values = {
       title,
       artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
-      originalKey:
-        input.originalKey === null || input.originalKey.trim() === ''
-          ? null
-          : input.originalKey.trim(),
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
       canzoniereSlug: await resolveCanzoniere(input.canzoniereSlug),
       body: input.body,
@@ -273,11 +267,13 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
     const removed = await db()
       .delete(songs)
       .where(eq(songs.slug, slug))
-      .returning({ slug: songs.slug })
+      // The canzoniere comes back with the deletion because the page that lists this
+      // song has to be dropped too, and afterwards there is no row left to ask.
+      .returning({ slug: songs.slug, canzoniereSlug: songs.canzoniereSlug })
 
     if (removed.length === 0) return { ok: false, reason: 'not-found' }
 
-    revalidateSong(slug)
+    revalidateSong(slug, removed[0].canzoniereSlug)
     return { ok: true, slug: removed[0].slug }
   } catch (error) {
     console.error('deleteSong failed', error)

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { parseChordPro, plainLyrics } from '../chordpro'
+import { chordTokens, parseChordPro, plainLyrics } from '../chordpro'
+import { estimateKey } from '../music/key'
 import { fileRepository } from './files'
 
 describe('fileRepository', () => {
@@ -14,7 +15,6 @@ describe('fileRepository', () => {
     const song = await fileRepository.getSong('le-luci-di-via-ostiense')
     assert.equal(song?.title, 'Le luci di via Ostiense')
     assert.equal(song?.artist, 'Placeholder')
-    assert.equal(song?.originalKey, 'Bb')
     assert.deepEqual(song?.tags, ['lento'])
     assert.equal(song?.canzoniereSlug, 'repertorio')
   })
@@ -26,24 +26,6 @@ describe('fileRepository', () => {
   it('sorts songs by title', async () => {
     const titles = (await fileRepository.listSongs()).map((song) => song.title)
     assert.deepEqual(titles, [...titles].sort((a, b) => a.localeCompare(b, 'it')))
-  })
-
-  it('orders setlists by position and keeps song order', async () => {
-    const setlists = await fileRepository.listSetlists()
-    assert.deepEqual(
-      setlists.map((setlist) => setlist.name),
-      ['Sabato in cantina', 'Serata piano'],
-    )
-    assert.deepEqual(setlists[1].songs, ['novembre-in-cortile', 'le-luci-di-via-ostiense'])
-  })
-
-  it('references only songs that exist', async () => {
-    const slugs = new Set((await fileRepository.listSongs()).map((song) => song.slug))
-    for (const setlist of await fileRepository.listSetlists()) {
-      for (const slug of setlist.songs) {
-        assert.ok(slugs.has(slug), `${setlist.slug} references missing song ${slug}`)
-      }
-    }
   })
 })
 
@@ -87,14 +69,23 @@ describe('canzonieri from the files', () => {
 })
 
 describe('the fixtures exercise the engine', () => {
+  /**
+   * Asked of the chords rather than of a column, which is where the answer lives now.
+   *
+   * Still worth asserting: the two spelling paths need a song each, or a bug in one of
+   * them would never show up in a fixture.
+   */
   it('covers both flat and sharp keys', async () => {
-    const keys = (await fileRepository.listSongs()).map((song) => song.originalKey)
+    const keys = (await fileRepository.listSongs()).map((song) =>
+      estimateKey(chordTokens(parseChordPro(song.body))),
+    )
+
     assert.ok(
-      keys.some((key) => key?.includes('b')),
+      keys.some((key) => key?.flats === true),
       'no flat-key fixture',
     )
     assert.ok(
-      keys.some((key) => key?.includes('#')),
+      keys.some((key) => key?.flats === false),
       'no sharp-key fixture',
     )
   })

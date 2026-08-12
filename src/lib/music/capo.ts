@@ -11,10 +11,14 @@
  *   fret and every shape you finger is two semitones lower than what comes out, so
  *   the sheet has to show those lower shapes for the sound to stay put.
  *
- * Together: `read = written + semitones − capo`, while `sounding = written +
- * semitones`. A capo of 2 with a transposition of +2 therefore shows the chords
- * exactly as written and sounds a tone above them — the case worth testing, because it
- * is the one where getting either sign wrong still looks plausible.
+ * Together: `read = written + semitones − capo`, while what sounds is `written +
+ * semitones`. A capo of 2 with a transposition of +2 therefore shows the chords exactly
+ * as written and sounds a tone above them — the case worth testing, because it is the
+ * one where getting either sign wrong still looks plausible.
+ *
+ * Only the reading side has a function here. The sounding key had one too, until nothing
+ * on the screen named a key any more; the sheet shows what the hand does, and what comes
+ * out is the instrument's business.
  */
 
 import { type Instrument, familyOf, isEasyShape } from './shapes'
@@ -31,11 +35,6 @@ export function clampCapo(fret: number): number {
 /** How far to move the written chords to get the ones on the page. */
 export function readShift(semitones: number, capo: number): number {
   return semitones - capo
-}
-
-/** The key coming out of the instrument: the capo has no say in it. */
-export function soundingKey(original: Key, semitones: number): Key {
-  return transposeKey(original, semitones)
 }
 
 /** The key whose letters are on the page, which is where the capo shows up. */

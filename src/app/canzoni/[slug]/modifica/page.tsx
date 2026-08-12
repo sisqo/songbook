@@ -33,10 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EditSongPage({ params }: Props) {
   const { slug } = await params
 
-  const [song, canzonieri, setlists] = await Promise.all([
+  const [song, canzonieri] = await Promise.all([
     repository.getSong(slug),
     repository.listCanzonieri(),
-    repository.listSetlists(),
   ])
 
   if (song === null) notFound()
@@ -51,7 +50,7 @@ export default async function EditSongPage({ params }: Props) {
     // this song's zoom, notation and transposition from here.
     <PrefsProvider songSlug={song.slug}>
       <CanzoniereProvider initial={initial} refreshOnMount={false}>
-        <TopBar current="canzoni" showSetlists={setlists.length > 0} />
+        <TopBar current="canzoni" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12">
           <EditorScreen song={song} />

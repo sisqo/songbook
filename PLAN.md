@@ -17,11 +17,10 @@ derivano zoom, auto-scroll, cambio di tonalità e cambio di notazione — non co
 impostazioni in un menù, ma come controlli a portata di pollice.
 
 Il materiale è organizzato in **canzonieri**: ogni brano appartiene a un canzoniere, come un
-file a una cartella. Le **scalette** sono un'altra cosa e restano trasversali — il programma
-di una serata, che può pescare da canzonieri diversi.
+file a una cartella, e la prima schermata è l'elenco dei canzonieri.
 
-Non è un archivio pubblico né un social di accordi: l'accesso è riservato a una lista di
-email autorizzate.
+Non è un archivio pubblico né un social di accordi: entra solo chi è in elenco — i
+proprietari dall'ambiente, gli invitati da una tabella che si gestisce dall'app.
 
 ## Stato attuale
 
@@ -81,14 +80,14 @@ in un `useLayoutEffect` prima del paint.
 ```sql
 canzonieri(slug primary key, name, created_at, updated_at)
 
-songs(slug primary key, title, artist, original_key, body, tags[],
+songs(slug primary key, title, artist, body, tags[],
       canzoniere_slug references canzonieri(slug) on delete restrict,
       position,                                                      -- v1.6, nullable
       created_at, updated_at)
+      -- original_key rimossa in v2.0: la tonalità si stima dagli accordi
 
-setlists(slug primary key, name, position, created_at)
-setlist_songs(setlist_slug, song_slug, position,
-              primary key (setlist_slug, position))
+members(email primary key, added_by, created_at)                     -- v2.0
+      -- solo gli invitati; i proprietari restano in ALLOWED_EMAILS
 
 user_prefs(user_email primary key, zoom_step, notation)              -- globali
 user_song_prefs(user_email, song_slug, semitones, scroll_speed,      -- per brano
@@ -103,7 +102,9 @@ sono ancora *in attesa di pubblicazione*: sono quelli con `updated_at` più rece
 dell'ultimo build. È l'unico modo onesto di rispondere, perché riflette ciò che il
 build ha effettivamente visto invece di ciò che l'app crede di aver pubblicato.
 
-`user_email` come chiave: con sessioni JWT e allowlist non serve una tabella utenti.
+`user_email` come chiave: con sessioni JWT non serve una tabella di utenti per
+l'autenticazione. `members` (v2.0) non è quella tabella — dice chi è ammesso, non chi è
+autenticato, e i proprietari non ci compaiono.
 Lo `slug` come chiave naturale al posto di un id surrogato: vedi *Scostamenti*.
 
 **Lo slug di un canzoniere è immutabile.** Si genera una volta dal nome iniziale e non
@@ -129,8 +130,6 @@ Sorgente di verità in v1: file nel repo, caricati da uno script.
 content/
   certe-notti.chopro
   bocca-di-rosa.chopro
-  setlists/
-    sabato-blu.yml          # nome + elenco ordinato di slug
 scripts/seed.ts             # npm run seed → upsert per slug
 ```
 
@@ -148,8 +147,9 @@ direttiva viene **ignorata**: da quel momento comanda il database, altrimenti il
 `npm run seed` cancellerebbe ogni rinomina e ogni spostamento fatto dall'app.
 
 Ne segue una seconda eccezione: il seed **non fa pruning dei canzonieri**. Sono creati
-dall'app, quindi esistono legittimamente righe che nessun file ha mai dichiarato — la
-regola "cancella ciò che non ha un file" vale per brani e scalette, non per loro.
+dall'app, quindi esistono legittimamente righe che nessun file ha mai dichiarato. Dalla
+v2.0 la regola "cancella ciò che non ha un file" non vale più per nessuno: era rimasta
+solo per le scalette, e le scalette non ci sono più.
 
 Un file senza la direttiva finisce in **Da ordinare**, un canzoniere creato al bisogno.
 Serve perché ogni brano deve appartenere a uno, e il nome è deliberatamente un promemoria:
@@ -158,7 +158,8 @@ ciò che non è archiviato si vede a colpo d'occhio.
 ### Autenticazione
 
 - Auth.js v5, unico provider Google, sessioni JWT (nessun adapter, nessuna tabella auth).
-- Il callback `signIn` confronta l'email con `ALLOWED_EMAILS` (lista separata da virgole);
+- Il callback `signIn` confronta l'email con l'unione di `ALLOWED_EMAILS` (i proprietari,
+  dall'ambiente) e della tabella `members` (gli invitati, gestiti da `/utenti` — v2.0);
   qualunque altro account Google valido viene respinto con una pagina dedicata.
 - `maxAge` sessione **90 giorni**: una sessione scaduta senza rete significherebbe restare
   chiusi fuori dal repertorio nel momento peggiore.
@@ -193,7 +194,6 @@ ChordPro, con accordi inline tra parentesi quadre. Direttive supportate in v1:
 ```
 {title: Certe notti}
 {artist: Ligabue}
-{key: C}
 {tags: lento, acustico}
 {canzoniere: Repertorio}     ← solo il valore iniziale, vedi Contenuti e seed
 {start_of_chorus} … {end_of_chorus}
@@ -232,7 +232,9 @@ Due regole distinte, non una:
    diesis usano i diesis, con bemolli i bemolli. Alzando quel brano di dieci semitoni si
    arriva in Sib, dove si legge `Ab` e mai `Sol#`.
 
-La tonalità d'arrivo si calcola dalla `original_key` del brano più i semitoni.
+La tonalità d'arrivo si calcola dalla tonalità di partenza più i semitoni (e meno il
+capotasto, dalla v1.8). Fino alla v2.0 la partenza era la colonna `original_key`; ora si
+**stima dagli accordi del brano**, che è la stessa risposta senza il campo — vedi *v2.0*.
 
 Il capotasto non è in v1 (vedi *Domande aperte*).
 
@@ -290,8 +292,11 @@ Barra inferiore fissa e compatta (~56px), sempre visibile, a portata di pollice:
 
 Play/pause, velocità e semitoni sono raggiungibili con un tap solo: dal vivo fermare lo
 scroll o alzare di un semitono non può costare la ricerca di un menù. Notazione e altre voci
-stanno nel `⋯`. L'header mostra la tonalità corrente accanto all'originale, con un tap per
-tornare all'originale.
+stanno nel `⋯`. L'header mostra di quanti semitoni si è mossi, con un tap per tornare al
+punto di partenza: il nome della tonalità è su ogni accordo dello spartito, mentre la
+distanza da casa non sarebbe scritta da nessuna parte. (Nel disegno originale mostrava la
+tonalità corrente accanto all'originale; dalla v2.0 nessun nome di tonalità compare
+nell'interfaccia.)
 
 ### Zoom
 
@@ -314,53 +319,52 @@ scroll orizzontale. Il pinch-zoom nativo del browser non viene disabilitato (nes
 - Rispetta `prefers-reduced-motion` per ogni altra animazione dell'app, non per lo scroll
   stesso (è la funzione richiesta, non decorazione).
 
-## Navigazione, ricerca, scalette
+## Navigazione e ricerca
 
-- **Lista brani**: titolo, artista, canzoniere e tonalità, ordinabile per titolo o artista.
+- **Home**: l'elenco dei canzonieri, uno per riga col numero di brani, e la ricerca sopra.
+  Nessun brano finché non si cerca: la prima domanda è quale canzoniere.
+- **Pagina del canzoniere** (`/canzonieri/<slug>`, v2.0): i suoi brani nell'ordine in cui si
+  suonano, e da qui si riordinano.
 - **Ricerca istantanea** lato client su titolo, artista, tag e testo (accordi esclusi),
-  contro un indice JSON generato al build. Nessuna chiamata di rete mentre si scrive. La
-  ricerca lavora sempre su **tutti** i brani, anche con un filtro canzoniere attivo: il
-  filtro restringe la lista, non il campo d'azione della ricerca.
-- **Filtro canzoniere**: una riga di chip sotto la ricerca (`tutti`, poi un chip per
-  canzoniere). Così la strada più breve per arrivare a un brano non si allunga di un tap,
-  che è il punto dell'app.
-- **Scalette**: definite nei file di seed e in sola lettura in v1. Restano **trasversali** —
-  una serata può mescolare brani di canzonieri diversi, ed è l'unica forma che funziona per
-  quello che una scaletta è: un ordine di esecuzione, non una libreria. Una scaletta apre in
-  sequenza con le frecce nell'header, così durante la serata non si torna mai alla lista.
-  Cambiarne una richiede commit e deploy.
+  contro un indice generato al build. Nessuna chiamata di rete mentre si scrive. Vive in
+  home e lavora su **tutti** i brani, perché una ricerca non appartiene a un canzoniere;
+  ogni risultato dice dove abita.
 
 ## Canzonieri
 
 Un canzoniere è una **libreria**: ogni brano appartiene a uno e uno solo, come un file in
-una cartella. È un concetto diverso dalla scaletta, che è un programma, e diverso dai tag,
-che restano descrizioni libere e sovrapponibili (`lento`, `acustico`).
+una cartella. È un concetto diverso dai tag, che restano descrizioni libere e
+sovrapponibili (`lento`, `acustico`).
 
 Si possono **creare, rinominare, spostare brani fra l'uno e l'altro e rimuovere**, e tutto
 questo dall'app, non dai file.
 
-### Perché il canzoniere non ha una rotta propria
+### Il canzoniere ha una rotta propria (v2.0)
 
-Sembrerebbe naturale dare a ogni canzoniere una pagina come `/canzonieri/repertorio`. Non lo
-facciamo, e la ragione è che due delle funzioni richieste la renderebbero fragile:
+Per due versioni non l'ha avuta, e le ragioni erano queste:
 
 - un canzoniere **creato dall'app** non esisterebbe fra le rotte generate al build, quindi
   non sarebbe precachato e offline non esisterebbe fino al deploy successivo;
 - una **rinomina** sposterebbe la rotta, se lo slug seguisse il nome — e se non lo segue, la
   URL resta legata a un nome vecchio, che è peggio.
 
-Il canzoniere non ha quindi una vista propria: **aprirlo vuol dire aprire la sua prima
-canzone**, e da lì le frecce nell'header scorrono le altre. La home offre i canzonieri in
-riga sotto la ricerca e non elenca brani; i brani compaiono solo come risultati di ricerca.
-L'ordine su cui scorrono le frecce è quello del build, come tutto il resto della pagina: se
-un brano cambia canzoniere nel database, i vicini restano quelli vecchi fino alla
-pubblicazione successiva.
+La seconda si è rivelata **falsa nel nostro schema**: lo slug si genera una volta dal nome
+iniziale e non cambia più, quindi una rinomina tocca `name` e nient'altro. La prima è vera,
+ed è lo stesso patto che ogni brano importato accetta da sempre: visibile subito, offline
+alla pubblicazione successiva.
 
-Storicamente la vista era la lista filtrata su `/?c=repertorio`. Non c'è più nulla che
-produca quel parametro, ma `c` resta in `ignoreURLParametersMatching` di Serwist perché un
-vecchio segnalibro continui a trovare la home in cache anche offline.
+Dall'altra parte della bilancia c'era il costo di non averla: aprire un canzoniere doveva
+succedere **dentro la home**, come una piega, perché non c'era altro posto dove potesse
+succedere. Con la rotta, la home è l'elenco dei canzonieri, `/canzonieri/<slug>` è il
+canzoniere, e la pagina di un brano ha una via di ritorno che vuol dire qualcosa.
 
-Una sola rotta nuova, statica e precachata: **`/canzonieri`**, la schermata di gestione.
+Storicamente la vista era la lista filtrata su `/?c=repertorio`, poi la card che si apriva.
+Non c'è più nulla che produca quel parametro, ma `c` resta in
+`ignoreURLParametersMatching` di Serwist perché un vecchio segnalibro continui a trovare la
+home in cache anche offline.
+
+Resta **`/canzonieri`** come schermata di gestione: creare, rinominare, rimuovere. Leggere e
+gestire sono due gesti diversi, e solo il primo sta sulla strada di chi suona.
 
 ### Guscio statico, dato mutabile
 
@@ -484,7 +488,7 @@ pagina. Una riga vuota non divide niente — fra le strofe ce ne sono a decine. 
 un brano solo.
 
 Trovati più brani, al posto del form arriva una riga per brano: titolo e artista
-modificabili, formato e tonalità in chiaro, il testo dentro un `details`. Si scrive solo
+modificabili e formato in chiaro, il testo dentro un `details`. Si scrive solo
 premendo *Importa*, in sequenza, e ogni riga dice come è finita — salvato, già in archivio,
 oppure l'errore. Ripremere riprova solo ciò che manca.
 
@@ -492,7 +496,7 @@ oppure l'errore. Ripremere riprova solo ciò che manca.
 3 brani in questo testo                      incolla altro
 ┌───────────────────────────────────────────────────────┐
 │ ① [ Certe notti        ] [ Ligabue      ]           × │
-│   accordi sopra il testo, convertiti   Fa (stimata)   │
+│   accordi sopra il testo, convertiti                  │
 │   ▸ Testo e accordi                                   │
 ├───────────────────────────────────────────────────────┤
 │ ② [ Albachiara         ] [ Vasco Rossi  ]  ✓ salvato  │
@@ -504,15 +508,13 @@ Se un brano è già in archivio [ salta quelli già presenti ▾ ]
 ### Il form
 
 Per un brano solo. Titolo e artista si deducono dalle direttive se ci sono, altrimenti dalle
-prime righe. La tonalità si stima dagli accordi ed è **mostrata come stima**, perché da essa
-dipendono l'etichetta «originale» e la grafia enarmonica quando trasponi. Il canzoniere non
-è fra i campi: l'ha già chiesto la schermata, sopra. Lo slug si genera dal titolo con
+prime righe. La tonalità **non è fra i campi** dalla v2.0: si stima dagli accordi ogni volta
+che serve, e serve solo per la grafia enarmonica. Il canzoniere non è fra i campi: l'ha già chiesto la schermata, sopra. Lo slug si genera dal titolo con
 `uniqueSlug`, lo stesso già usato per i canzonieri.
 
 ```
 Titolo   [ Certe notti          ]
 Artista  [ Ligabue              ]
-Tonalità [ Do ▾ ] stimata
 ┌─ corpo ChordPro ─┬─ preview ────┐
 │ [Am]Certe notti  │  Do      Fa  │
 │ ...              │  Certe notti │
@@ -568,12 +570,14 @@ build che sta girando ha timbrato il database e quindi contiene quei brani. Non 
 online», perché saperlo richiederebbe l'API di Vercel. Prima non aspettava affatto, e la
 lista restava lì immobile: il secondo sintomo del bug.
 
-Resta fuori l'elenco **dentro una scaletta**: i titoli lì vengono dal build, quindi un brano
-rinominato compare col nome vecchio finché non si pubblica. Aprirlo dà la versione giusta —
-la pagina del brano ha il suo strato — ed è per questo che la riga può aspettare: raggiungere
-quelle pagine dalla scrittura vorrebbe dire cercare in quali scalette sta il brano.
+Cosa resta fuori dallo strato, dalla v2.0: solo **le frecce** nell'header di un brano.
+Portano ad altre pagine statiche, generate con la stessa lista di questa, e leggere qui
+l'assegnazione viva le farebbe puntare a brani le cui pagine credono ancora di stare
+altrove. Le righe della pagina di un canzoniere, invece, sono aggiornate come l'elenco in
+home: sono una lista di titoli, e un titolo vecchio in una lista è esattamente il bug che
+questo strato esiste per evitare.
 
-L'elenco in home, invece, non viene messo in cache. Una riga lì è la promessa che toccandola si apre
+L'elenco in home non viene messo in cache. Una riga lì è la promessa che toccandola si apre
 qualcosa, e un brano importato dopo l'ultimo build non ha una pagina nel precache da aprire
 (online sì: la rotta non è fra quelle generate e Next la genera su richiesta). Quando il
 server non risponde, l'elenco resta quello del build, dove ogni riga porta da qualche parte.
@@ -1046,10 +1050,93 @@ Resta il caso di due accordi a due lettere di distanza su una riga *con* parole,
 sovrappongono ancora: si separano con le frecce, e risolverlo davvero richiede di
 misurare. Era così anche prima.
 
+### v2.0 — utenti, e tre cose in meno
+
+Cinque richieste, e tre sono **rimozioni**. Vale dirlo prima di tutto il resto: la
+maggior parte di questa versione è codice che non c'è più — tre rotte, due tabelle, una
+colonna, una dipendenza, e le funzioni che esistevano solo per servirle.
+
+**1. Chi può entrare, dall'app.** Nuova tabella `members` e nuova schermata `/utenti`.
+L'elenco ha due metà che non sono la stessa cosa: i **proprietari** vengono da
+`ALLOWED_EMAILS`, che l'app non può scrivere, e gli **invitati** dalla tabella. È la
+differenza che rende impossibile chiudersi fuori — non c'è nessun gesto, in nessuna
+schermata, che tolga l'accesso all'ultima persona che ce l'ha — e che tiene in piedi
+l'accesso dei proprietari anche con il database irraggiungibile, dato che per loro non
+c'è niente da leggere.
+
+Le due metà si incontrano in `isAllowed(email, env, members)`, che risponde **sia** al
+callback di login **sia** alla guardia davanti a ogni scrittura. Questa è la parte da non
+sbagliare, ed è il primo errore che il revisore ha fermato: una guardia che avesse letto
+solo la tabella avrebbe lasciato i due proprietari — le sole persone con accesso — dentro
+l'app e incapaci di salvare qualunque cosa, perché non sono righe. Verificato attraverso
+l'interfaccia dopo il cambio: una trasposizione salvata da un proprietario arriva al
+server.
+
+Quello che una rimozione **non** fa: chiudere una sessione già aperta. Il cookie dura
+novanta giorni per una ragione (scadere senza rete chiuderebbe fuori dal repertorio in
+scena) e le pagine sono già sul dispositivo di chi le ha scaricate. Smette subito ogni
+scrittura, perché la guardia rilegge l'elenco a ogni azione. La schermata lo dice al
+momento di rimuovere: promettere una porta che si chiude sarebbe falso.
+
+**2. Le scalette non ci sono più.** Due rotte, due tabelle, il tipo, i due metodi del
+repository, i file YAML, la voce di menù, l'icona, la dipendenza `yaml`. Non erano mai
+diventate scrivibili dall'app e nel database erano due gusci vuoti — due righe in
+`setlists`, **zero** in `setlist_songs` — quindi non si è persa nessuna serata. Il
+`SetlistContext` di `SongReader` va con loro, e con esso l'unico caso in cui la pagina di
+un brano poteva stare in due sequenze diverse.
+
+**3. La tonalità non è più un campo.** Via la colonna `original_key`, il campo
+nell'editor, le pastiglie negli elenchi, la direttiva `{key:}` e ogni readout che
+nominasse una tonalità. Ma la tonalità serviva a qualcosa di preciso, e non era mostrarla:
+`transposeChord` sceglie fra `Fa#` e `Solb` **dalla tonalità d'arrivo**. Toglierla senza
+sostituirla avrebbe fatto ripiegare ogni brano su Do maggiore, cioè avrebbe cambiato la
+grafia di brani che nessuno aveva toccato.
+
+Quindi la tonalità si **stima dagli accordi**, con l'estimatore che l'import già usava —
+spostato da `lib/import/key.ts` a `lib/music/key.ts`, perché non è più una cosa
+dell'import. Interna, mai scritta, mai stampata. Misurato **prima** di far cadere la
+colonna, che è l'unico momento in cui si poteva misurare: sui ventuno brani con una
+tonalità salvata la stima ha indovinato **ventuno volte su ventuno**. I tre senza tonalità
+salvata ci guadagnano, perché prima ripiegavano su Do.
+
+Ne segue una potatura che vale la pena nominare: `formatKey`, `keyLabel`, `parseKey` e
+`soundingKey` sono state cancellate. Non erano rotte — erano diventate senza chiamanti,
+perché una tonalità non si scrive più in nessun senso della parola, né dentro né fuori. I
+loro test sono stati riscritti per dire la stessa cosa attraverso ciò che resta.
+
+**4. La home è l'elenco dei canzonieri**, e ogni canzoniere ha la sua pagina. Il perché
+sta in *Il canzoniere ha una rotta propria*: delle due obiezioni storiche una era falsa
+nel nostro schema. La ricerca resta in home; il riordino trasloca nella pagina del
+canzoniere, che è dove ora vive l'elenco che riordina.
+
+**5. Dal brano si torna al canzoniere**, con la pastiglia `‹ Cartoni animati` nell'header.
+Qui c'era una trappola che il revisore ha visto prima di me: `seriesFor` calcolava insieme
+il canzoniere e la posizione nella sequenza, e restituiva `null` per entrambi quando i
+brani erano meno di due. Un canzoniere con un brano solo avrebbe quindi perso **anche** la
+via del ritorno, che non ha niente a che vedere con l'avere dei vicini. Sono due funzioni
+adesso, con due condizioni diverse.
+
+**Le migrazioni sono due, e nell'ordine giusto.** `0006` crea `members` e va applicata
+*prima* del push, perché il login la legge; `0007` lascia cadere la colonna e le due
+tabelle e va applicata *dopo* che il deploy è pronto, perché fino a quel momento il sito
+in produzione è ancora quello vecchio, che quella colonna la seleziona. Al contrario si
+aprirebbe una finestra di qualche minuto in cui salvare un brano sul sito vivo fallisce.
+
+**Cosa è stato misurato, non supposto.** Trentatré controlli attraverso l'interfaccia:
+che le righe della home siano collegamenti e non pieghe, che seguire la pastiglia del
+ritorno *atterri* sul canzoniere che nomina, che togliere il capotasto rimetta esattamente
+gli accordi di prima, che rimuovere un invitato lo faccia sparire dall'elenco. Due
+fallimenti erano miei e non dell'app: un profilo del browser riusato si portava dietro una
+trasposizione in `localStorage`, e un `input` svuotato via DOM non aggiorna lo stato di
+React. Il terzo era vero e istruttivo: un `type="email"` fa rifiutare l'indirizzo
+malformato al browser, prima che l'azione sul server venga chiamata.
+
 ### v2 — il resto
 
-Scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei canzonieri.
-Dopo la v1.2 restano queste, non l'editor: quello sarà già fatto.
+Restava: scalette modificabili dall'app, allowlist su tabella, ordinamento manuale dei
+canzonieri. La v2.0 ha chiuso le prime due in due modi opposti — l'allowlist è diventata una
+tabella con la sua schermata, le scalette sono state **rimosse** invece di essere finite,
+perché non servivano. Resta l'ordinamento dei canzonieri (vedi *Domande aperte*).
 
 Nota la progressione deliberata: la v1.1 ha aperto il percorso di scrittura su una superficie
 minima — nomi e appartenenza — e la v1.2 lo estende al contenuto. Ogni passo ha portato una
@@ -1077,9 +1164,9 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
    nient'altro: è questo che rende le due implementazioni del repository interscambiabili e
    permette di indicizzare le preferenze allo stesso modo in entrambe. Costo: rinominare uno
    slug orfana la trasposizione salvata di quel brano.
-2. **`postgres.js` invece di `@neondatabase/serverless`.** Nulla tocca il database dall'edge —
-   le sessioni sono JWT e l'allowlist è una variabile d'ambiente — quindi il driver HTTP non
-   porta vantaggi, e la sua versione 1 richiede Node ≥ 19 mentre qui c'è 18.
+2. **`postgres.js` invece di `@neondatabase/serverless`.** Nulla tocca il database dall'edge:
+   le sessioni sono JWT e il middleware non legge l'elenco degli ammessi — lo legge il
+   callback di login, che gira in Node (v2.0). Quindi il driver HTTP non porta vantaggi, e la sua versione 1 richiede Node ≥ 19 mentre qui c'è 18.
 3. **Cache di lettura locale per le preferenze.** Il piano diceva "solo DB". Ma una lettura di
    rete non può concludersi prima del primo paint, e offline non c'è alcun database da
    leggere: ogni brano si aprirebbe in tonalità originale senza memoria. Il DB resta l'unica
@@ -1088,7 +1175,8 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 4. **Leggere dentro una scaletta è una rotta a sé** (`/scalette/[scaletta]/[brano]`) invece di
    un query param. Costo: una pagina statica per coppia. Vantaggi: precedente e successiva
    note al build, e URL di precache identiche a quelle richieste — un query param non farebbe
-   parte della voce precachata.
+   parte della voce precachata. *(Rimossa in v2.0 insieme alle scalette. Lo stesso
+   ragionamento vale ora per `/canzonieri/[slug]`.)*
 5. **Toggle notazione inline nella barra** invece che dietro il menù `⋯`: un tap invece di
    due, e nessun popover da gestire.
 6. **L'indice di ricerca viaggia nel payload della pagina** invece di essere un JSON separato:
@@ -1110,7 +1198,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Formato | ChordPro, accordi sopra il testo | Standard di fatto; rende trasposizione e notazione banali |
 | Sigle italiane | Stile jazz: `Do-`, `Do△7` | Scelta esplicita dell'utente |
 | Sigle internazionali | Standard: `Cm`, `Cmaj7` | Ogni sistema con la propria convenzione; in INT il display coincide col sorgente |
-| Trasposizione | Stepper a semitoni con tonalità risultante | Il gesto più rapido dal vivo: si alza finché la voce sta comoda |
+| Trasposizione | Stepper a semitoni, con la distanza da casa | Il gesto più rapido dal vivo: si alza finché la voce sta comoda. Il nome della tonalità è già su ogni accordo (v2.0) |
 | Enarmonia | Segue la tonalità d'arrivo | `Sib` e non `La#`: è come si legge uno spartito |
 | Auto-scroll | Velocità costante su 8 passi, salvata per brano | Correggibile al volo se si va fuori sincrono |
 | Wake lock | Sempre attivo durante lo scroll | Senza, la funzione non serve a nulla |
@@ -1119,10 +1207,9 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Preferenze per brano | Solo trasposizione e velocità | La tonalità comoda dipende dal brano; zoom e notazione sono abitudini stabili |
 | Persistenza | Solo DB, sincronizzato | Con un'identità, preferenze che divergono fra dispositivi sarebbero una stranezza |
 | Scrittura offline | Applicata subito, coda in memoria | Dal vivo funziona e nulla si perde in silenzio, senza logica di merge |
-| Navigazione | Lista con ricerca + scalette | Le scalette rendono l'app uno strumento da palco |
-| Scalette v1 | Nei file di seed, sola lettura | Repertori curati, non liste improvvisate |
+| Navigazione | Elenco dei canzonieri + ricerca su tutto | La prima domanda è quale canzoniere; la ricerca non appartiene a nessuno (v2.0) |
 | Offline | PWA con pagine statiche precache | Sala prove e palco spesso non hanno rete |
-| Accesso | Google OAuth + allowlist email | Chiude la questione copyright e dà l'identità per la sincronizzazione |
+| Accesso | Google OAuth + elenco in due metà | Chiude la questione copyright e dà l'identità per la sincronizzazione. Proprietari nell'ambiente, invitati in tabella (v2.0) |
 | Sessione | 90 giorni | Un token scaduto senza rete chiuderebbe fuori dal repertorio |
 | Database | Neon via Vercel Marketplace | Variabili iniettate, zero configurazione manuale |
 | Lingua UI | Solo italiano | Un utente, nessun bisogno di i18n |
@@ -1132,15 +1219,14 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Decisione | Scelta | Perché |
 |---|---|---|
 | Cardinalità | Contenitore: un brano, un canzoniere | Lettura letterale del requisito; appartenenza sempre certa e rimozione con un significato ovvio |
-| Rapporto con le scalette | Scalette trasversali | Una serata può mescolare repertori; la scaletta è un ordine, non una libreria |
 | Proprietà | Il file dà il valore iniziale, poi comanda il DB | Senza questa regola il primo seed cancellerebbe ogni rinomina fatta dall'app |
 | Slug del canzoniere | Immutabile, generato una volta | Rinominare non tocca chiavi esterne, URL né voci di precache |
 | Rimozione | Rifiutata se non vuoto, con spostamento obbligato | Nessuna perdita possibile; `on delete restrict` la impone nel database |
 | Cascata | Esclusa | Si annullerebbe da sola: i file esistono ancora e il primo seed farebbe risorgere i brani |
-| URL dei brani | Invariata, canzoniere come filtro `?c=` | Rinomine e spostamenti non rompono segnalibri, precache né preferenze |
-| Rotta per canzoniere | Nessuna | Un canzoniere creato dall'app non sarebbe precachato, e una rinomina sposterebbe la rotta |
+| URL dei brani | Invariata, il canzoniere non ne fa parte | Rinomine e spostamenti non rompono segnalibri, precache né preferenze |
+| Rotta per canzoniere | `/canzonieri/[slug]`, dalla v2.0 | La rinomina non sposta niente (lo slug è immutabile), e aspettare la ricostruzione è il patto di ogni brano importato |
 | Freschezza | Guscio statico + strato mutabile a runtime | Con precache cache-first un `revalidatePath` non arriverebbe mai al dispositivo |
-| Home | Elenco piatto con chip di filtro | La strada più breve verso un brano non si allunga di un tap |
+| Home | Elenco dei canzonieri, uno per riga | Un tocco, una destinazione: la piega che si apriva lasciava i brani dentro la schermata sbagliata (v2.0) |
 | Gestione offline | Disabilitata | Struttura condivisa fra account: un last-write-wins non è innocuo come su una trasposizione personale |
 | Stato iniziale | Ricavato dai tag esistenti | I tag contenevano già questa categorizzazione |
 | Pruning dei canzonieri | Escluso dal seed | Esistono legittimamente canzonieri che nessun file ha mai dichiarato |
@@ -1154,7 +1240,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Ingresso | Solo testo incollato | È come si trovano gli accordi; upload e URL scartati come poco usati o fragili |
 | Formato | Riconosciuto da sé | ChordPro passa, il resto si converte: nessun formato da conoscere |
 | Conversione | Euristica con preview obbligatoria | Sbaglierà su qualche sorgente, e la preview più il corpo modificabile sono la via d'uscita |
-| Metadati | Dedotti e correggibili | Nel caso comune non si tocca nulla; la tonalità è marcata come stima perché ne dipende l'enarmonia |
+| Metadati | Dedotti e correggibili | Nel caso comune non si tocca nulla. La tonalità non è più fra loro (v2.0): la sanno gli accordi |
 | Scope | Import, modifica e cancellazione | La cancellazione è obbligata: senza file da eliminare un errore sarebbe permanente |
 | Duplicati | Avviso con sostituisci / aggiungi / annulla | Sostituire conserva lo slug, quindi le preferenze del brano sopravvivono |
 | Pubblicazione | Esplicita, un build per gruppo | Lista, ricerca e precache si generano al build: un solo modello, e cinque brani costano un deploy |
@@ -1194,8 +1280,9 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 8. **Direttive ChordPro estese** (`{capo}`, tablature, ritornelli ripetuti per riferimento)
    — ignorate in v1, da valutare quando emergono su brani reali.
 9. **Ordinamento dei canzonieri** — alfabetico. Se in pratica serve un ordine tuo (il
-   repertorio attivo per primo, l'archivio in fondo) va aggiunta una colonna `position` e
-   un riordino a trascinamento, come già hanno le scalette.
+   repertorio attivo per primo, l'archivio in fondo) va aggiunta una colonna `position` e un
+   riordino a trascinamento, come già hanno i brani dentro un canzoniere. Ora che la home è
+   l'elenco dei canzonieri, la domanda pesa più di prima.
 10. **Canzonieri condivisi o per utente** — sono struttura della libreria, quindi condivisi
     fra gli account in allowlist, come i brani. Va riconsiderato solo se entrasse qualcuno
     che vuole un proprio ordinamento del materiale comune.

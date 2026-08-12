@@ -5,7 +5,6 @@ export interface SongInput {
   slug?: string
   title: string
   artist: string | null
-  originalKey: string | null
   tags: string[]
   canzoniereSlug: string
   body: string

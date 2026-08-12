@@ -8,20 +8,14 @@ import { IconPencil } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
 
-export interface SetlistContext {
+/** The canzoniere this song is in: where the header's way back leads. */
+interface Home {
   slug: string
   name: string
-  /** One-based position of this song in the setlist. */
-  position: number
-  total: number
-  /** Slugs only: the header arrows need somewhere to go, not something to say. */
-  previous: string | null
-  next: string | null
 }
 
 /** Where a song sits among the others of its canzoniere. */
 interface Series {
-  name: string
   position: number
   total: number
   previous: string | null
@@ -29,47 +23,53 @@ interface Series {
 }
 
 /**
- * The songs of this song's canzoniere, in the order the list has them.
+ * The canzoniere, and the song's place in it. Two answers, not one.
  *
- * Built from build-time data, unlike the song's own words, which are refreshed
+ * They used to be computed together and returned as a single null-or-not, which was a
+ * bug waiting for its first victim: a canzoniere holding one song has no sequence to
+ * step through, and returning null for both would have taken away the way back as
+ * well. The sequence needs two songs; the way back needs only a canzoniere.
+ *
+ * Both are built from build-time data, unlike the song's own words, which are refreshed
  * from the database as soon as the page opens. The difference is deliberate: these
- * arrows lead to other static pages, and each of those was generated with the same
- * list this one was. Reading the live assignment here would point the arrows at
- * songs whose own pages still think they belong somewhere else.
+ * arrows lead to other static pages, and each of those was generated from the same list
+ * this one was. Reading the live assignment here would point the arrows at songs whose
+ * own pages still think they belong somewhere else.
  *
- * So the neighbours are as stale as the pages they lead to — which is the only way
- * for them to agree — while what you are reading is not.
+ * So the neighbours are as stale as the pages they lead to — which is the only way for
+ * them to agree — while what you are reading is not.
  */
-async function seriesFor(song: Song): Promise<Series | null> {
+async function placeOf(song: Song): Promise<{ home: Home | null; series: Series | null }> {
+  if (song.canzoniereSlug === null) return { home: null, series: null }
+
   const [songs, canzonieri] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
   ])
 
-  const siblings = songs.filter((entry) => entry.canzoniereSlug === song.canzoniereSlug)
-  if (siblings.length < 2) return null
+  const found = canzonieri.find((entry) => entry.slug === song.canzoniereSlug)
+  const home =
+    found === undefined ? null : { slug: found.slug, name: found.name }
 
+  const siblings = songs.filter((entry) => entry.canzoniereSlug === song.canzoniereSlug)
   const index = siblings.findIndex((entry) => entry.slug === song.slug)
-  if (index === -1) return null
+  if (index === -1 || siblings.length < 2) return { home, series: null }
 
   const at = (position: number): string | null => siblings[position]?.slug ?? null
 
-  const name =
-    song.canzoniereSlug === null
-      ? 'Senza canzoniere'
-      : (canzonieri.find((entry) => entry.slug === song.canzoniereSlug)?.name ?? 'Canzoniere')
-
   return {
-    name,
-    position: index + 1,
-    total: siblings.length,
-    previous: at(index - 1),
-    next: at(index + 1),
+    home,
+    series: {
+      position: index + 1,
+      total: siblings.length,
+      previous: at(index - 1),
+      next: at(index + 1),
+    },
   }
 }
 
 /**
- * The reading shell, shared by the standalone song route and the setlist route.
+ * The reading shell.
  *
  * The ChordPro is parsed here, on the server, so the parse happens once at build
  * time and the client only ever formats an already-structured song.
@@ -78,30 +78,10 @@ async function seriesFor(song: Song): Promise<Series | null> {
  * two cards for it at the foot of the sheet as well, which meant the same two
  * destinations twice on one screen — and the copy at the bottom was the one you had
  * to scroll a whole song to reach, while the arrows are in reach the entire time.
- * They also cost two extra queries per page at build time, to fetch titles nobody
- * needs now.
- *
- * Inside a setlist the setlist wins: stepping through it is why you opened it.
  */
-export async function SongReader({
-  song,
-  setlist,
-}: {
-  song: Song
-  setlist?: SetlistContext | null
-}) {
+export async function SongReader({ song }: { song: Song }) {
   const parsed = parseChordPro(song.body)
-  const series = setlist ? null : await seriesFor(song)
-
-  const steps = setlist
-    ? {
-        previous: setlist.previous && `/scalette/${setlist.slug}/${setlist.previous}`,
-        next: setlist.next && `/scalette/${setlist.slug}/${setlist.next}`,
-      }
-    : {
-        previous: series?.previous ? `/canzoni/${series.previous}` : null,
-        next: series?.next ? `/canzoni/${series.next}` : null,
-      }
+  const { home, series } = await placeOf(song)
 
   return (
     <PrefsProvider songSlug={song.slug}>
@@ -112,19 +92,18 @@ export async function SongReader({
         */}
       <SongProvider key={song.slug} baked={song} bakedParsed={parsed}>
         <TopBar
-          current={setlist ? 'scalette' : 'canzoni'}
+          current="canzoni"
           /*
-            * Only inside a setlist, where going back means the setlist and not
-            * the whole repertoire. On its own a song needs no return link: the
-            * brand next to it already leads to the list of everything.
-            *
-            * The name alone, without the position it used to carry: with the brand
-            * back in the bar there is no room for both, and a truncating chip cut
-            * the number rather than the name. The position is under the title now,
-            * where it is never abbreviated.
+            * The way back to the canzoniere, which is not where the brand leads: the
+            * brand goes to the list of canzonieri, one level above the one you came
+            * from. A song with no canzoniere has nowhere in between, so it gets no
+            * second link.
             */
-          back={setlist ? { href: `/scalette/${setlist.slug}`, label: setlist.name } : undefined}
-          steps={steps}
+          back={home === null ? undefined : { href: `/canzonieri/${home.slug}`, label: home.name }}
+          steps={{
+            previous: series?.previous ? `/canzoni/${series.previous}` : null,
+            next: series?.next ? `/canzoni/${series.next}` : null,
+          }}
         />
 
         {/*
@@ -137,11 +116,9 @@ export async function SongReader({
         <main className="song-card">
           <SongHeading
             place={
-              setlist
-                ? { position: setlist.position, total: setlist.total, within: setlist.name }
-                : series === null
-                  ? null
-                  : { position: series.position, total: series.total, within: series.name }
+              series === null || home === null
+                ? null
+                : { position: series.position, total: series.total, within: home.name }
             }
           />
 

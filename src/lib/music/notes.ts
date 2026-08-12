@@ -178,32 +178,6 @@ export interface Key {
   flats: boolean
 }
 
-/**
- * Parses a key as written in a `{key:}` directive: `C`, `Am`, `Bb`, `F#m`.
- * Anything unrecognised yields null so callers can fall back to C major
- * rather than guessing.
- */
-export function parseKey(raw: string | null | undefined): Key | null {
-  if (!raw) return null
-
-  const token = raw.trim()
-  // Capitalised so a lowercase international key such as `bb` still reads, while
-  // the uppercase rule that protects chord parsing stays where it matters.
-  const candidates = readRoots(token.charAt(0).toUpperCase() + token.slice(1))
-
-  for (const root of candidates) {
-    const tail = /^\s*(m|min|minor|-)?$/i.exec(root.rest)
-    if (tail === null) continue
-
-    const pc = noteToPitchClass(root.name)
-    if (pc === null) continue
-
-    return keyFor(pc, tail[1] ? 'minor' : 'major')
-  }
-
-  return null
-}
-
 /** The canonical key for a pitch class and mode. */
 export function keyFor(pc: PitchClass, mode: Mode): Key {
   const table = mode === 'major' ? MAJOR_KEYS : MINOR_KEYS

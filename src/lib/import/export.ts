@@ -9,14 +9,19 @@
 
 import type { Song } from '../data/types'
 
-/** Directives this rebuilds, and therefore has to strip first to avoid doubles. */
+/**
+ * Directives to strip from the body before the head is written fresh.
+ *
+ * `key` is still in the list although nothing writes one any more: a body imported
+ * from elsewhere may carry it, and a stripped directive the app ignores is tidier in
+ * an exported file than one left in the middle of the words.
+ */
 const METADATA = /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook)\s*:[^}]*\}\s*$/i
 
 export function toChoproFile(song: Song, canzoniereName: string | null): string {
   const head: string[] = [`{title: ${song.title}}`]
 
   if (song.artist !== null && song.artist !== '') head.push(`{artist: ${song.artist}}`)
-  if (song.originalKey !== null && song.originalKey !== '') head.push(`{key: ${song.originalKey}}`)
   if (song.tags.length > 0) head.push(`{tags: ${song.tags.join(', ')}}`)
   if (canzoniereName !== null) head.push(`{canzoniere: ${canzoniereName}}`)
 

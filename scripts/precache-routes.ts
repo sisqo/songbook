@@ -22,23 +22,25 @@ async function main() {
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
   const { builds } = await import('../src/lib/db/schema')
 
-  const [songs, setlists] = await Promise.all([
+  const [songs, canzonieri] = await Promise.all([
     repository.listSongs(),
-    repository.listSetlists(),
+    repository.listCanzonieri(),
   ])
 
   const routes = [
     '/',
-    '/scalette',
     '/canzonieri',
     '/importa',
+    '/utenti',
     // A metadata route, not a file in public/, so it has to be listed here.
     '/manifest.webmanifest',
     ...songs.map((song) => `/canzoni/${song.slug}`),
-    ...setlists.map((setlist) => `/scalette/${setlist.slug}`),
-    ...setlists.flatMap((setlist) =>
-      setlist.songs.map((song) => `/scalette/${setlist.slug}/${song}`),
-    ),
+    /*
+     * One page per canzoniere, and they matter offline as much as the songs do:
+     * the home page is now a list of these, so without them every row on the
+     * first screen would lead nowhere with no network.
+     */
+    ...canzonieri.map((canzoniere) => `/canzonieri/${canzoniere.slug}`),
   ]
 
   const output = path.join(process.cwd(), 'generated', 'precache-routes.json')

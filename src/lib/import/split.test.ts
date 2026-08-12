@@ -103,13 +103,11 @@ describe('preparing what was pasted', () => {
     assert.equal(songs[1].body, '[C]Respiri [G]piano')
   })
 
-  it('gives each song its own key, since one paste is not one song', () => {
+  it('reads each song on its own, since one paste is not one song', () => {
     const songs = prepareSongs(pasted)
 
     assert.deepEqual(songs.map((song) => song.id), [0, 1])
     assert.deepEqual(songs.map((song) => song.format), ['chords-above', 'chords-above'])
-    // Neither source declared a key, so both are estimates from the chords.
-    assert.deepEqual(songs.map((song) => song.keyIsGuess), [true, true])
   })
 
   it('repeats what a song says about its canzoniere without acting on it', () => {

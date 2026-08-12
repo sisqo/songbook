@@ -346,13 +346,11 @@ export function ImportScreen({ defaultCanzoniere }: { defaultCanzoniere: string 
             initial={{
               title: single.title,
               artist: single.artist,
-              originalKey: single.originalKey,
               tags: single.tags,
               canzoniereSlug: chosen,
               body: single.body,
             }}
             canzonieri={canzonieri}
-            keyIsGuess={single.keyIsGuess}
             showCanzoniere={false}
             onSave={async (input, decision) => {
               // The select above is the answer, even if it changed after the analysis.

@@ -106,7 +106,6 @@ export function EditorScreen({ song }: { song: Song }) {
   const [fields, setFields] = useState<SongFieldValues>({
     title: song.title,
     artist: song.artist ?? '',
-    originalKey: song.originalKey ?? '',
     tags: song.tags.join(', '),
     canzoniereSlug: song.canzoniereSlug ?? canzonieri[0]?.slug ?? '',
   })
@@ -208,7 +207,6 @@ export function EditorScreen({ song }: { song: Song }) {
         slug: song.slug,
         title: fields.title,
         artist: fields.artist,
-        originalKey: fields.originalKey,
         tags: fields.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
         canzoniereSlug: fields.canzoniereSlug,
         body: source,
@@ -377,7 +375,6 @@ export function EditorScreen({ song }: { song: Song }) {
               {' — '}
               {fields.title || 'senza titolo'}
               {fields.artist !== '' && ` · ${fields.artist}`}
-              {fields.originalKey !== '' && ` · ${fields.originalKey}`}
             </span>
           </span>
         </summary>
@@ -421,13 +418,13 @@ export function EditorScreen({ song }: { song: Song }) {
 
       {mode === 'preview' && (
         <>
-          <SongSheet song={parsed} originalKey={fields.originalKey || null} />
+          <SongSheet song={parsed} />
           {/*
             * The reader's own bar, not a copy of it: the point of this mode is to
             * see the song the way it will be read, transposition included.
             */}
           <div className="bar-spacer" />
-          <ControlBar originalKey={fields.originalKey || null} chords={chordTokens(parsed)} />
+          <ControlBar chords={chordTokens(parsed)} />
         </>
       )}
 

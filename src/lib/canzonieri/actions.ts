@@ -10,7 +10,7 @@
 
 import { asc, eq, sql } from 'drizzle-orm'
 
-import { auth } from '@/auth'
+import { currentMember } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
 import { canzonieri, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
@@ -19,9 +19,7 @@ import { sameMembers } from './order'
 import type { CanzoniereState, CreateResult, WriteResult } from './types'
 
 async function authorized(): Promise<boolean> {
-  if (!hasDatabase) return false
-  const session = await auth()
-  return Boolean(session?.user?.email)
+  return (await currentMember()) !== null
 }
 
 /** Reads the whole mutable layer. Null when there is nothing to read from. */

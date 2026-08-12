@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import type { SongIndexEntry } from '../search-index'
-import { type SongIndexRow, isNewer, liveHaystack, mergeIndex } from './overlay'
+import type { SongIndexRow } from '../search-index'
+import { isNewer, liveHaystack, mergeIndex } from './overlay'
 
 const BUILT = '2026-08-11T06:00:00.000Z'
 const LATER = '2026-08-11T07:00:00.000Z'
@@ -12,7 +13,6 @@ function entry(slug: string, title: string, updatedAt: string | null): SongIndex
     slug,
     title,
     artist: 'Ligabue',
-    originalKey: 'C',
     tags: [],
     updatedAt,
     haystack: `${title}\nligabue\ncerte notti la macchina`.toLowerCase(),
@@ -20,7 +20,7 @@ function entry(slug: string, title: string, updatedAt: string | null): SongIndex
 }
 
 function row(slug: string, title: string, updatedAt: string | null): SongIndexRow {
-  return { slug, title, artist: 'Ligabue', originalKey: 'C', tags: [], updatedAt }
+  return { slug, title, artist: 'Ligabue', tags: [], updatedAt }
 }
 
 describe('isNewer', () => {

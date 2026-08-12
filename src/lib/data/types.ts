@@ -16,8 +16,6 @@ export interface Song {
   slug: string
   title: string
   artist: string | null
-  /** Key as written in the source, e.g. `Bb` or `F#m`. */
-  originalKey: string | null
   tags: string[]
   /**
    * The canzoniere at build time. A snapshot, not the truth: names and
@@ -38,20 +36,10 @@ export interface Song {
   updatedAt: string | null
 }
 
-export interface Setlist {
-  slug: string
-  name: string
-  position: number
-  /** Song slugs, in performance order. */
-  songs: string[]
-}
-
 /** What the pages need from whichever implementation is active. */
 export interface SongRepository {
   listSongs(): Promise<Song[]>
   getSong(slug: string): Promise<Song | null>
-  listSetlists(): Promise<Setlist[]>
-  getSetlist(slug: string): Promise<Setlist | null>
   listCanzonieri(): Promise<Canzoniere[]>
 }
 

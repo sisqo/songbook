@@ -10,18 +10,16 @@ import { repository } from '@/lib/data'
 export const metadata: Metadata = { title: 'Canzonieri' }
 
 /**
- * The only new route the feature adds: a static shell, precached like the rest.
+ * Where canzonieri are made, renamed and removed — not where they are read.
  *
- * There is deliberately no `/canzonieri/[slug]` page. One created in the app
- * would not exist among the routes generated at build time, so it would not be
- * precached and would be missing offline; and a rename would move the route.
- * Opening a canzoniere means opening its first song, from the home list.
+ * Reading one is the home page's job, and from there each leads to its own page. This
+ * screen is the other half: the operations that change the shape of the library rather
+ * than move through it, which is why it lives behind the menu instead of on the way in.
  */
 export default async function CanzonieriPage() {
-  const [songs, canzonieri, setlists] = await Promise.all([
+  const [songs, canzonieri] = await Promise.all([
     repository.listSongs(),
     repository.listCanzonieri(),
-    repository.listSetlists(),
   ])
 
   const initial: CanzoniereState = {
@@ -37,14 +35,14 @@ export default async function CanzonieriPage() {
     // The menu in the header holds a reader preference, so it needs this here too.
     <PrefsProvider songSlug={null}>
       <CanzoniereProvider initial={initial}>
-        <TopBar current="canzonieri" showSetlists={setlists.length > 0} />
+        <TopBar current="canzonieri" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
           <header className="mb-[1.125rem]">
             <h1 className="screen-title">Canzonieri</h1>
             <p className="mt-2 text-sm leading-[1.45] text-muted">
-              Ogni brano appartiene a un canzoniere. Le scalette sono un&apos;altra cosa e possono
-              mescolarli.
+              Ogni brano appartiene a un canzoniere, e a uno solo. Rinominarne uno non sposta
+              niente: il nome cambia, l&apos;indirizzo della sua pagina resta.
             </p>
           </header>
 

@@ -15,17 +15,7 @@
  */
 
 import type { Song } from '../data/types'
-import type { SongIndexEntry } from '../search-index'
-
-/** Enough of a song to update a row in the list: everything except the body. */
-export interface SongIndexRow {
-  slug: string
-  title: string
-  artist: string | null
-  originalKey: string | null
-  tags: string[]
-  updatedAt: string | null
-}
+import type { SongIndexEntry, SongIndexRow } from '../search-index'
 
 /** What the server has to say about one song. */
 export type SongContent =

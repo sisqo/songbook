@@ -2,7 +2,7 @@
 
 Testi e accordi del proprio repertorio, da leggere su tablet e telefono: zoom,
 scorrimento automatico, cambio di tonalità, capotasto e notazione italiana o
-internazionale. Accesso riservato a una lista di indirizzi.
+internazionale. Entra solo chi è in elenco, e l'elenco si gestisce dall'app.
 
 - Produzione: https://songs.sisqo.dev
 - Repo: https://github.com/sisqo/songs
@@ -25,8 +25,7 @@ normale di lavorare in locale: non serve un database per vedere l'app funzionare
 Dall'app, in `/importa`, in due passi: **prima scegli il canzoniere** dove finiranno
 i brani — è il primo campo della schermata, e da lì si può anche crearne uno nuovo —
 poi incolli il testo. L'app riconosce se è già ChordPro o se sono accordi sopra il
-testo e converte, deduce titolo, artista e tonalità, e mostra il risultato prima di
-salvare.
+testo e converte, deduce titolo e artista, e mostra il risultato prima di salvare.
 
 Il canzoniere scelto **vince** su quello che dice il testo: se un brano porta un
 `{canzoniere: …}` — succede reimportando un export — la riga lo segnala e lo ignora.
@@ -97,7 +96,6 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 ```
 {title: Titolo}
 {artist: Autore}
-{key: Bb}
 {tags: lento}
 {canzoniere: Repertorio}
 
@@ -123,6 +121,10 @@ Due dettagli di questa lettura, entrambi coperti dai test:
   riga di accordi: a distinguerla è la spaziatura, perché una riga di accordi è
   allineata sulle sillabe e ha spazi larghi.
 
+Un `{key: …}` nel file viene **ignorato**, come qualsiasi direttiva che l'app non
+conosce: nessuna colonna conserva la tonalità di un brano — vedi *Tonalità e capotasto* —
+e una direttiva che nessuno legge non finisce nemmeno fra le parole.
+
 `{canzoniere}` dice **soltanto dove il brano nasce**: il seed lo applica
 all'inserimento, o quando la colonna è ancora vuota, e da lì in poi comanda il
 database. Un file senza la direttiva finisce in "Da ordinare". Rinominare o
@@ -133,15 +135,6 @@ mai un brano, perché una riga esistente può portare una correzione fatta dall'
 Effetto da conoscere: se cancelli un brano dall'app e il suo file è ancora in
 `content/`, il prossimo seed lo **reinserisce**. Quando entrerà il repertorio vero,
 i quattro segnaposto vanno rimossi dal repo.
-
-Le scalette sono file YAML in `content/setlists/` con un nome e l'elenco ordinato
-degli slug, e restano **trasversali**: possono mescolare brani di canzonieri
-diversi. In v1 sono in sola lettura: cambiarle richiede un commit.
-
-Una cosa che resta ferma al build: **l'elenco dentro una scaletta** mostra i titoli
-come erano all'ultima pubblicazione, quindi un brano rinominato compare lì col nome
-vecchio finché non pubblichi. Aprendolo, il brano è quello giusto e aggiornato — è
-solo la riga dell'elenco a restare indietro.
 
 ## Editor
 
@@ -189,30 +182,45 @@ una composizione più semplice invece di rimpicciolirsi in una macchia.
 
 ## Canzonieri
 
-Ogni brano appartiene a un canzoniere. Si creano, rinominano e rimuovono da
-`/canzonieri`, e se ne crea uno anche in `/importa`, dove serve — appena creato è già
-la destinazione dell'import. **Spostare un brano** si fa dal campo *Canzoniere*
-nell'editor, `/canzoni/<slug>/modifica`. La rimozione di un canzoniere non vuoto chiede
-prima dove spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a
-livello di database.
+Ogni brano appartiene a un canzoniere, e la home ne è l'elenco: una riga per
+canzoniere, col numero di brani, e un tocco porta alla **sua pagina**,
+`/canzonieri/<slug>`, dove stanno i brani nell'ordine in cui li suoni. Da lì si apre un
+brano, e nell'header del brano c'è la via di ritorno al canzoniere; il marchio accanto
+porta alla home, che è un livello sopra. Le frecce nell'header scorrono le altre canzoni
+del canzoniere.
+
+Prima i canzonieri si aprivano **sul posto**, in home, e i brani comparivano sotto. Le
+due obiezioni a una rotta per canzoniere erano che uno creato dall'app non l'avrebbe
+avuta fino alla ricostruzione successiva, e che rinominarlo l'avrebbe spostata. La
+seconda è falsa: lo slug si genera una volta e non cambia più, quindi una rinomina tocca
+il nome e nient'altro. La prima è vera, ed è lo stesso patto che vale per ogni brano
+importato — si vede subito, offline dopo la pubblicazione. Da sapere per intero: un
+canzoniere creato adesso compare in home anche senza rete, perché l'elenco dei canzonieri
+è in cache locale, ma la sua pagina non è nel precache finché non si ricostruisce. È
+l'unica riga dell'app che offline può non portare da nessuna parte, e *Ricostruisci ora* la
+sistema.
+
+Si creano, rinominano e rimuovono da `/canzonieri`, che è la voce nel menù, e se ne crea
+uno anche in `/importa`, dove serve — appena creato è già la destinazione dell'import.
+**Spostare un brano** si fa dal campo *Canzoniere* nell'editor,
+`/canzoni/<slug>/modifica`. La rimozione di un canzoniere non vuoto chiede prima dove
+spostare i brani — e il vincolo `on delete restrict` la impedisce comunque a livello di
+database.
+
+La **ricerca** invece resta in home, perché una ricerca non appartiene a un canzoniere:
+cerca fra tutti i brani, e ogni risultato dice dove abita.
 
 L'elenco dei canzonieri che `/importa` offre è quello del database, non quello del
 build: uno creato un minuto prima da `/canzonieri` non ha una pagina da aspettare, e
 una destinazione mancante all'appello sarebbe la stessa cosa di un brano vecchio.
 
-Non esiste una rotta `/canzonieri/[slug]`: uno creato dall'app non sarebbe fra le
-rotte generate al build, quindi non sarebbe precachato, e una rinomina sposterebbe
-la rotta. In home ogni canzoniere è una **card che si apre** sui suoi brani, e resta
-tutto su quella pagina — che è l'unico modo perché funzioni anche senza connessione.
-Dalla pagina del brano le frecce nell'header scorrono le altre del canzoniere. Un
-brano senza canzoniere finisce sotto una voce «Senza canzoniere», e un database senza
-canzonieri fa ricomparire la lista completa: in nessun caso un brano resta
-irraggiungibile.
+Un brano **senza canzoniere** — che nessuna strada dell'app produce, ma la colonna lo
+ammette — compare in home sotto «Senza canzoniere», come riga sua: non esiste una pagina
+dove metterlo, e un brano che non si raggiunge dalla prima schermata è un brano perso.
 
 ### L'ordine dei brani
 
-Dentro un canzoniere aperto, in home, il pulsante **Riordina** mette una maniglia su
-ogni riga: si trascina col dito o col mouse, e la riga sotto il dito si sposta appena
+Nella pagina del canzoniere il pulsante **Riordina** mette una maniglia su ogni riga: si trascina col dito o col mouse, e la riga sotto il dito si sposta appena
 lo supera. Con la maniglia a fuoco funzionano anche ↑ e ↓, così l'ordine si può
 sistemare anche da tastiera. Ogni spostamento è salvato appena la riga si posa, e
 *Fatto* rimette i collegamenti al loro posto.
@@ -243,9 +251,10 @@ mentre le parole che stai leggendo arrivano dal database. Riordinare non mette i
 «in attesa di pubblicazione» — nessun testo è cambiato — quindi per allineare le
 frecce si usa *Ricostruisci ora*.
 
-Il filtro `/?c=slug` non è più generato da nessun elemento dell'interfaccia; la
-regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché un
-vecchio segnalibro continui a trovare la home in cache.
+Il parametro `/?c=slug` diceva quale canzoniere era aperto in home, quando aprirlo
+voleva dire dispiegarlo lì. Ora un canzoniere è una pagina, quindi nessuno lo produce
+più; la regola `c` in `ignoreURLParametersMatching` di Serwist resta al suo posto perché
+un vecchio segnalibro continui a trovare la home in cache.
 
 ## Tonalità e capotasto
 
@@ -266,10 +275,29 @@ accordo sonante = accordo scritto + semitoni
 ```
 
 Gli accordi letti si scrivono con le alterazioni della tonalità **letta**, perché quelle
-sono le lettere che hai davanti; la tonalità che suona la dichiara una pastiglia sotto
-il titolo — «capotasto 2° tasto · suona in Re» — che compare solo col capotasto
-inserito. Serve lì e non solo nel pannello: il pannello è chiuso quasi sempre, e un
-capotasto ricordato da ieri rinomina ogni accordo della pagina senza spiegare perché.
+sono le lettere che hai davanti. Che ci sia un capotasto lo dichiara una pastiglia sotto
+il titolo — «capotasto 2° tasto · gli accordi sono già quelli da fare» — che compare solo
+col capotasto inserito. Serve lì e non solo nel pannello: il pannello è chiuso quasi
+sempre, e un capotasto ricordato da ieri rinomina ogni accordo della pagina senza
+spiegare perché.
+
+### La tonalità non è un campo
+
+Nessuna colonna dice in che tonalità è un brano, e nessuna schermata la chiede o la
+mostra. Serviva a una cosa sola: scegliere fra `Fa#` e `Solb` quando un accordo si
+sposta, perché quella scelta appartiene alla tonalità d'arrivo. E quella tonalità si
+ricava dagli accordi del brano nel momento in cui lo si legge — gli accordi *sono* la
+risposta — quindi resta un fatto interno, mai scritto e mai stampato.
+
+Misurato prima di togliere la colonna: sui ventuno brani che avevano una tonalità
+salvata, la stima l'ha indovinata **ventuno volte su ventuno**. Dove sbaglia, sbaglia di
+norma con il relativo maggiore o minore, che si scrivono con le stesse alterazioni. I
+brani senza tonalità salvata ci guadagnano: prima ripiegavano su Do maggiore, che è la
+tonalità di nessuno.
+
+Il controllo si chiama ancora **Tonalità** perché è quello che cambia, e dice di quanti
+semitoni ti sei mosso invece del nome dove sei arrivato: il nome è su ogni accordo dello
+spartito, la distanza da casa non era scritta da nessuna parte.
 
 Il **suggerimento** sotto il controllo prova i tasti da 0 a 7 e dice quale rende aperti
 più accordi del brano — «col 3° tasto tutti gli accordi sono aperti» — con un pulsante
@@ -324,14 +352,45 @@ disabilitata — è struttura condivisa fra account — mentre la lettura non ca
 
 I brani in `content/` sono testi segnaposto originali, non repertorio reale.
 
+## Chi può entrare
+
+Il repertorio è materiale protetto, quindi un account Google valido non basta: entra solo
+chi è in elenco. L'elenco ha due metà, e la differenza fra loro è il punto.
+
+- I **proprietari** vengono da `ALLOWED_EMAILS`, che sta nell'ambiente e l'app non può
+  scrivere. Non si rimuovono da `/utenti`: è questo che rende impossibile chiudersi fuori
+  dalla propria applicazione, e che tiene in piedi il loro accesso anche quando il
+  database non risponde.
+- Gli **invitati** stanno nella tabella `members` e si aggiungono e si togliono da
+  `/utenti`, voce *Utenti* nel menù. Valgono dal loro prossimo ingresso: nessun deploy,
+  nessuna ricostruzione.
+
+Le due metà si incontrano in una funzione sola, `isAllowed`, e da lì rispondono sia al
+callback di login sia alla guardia davanti a ogni scrittura. Due risposte separate alla
+domanda «questa persona può stare qui» sono il modo in cui una delle due finisce
+sbagliata: chi è proprietario, e quindi non è riga della tabella, si troverebbe dentro
+l'app e incapace di salvare qualunque cosa.
+
+Cosa una rimozione **non** fa: chiudere una sessione già aperta. Il cookie dura novanta
+giorni — deve essere lungo, o scadrebbe mentre si legge senza rete — e le pagine sono già
+sul dispositivo di chi le ha scaricate. Quello che smette subito è ogni scrittura, perché
+la guardia rilegge l'elenco a ogni azione. La schermata lo dice al momento di rimuovere,
+invece di lasciar credere a una porta che si chiude.
+
+Se il database non risponde mentre qualcuno entra, la tabella non risponde affatto e
+restano ammessi i soli proprietari. È il verso giusto: un database irraggiungibile non deve
+diventare una porta che si apre. La stessa distinzione vale sullo schermo, all'opposto:
+`/utenti` dice «non è stato possibile leggere chi può entrare», mai «nessuno, per ora» —
+perché quella è una risposta, e una risposta che non si ha non si inventa.
+
 ## Il database
 
 Postgres su Neon, provisionato via marketplace Vercel (progetto `songs-db`), già
 migrato e popolato. Il build legge da lì; senza `DATABASE_URL` legge da `content/`.
 
-Dopo una modifica ai contenuti: `npm run seed` e poi un deploy. Il seed è
-idempotente (upsert per slug) e rimuove le righe il cui file non esiste più, perché
-in v1 la sorgente di verità sono i file.
+Dopo una modifica ai contenuti: `npm run seed` e poi un deploy. Il seed è di **solo
+inserimento** e non cancella niente: la sorgente di verità dei brani è il database, e una
+riga senza file è esattamente un brano importato dall'app.
 
 ### Se va rifatto da zero
 
@@ -363,7 +422,7 @@ Due dettagli che costano tempo se non si sanno:
 |---|---|
 | `AUTH_SECRET` | Firma delle sessioni |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Client OAuth Google |
-| `ALLOWED_EMAILS` | Indirizzi ammessi, separati da virgola. Vuota nega tutti |
+| `ALLOWED_EMAILS` | I **proprietari**: sempre ammessi, separati da virgola, non rimovibili dall'app. Vuota, e con `members` vuota, nega tutti |
 | `AUTH_URL` | Su Vercel: `https://songs.sisqo.dev`, così il callback OAuth combacia |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
 | `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |

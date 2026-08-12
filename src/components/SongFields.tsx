@@ -5,7 +5,6 @@ import type { Canzoniere } from '@/lib/data/types'
 export interface SongFieldValues {
   title: string
   artist: string
-  originalKey: string
   tags: string
   canzoniereSlug: string
 }
@@ -14,20 +13,21 @@ export interface SongFieldValues {
  * Everything about a song except its words.
  *
  * Shared by the import screen and the editor so the two cannot drift into asking
- * for the same things in different ways — and so the note about a guessed key lives
- * in one place.
+ * for the same things in different ways.
+ *
+ * There is no key here any more. It was the one field nobody could answer better than
+ * the song itself: the chords say what key they are in, and the only thing the app did
+ * with the answer was choose between sharps and flats — which it now works out when it
+ * needs to, from the chords.
  */
 export function SongFields({
   values,
   canzonieri,
-  keyIsGuess = false,
   showCanzoniere = true,
   onChange,
 }: {
   values: SongFieldValues
   canzonieri: Canzoniere[]
-  /** Marks the key as an estimate, since a wrong key changes the transposed spelling. */
-  keyIsGuess?: boolean
   /**
    * False where the screen already asked. On import the destination is the first
    * thing chosen, for every song in the paste at once, and repeating it here would
@@ -56,18 +56,6 @@ export function SongFields({
         />
       </label>
 
-      <label className="block">
-        <span className="field-label">
-          Tonalità {keyIsGuess && <em className="not-italic text-accent">stimata</em>}
-        </span>
-        <input
-          value={values.originalKey}
-          onChange={(event) => onChange('originalKey', event.target.value)}
-          placeholder="es. Bb o F#m"
-          className="form-field"
-        />
-      </label>
-
       {showCanzoniere && (
         <label className="block">
           <span className="field-label">Canzoniere</span>
@@ -86,11 +74,11 @@ export function SongFields({
       )}
 
       {/*
-        * The tags take the whole width only when there is a whole width to take:
-        * without the canzoniere the fields are three, and a row of two would leave
-        * a hole next to the key rather than a form.
+        * The tags take the whole width only when there is a whole width to take: with
+        * the canzoniere the fields are four and fill two rows exactly, and stretching
+        * this one would leave a hole beside the canzoniere rather than a form.
         */}
-      <label className={`block ${showCanzoniere ? 'sm:col-span-2' : ''}`}>
+      <label className={`block ${showCanzoniere ? '' : 'sm:col-span-2'}`}>
         <span className="field-label">Tag, separati da virgola</span>
         <input
           value={values.tags}
