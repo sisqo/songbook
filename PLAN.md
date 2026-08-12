@@ -1318,17 +1318,47 @@ Migrazioni 0010 (additiva: la tabella, la colonna nullable, i vincoli, `canzonie
 generato — la prima migrazione di questo repo che porta dati) e 0011 (contrattiva, dopo il
 deploy: ripete il backfill per la finestra fra le due e mette `section_id` `not null`).
 
-**Cosa è stato misurato.** Trentanove controlli attraverso l'interfaccia, in due passate: la
-divisione di un canzoniere, un brano portato oltre l'intestazione **col dito e con la
-tastiera**, le sezioni chiuse e le due eccezioni, la piega che resta dopo un ricarico, un
-nome già preso rifiutato con la sua ragione, la rimozione di una sezione piena che chiede
-dove, e la *stessa* richiesta di scrittura di un editor ripetuta da un viewer — con
-l'identificatore vero dell'azione, registrato da una chiamata legittima — che non cambia
-niente. Tre volte il controllo ha segnalato un problema e due volte era il controllo a
-sbagliare: misurava le coordinate del trascinamento prima di scorrere la pagina, e apriva la
-sessione del viewer nella stessa finestra dell'editor, portandogli via il cookie. La terza
-volta era vero: un nome duplicato arrivava a schermo come «salvataggio non riuscito», perché
-drizzle incapsula l'errore del driver e il codice `23505` sta su `cause`.
+**Cosa è stato misurato.** Sessantasette controlli attraverso l'interfaccia, in quattro
+passate.
+
+*In lettura, sul locale (23):* la divisione di un canzoniere, un brano portato oltre
+l'intestazione con la tastiera, le sezioni chiuse e le due eccezioni, la piega che resta
+dopo un ricarico, l'editor e l'import che chiedono la sezione.
+
+*Ruoli e rifiuti (16):* un nome già preso rifiutato con la sua ragione, un brano portato
+oltre l'intestazione **col dito**, la rimozione di una sezione piena che chiede dove, e la
+*stessa* richiesta di scrittura di un editor ripetuta da un viewer — con l'identificatore
+vero dell'azione, registrato da una chiamata legittima, e la conferma che arriva davvero
+all'azione (200, non un 404 di rotta) — che non cambia niente.
+
+*In produzione (14):* le stesse cose sul dominio vero, più le due che solo lì si vedono —
+l'header del brano che resta fermo al build mentre le schede sotto sono già cambiate, e
+tutto il giro **offline**: il canzoniere che si apre dal precache con le sue sezioni, una
+sezione che si apre comunque perché la piega è locale, e il ritorno da un brano che trova la
+pagina in cache proprio grazie al frammento.
+
+*Il trasloco delle sezioni (14):* l'SQL più intricato della versione e la sola strada che
+potrebbe perdere un brano, quindi provato su canzonieri creati per l'occasione: «Messa»
+diventa una sezione di chi accoglie i brani, la «Brani» omonima non arriva come gemella,
+il brano portato cambia canzoniere **per cascata** senza essere riscritto, chi era già là
+non si muove, i due arrivati risultano da pubblicare e lui no. Nella stessa passata il caso
+che sbaglierebbe in silenzio: nell'editor il menu delle sezioni segue il canzoniere scelto,
+e salvando il brano finisce davvero là.
+
+Un difetto vero trovato dai controlli: un nome duplicato arrivava a schermo come
+«salvataggio non riuscito», perché drizzle incapsula l'errore del driver e il codice `23505`
+sta su `cause`. Tre volte era invece il controllo a sbagliare — misurava le coordinate del
+trascinamento prima di scorrere la pagina, apriva la sessione del viewer nella stessa
+finestra dell'editor portandogli via il cookie, e guardava il database prima che la
+scrittura fosse arrivata (in sviluppo la prima chiamata a un'azione va compilata). Da qui
+le attese sullo *stato* invece che sul tempo.
+
+Due cose sono state corrette rileggendo invece che provando: la sezione da aprire al
+ritorno va **ricavata** dal brano e non fissata quando si legge il frammento, perché gli
+effetti di layout girano prima nei figli che nei genitori e in quell'istante le assegnazioni
+sono ancora quelle del build; e i conteggi appartengono alla lista viva, non
+all'intestazione generata al build, o le due metà dello stesso schermo direbbero due cose
+diverse.
 
 ### v2 — il resto
 
