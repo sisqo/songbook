@@ -4,27 +4,34 @@ import Link from 'next/link'
 
 import { useRole } from '@/components/RoleProvider'
 import { IconPencil } from '@/components/icons'
+import { useOnline } from '@/lib/useOnline'
 
 /**
  * The way into the editor, for the people who have one.
  *
  * A client component for one link, because the page around it is generated at build time
- * and cannot know who is reading. It takes the rule at its foot with it: nothing at all for
- * a viewer, rather than a button that would refuse — and nothing until the role is known,
- * which on a cold start with no network is the whole time.
+ * and cannot know who is reading. It takes two rules at its foot with it.
  *
- * Once the role *has* arrived it stays known, so an editor who then loses signal keeps this
- * link and gets as far as an editor that cannot save. That is the right way round of the
- * two: the alternative is taking a control away from somebody who is entitled to it because
- * their train went into a tunnel, and the editor page says plainly that it needs the network.
+ * **A role that may edit.** Nothing at all for a viewer, rather than a button that would
+ * refuse, and nothing until the role is known.
+ *
+ * **A network.** This was the app's only write control without that condition, and it took
+ * an adversarial read to see why it needed one: the editor route is deliberately
+ * `NetworkOnly` in the service worker with no fallback, so offline the tap does not reach an
+ * editor that cannot save — it fails the navigation outright and lands on the browser's own
+ * error page, outside the installed shell, with the back gesture as the only way home. Every
+ * other control that writes already disables itself without a network, and this is what
+ * `useOnline` exists for: controls that would otherwise look available and quietly do
+ * nothing. So the link comes back when the signal does.
  *
  * The rule above it goes too. It exists to separate the song from what you do to it, and
  * with nothing to do there is nothing to separate.
  */
 export function EditSongLink({ slug }: { slug: string }) {
   const { mayEdit } = useRole()
+  const online = useOnline()
 
-  if (!mayEdit) return null
+  if (!mayEdit || !online) return null
 
   return (
     <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>

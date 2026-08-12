@@ -149,7 +149,12 @@ export async function reorderCanzoniere(slug: string, order: string[]): Promise<
         .from(songs)
         .where(eq(songs.canzoniereSlug, slug))
 
-      if (held.length === 0) return { ok: false, reason: 'not-found' } as WriteResult
+      /*
+       * An empty canzoniere is not a missing one. It answers `stale` along with every other
+       * "these are no longer its songs" case — which is what emptying it is — because
+       * «questo canzoniere non esiste più» would send someone looking for a canzoniere that
+       * is sitting there in front of them.
+       */
       if (!sameMembers(held.map((row) => row.slug), order)) {
         return { ok: false, reason: 'stale' } as WriteResult
       }
