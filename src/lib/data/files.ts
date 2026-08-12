@@ -89,10 +89,6 @@ const key = (canzoniereSlug: string, name: string) => `${canzoniereSlug}\n${name
  * writes them back, so they are positions in this list — stable for as long as the files
  * are, which is exactly as long as anything in this mode lives. They never reach a
  * database: the seed matches sections by name, not by id.
- *
- * Sections of a canzoniere come out in alphabetical order, and that is the honest
- * answer rather than a poor one: with no database there is nowhere to have written an
- * order, so there is no order to respect.
  */
 async function readLibrary(): Promise<{
   songs: Song[]
@@ -112,20 +108,40 @@ async function readLibrary(): Promise<{
   const sections: Section[] = []
   const idOf = new Map<string, number>()
 
-  for (const canzoniere of canzonieri) {
-    const names = [
-      ...new Set(
-        files
-          .filter((entry) => entry.song.canzoniereSlug === canzoniere.slug)
-          .map((entry) => entry.sezioneName),
-      ),
-    ].sort((a, b) => a.localeCompare(b, 'it'))
+  /*
+   * A section per distinct pair, created the first time a file names it. Written this way
+   * round — the id handed out here, the positions settled afterwards — so that every song
+   * gets a number rather than a lookup that might miss: the sections and the songs come
+   * from the same list of files, and this is how that guarantee is expressed in the code
+   * instead of in a comment.
+   */
+  const ensure = (canzoniereSlug: string, name: string): number => {
+    const held = idOf.get(key(canzoniereSlug, name))
+    if (held !== undefined) return held
 
-    names.forEach((name, index) => {
-      const id = sections.length + 1
-      sections.push({ id, canzoniereSlug: canzoniere.slug, name, position: index + 1 })
-      idOf.set(key(canzoniere.slug, name), id)
-    })
+    const id = sections.length + 1
+    sections.push({ id, canzoniereSlug, name, position: 0 })
+    idOf.set(key(canzoniereSlug, name), id)
+    return id
+  }
+
+  const songs = files.map((entry) => ({
+    ...entry.song,
+    sectionId: ensure(entry.song.canzoniereSlug, entry.sezioneName),
+  }))
+
+  /*
+   * Then the order: alphabetical within each canzoniere. That is the honest answer rather
+   * than a poor one — with no database there is nowhere an order could have been written,
+   * so there is no order to respect.
+   */
+  for (const canzoniere of canzonieri) {
+    sections
+      .filter((section) => section.canzoniereSlug === canzoniere.slug)
+      .sort((a, b) => a.name.localeCompare(b.name, 'it'))
+      .forEach((section, index) => {
+        section.position = index + 1
+      })
   }
 
   const positionOf = new Map(sections.map((section) => [section.id, section.position]))
@@ -137,15 +153,20 @@ async function readLibrary(): Promise<{
    * section — that is `position`, which only the database has — so within a section it
    * is alphabetical.
    */
-  const songs = files
-    .map((entry) => ({
-      ...entry.song,
-      sectionId: idOf.get(key(entry.song.canzoniereSlug, entry.sezioneName)) ?? null,
-    }))
-    .sort((a, b) => {
-      const place = (positionOf.get(a.sectionId ?? -1) ?? 0) - (positionOf.get(b.sectionId ?? -1) ?? 0)
-      return place !== 0 ? place : a.title.localeCompare(b.title, 'it')
-    })
+  songs.sort((a, b) => {
+    const place = (positionOf.get(a.sectionId) ?? 0) - (positionOf.get(b.sectionId) ?? 0)
+    return place !== 0 ? place : a.title.localeCompare(b.title, 'it')
+  })
+
+  /*
+   * Handed back in the same order the database hands them back — by canzoniere, then by
+   * position — because the two implementations have to be interchangeable row by row.
+   * `ensure` produced them in the order the files happened to be read, which is no order
+   * at all.
+   */
+  sections.sort(
+    (a, b) => a.canzoniereSlug.localeCompare(b.canzoniereSlug) || a.position - b.position,
+  )
 
   return { songs, canzonieri, sections }
 }

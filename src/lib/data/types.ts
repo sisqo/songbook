@@ -42,11 +42,11 @@ export interface Song {
   /**
    * The section of that canzoniere, same snapshot and same caveat.
    *
-   * Null for one deploy only — see the column's comment in `db/schema.ts` — and
-   * with no database, where sections are derived from the files and a song whose
-   * file names none belongs to that canzoniere's «Brani».
+   * Never null: the column is `not null`, and with no database the section is derived
+   * from the file — a song whose file names none belongs to that canzoniere's «Brani».
+   * There is no «unfiled» state to represent on either side.
    */
-  sectionId: number | null
+  sectionId: number
   body: string
   /**
    * When this version was written, as an ISO string, or null with no database.

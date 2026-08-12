@@ -103,7 +103,9 @@ async function main() {
    *
    * A file's section is a name, so this is where that name becomes an id. A song whose
    * canzoniere has no section by that name — impossible from these files, possible from a
-   * hand-edited one — lands in the first section of its canzoniere rather than nowhere.
+   * hand-edited one — lands in the first section of its canzoniere. Null only if that
+   * canzoniere has no sections at all, which the loop above has just made impossible;
+   * the caller says so out loud and skips the song rather than crashing a restore.
    */
   const sectionIdOf = async (song: (typeof songFiles)[number]): Promise<number | null> => {
     const name = sectionFiles.find((entry) => entry.id === song.sectionId)?.name
@@ -140,7 +142,15 @@ async function main() {
    * the power to create.
    */
   let inserted = 0
+  let skipped = 0
   for (const song of songFiles) {
+    const sectionId = await sectionIdOf(song)
+    if (sectionId === null) {
+      console.warn(`Skipped ${song.slug}: ${song.canzoniereSlug} has no section to file it in.`)
+      skipped += 1
+      continue
+    }
+
     const rows = await database
       .insert(songs)
       .values({
@@ -149,7 +159,7 @@ async function main() {
         artist: song.artist,
         tags: song.tags,
         canzoniereSlug: song.canzoniereSlug,
-        sectionId: await sectionIdOf(song),
+        sectionId,
         body: song.body,
       })
       .onConflictDoNothing({ target: songs.slug })
@@ -157,7 +167,10 @@ async function main() {
 
     inserted += rows.length
   }
-  console.log(`Songs inserted: ${inserted} (${songFiles.length - inserted} already present)`)
+  console.log(
+    `Songs inserted: ${inserted} (${songFiles.length - inserted - skipped} already present` +
+      `${skipped > 0 ? `, ${skipped} skipped` : ''})`,
+  )
 
   await closeDatabase()
   console.log('\nSeed complete.')

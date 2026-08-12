@@ -87,15 +87,17 @@ export const songs = pgTable(
       .notNull()
       .references(() => canzonieri.slug, { onDelete: 'restrict' }),
     /**
-     * Which section of that canzoniere holds the song.
+     * Which section of that canzoniere holds the song. Every song has one.
      *
-     * Nullable for one deploy only, which is what makes the migration additive: the
-     * code already in production knows nothing about this column, so it cannot fill
-     * it, and a song imported between the migration and the deploy would fail its
-     * insert. The contracting migration that follows the deploy backfills again and
-     * makes it `not null`.
+     * It was nullable for exactly one deploy, which is what made the migration
+     * additive: the code then in production knew nothing about this column, so it
+     * could not fill it, and a song imported between the migration and the deploy
+     * would have failed its insert. The contracting migration repeated the backfill —
+     * for anything imported in that window — and made it `not null`, which is where
+     * «one and only one section» stops being a rule in the code and becomes a fact
+     * about the table.
      */
-    sectionId: integer('section_id'),
+    sectionId: integer('section_id').notNull(),
     /**
      * Where the song sits inside its **section**, when someone has said.
      *
