@@ -436,6 +436,17 @@ export function IconOnStage(props: IconProps) {
   )
 }
 
+/** Sing together: a signal going out, so every device can follow the same one. */
+export function IconBroadcast(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none" />
+      <path d="M8.5 19a3.5 3.5 0 0 1 7 0" />
+      <path d="M5.5 19a6.5 6.5 0 0 1 13 0" />
+    </Icon>
+  )
+}
+
 /** A chord's shape on the neck: four strings, three frets, two fingers down. */
 export function IconChordShape(props: IconProps) {
   return (

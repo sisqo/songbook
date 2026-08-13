@@ -5,8 +5,10 @@ import { redirect } from 'next/navigation'
 import { signIn } from '@/auth'
 import {
   IconBooks,
+  IconBroadcast,
   IconChordShape,
   IconGoogle,
+  IconImport,
   IconNote,
   IconOnStage,
   IconSliders,
@@ -16,8 +18,7 @@ import {
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 
 const TITLE = `${APP_NAME} — ${APP_PAYOFF}`
-const DESCRIPTION =
-  'Lyrics and chords for your repertoire, in Italian or international notation, with key, capo and auto-scroll — ready for the stage, even with no network.'
+const DESCRIPTION = 'Chords and lyrics you import, edit, export. Key, capo, auto-scroll. No network needed.'
 
 export const metadata: Metadata = {
   // `absolute`, not the root template: this page names itself, and "· Songbook" after
@@ -39,39 +40,49 @@ interface Feature {
 }
 
 /**
- * Six, not an exhaustive list. Each is something a visitor can picture doing on
+ * Eight, not an exhaustive list. Each is something a visitor can picture doing on
  * stage, in one sentence — the README says the rest, for whoever is already inside.
  */
 const FEATURES: Feature[] = [
   {
-    icon: <IconBooks size={20} />,
-    title: 'Songbooks and sections',
-    text: 'The repertoire is split into songbooks, and each songbook into sections that open and close as needed: always the song you need, never an endless list.',
-  },
-  {
-    icon: <IconTuningFork size={20} />,
-    title: 'Key and capo',
-    text: 'Transpose with a tap to sing in the right key. The capo shows the shapes to play, not the ones that sound, and suggests the fret with the most open chords.',
-  },
-  {
-    icon: <IconChordShape size={20} />,
-    title: 'The shape of every chord',
-    text: 'Every chord on the sheet is a button: a tap opens its shape for guitar or ukulele, ready to play.',
-  },
-  {
-    icon: <IconSliders size={20} />,
-    title: 'Zoom and scroll',
-    text: 'Enlarge the text and let it scroll on its own, at the speed you prefer: your hands stay on the instrument.',
+    icon: <IconImport size={20} />,
+    title: 'Bring your own songs',
+    text: "No catalog, no starter library. Import what you already have, edit it your way, export it whenever you like — your repertoire stays yours.",
   },
   {
     icon: <IconOnStage size={20} />,
     title: 'Always with you, even offline',
-    text: 'Install it on your phone: once published, the repertoire stays readable on stage, with no network at all.',
+    text: "Open it on your phone like any app. Once your repertoire is saved, it's there for good — anywhere you go, no signal required.",
+  },
+  {
+    icon: <IconBooks size={20} />,
+    title: 'As many songbooks as you want',
+    text: "Create them freely, split each one into sections. Always the song you're after — never an endless list.",
+  },
+  {
+    icon: <IconBroadcast size={20} />,
+    title: 'Sing together',
+    text: "Share a link. Every device follows the same song, line by line, chord by chord — whether you're playing or just singing along, near or far. Needs a connection, not a setup.",
+  },
+  {
+    icon: <IconTuningFork size={20} />,
+    title: 'Key and capo, made smart',
+    text: 'Transpose with a tap, sing in your key. Then let the smart capo suggestion do the math: it finds the fret with the most open chords, so you play the easiest shapes — not just the right sound.',
+  },
+  {
+    icon: <IconChordShape size={20} />,
+    title: 'Every chord, one tap away',
+    text: 'Stuck on a chord? Tap it and see the shape — guitar or ukulele, ready to play.',
+  },
+  {
+    icon: <IconSliders size={20} />,
+    title: 'Zoom and scroll',
+    text: 'Bigger text, auto-scroll at your pace — readable in any condition, on any phone or tablet. Your hands stay on the instrument.',
   },
   {
     icon: <IconUsers size={20} />,
-    title: 'Roles that fit',
-    text: 'Admin, Editor or Viewer: decide who can read, who can edit the repertoire, and who manages who gets in.',
+    title: 'Who does what',
+    text: 'Admin, Editor or Viewer — choose who can play the songs, who can edit them, and who decides who gets in.',
   },
 ]
 
@@ -117,7 +128,12 @@ export default async function LoginPage({ searchParams }: Props) {
         </span>
 
         <h1 className="landing-title mt-[18px] sm:mt-[22px]">{APP_NAME}</h1>
-        <p className="landing-payoff mt-2 sm:mt-2.5">{APP_PAYOFF}</p>
+        {/*
+          * Two short beats rather than the one clause `APP_PAYOFF` holds for the title
+          * bar and the manifest: this is the one line on the screen that is heard, not
+          * read for information, and it earns its own wording rather than borrowing theirs.
+          */}
+        <p className="landing-payoff mt-2 sm:mt-2.5">Your favorite songs. Ready to play.</p>
         <p className="mx-auto mt-3 max-w-[19rem] text-sm leading-[1.45] text-muted sm:mt-3.5 sm:max-w-lg sm:text-[15px] sm:leading-[1.5]">
           {DESCRIPTION}
         </p>
@@ -202,16 +218,16 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
 
         <p className="mt-4 text-center text-xs text-faint">
-          Access is reserved to authorized addresses.
+          Access is limited to approved email addresses.
         </p>
       </div>
 
       <section className="mt-11 w-full max-w-4xl lg:mt-16">
         <div className="text-center">
-          <h2 className="landing-feature-title">Built for the stage, not the couch</h2>
+          <h2 className="landing-feature-title">Built for playing, not scrolling.</h2>
           <p className="mx-auto mt-2 max-w-[26rem] text-sm leading-[1.45] text-muted lg:mt-2.5 lg:max-w-[30rem] lg:text-[15px] lg:leading-[1.5]">
-            Every control is built for a thumb, not a mouse — and for a hand that is
-            holding an instrument at that very moment.
+            Every control is built for a thumb, not a mouse — for a hand already holding
+            an instrument.
           </p>
         </div>
 
