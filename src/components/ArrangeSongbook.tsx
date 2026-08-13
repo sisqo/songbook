@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { useSongbooks } from '@/components/SongbookProvider'
 import {
@@ -103,6 +103,11 @@ export function ArrangeSongbook({
   const start = useRef<{ layout: ArrangedSection[]; rows: ArrangeRow[]; bands: Band[] } | null>(
     null,
   )
+  /**
+   * Where the grabbed section's header sat just before a section drag collapses every
+   * other one out from under it. See the `useLayoutEffect` below for what this is for.
+   */
+  const anchor = useRef<number | null>(null)
   /** Saves run one after another, so the last layout let go is the last one written. */
   const queue = useRef<Promise<unknown>>(Promise.resolve())
 
@@ -123,9 +128,30 @@ export function ArrangeSongbook({
         server.flatMap((group) => group.slugs),
       )
 
-      return sameSections && sameSongs ? current : server
+      if (sameSections && sameSongs) return current
+
+      /*
+       * Whatever is being dragged might be exactly what just left — a section removed,
+       * or its last song moved out, from another device. A drag like that can never be
+       * released the ordinary way: `endDrag` only ever fires from the row's own button,
+       * and that row is gone. Left alone, `dragging` would stay set forever, and every
+       * song and "Empty" placeholder would stay hidden for the rest of the visit.
+       */
+      const stillThere =
+        dragging === null
+          ? true
+          : dragging.kind === 'section'
+            ? server.some((group) => group.sectionId === dragging.id)
+            : server.some((group) => group.slugs.includes(dragging.slug))
+
+      if (!stillThere) {
+        setDragging(null)
+        start.current = null
+      }
+
+      return server
     })
-  }, [server])
+  }, [server, dragging])
 
   const rows = useMemo(() => rowsOf(layout), [layout])
 
@@ -183,23 +209,80 @@ export function ArrangeSongbook({
   }
 
   /**
-   * A section's band is its whole block — heading and songs together — because that is
-   * what the eye sees moving, and a heading alone is a target too small to aim a thumb at.
+   * Starting a section drag also collapses every section down to its header row (see the
+   * render below), so the finger can see — and reach — the whole stack of sections at once
+   * instead of scrolling through songs it isn't allowed to touch right now. That collapse
+   * happens through React, not here, so this handler cannot measure bands itself: the DOM
+   * it would read from is still the tall, pre-collapse one, since a state update doesn't
+   * take effect until after this synchronous handler returns. The measurement is deferred
+   * to the `useLayoutEffect` below, which runs once the collapsed layout has actually been
+   * painted into the DOM.
    */
   const beginSection = (event: React.PointerEvent<HTMLButtonElement>, id: number) => {
-    start.current = {
-      layout,
-      rows,
-      bands: layout.map((group) => {
-        const keys = rowsOf([group]).map(keyOf)
-        const first = bandOf(keys[0])
-        const last = bandOf(keys[keys.length - 1])
-        return { top: first.top, bottom: last.bottom }
-      }),
-    }
+    // Where this header sits *before* the collapse the effect below is about to cause —
+    // read now, on the DOM as it still is, because a moment from now every other section
+    // will have moved and this row along with them.
+    anchor.current = bandOf(`section:${id}`).top
+    // Left null, not measured, so a stray move in the gap before the effect below runs has
+    // nothing to work from — onMove already no-ops when `start.current` is null.
+    start.current = null
     event.currentTarget.setPointerCapture(event.pointerId)
     setDragging({ kind: 'section', id })
   }
+
+  /*
+   * Measures the bands for a section drag once the collapsed, header-only layout has been
+   * committed to the DOM but before the browser paints it — the same moment `beginSection`
+   * itself cannot reach, since it fires synchronously inside `onPointerDown`, before React
+   * has re-rendered anything.
+   *
+   * Collapsing every section down to its header does not just shrink them — it moves them,
+   * the grabbed one included, unless it happened to be first. The finger has not moved at
+   * all yet, but the row underneath it has: `bandAt`'s whole premise, that the finger
+   * starts inside the band it grabbed, would already be false on the very first pointer
+   * event. So before measuring anything, this scrolls by exactly however far the grabbed
+   * header moved, putting it back where the finger still is — which is what makes the
+   * collapse read as the songs vanishing rather than as the section jumping.
+   *
+   * That scroll can be clamped — there may be nowhere further up to scroll into — so the
+   * fix does not stop at the `scrollBy`. Whatever gap it could not close is measured
+   * afterwards and folded into every band as one flat offset, so the coordinates used for
+   * hit-testing agree with where the grabbed row actually ended up even on a page that
+   * could not fully compensate.
+   *
+   * Once corrected this way, a section's band is simply its own header row's rect — no more
+   * reaching from a group's first row to its last, because collapsed there is nothing else
+   * in a group left to reach across.
+   */
+  useLayoutEffect(
+    () => {
+      if (dragging?.kind !== 'section') return
+
+      const before = anchor.current
+      const collapsedTop = bandOf(`section:${dragging.id}`).top
+
+      if (before !== null) window.scrollBy(0, collapsedTop - before)
+
+      const settledTop = bandOf(`section:${dragging.id}`).top
+      const offset = before === null ? 0 : before - settledTop
+
+      start.current = {
+        layout,
+        rows,
+        bands: layout.map((group) => {
+          const band = bandOf(`section:${group.sectionId}`)
+          return { top: band.top + offset, bottom: band.bottom + offset }
+        }),
+      }
+    },
+    // Deliberately not exhaustive: `layout` and `rows` are read once and then meant to go
+    // stale for the rest of the drag, exactly like `beginSong`'s bands do — only a *new*
+    // drag (a fresh `dragging` object) should take a fresh reading. Depending on `layout`
+    // too would re-measure after every move this same drag causes, which is the "bands
+    // measured again mid-drag" bug this whole file is written to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dragging],
+  )
 
   const onMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     const from = start.current
@@ -233,6 +316,13 @@ export function ArrangeSongbook({
 
   const others = (id: number) => divisions.filter((section) => section.id !== id)
 
+  /*
+   * Mid-section-drag, every row but the headers drops out here, so the eye sees exactly the
+   * stack of sections it is reordering and nothing it would have to scroll past to reach
+   * the next one.
+   */
+  const drawn = dragging?.kind === 'section' ? rows.filter((row) => row.kind === 'section') : rows
+
   return (
     <div className="card pt-2.5">
       {error !== null && (
@@ -242,7 +332,7 @@ export function ArrangeSongbook({
       )}
 
       <ul>
-        {rows.map((row) => {
+        {drawn.map((row) => {
           const key = keyOf(row)
 
           if (row.kind === 'section') {
