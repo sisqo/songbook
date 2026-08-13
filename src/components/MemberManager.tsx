@@ -8,7 +8,12 @@ import { IconChevronDown, IconKey, IconOffline, IconPlus, IconTrash } from '@/co
 import { removePasswordFor, setPasswordFor } from '@/lib/auth/actions'
 import { MIN_PASSWORD, PASSWORD_MESSAGE, type PasswordResult } from '@/lib/auth/types'
 import { addMember, loadMembers, removeMember, setMemberRole } from '@/lib/members/actions'
-import { MEMBER_MESSAGE, type MemberList, type MemberResult } from '@/lib/members/types'
+import {
+  MEMBER_MESSAGE,
+  type MemberList,
+  type MemberResult,
+  type SignInSummary,
+} from '@/lib/members/types'
 import { ROLES, type Role } from '@/lib/roles'
 import { useOnline } from '@/lib/useOnline'
 
@@ -221,17 +226,22 @@ export function MemberManager() {
         </p>
 
         <ul className="row-list card">
-          {list.owners.map((email) => (
-            <li key={email}>
+          {list.owners.map((owner) => (
+            <li key={owner.email}>
               <div className="row">
-                <span className="min-w-0 flex-1 truncate">{email}</span>
-                {email === list.you && <span className="meta-chip">you</span>}
-                <span className="meta-chip">{hasPassword(email) ? 'password' : 'Google'}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{owner.email}</span>
+                  <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
+                    {signInLine(owner)}
+                  </span>
+                </span>
+                {owner.email === list.you && <span className="meta-chip">you</span>}
+                <span className="meta-chip">{hasPassword(owner.email) ? 'password' : 'Google'}</span>
                 <span className="meta-chip">Admin</span>
                 {/* Your own, and no one else's: see `keyButton`. */}
-                {email === list.you && keyButton(email)}
+                {owner.email === list.you && keyButton(owner.email)}
               </div>
-              {passwordPanel(email)}
+              {passwordPanel(owner.email)}
             </li>
           ))}
         </ul>
@@ -268,7 +278,7 @@ export function MemberManager() {
                * offered, and it is said out loud rather than left looking like a second
                * account. Removing it is allowed, and is the tidy thing to do.
                */
-              const overridden = list.owners.includes(member.email)
+              const overridden = list.owners.some((owner) => owner.email === member.email)
 
               return (
                 <li key={member.email} className="card p-[0.875rem] sm:px-4">
@@ -278,6 +288,9 @@ export function MemberManager() {
                       <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
                         {member.addedBy === null ? 'added' : `added by ${member.addedBy}`} ·{' '}
                         {when(member.createdAt)}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
+                        {signInLine(member)}
                       </span>
                     </span>
 
@@ -481,4 +494,11 @@ function when(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+/** "3 sign-ins · last on 13 Aug 2026", or the plain truth for an address that never has. */
+function signInLine({ signInCount, lastSignInAt }: SignInSummary): string {
+  if (signInCount === 0 || lastSignInAt === null) return 'Never signed in'
+  const times = signInCount === 1 ? '1 sign-in' : `${signInCount} sign-ins`
+  return `${times} · last on ${when(lastSignInAt)}`
 }

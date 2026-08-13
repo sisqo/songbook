@@ -12,13 +12,26 @@ import type { MemberRow } from './read'
 
 export type { MemberRow }
 
+/** How often, and when last, an address has signed in — see `signIns` in `db/schema.ts`. */
+export interface SignInSummary {
+  signInCount: number
+  /** `null` for an address that has never actually signed in. */
+  lastSignInAt: string | null
+}
+
+export interface OwnerRow extends SignInSummary {
+  email: string
+}
+
+export interface MemberListRow extends MemberRow, SignInSummary {}
+
 export interface MemberList {
   /**
    * From `ALLOWED_EMAILS`, which only the server can read. Not removable from here, and
    * admin by definition — see `lib/roles.ts` for why those two facts are the same one.
    */
-  owners: string[]
-  members: MemberRow[]
+  owners: OwnerRow[]
+  members: MemberListRow[]
   /** The address asking, so the screen can mark it and refuse to remove it. */
   you: string
   /** And their role, so it can refuse to let them change their own. */

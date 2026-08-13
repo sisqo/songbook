@@ -14,12 +14,20 @@ import { eq } from 'drizzle-orm'
 import { isEmailShape, isOwner, normalizeEmail, parseAllowlist } from '@/lib/allowlist'
 import { deletePasswordHash, withPassword } from '@/lib/auth/credentials'
 import { asAdmin } from '@/lib/auth/session'
+import { listSignIns, type SignInStats } from '@/lib/auth/signIns'
 import { db, hasDatabase } from '@/lib/db/client'
 import { members } from '@/lib/db/schema'
 import { ROLES, type Role } from '@/lib/roles'
 
 import { listMembers } from './read'
-import type { MemberList, MemberResult } from './types'
+import type { MemberList, MemberResult, SignInSummary } from './types'
+
+/** The default for an address `listSignIns` has no row for: not yet, not never allowed. */
+const NEVER_SIGNED_IN: SignInSummary = { signInCount: 0, lastSignInAt: null }
+
+function signInSummary(email: string, signIns: Map<string, SignInStats> | null): SignInSummary {
+  return signIns?.get(email) ?? NEVER_SIGNED_IN
+}
 
 /**
  * Both halves of the list, or null when it cannot be told.
@@ -37,10 +45,13 @@ export async function loadMembers(): Promise<MemberList | null> {
   if (invited === null) return null
 
   const owners = parseAllowlist(process.env.ALLOWED_EMAILS)
+  // Unreadable answers "never" for everyone rather than failing this whole screen — see
+  // `listSignIns`'s own comment for why that footnote must not block the real question.
+  const signIns = await listSignIns()
 
   return {
-    owners,
-    members: invited,
+    owners: owners.map((email) => ({ email, ...signInSummary(email, signIns) })),
+    members: invited.map((row) => ({ ...row, ...signInSummary(row.email, signIns) })),
     you: admin.email,
     yourRole: admin.role,
     // Who can get in without Google. Said, so the screen can offer the right gesture.

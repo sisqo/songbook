@@ -260,6 +260,23 @@ export const userSongPrefs = pgTable(
  * cannot keep a session alive on their own: once its owner has stopped, it expires on
  * schedule regardless of who is still watching.
  */
+/**
+ * How often, and when last, each address has actually gotten in — through Google or a
+ * password makes no difference; both reach the same `signIn` callback in `auth.ts`, and
+ * this is written from there, once admission is already decided. Never itself a gate:
+ * a row here grants nothing, and a missing row simply means "not yet", not "not allowed".
+ *
+ * Keyed by email like everything else about a person, but never joined to `members`: an
+ * owner signs in too, and an owner has no row there — see that table's own comment for
+ * why. A row here is as true of an owner as of an invited member, which is exactly why it
+ * cannot live on either.
+ */
+export const signIns = pgTable('sign_ins', {
+  email: text('email').primaryKey(),
+  signInCount: integer('sign_in_count').notNull().default(0),
+  lastSignInAt: timestamp('last_sign_in_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const singAlongSessions = pgTable(
   'sing_along_sessions',
   {

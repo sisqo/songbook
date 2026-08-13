@@ -6,6 +6,7 @@ import { authConfig } from './auth.config'
 import { normalizeEmail } from './lib/allowlist'
 import { readPasswordHash } from './lib/auth/credentials'
 import { verifyAgainstNothing, verifyPassword } from './lib/auth/password'
+import { recordSignIn } from './lib/auth/signIns'
 import { listMemberships } from './lib/members/read'
 import { roleOf } from './lib/roles'
 
@@ -77,9 +78,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      *
      * The role itself is deliberately not put in the token. A session lasts ninety days;
      * a role baked into it would keep its powers for ninety days after being taken away.
+     *
+     * `recordSignIn` runs after admission, not before: a rejected attempt proved nothing
+     * about the address asking, so it leaves no mark. It runs here rather than from a
+     * `jwt`/`session` callback because those fire on every request a session is read on
+     * this token's ninety days, not only when one is created — this callback is the one
+     * place that happens only once per actual sign-in.
      */
     async signIn({ profile, user }) {
-      return admitted(profile?.email ?? user?.email)
+      const raw = profile?.email ?? user?.email
+      if (raw === null || raw === undefined) return false
+      if (!(await admitted(raw))) return false
+
+      /*
+       * Normalized here rather than trusted from the provider: `authorize` above already
+       * normalizes before it ever reaches this callback, but Google's `profile.email`
+       * never has, and `roleOf` only normalizes for its own comparison, not for whoever
+       * reads its answer next. Writing the raw casing would key `sign_ins` on whichever
+       * form happened to arrive first, splitting one person's history across two rows —
+       * see `signIns`' own comment on why it must agree with `members`/`ALLOWED_EMAILS`.
+       */
+      await recordSignIn(normalizeEmail(raw))
+      return true
     },
   },
 })
