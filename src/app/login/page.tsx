@@ -172,23 +172,25 @@ export default async function LoginPage({ searchParams }: Props) {
             }}
           >
             <label className="block">
-              <span className="field-label">Email</span>
+              <span className="sr-only">Email</span>
               <input
                 type="email"
                 name="email"
                 required
                 autoComplete="email"
+                placeholder="Email"
                 className="form-field"
               />
             </label>
 
             <label className="block">
-              <span className="field-label">Password</span>
+              <span className="sr-only">Password</span>
               <input
                 type="password"
                 name="password"
                 required
                 autoComplete="current-password"
+                placeholder="Password"
                 className="form-field"
               />
             </label>
