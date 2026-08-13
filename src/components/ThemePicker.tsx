@@ -24,8 +24,6 @@ export function ThemePicker() {
 
   return (
     <div className="px-1.5 pb-1 pt-2">
-      <span className="group-label mb-1.5">Theme</span>
-
       {/*
         * The same segmented control as the reading panel, stretched to the width of
         * the menu: three words do not fit beside a label in a panel this narrow, and
