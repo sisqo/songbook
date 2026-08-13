@@ -447,6 +447,37 @@ export function IconBroadcast(props: IconProps) {
   )
 }
 
+/** Whoever presses play leads: the same mark as the control itself, ringed like a badge. */
+export function IconLeads(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M10 8.8a1 1 0 0 1 1.5-.87l3.8 2.2a1 1 0 0 1 0 1.74l-3.8 2.2a1 1 0 0 1-1.5-.87z" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
+/** Every screen, in sync: two devices held the same way. */
+export function IconDevices(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="7" width="9" height="14" rx="2" />
+      <rect x="11" y="3" width="9" height="14" rx="2" />
+    </Icon>
+  )
+}
+
+/** Just a link away: two linked loops. */
+export function IconLink(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9.5 14.5l5-5" />
+      <path d="M11 7.5l1-1a3.5 3.5 0 1 1 5 5l-1.2 1.2" />
+      <path d="M13 16.5l-1 1a3.5 3.5 0 1 1-5-5l1.2-1.2" />
+    </Icon>
+  )
+}
+
 /** A chord's shape on the neck: four strings, three frets, two fingers down. */
 export function IconChordShape(props: IconProps) {
   return (

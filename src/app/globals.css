@@ -962,6 +962,173 @@
     text-transform: uppercase;
   }
 
+  /*
+   * One feature raised above the rest, on the public page: Sing Together gets its own
+   * panel rather than a card among the ones below, because it is the one thing here two
+   * people are doing at once rather than one person doing alone. The fill is the same
+   * `--accent-soft` a `.notice-accent` already reaches for — the one background in this
+   * app that already means "worth a second look" — so the page does not need a second
+   * way to say that.
+   */
+  .feature-spotlight {
+    padding: 1.75rem 1.375rem;
+    background: var(--accent-soft);
+    border-radius: var(--r-2xl);
+    text-align: center;
+  }
+
+  @media (min-width: 640px) {
+    .feature-spotlight {
+      padding: 2.5rem 2.25rem;
+    }
+  }
+
+  .feature-spotlight-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .feature-spotlight-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .feature-spotlight-title {
+    margin-top: 1.125rem;
+    font-size: 1.375rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  @media (min-width: 640px) {
+    .feature-spotlight-title {
+      font-size: 1.75rem;
+    }
+  }
+
+  .feature-spotlight-text {
+    margin: 0.75rem auto 0;
+    max-width: 30rem;
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 640px) {
+    .feature-spotlight-text {
+      font-size: 1rem;
+    }
+  }
+
+  /* Stacked and left-aligned on a phone, where three short columns would each be too
+     narrow to read; a row of three, centred, once the panel is wide enough for them. */
+  .feature-spotlight-points {
+    display: grid;
+    gap: 1.375rem;
+    margin-top: 1.75rem;
+    text-align: left;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 1024px) {
+    .feature-spotlight-points {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 2.25rem;
+      text-align: center;
+    }
+  }
+
+  .feature-spotlight-point-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  @media (min-width: 1024px) {
+    .feature-spotlight-point-head {
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+  }
+
+  .feature-spotlight-point-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--accent);
+  }
+
+  .feature-spotlight-point-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .feature-spotlight-point-title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .feature-spotlight-point-text {
+    margin: 0.375rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /*
+   * One FAQ entry: closed by default, its question always visible, its answer shown
+   * only once tapped. `<details>` rather than a button and a piece of state, the same
+   * choice `.editor-data` already makes for the song-data drawer: nothing here needs
+   * JavaScript to show a paragraph of text, and the browser already knows how to make
+   * that accessible — focus, keyboard, and a screen reader's own sense of "expanded",
+   * for free.
+   */
+  .faq-item > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  .faq-item > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-arrow {
+    flex: none;
+    color: var(--faint);
+    transition: rotate 120ms ease;
+  }
+
+  .faq-item[open] > summary .faq-arrow {
+    rotate: 90deg;
+  }
+
+  .faq-answer {
+    margin: 0;
+    padding: 0 1rem 1rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
   /* A warm wash behind the card, so the page is not a flat rectangle. */
   .login-glow {
     position: fixed;

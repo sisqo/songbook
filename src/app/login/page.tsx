@@ -6,9 +6,13 @@ import { signIn } from '@/auth'
 import {
   IconBooks,
   IconBroadcast,
+  IconChevronRight,
   IconChordShape,
+  IconDevices,
   IconGoogle,
   IconImport,
+  IconLeads,
+  IconLink,
   IconNote,
   IconOnStage,
   IconSliders,
@@ -38,6 +42,138 @@ interface Feature {
   title: string
   text: string
 }
+
+/** One of the three things `SingTogetherSpotlight` says about the feature below its own headline. */
+interface SpotlightPoint {
+  icon: React.ReactNode
+  title: string
+  text: string
+}
+
+const SING_TOGETHER_POINTS: SpotlightPoint[] = [
+  {
+    icon: <IconLeads size={18} />,
+    title: 'One leader, no confusion',
+    text: "Whoever's playing controls the song — line, section, chord — for everyone.",
+  },
+  {
+    icon: <IconDevices size={18} />,
+    title: 'Every screen, in sync',
+    text: 'Each person reads clearly, on their own device, always on the same line.',
+  },
+  {
+    icon: <IconLink size={18} />,
+    title: 'Just a link away',
+    text: 'No sign-up, no setup. Share a link, and anyone can join in seconds.',
+  },
+]
+
+interface FaqItem {
+  q: string
+  a: string
+}
+
+interface FaqGroup {
+  title: string
+  items: FaqItem[]
+}
+
+const FAQ: FaqGroup[] = [
+  {
+    title: 'Bringing in your collection',
+    items: [
+      {
+        q: 'Do I need to create my songs from scratch, or can I import what I already have?',
+        a: "No catalog to start from — Songbook isn't a library you browse. You bring your own songs: import what you already have, and your collection is ready to go from day one.",
+      },
+      {
+        q: 'What file formats can I import and export?',
+        a: "Songbook uses ChordPro, the standard format for lyrics and chords. It's easy to import your existing files, edit them inside Songbook, and export them again whenever you need to.",
+      },
+      {
+        q: "Can I edit a song after I've added it to my collection?",
+        a: 'Yes, anytime. Lyrics, chords, key, capo — nothing is locked once a song is in your collection. Change it as often as you like, for as long as you use it.',
+      },
+      {
+        q: 'Is there a limit to how many songs or songbooks I can create?',
+        a: "No limit at all. Create as many songs and songbooks as your repertoire needs, whether that's a handful of favorites or hundreds of songs.",
+      },
+    ],
+  },
+  {
+    title: 'Key, capo and chords',
+    items: [
+      {
+        q: 'How does the smart capo suggestion work?',
+        a: 'It checks every possible fret position and finds the one that lets you play the most open chords. That means you get the easiest shapes for your hands, not just a fret that happens to match the right sound.',
+      },
+      {
+        q: 'Does it show chord shapes for both guitar and ukulele?',
+        a: 'Yes. Tap any chord in a song and see exactly where to place your fingers, for either guitar or ukulele.',
+      },
+    ],
+  },
+  {
+    title: 'Offline and devices',
+    items: [
+      {
+        q: 'Do I need to install an app, or does it work in the browser?',
+        a: 'Neither an app store nor an install step is required — just open Songbook on your phone like any regular app, straight from the browser.',
+      },
+      {
+        q: 'What happens if I lose internet connection while playing?',
+        a: 'Nothing changes. Once your repertoire is saved, it stays fully available on your device — no signal required, on stage or anywhere else.',
+      },
+      {
+        q: 'Does my collection sync across my devices?',
+        a: 'Yes. As soon as any of your devices is online, your whole collection syncs automatically — no manual backup or transfer needed.',
+      },
+    ],
+  },
+  {
+    title: 'Sing Together',
+    items: [
+      {
+        q: 'How many people can join a Sing Together session?',
+        a: "As many as you like. Everyone who has the link can join and follow along, whether it's two friends or a whole room.",
+      },
+      {
+        q: 'Does everyone need an account to join a session?',
+        a: 'No sign-up and no setup required. Anyone with the link can join instantly and start singing along within seconds.',
+      },
+      {
+        q: "Can I switch who's leading during a session?",
+        a: 'No — the person who starts the session stays the leader for its whole duration, keeping control simple and unambiguous.',
+      },
+      {
+        q: 'Does Sing Together work without an internet connection?',
+        a: 'No. Since every device needs to stay in sync in real time, Sing Together requires an active internet connection to work.',
+      },
+    ],
+  },
+  {
+    title: 'Roles and access',
+    items: [
+      {
+        q: 'Can I share my songbook with someone without giving them editing rights?',
+        a: "Yes. Add them as a Viewer, and they'll be able to follow along with the songbook without any risk of changing your content.",
+      },
+    ],
+  },
+  {
+    title: 'General',
+    items: [
+      {
+        q: 'Is Songbook free to use?',
+        a: 'Yes, Songbook is completely free to use, with no hidden costs.',
+      },
+      {
+        q: 'Is my collection private, or can others see it?',
+        a: "Your collection is private by default. It's visible only to the people you specifically invite, based on the role you give them.",
+      },
+    ],
+  },
+]
 
 /**
  * Eight, not an exhaustive list. Each is something a visitor can picture doing on
@@ -222,6 +358,42 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
       </div>
 
+      {/*
+        * Sing Together, raised above the feature tour below rather than folded into
+        * it: it is the one thing on this page two people are doing at once, and the
+        * first thing a visitor who is not signing in today should read. See
+        * `.feature-spotlight`'s own comment in globals.css for why the fill is what
+        * marks it out.
+        */}
+      <section className="mt-11 w-full max-w-2xl lg:mt-14">
+        <div className="feature-spotlight">
+          <span className="feature-spotlight-icon">
+            <IconBroadcast size={26} />
+          </span>
+
+          <h2 className="feature-spotlight-title">Sing Together</h2>
+
+          <p className="feature-spotlight-text">
+            Passing a songbook around, or crowding over one phone — it gets old fast.
+            With Sing Together, everyone follows the same song from their own device,
+            automatically — whoever&apos;s playing, however many, and everyone who&apos;s
+            singing along.
+          </p>
+
+          <div className="feature-spotlight-points">
+            {SING_TOGETHER_POINTS.map((point) => (
+              <div key={point.title}>
+                <div className="feature-spotlight-point-head">
+                  <span className="feature-spotlight-point-icon">{point.icon}</span>
+                  <h3 className="feature-spotlight-point-title">{point.title}</h3>
+                </div>
+                <p className="feature-spotlight-point-text">{point.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="mt-11 w-full max-w-4xl lg:mt-16">
         <div className="text-center">
           <h2 className="landing-feature-title">Built for playing, not scrolling.</h2>
@@ -240,6 +412,39 @@ export default async function LoginPage({ searchParams }: Props) {
               </div>
               <p className="feature-text">{feature.text}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      {/*
+        * `<details>` per question rather than a client component with a piece of state
+        * per row: nothing here needs JavaScript to show a paragraph of text once
+        * tapped, and the browser already gives that focus, keyboard support, and a
+        * screen reader's own sense of "expanded" for free — the same choice
+        * `.editor-data` already makes for the song-data drawer elsewhere in the app.
+        */}
+      <section className="mt-11 w-full max-w-2xl lg:mt-16">
+        <div className="text-center">
+          <h2 className="landing-feature-title">Frequently asked questions</h2>
+        </div>
+
+        <div className="mt-6 space-y-7 lg:mt-8 lg:space-y-8">
+          {FAQ.map((group) => (
+            <div key={group.title}>
+              <span className="group-label">{group.title}</span>
+
+              <div className="card-stack mt-2.5">
+                {group.items.map((item) => (
+                  <details key={item.q} className="card faq-item">
+                    <summary>
+                      <IconChevronRight size={15} className="faq-arrow" />
+                      <span>{item.q}</span>
+                    </summary>
+                    <p className="faq-answer">{item.a}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>
