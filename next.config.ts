@@ -65,12 +65,22 @@ const nextConfig: NextConfig = {
    */
   async redirects() {
     return [
-      { source: '/canzonieri', destination: '/songbooks', permanent: true },
+      { source: '/canzonieri', destination: '/', permanent: true },
       { source: '/canzonieri/:slug', destination: '/songbooks/:slug', permanent: true },
       { source: '/canzoni/:slug', destination: '/songs/:slug', permanent: true },
       { source: '/canzoni/:slug/modifica', destination: '/songs/:slug/edit', permanent: true },
       { source: '/utenti', destination: '/users', permanent: true },
-      { source: '/importa', destination: '/import', permanent: true },
+      { source: '/importa', destination: '/', permanent: true },
+      /*
+       * '/songbooks' and '/import' were pages of their own — create/rename/remove a
+       * songbook, and import songs into one — folded into the home screen and into
+       * each songbook's own page rather than renamed. Nothing replaces them
+       * directly, so both land on '/'; '/canzonieri' and '/importa' above go
+       * straight there too, rather than bouncing through the routes they used to
+       * become before those were retired.
+       */
+      { source: '/songbooks', destination: '/', permanent: true },
+      { source: '/import', destination: '/', permanent: true },
     ]
   },
 }

@@ -29,8 +29,6 @@ async function main() {
 
   const routes = [
     '/',
-    '/songbooks',
-    '/import',
     '/users',
     '/password',
     // A metadata route, not a file in public/, so it has to be listed here.
@@ -56,7 +54,8 @@ async function main() {
    * Done here rather than after `next build` because this script runs before the
    * pages are generated and therefore knows exactly which songs they will
    * contain: anything written to the database after this moment is genuinely not
-   * in the build, and the import screen should keep listing it as pending.
+   * in the build, and the home screen's publish panel should keep listing it as
+   * pending.
    *
    * The instant comes from the database, like `songs.updated_at`, because the
    * pending list compares the two. A build machine whose clock ran a second ahead
@@ -74,9 +73,9 @@ async function main() {
       console.log(`Build stamped at ${stamped.builtAt.toISOString()}`)
     } catch (error) {
       /**
-       * The stamp is not load-bearing for generating pages: without it the import
-       * screen shows a stale pending list, which is a nuisance. Letting it fail
-       * the build would take the whole site down instead.
+       * The stamp is not load-bearing for generating pages: without it the home
+       * screen's publish panel shows a stale pending list, which is a nuisance.
+       * Letting it fail the build would take the whole site down instead.
        */
       console.warn(`Could not stamp the build; the pending list will be stale: ${error}`)
     }

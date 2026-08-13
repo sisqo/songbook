@@ -7,11 +7,9 @@ import { InstrumentPicker } from '@/components/InstrumentPicker'
 import { useRole } from '@/components/RoleProvider'
 import { ThemePicker } from '@/components/ThemePicker'
 import {
-  IconBooks,
   IconChevronLeft,
   IconChevronRight,
   IconExternal,
-  IconImport,
   IconKey,
   IconMenu,
   IconNote,
@@ -36,9 +34,9 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  * action, and passing it in is what lets this component be interactive without
  * turning that action into a client-side call.
  *
- * Three of the entries depend on what the reader may do, and they are absent until the
- * answer arrives rather than present and refusing. A viewer's menu is therefore the
- * songs, the tuner, and how they like to read — which is everything a viewer has.
+ * One entry depends on what the reader may do, and it is absent until the answer
+ * arrives rather than present and refusing. A viewer's menu is therefore the songs,
+ * the tuner, and how they like to read — which is everything a viewer has.
  *
  * Settings is a second screen inside the same panel rather than a page of its own:
  * changing the theme or the instrument is something a reader does mid-song, and a
@@ -55,7 +53,7 @@ export function NavMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'settings'>('main')
-  const { mayEdit, mayManageUsers } = useRole()
+  const { mayManageUsers } = useRole()
 
   const close = () => {
     setOpen(false)
@@ -141,25 +139,6 @@ export function NavMenu({
                   <IconNote size={17} />
                   All songs
                 </Link>
-
-                {mayEdit && (
-                  <>
-                    <Link href="/import" className={item('import')} role="menuitem" onClick={close}>
-                      <IconImport size={17} />
-                      Import
-                    </Link>
-
-                    <Link
-                      href="/songbooks"
-                      className={item('songbooks')}
-                      role="menuitem"
-                      onClick={close}
-                    >
-                      <IconBooks size={17} />
-                      Songbooks
-                    </Link>
-                  </>
-                )}
 
                 {mayManageUsers && (
                   <Link href="/users" className={item('users')} role="menuitem" onClick={close}>

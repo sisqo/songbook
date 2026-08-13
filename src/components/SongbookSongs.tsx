@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 import { ArrangeSongbook } from '@/components/ArrangeSongbook'
+import { ImportIntoSongbook } from '@/components/ImportIntoSongbook'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
-import { IconChevronDown, IconChevronRight, IconGrip } from '@/components/icons'
+import { IconChevronDown, IconChevronRight, IconGrip, IconImport } from '@/components/icons'
+import { loadSongIndex } from '@/lib/library/actions'
 import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
 import type { SongIndexRow } from '@/lib/search-index'
@@ -30,8 +32,10 @@ import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/
  * 2. arriving from a song opens the section that song is in, so the way back lands you
  *    where you were rather than in front of a closed list.
  *
- * Arranging is a mode rather than a handle on every row for the rest of the app's life,
- * because this is a list you read far more often than you rearrange.
+ * Arranging, and now importing too, are modes rather than a handle on every row (or a
+ * form) for the rest of the app's life, because this is a list you read far more often
+ * than you rearrange or add to. The two are mutually exclusive: there is one reason to
+ * leave the plain list at a time.
  */
 export function SongbookSongs({
   slug,
@@ -40,11 +44,11 @@ export function SongbookSongs({
   slug: string
   songs: SongIndexRow[]
 }) {
-  const { assignments, online, divisionsOf } = useSongbooks()
+  const { assignments, online, divisionsOf, nameOf } = useSongbooks()
   const { mayEdit } = useRole()
 
   const [rows, setRows] = useLiveRows(baked)
-  const [organizing, setOrganizing] = useState(false)
+  const [mode, setMode] = useState<'list' | 'organizing' | 'importing'>('list')
 
   const [folds, setFolds] = useState<Folds>({})
   /** The song a link asked for, if one did. The *song*, not its section: see below. */
@@ -115,93 +119,144 @@ export function SongbookSongs({
     document.getElementById(`song-${asked}`)?.scrollIntoView({ block: 'center' })
   }, [arrived, asked])
 
-  if (organizing) {
+  /**
+   * What Arrange gets for free from dragging a row, Import has to ask for: a song it
+   * just saved has no way to patch itself into `rows`, so the only way to make it
+   * show up without a reload is to read the live index again, the same way this list
+   * read it the first time.
+   */
+  const refreshRows = useCallback(async () => {
+    try {
+      const live = await loadSongIndex()
+      if (live !== null) setRows(live)
+    } catch {
+      // Offline or signed out: the list stays as it was.
+    }
+  }, [setRows])
+
+  if (mode === 'organizing') {
     return (
       <ArrangeSongbook
         songbookSlug={slug}
         rows={rows}
-        onDone={() => setOrganizing(false)}
+        onDone={() => setMode('list')}
         onApplied={(order) => setRows((current) => applyOrder(current, order))}
       />
     )
   }
 
-  if (divisions.length === 0 && total === 0) {
-    return <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
+  if (mode === 'importing') {
+    // Never actually null here — the button that reaches this mode only exists once
+    // the songbook itself has loaded — but the lookup is nullable, so a fallback is
+    // still needed to satisfy the type.
+    return (
+      <ImportIntoSongbook
+        songbookSlug={slug}
+        songbookName={nameOf(slug) ?? ''}
+        onDone={() => setMode('list')}
+        onImported={refreshRows}
+      />
+    )
   }
 
   return (
     <>
-      {/*
-        * How much is in here, counted from the live layer rather than from the page. The
-        * static header above says only the name for that reason.
-        */}
-      <p className="mb-3 text-sm text-muted">
-        {total} {total === 1 ? 'song' : 'songs'}
-        {divisions.length > 1 && ` · ${divisions.length} sections`}
-      </p>
+      {divisions.length === 0 && total === 0 ? (
+        /*
+         * No section at all is reachable now, not just no songs: `removeSection`
+         * lets Arrange delete the last one while it is empty, and the old escape
+         * from here — the standalone import screen's own songbook picker, which
+         * could reach this songbook and its "new section" shortcut regardless of
+         * what this page was showing — is gone with that screen. So the buttons
+         * below have to render past this message rather than being behind it: an
+         * editor's only way back to a section is Arrange or Import, both of which
+         * can make one.
+         */
+        <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
+      ) : (
+        <>
+          {/*
+            * How much is in here, counted from the live layer rather than from the page.
+            * The static header above says only the name for that reason.
+            */}
+          <p className="mb-3 text-sm text-muted">
+            {total} {total === 1 ? 'song' : 'songs'}
+            {divisions.length > 1 && ` · ${divisions.length} sections`}
+          </p>
 
-      {/*
-        * A card each. A section is a thing that opens and closes, with its own name and
-        * its own songs, so it gets its own card rather than a hairline inside a shared
-        * one — and a fold then has a visible container to happen in.
-        */}
-      <ul className="card-stack">
-        {groups.map(({ section, songs }) => {
-          const open = isOpen(section.id)
+          {/*
+            * A card each. A section is a thing that opens and closes, with its own name and
+            * its own songs, so it gets its own card rather than a hairline inside a shared
+            * one — and a fold then has a visible container to happen in.
+            */}
+          <ul className="card-stack">
+            {groups.map(({ section, songs }) => {
+              const open = isOpen(section.id)
 
-          return (
-            <li key={section.id} className="card p-2">
-              <button
-                type="button"
-                className="row w-full text-left"
-                onClick={() => toggle(section.id)}
-                aria-expanded={open}
-              >
-                {open ? (
-                  <IconChevronDown size={18} className="text-faint" />
-                ) : (
-                  <IconChevronRight size={18} className="text-faint" />
-                )}
-                <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
-                <span className="count-badge">{songs.length}</span>
-              </button>
+              return (
+                <li key={section.id} className="card p-2">
+                  <button
+                    type="button"
+                    className="row w-full text-left"
+                    onClick={() => toggle(section.id)}
+                    aria-expanded={open}
+                  >
+                    {open ? (
+                      <IconChevronDown size={18} className="text-faint" />
+                    ) : (
+                      <IconChevronRight size={18} className="text-faint" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
+                    <span className="count-badge">{songs.length}</span>
+                  </button>
 
-              {open &&
-                (songs.length === 0 ? (
-                  <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
-                    No songs in this section.
-                  </p>
-                ) : (
-                  <ul>
-                    {songs.map((song) => (
-                      // The id is what the way back from a song points at.
-                      <li key={song.slug} id={`song-${song.slug}`}>
-                        <SongRow song={song} />
-                      </li>
+                  {open &&
+                    (songs.length === 0 ? (
+                      <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
+                        No songs in this section.
+                      </p>
+                    ) : (
+                      <ul>
+                        {songs.map((song) => (
+                          // The id is what the way back from a song points at.
+                          <li key={song.slug} id={`song-${song.slug}`}>
+                            <SongRow song={song} />
+                          </li>
+                        ))}
+                      </ul>
                     ))}
-                  </ul>
-                ))}
-            </li>
-          )
-        })}
-      </ul>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
 
       {/*
-        * Only for someone whose songbook it is to arrange, and only with a network to
-        * save it over. No minimum number of songs any more: with sections there is a
-        * layout to change with one song — moving it to another section — and with none at
-        * all, which is making the first division.
+        * Both need a network — one to save the layout, the other to save a song — and
+        * both are for someone whose songbook this is, not a reader. No minimum number
+        * of songs for Arrange any more: with sections there is a layout to change with
+        * one song — moving it to another section — and with none at all, which is
+        * making the first division. Import has no minimum either: an empty songbook is
+        * exactly the case it exists for.
         */}
       {online && mayEdit && (
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             className="btn btn-quiet btn-sm"
-            onClick={() => setOrganizing(true)}
+            onClick={() => setMode('organizing')}
           >
             <IconGrip size={16} />
             Arrange
+          </button>
+          <button
+            type="button"
+            className="btn btn-quiet btn-sm"
+            onClick={() => setMode('importing')}
+          >
+            <IconImport size={16} />
+            Import
           </button>
         </div>
       )}
