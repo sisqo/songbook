@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { ControlBar } from '@/components/ControlBar'
+import { GuestSettingsMenu } from '@/components/GuestSettingsMenu'
 import { PrefsProvider, usePrefs } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
 import { IconBroadcast, IconChevronDown, IconChevronLeft, IconChevronRight } from '@/components/icons'
 import { chordTokens, parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
+import { DEFAULT_SONG_PREFS } from '@/lib/prefs/types'
 import {
   type GuestSongbook,
   type GuestSongbookContent,
@@ -103,6 +105,12 @@ function isSectionOpen(songbook: OpenSongbook, sectionId: number): boolean {
  * writing either case down as a rule of its own. The same poll always updates `live`
  * too, suspended or not — a guest who has stopped following still needs to know what
  * there is to come back to.
+ *
+ * Everything above shares one `PrefsProvider`, mounted once at the very top rather than
+ * once per song: a guest who turns on dark mode or switches to ukulele partway through
+ * one song should not have it forgotten the moment the broadcast moves to the next one.
+ * `GuestSettingsMenu` is where that reaches the guest — the one thing besides reading
+ * itself this screen lets them touch.
  */
 export function FollowSession({ token }: { token: string }) {
   const [screen, setScreen] = useState<Screen>('loading')
@@ -423,163 +431,176 @@ export function FollowSession({ token }: { token: string }) {
     setScreen('song')
   }
 
-  if (screen === 'loading') {
-    return <p className="mt-8 text-center text-sm text-muted">Loading…</p>
-  }
+  let content: React.ReactNode
 
-  if (screen === 'ended') {
-    return (
+  if (screen === 'loading') {
+    content = <p className="mt-8 text-center text-sm text-muted">Loading…</p>
+  } else if (screen === 'ended') {
+    content = (
       <p className="mt-8 text-center text-sm text-muted">
         This link has ended. Ask whoever shared it for a new one.
       </p>
     )
-  }
-
-  /*
-   * Whether a guest who has suspended following still needs telling what the
-   * broadcast is showing. Excluded the one time it would just repeat what
-   * `FollowedSong`'s own `Follow` already says on this same screen — see
-   * `LiveNowBanner`'s doc comment for why that overlap is the one case to avoid.
-   */
-  const showBanner =
-    followState === 'suspended' &&
-    live !== null &&
-    !(screen === 'song' && song !== null && song.data.slug === live.songSlug)
-
-  if (screen === 'song' && song !== null) {
-    return (
-      <>
-        {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
-        <FollowedSong
-          song={song}
-          isLive={live !== null && song.data.slug === live.songSlug}
-          backLabel={songbook?.content.songbookName ?? 'Songbook'}
-          onBack={() => setScreen('songbook')}
-          onUnfollow={unfollow}
-          onFollowLive={() => void followLive()}
-        />
-      </>
+  } else {
+    /*
+     * Whether a guest who has suspended following still needs telling what the
+     * broadcast is showing. Excluded the one time it would just repeat what
+     * `FollowedSong`'s own `Follow` already says on this same screen — see
+     * `LiveNowBanner`'s doc comment for why that overlap is the one case to avoid.
+     */
+    const showBanner =
+      followState === 'suspended' &&
+      live !== null &&
+      !(screen === 'song' && song !== null && song.data.slug === live.songSlug)
+    const banner = showBanner && (
+      <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />
     )
-  }
 
-  if (screen === 'songbook' && songbook !== null) {
-    const total = songbook.content.sections.reduce((count, section) => count + section.songs.length, 0)
+    if (screen === 'song' && song !== null) {
+      content = (
+        <>
+          {banner}
+          <FollowedSong
+            song={song}
+            isLive={live !== null && song.data.slug === live.songSlug}
+            backLabel={songbook?.content.songbookName ?? 'Songbook'}
+            onBack={() => setScreen('songbook')}
+            onUnfollow={unfollow}
+            onFollowLive={() => void followLive()}
+          />
+        </>
+      )
+    } else if (screen === 'songbook' && songbook !== null) {
+      const total = songbook.content.sections.reduce((count, section) => count + section.songs.length, 0)
 
-    return (
-      <>
-        {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
-        <div>
-          <button type="button" className="back-link mb-4" onClick={() => setScreen('songbooks')}>
-            <IconChevronLeft size={16} />
-            <span>All songbooks</span>
-          </button>
+      content = (
+        <>
+          {banner}
+          <div>
+            <button type="button" className="back-link mb-4" onClick={() => setScreen('songbooks')}>
+              <IconChevronLeft size={16} />
+              <span>All songbooks</span>
+            </button>
 
-          <header className="mb-[1.125rem]">
-            <h1 className="screen-title">{songbook.content.songbookName}</h1>
-          </header>
+            <header className="mb-[1.125rem]">
+              <h1 className="screen-title">{songbook.content.songbookName}</h1>
+            </header>
 
-          {total === 0 ? (
-            <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
-          ) : (
-            <>
-              <p className="mb-3 text-sm text-muted">
-                {total} {total === 1 ? 'song' : 'songs'}
-                {songbook.content.sections.length > 1 && ` · ${songbook.content.sections.length} sections`}
+            {total === 0 ? (
+              <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
+            ) : (
+              <>
+                <p className="mb-3 text-sm text-muted">
+                  {total} {total === 1 ? 'song' : 'songs'}
+                  {songbook.content.sections.length > 1 && ` · ${songbook.content.sections.length} sections`}
+                </p>
+
+                <ul className="card-stack">
+                  {songbook.content.sections.map((section) => {
+                    const open = isSectionOpen(songbook, section.id)
+
+                    return (
+                      <li key={section.id} className="card p-2">
+                        <button
+                          type="button"
+                          className="row w-full text-left"
+                          onClick={() => toggleSection(section.id)}
+                          aria-expanded={open}
+                        >
+                          {open ? (
+                            <IconChevronDown size={18} className="text-faint" />
+                          ) : (
+                            <IconChevronRight size={18} className="text-faint" />
+                          )}
+                          <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
+                          <span className="count-badge">{section.songs.length}</span>
+                        </button>
+
+                        {open &&
+                          (section.songs.length === 0 ? (
+                            <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
+                              No songs in this section.
+                            </p>
+                          ) : (
+                            <ul>
+                              {section.songs.map((entry) => (
+                                <li key={entry.slug}>
+                                  <button
+                                    type="button"
+                                    className="row w-full text-left"
+                                    onClick={() => void openSong(entry.slug)}
+                                  >
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate">{entry.title}</span>
+                                      {entry.artist !== null && (
+                                        <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
+                                          {entry.artist}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ))}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
+        </>
+      )
+    } else {
+      // screen === 'songbooks'
+      content = (
+        <>
+          {banner}
+          <div>
+            <header className="mb-[1.125rem]">
+              <h1 className="screen-title">Sing Together</h1>
+              <p className="mt-2 text-sm leading-[1.45] text-muted">
+                Browse the repertoire while you wait. The moment the broadcast plays a
+                song, this screen switches to it, at the same key, on its own.
               </p>
+            </header>
 
-              <ul className="card-stack">
-                {songbook.content.sections.map((section) => {
-                  const open = isSectionOpen(songbook, section.id)
-
-                  return (
-                    <li key={section.id} className="card p-2">
-                      <button
-                        type="button"
-                        className="row w-full text-left"
-                        onClick={() => toggleSection(section.id)}
-                        aria-expanded={open}
-                      >
-                        {open ? (
-                          <IconChevronDown size={18} className="text-faint" />
-                        ) : (
-                          <IconChevronRight size={18} className="text-faint" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
-                        <span className="count-badge">{section.songs.length}</span>
-                      </button>
-
-                      {open &&
-                        (section.songs.length === 0 ? (
-                          <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
-                            No songs in this section.
-                          </p>
-                        ) : (
-                          <ul>
-                            {section.songs.map((entry) => (
-                              <li key={entry.slug}>
-                                <button
-                                  type="button"
-                                  className="row w-full text-left"
-                                  onClick={() => void openSong(entry.slug)}
-                                >
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate">{entry.title}</span>
-                                    {entry.artist !== null && (
-                                      <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
-                                        {entry.artist}
-                                      </span>
-                                    )}
-                                  </span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ))}
-                    </li>
-                  )
-                })}
+            {songbooks.length === 0 ? (
+              <p className="mt-8 text-center text-sm text-muted">No songbook yet.</p>
+            ) : (
+              <ul className="row-list card">
+                {songbooks.map((entry) => (
+                  <li key={entry.slug}>
+                    <button
+                      type="button"
+                      className="row w-full text-left"
+                      onClick={() => void openSongbook(entry.slug)}
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium">{entry.name}</span>
+                      <span className="count-badge">{entry.count}</span>
+                      <IconChevronRight size={18} className="text-faint" />
+                    </button>
+                  </li>
+                ))}
               </ul>
-            </>
-          )}
-        </div>
-      </>
-    )
+            )}
+          </div>
+        </>
+      )
+    }
   }
 
-  // screen === 'songbooks'
   return (
-    <>
-      {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
-      <div>
-        <header className="mb-[1.125rem]">
-          <h1 className="screen-title">Sing Together</h1>
-          <p className="mt-2 text-sm leading-[1.45] text-muted">
-            Browse the repertoire while you wait. The moment the broadcast plays a song,
-            this screen switches to it, at the same key, on its own.
-          </p>
-        </header>
-
-        {songbooks.length === 0 ? (
-          <p className="mt-8 text-center text-sm text-muted">No songbook yet.</p>
-        ) : (
-          <ul className="row-list card">
-            {songbooks.map((entry) => (
-              <li key={entry.slug}>
-                <button
-                  type="button"
-                  className="row w-full text-left"
-                  onClick={() => void openSongbook(entry.slug)}
-                >
-                  <span className="min-w-0 flex-1 truncate font-medium">{entry.name}</span>
-                  <span className="count-badge">{entry.count}</span>
-                  <IconChevronRight size={18} className="text-faint" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </>
+    <PrefsProvider persist={false} songSlug={null}>
+      <header className="top-bar">
+        <div className="top-bar-inner">
+          <span className="flex-1" />
+          <GuestSettingsMenu />
+        </div>
+      </header>
+      <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">{content}</main>
+    </PrefsProvider>
   )
 }
 
@@ -605,12 +626,13 @@ function LiveNowBanner({ title, onFollow }: { title: string | null; onFollow: ()
 /**
  * One song, read either on the guest's own terms or on the broadcaster's.
  *
- * `key={song.data.slug}` on the provider is what makes switching songs safe to do by
- * surprise, mid broadcast: without it, following a new song would keep the previous
- * one's zoom, notation and capo on the new sheet, because `PrefsProvider` only re-reads
- * its local cache when its own `songSlug` prop changes identity-wise in a way React
- * notices — a fresh mount, forced by the key, is the reliable way to make that happen
- * every time, not just sometimes.
+ * No `PrefsProvider` of its own: it shares the one `FollowSession` mounts once at the
+ * top, so zoom, notation and instrument survive from one song to the next instead of
+ * resetting — see that provider's own comment for why. Capo and scroll speed still need
+ * to start fresh on every new song, since those are properties of *this* song rather
+ * than of this guest in general; the effect below resets exactly those two and nothing
+ * else. Semitones needs no such reset: `PushBroadcastKey`, just below, already forces it
+ * to whatever the broadcast says the moment a followed song starts.
  *
  * The back link stays hidden while `following`: reaching it on its own would not
  * suspend anything, so the very next poll would read the screen as "different from what
@@ -639,9 +661,24 @@ function FollowedSong({
   onFollowLive: () => void
 }) {
   const parsed = useMemo(() => parseChordPro(song.data.body), [song.data])
+  const { setCapo, setScrollSpeed } = usePrefs()
+
+  useEffect(() => {
+    setCapo(DEFAULT_SONG_PREFS.capo)
+    setScrollSpeed(DEFAULT_SONG_PREFS.scrollSpeed)
+    /*
+     * Tied to the slug alone, deliberately: `setCapo`/`setScrollSpeed` are new closures
+     * every time this guest's prefs change — including from this very effect — so
+     * putting them in the dependency array would run this again after every reset, not
+     * just after a new song. `updateSong`'s own no-op check is what keeps that from
+     * looping: once capo and speed are already at their defaults, calling this again
+     * changes nothing and asks for nothing further.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.data.slug])
 
   return (
-    <PrefsProvider songSlug={song.data.slug} persist={false} key={song.data.slug}>
+    <>
       {song.following && <PushBroadcastKey semitones={song.semitones} />}
 
       {song.following ? (
@@ -693,7 +730,7 @@ function FollowedSong({
         semitonesLocked={song.following}
         broadcastEnabled={false}
       />
-    </PrefsProvider>
+    </>
   )
 }
 
@@ -705,10 +742,10 @@ function FollowedSong({
  * which is what this does: once on mount, and again every time the poll's semitones
  * changes while this song stays followed.
  *
- * Mounted only inside a `persist={false}` provider (see `FollowedSong` above), so this
- * push stays in memory on this screen alone — it never reaches this guest's local cache,
- * and never queues a save to the database under whichever account, if any, happens to be
- * signed into the browser showing the link.
+ * Mounted only inside `FollowSession`'s `persist={false}` provider, so this push stays
+ * in memory for this guest's session alone — it never reaches a local cache, and never
+ * queues a save to the database under whichever account, if any, happens to be signed
+ * into the browser showing the link.
  */
 function PushBroadcastKey({ semitones }: { semitones: number }) {
   const { setSemitones } = usePrefs()

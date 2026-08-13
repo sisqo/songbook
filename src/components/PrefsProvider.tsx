@@ -8,6 +8,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -81,10 +82,24 @@ export function PrefsProvider({
   const [song, setSong] = useState<SongPrefs>(DEFAULT_SONG_PREFS)
   const [pending, setPending] = useState(0)
 
+  /*
+   * `song` state alone cannot tell `updateSong` what the *other* fields should be
+   * when two of its callers fire in the same effect flush — Sing Together's guest view
+   * does exactly that, pushing a new semitones value and resetting capo/scroll speed as
+   * two separate effects reacting to the same song change. Both would otherwise read the
+   * same pre-flush `song` closure and the second call's spread would erase the first's
+   * write. Keeping this ref in lockstep with every `setSong` call, including inside
+   * `updateSong` itself, means each call merges against what the *previous* call in the
+   * same flush just decided, not what render last saw.
+   */
+  const songRef = useRef(song)
+
   useLayoutEffect(() => {
     if (!persist) return
     setGlobal(readGlobalPrefs())
-    setSong(songSlug === null ? DEFAULT_SONG_PREFS : readSongPrefs(songSlug))
+    const nextSong = songSlug === null ? DEFAULT_SONG_PREFS : readSongPrefs(songSlug)
+    songRef.current = nextSong
+    setSong(nextSong)
   }, [songSlug, persist])
 
   useEffect(() => {
@@ -107,6 +122,7 @@ export function PrefsProvider({
           writeGlobalPrefs(stored.global)
         }
         if (stored.song !== null && songSlug !== null && !prefsQueue.hasPending(`song:${songSlug}`)) {
+          songRef.current = stored.song
           setSong(stored.song)
           writeSongPrefs(songSlug, stored.song)
         }
@@ -149,21 +165,25 @@ export function PrefsProvider({
   )
 
   const updateSong = useCallback(
-    (next: SongPrefs) => {
+    (patch: SongPrefs | ((prev: SongPrefs) => SongPrefs)) => {
+      const prev = songRef.current
+      const next = typeof patch === 'function' ? patch(prev) : patch
+
       if (
-        next.semitones === song.semitones &&
-        next.scrollSpeed === song.scrollSpeed &&
-        next.capo === song.capo
+        next.semitones === prev.semitones &&
+        next.scrollSpeed === prev.scrollSpeed &&
+        next.capo === prev.capo
       ) {
         return
       }
 
+      songRef.current = next
       setSong(next)
       if (!persist || songSlug === null) return
       writeSongPrefs(songSlug, next)
       prefsQueue.enqueueSong(songSlug, next)
     },
-    [song, songSlug, persist],
+    [songSlug, persist],
   )
 
   const value = useMemo<PrefsContextValue>(
@@ -174,9 +194,10 @@ export function PrefsProvider({
       setZoomStep: (step) => updateGlobal({ ...global, zoomStep: clampZoom(step) }),
       setNotation: (notation) => updateGlobal({ ...global, notation }),
       setInstrument: (instrument) => updateGlobal({ ...global, instrument }),
-      setSemitones: (semitones) => updateSong({ ...song, semitones: clampSemitones(semitones) }),
-      setScrollSpeed: (step) => updateSong({ ...song, scrollSpeed: clampSpeed(step) }),
-      setCapo: (fret) => updateSong({ ...song, capo: clampCapo(fret) }),
+      setSemitones: (semitones) =>
+        updateSong((prev) => ({ ...prev, semitones: clampSemitones(semitones) })),
+      setScrollSpeed: (step) => updateSong((prev) => ({ ...prev, scrollSpeed: clampSpeed(step) })),
+      setCapo: (fret) => updateSong((prev) => ({ ...prev, capo: clampCapo(fret) })),
     }),
     [global, song, pending, updateGlobal, updateSong],
   )
