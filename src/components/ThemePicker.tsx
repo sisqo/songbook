@@ -26,8 +26,8 @@ export function ThemePicker() {
     <div className="px-1.5 pb-1 pt-2">
       {/*
         * The same segmented control as the reading panel, stretched to the width of
-        * the menu: three words do not fit beside a label in a panel this narrow, and
-        * a sun and a moon would leave "auto" as a shape nobody can name.
+        * the menu: three words need the room in a panel this narrow, and a sun and a
+        * moon would leave "auto" as a shape nobody can name.
         */}
       <span className="segment w-full" role="group" aria-label="App theme">
         {CHOICES.map((entry) => (
