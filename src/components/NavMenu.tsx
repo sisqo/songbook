@@ -120,20 +120,6 @@ export function NavMenu({
             )}
 
             {/*
-              * Every role has one of these: how you get in is your own business, and a
-              * viewer needs it as much as an admin.
-              */}
-            <Link
-              href="/password"
-              className={item('password')}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-            >
-              <IconKey size={17} />
-              Password
-            </Link>
-
-            {/*
               * The tuner, which is another app on another domain.
               *
               * It sits with the sections rather than in a group of its own: from
@@ -160,6 +146,26 @@ export function NavMenu({
             </a>
 
             <div className="menu-divider" />
+
+            {/*
+              * Settings: nothing here touches the repertoire, only this reader's own
+              * account and screen — how they get in, and how they read.
+              */}
+            <span className="group-label px-2.5 pb-1 pt-1.5">Settings</span>
+
+            {/*
+              * Every role has one of these: how you get in is your own business, and a
+              * viewer needs it as much as an admin.
+              */}
+            <Link
+              href="/password"
+              className={item('password')}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <IconKey size={17} />
+              Password
+            </Link>
 
             {/*
               * Neither is a destination, so neither closes the menu: the reader is
