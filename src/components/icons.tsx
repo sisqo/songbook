@@ -223,6 +223,16 @@ export function IconKey(props: IconProps) {
   )
 }
 
+/** Settings: a gear, short teeth around a hub. */
+export function IconSettings(props: IconProps) {
+  return (
+    <Icon {...props} strokeWidth={2.25}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 8V6M12 16v2M8 12H6M16 12h2M14.83 9.17 16.24 7.76M14.83 14.83 16.24 16.24M9.17 14.83 7.76 16.24M9.17 9.17 7.76 7.76" />
+    </Icon>
+  )
+}
+
 /** Who may enter: two people, the second half-behind the first. */
 export function IconUsers(props: IconProps) {
   return (
