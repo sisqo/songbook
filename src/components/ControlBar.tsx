@@ -356,20 +356,24 @@ function ReadingPanel({
         *
         * A sentence and a button rather than an automatic move: the capo is the one
         * thing here that changes what the hands do, and the reader is the one holding
-        * them. It disappears as soon as it has nothing left to offer.
+        * them. It disappears as soon as it has nothing left to offer — but the slot
+        * around it does not, so stepping through capo positions never shifts Notation
+        * and Text below; see `.capo-hint-slot`'s own comment in globals.css.
         */}
-      {suggestion !== null && (
-        <div className="control-hint">
-          <span>
-            {suggestion.easy === suggestion.total
-              ? `With capo at fret ${suggestion.fret}, all chords are open.`
-              : `With capo at fret ${suggestion.fret}, ${suggestion.easy} of ${suggestion.total} chords are open.`}
-          </span>
-          <button type="button" className="btn btn-sm" onClick={() => setCapo(suggestion.fret)}>
-            Apply
-          </button>
-        </div>
-      )}
+      <div className="capo-hint-slot">
+        {suggestion !== null && (
+          <div className="control-hint">
+            <span>
+              {suggestion.easy === suggestion.total
+                ? `With capo at fret ${suggestion.fret}, all chords are open.`
+                : `With capo at fret ${suggestion.fret}, ${suggestion.easy} of ${suggestion.total} chords are open.`}
+            </span>
+            <button type="button" className="btn btn-sm" onClick={() => setCapo(suggestion.fret)}>
+              Apply
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="control-row">
         <span className="control-name">
