@@ -48,6 +48,21 @@ type ShownSong = { data: Song; following: false } | { data: Song; following: tru
 
 type Screen = 'loading' | 'ended' | 'songbooks' | 'songbook' | 'song'
 
+/**
+ * Whether the broadcast is currently allowed to move this guest around.
+ *
+ * `'suspended'` is the one thing `onUnfollow` sets and `onFollowLive`/on-song `Follow`
+ * clears — everywhere else in this file only reads it, through `followStateRef` inside
+ * the poll loop and directly as state everywhere else.
+ */
+type FollowState = 'following' | 'suspended'
+
+/** What the broadcast is showing right now, regardless of whether this guest follows it. */
+interface LiveNow {
+  songSlug: string
+  semitones: number
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -71,8 +86,10 @@ function isSectionOpen(songbook: OpenSongbook, sectionId: number): boolean {
  *    `guestLoadSong` instead of the mutable layer a session would unlock.
  * 2. **Following** — the broadcaster played something, so this screen is showing it, at
  *    the broadcaster's key, whether or not that is what this guest was doing a moment
- *    ago. There is deliberately no way to back out of this from here: the one way out
- *    is the broadcast itself moving on, or ending.
+ *    ago. `Unfollow` suspends this: the guest is free to browse again and the broadcast
+ *    stops overriding what is on screen, until `Follow` — on the song itself, or on
+ *    `LiveNowBanner` from anywhere else — picks it back up. Suspending is this guest's
+ *    own choice alone; it does not touch the broadcast itself or any other guest on it.
  * 3. **Ended** — the token no longer answers to a live broadcast, whether because it
  *    expired, was replaced by a fresh one, or never was one. Every guest action reports
  *    this the same way (`null`), so this screen reacts to it the same way everywhere:
@@ -80,16 +97,30 @@ function isSectionOpen(songbook: OpenSongbook, sectionId: number): boolean {
  *
  * What ties 1 and 2 together is a poll every few seconds, compared against *what is
  * currently on screen* rather than against whatever the previous poll said — see the
- * comment on the effect below for why that is the one comparison that gets both "the
+ * comment on `reconcile` below for why that is the one comparison that gets both "the
  * broadcast already had something playing before I opened this link" and "a guest who
- * happens to be reading the very song being broadcast, on their own, right" without
- * writing either case down as a rule of its own.
+ * happens to be reading the very song being broadcast, on their own" right without
+ * writing either case down as a rule of its own. The same poll always updates `live`
+ * too, suspended or not — a guest who has stopped following still needs to know what
+ * there is to come back to.
  */
 export function FollowSession({ token }: { token: string }) {
   const [screen, setScreen] = useState<Screen>('loading')
   const [songbooks, setSongbooks] = useState<GuestSongbook[]>([])
   const [songbook, setSongbook] = useState<OpenSongbook | null>(null)
   const [song, setSong] = useState<ShownSong | null>(null)
+  const [followState, setFollowState] = useState<FollowState>('following')
+  const [live, setLive] = useState<LiveNow | null>(null)
+  const [liveMeta, setLiveMeta] = useState<{ title: string; artist: string | null } | null>(null)
+
+  /**
+   * Every song this guest has ever loaded, by slug — filled in wherever `guestLoadSong`
+   * already succeeds (opening one, following one, jumping to the live one), never
+   * fetched for its own sake. The one thing it buys: `LiveNowBanner` can usually show a
+   * title without a request of its own, and `followLive` can usually jump without
+   * waiting on one.
+   */
+  const songCacheRef = useRef<Map<string, Song>>(new Map())
 
   /*
    * What the poll loop below reads to decide whether the broadcast disagrees with the
@@ -103,6 +134,23 @@ export function FollowSession({ token }: { token: string }) {
   useEffect(() => {
     shownRef.current = { screen, song }
   }, [screen, song])
+
+  /** Same reasoning as `shownRef`, for the one other thing the poll loop needs to read fresh: whether this guest has suspended following since the loop's closure was made. */
+  const followStateRef = useRef<FollowState>('following')
+  useEffect(() => {
+    followStateRef.current = followState
+  }, [followState])
+
+  /**
+   * Same reasoning again, this time for `followLive` below rather than the poll loop:
+   * once its own fetch is in flight, `live` may move on to a different song before it
+   * resolves, and a plain closure over the state would never see that — only a ref
+   * synced on every render does.
+   */
+  const liveRef = useRef<LiveNow | null>(null)
+  useEffect(() => {
+    liveRef.current = live
+  }, [live])
 
   /**
    * Sidesteps setting state on a component that is no longer here — used only by the
@@ -131,8 +179,20 @@ export function FollowSession({ token }: { token: string }) {
      */
     let cancelled = false
 
-    /** Reconciles one poll's answer against whatever is currently on screen. */
+    /**
+     * Reconciles one poll's answer against whatever is currently on screen.
+     *
+     * `live` is set unconditionally, first, whether or not this guest is following —
+     * it is the one thing a suspended guest still needs, so `LiveNowBanner` and a
+     * paused `FollowedSong` both know what `Follow` would jump to. Everything after
+     * that only runs while `followStateRef.current` still says `'following'`; suspended,
+     * this function's whole job ends the moment `live` is set.
+     */
     async function reconcile(songSlug: string | null, semitones: number): Promise<void> {
+      setLive(songSlug === null ? null : { songSlug, semitones })
+
+      if (followStateRef.current === 'suspended') return
+
       // Nothing playing yet — the broadcast has opened but nobody has pressed play, or
       // (per this token's own rules) never will again under this token. Either way,
       // there is nothing here to force the guest onto, so leave them to browse.
@@ -148,8 +208,8 @@ export function FollowSession({ token }: { token: string }) {
          * the very first poll this loop ever makes, if the broadcast already had a
          * song going before this guest opened the link at all. Either way the answer is
          * the same: fetch it and switch into following mode, overwriting whatever the
-         * guest was doing. The broadcaster's play always wins; there is no "don't
-         * interrupt me" on this side of the link.
+         * guest was doing. The broadcaster's play always wins over ordinary browsing;
+         * the one thing that holds it off is this guest's own choice to suspend, above.
          */
         const loaded = await guestLoadSong(token, songSlug)
         if (cancelled) return
@@ -159,6 +219,7 @@ export function FollowSession({ token }: { token: string }) {
           return
         }
 
+        songCacheRef.current.set(loaded.slug, loaded)
         setSong({ data: loaded, following: true, semitones })
         setScreen('song')
         return
@@ -170,10 +231,12 @@ export function FollowSession({ token }: { token: string }) {
        * song's own words have not changed.
        *
        * If instead it is on screen because the guest happened to browse to the very
-       * song the broadcast is playing, on their own, this branch does nothing: nothing
-       * above just made that switch, and nothing here promotes a coincidence into
-       * following mode. That guest keeps reading it their own way, unlocked, until the
-       * broadcast actually changes to something else — the one event that does.
+       * song the broadcast is playing on their own, or because they suspended following
+       * on this exact song a moment ago, this branch does nothing: nothing above just
+       * made that switch, and nothing here promotes either case into following mode.
+       * That guest keeps reading it their own way, unlocked, until the broadcast
+       * actually changes to something else — the one event that still sweeps them
+       * along regardless, per the check above.
        */
       if (shown.song !== null && shown.song.following && shown.song.semitones !== semitones) {
         setSong({ data: shown.song.data, following: true, semitones })
@@ -235,6 +298,39 @@ export function FollowSession({ token }: { token: string }) {
     }
   }, [token])
 
+  /*
+   * `pollBroadcast` only ever answers with a slug and a key, never a title — so
+   * `LiveNowBanner` needs its own way to learn one, for a song this guest may never
+   * have opened. Hoisted out of the effect below the same way `token` is hoisted in
+   * `NavMenu`'s matching effect: `live?.songSlug` written out in the dependency array
+   * would repeat the same optional chain the body already has to do, twice, with two
+   * chances to drift apart.
+   */
+  const liveSlug = live?.songSlug
+  useEffect(() => {
+    if (liveSlug === undefined) {
+      setLiveMeta(null)
+      return
+    }
+
+    const cached = songCacheRef.current.get(liveSlug)
+    if (cached !== undefined) {
+      setLiveMeta({ title: cached.title, artist: cached.artist })
+      return
+    }
+
+    setLiveMeta(null)
+    let cancelled = false
+    void guestLoadSong(token, liveSlug).then((loaded) => {
+      if (cancelled || loaded === null) return
+      songCacheRef.current.set(loaded.slug, loaded)
+      setLiveMeta({ title: loaded.title, artist: loaded.artist })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [token, liveSlug])
+
   async function openSongbook(slug: string): Promise<void> {
     const content = await guestListSongs(token, slug)
     if (goneRef.current) return
@@ -257,6 +353,7 @@ export function FollowSession({ token }: { token: string }) {
       return
     }
 
+    songCacheRef.current.set(loaded.slug, loaded)
     setSong({ data: loaded, following: false })
     setScreen('song')
   }
@@ -264,6 +361,66 @@ export function FollowSession({ token }: { token: string }) {
   function toggleSection(sectionId: number): void {
     if (songbook === null) return
     setSongbook({ ...songbook, open: { ...songbook.open, [sectionId]: !isSectionOpen(songbook, sectionId) } })
+  }
+
+  /**
+   * Stops the broadcast from moving this guest anywhere, without leaving the song
+   * being shown right now — see `FollowState`'s own doc comment for what this does and
+   * does not affect. A no-op unless the reason this song is on screen is that it is
+   * being followed; there is nothing to suspend on a song the guest opened themselves.
+   *
+   * Drops `semitones` from `song` on the way — harmless, since `PrefsProvider` above it
+   * keeps `key={song.data.slug}` unchanged and so is never remounted: the key this guest
+   * was just following stays exactly where `PushBroadcastKey` last left it, now simply
+   * theirs to move.
+   */
+  function unfollow(): void {
+    if (song === null || !song.following) return
+    setSong({ data: song.data, following: false })
+    setFollowState('suspended')
+  }
+
+  /**
+   * Jumps to whatever the broadcast is showing right now and resumes following it —
+   * the one way back in, from anywhere, once suspended. Reuses the song already on
+   * screen without a request when that happens to already be the live one — the same
+   * song the `Follow` shown next to `LiveNowBanner`'s own copy of this handler would
+   * otherwise have to re-fetch.
+   *
+   * `followStateRef` flips synchronously, before the fetch below can even start:
+   * otherwise, if the leader changes song while this is still awaiting one, the poll
+   * loop reads the ref as still `'suspended'` and holds off on its own account, and
+   * nothing else is watching in the meantime. Flipping it here hands the loop
+   * responsibility for this guest immediately. `liveRef` is read again once the fetch
+   * settles for the same reason — the plain `live` captured above is whatever was live
+   * when this was called, not whatever is live now that it has actually finished. If
+   * the two disagree, the fetch answered a question that is no longer being asked. That
+   * is not treated as an error: the poll loop, now free to act, has either already
+   * caught the change itself or will on its next tick, so this simply steps aside.
+   */
+  async function followLive(): Promise<void> {
+    if (live === null) return
+
+    followStateRef.current = 'following'
+    setFollowState('following')
+
+    const target = live
+    const loaded =
+      screen === 'song' && song !== null && song.data.slug === target.songSlug
+        ? song.data
+        : songCacheRef.current.get(target.songSlug) ?? (await guestLoadSong(token, target.songSlug))
+    if (goneRef.current) return
+
+    if (liveRef.current === null || liveRef.current.songSlug !== target.songSlug) return
+
+    if (loaded === null) {
+      setScreen('ended')
+      return
+    }
+
+    songCacheRef.current.set(loaded.slug, loaded)
+    setSong({ data: loaded, following: true, semitones: liveRef.current.semitones })
+    setScreen('song')
   }
 
   if (screen === 'loading') {
@@ -278,13 +435,30 @@ export function FollowSession({ token }: { token: string }) {
     )
   }
 
+  /*
+   * Whether a guest who has suspended following still needs telling what the
+   * broadcast is showing. Excluded the one time it would just repeat what
+   * `FollowedSong`'s own `Follow` already says on this same screen — see
+   * `LiveNowBanner`'s doc comment for why that overlap is the one case to avoid.
+   */
+  const showBanner =
+    followState === 'suspended' &&
+    live !== null &&
+    !(screen === 'song' && song !== null && song.data.slug === live.songSlug)
+
   if (screen === 'song' && song !== null) {
     return (
-      <FollowedSong
-        song={song}
-        backLabel={songbook?.content.songbookName ?? 'Songbook'}
-        onBack={() => setScreen('songbook')}
-      />
+      <>
+        {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
+        <FollowedSong
+          song={song}
+          isLive={live !== null && song.data.slug === live.songSlug}
+          backLabel={songbook?.content.songbookName ?? 'Songbook'}
+          onBack={() => setScreen('songbook')}
+          onUnfollow={unfollow}
+          onFollowLive={() => void followLive()}
+        />
+      </>
     )
   }
 
@@ -292,114 +466,139 @@ export function FollowSession({ token }: { token: string }) {
     const total = songbook.content.sections.reduce((count, section) => count + section.songs.length, 0)
 
     return (
-      <div>
-        <button type="button" className="back-link mb-4" onClick={() => setScreen('songbooks')}>
-          <IconChevronLeft size={16} />
-          <span>All songbooks</span>
-        </button>
+      <>
+        {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
+        <div>
+          <button type="button" className="back-link mb-4" onClick={() => setScreen('songbooks')}>
+            <IconChevronLeft size={16} />
+            <span>All songbooks</span>
+          </button>
 
-        <header className="mb-[1.125rem]">
-          <h1 className="screen-title">{songbook.content.songbookName}</h1>
-        </header>
+          <header className="mb-[1.125rem]">
+            <h1 className="screen-title">{songbook.content.songbookName}</h1>
+          </header>
 
-        {total === 0 ? (
-          <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
-        ) : (
-          <>
-            <p className="mb-3 text-sm text-muted">
-              {total} {total === 1 ? 'song' : 'songs'}
-              {songbook.content.sections.length > 1 && ` · ${songbook.content.sections.length} sections`}
-            </p>
+          {total === 0 ? (
+            <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
+          ) : (
+            <>
+              <p className="mb-3 text-sm text-muted">
+                {total} {total === 1 ? 'song' : 'songs'}
+                {songbook.content.sections.length > 1 && ` · ${songbook.content.sections.length} sections`}
+              </p>
 
-            <ul className="card-stack">
-              {songbook.content.sections.map((section) => {
-                const open = isSectionOpen(songbook, section.id)
+              <ul className="card-stack">
+                {songbook.content.sections.map((section) => {
+                  const open = isSectionOpen(songbook, section.id)
 
-                return (
-                  <li key={section.id} className="card p-2">
-                    <button
-                      type="button"
-                      className="row w-full text-left"
-                      onClick={() => toggleSection(section.id)}
-                      aria-expanded={open}
-                    >
-                      {open ? (
-                        <IconChevronDown size={18} className="text-faint" />
-                      ) : (
-                        <IconChevronRight size={18} className="text-faint" />
-                      )}
-                      <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
-                      <span className="count-badge">{section.songs.length}</span>
-                    </button>
+                  return (
+                    <li key={section.id} className="card p-2">
+                      <button
+                        type="button"
+                        className="row w-full text-left"
+                        onClick={() => toggleSection(section.id)}
+                        aria-expanded={open}
+                      >
+                        {open ? (
+                          <IconChevronDown size={18} className="text-faint" />
+                        ) : (
+                          <IconChevronRight size={18} className="text-faint" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
+                        <span className="count-badge">{section.songs.length}</span>
+                      </button>
 
-                    {open &&
-                      (section.songs.length === 0 ? (
-                        <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
-                          No songs in this section.
-                        </p>
-                      ) : (
-                        <ul>
-                          {section.songs.map((entry) => (
-                            <li key={entry.slug}>
-                              <button
-                                type="button"
-                                className="row w-full text-left"
-                                onClick={() => void openSong(entry.slug)}
-                              >
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate">{entry.title}</span>
-                                  {entry.artist !== null && (
-                                    <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
-                                      {entry.artist}
-                                    </span>
-                                  )}
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ))}
-                  </li>
-                )
-              })}
-            </ul>
-          </>
-        )}
-      </div>
+                      {open &&
+                        (section.songs.length === 0 ? (
+                          <p className="px-[0.875rem] pb-2 pt-1 text-sm text-muted">
+                            No songs in this section.
+                          </p>
+                        ) : (
+                          <ul>
+                            {section.songs.map((entry) => (
+                              <li key={entry.slug}>
+                                <button
+                                  type="button"
+                                  className="row w-full text-left"
+                                  onClick={() => void openSong(entry.slug)}
+                                >
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate">{entry.title}</span>
+                                    {entry.artist !== null && (
+                                      <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
+                                        {entry.artist}
+                                      </span>
+                                    )}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ))}
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      </>
     )
   }
 
   // screen === 'songbooks'
   return (
-    <div>
-      <header className="mb-[1.125rem]">
-        <h1 className="screen-title">Sing Together</h1>
-        <p className="mt-2 text-sm leading-[1.45] text-muted">
-          Browse the repertoire while you wait. The moment the broadcast plays a song,
-          this screen switches to it, at the same key, on its own.
-        </p>
-      </header>
+    <>
+      {showBanner && <LiveNowBanner title={liveMeta?.title ?? null} onFollow={() => void followLive()} />}
+      <div>
+        <header className="mb-[1.125rem]">
+          <h1 className="screen-title">Sing Together</h1>
+          <p className="mt-2 text-sm leading-[1.45] text-muted">
+            Browse the repertoire while you wait. The moment the broadcast plays a song,
+            this screen switches to it, at the same key, on its own.
+          </p>
+        </header>
 
-      {songbooks.length === 0 ? (
-        <p className="mt-8 text-center text-sm text-muted">No songbook yet.</p>
-      ) : (
-        <ul className="row-list card">
-          {songbooks.map((entry) => (
-            <li key={entry.slug}>
-              <button
-                type="button"
-                className="row w-full text-left"
-                onClick={() => void openSongbook(entry.slug)}
-              >
-                <span className="min-w-0 flex-1 truncate font-medium">{entry.name}</span>
-                <span className="count-badge">{entry.count}</span>
-                <IconChevronRight size={18} className="text-faint" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+        {songbooks.length === 0 ? (
+          <p className="mt-8 text-center text-sm text-muted">No songbook yet.</p>
+        ) : (
+          <ul className="row-list card">
+            {songbooks.map((entry) => (
+              <li key={entry.slug}>
+                <button
+                  type="button"
+                  className="row w-full text-left"
+                  onClick={() => void openSongbook(entry.slug)}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium">{entry.name}</span>
+                  <span className="count-badge">{entry.count}</span>
+                  <IconChevronRight size={18} className="text-faint" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  )
+}
+
+/**
+ * What the broadcast is showing right now, for a guest who has suspended following and
+ * wandered off elsewhere — the only way, otherwise, to know there is anything to rejoin.
+ * `FollowSession` never renders this at the same time as `FollowedSong`'s own copy of
+ * `Follow`: the two would say the same thing about the same song, right on top of each
+ * other, so `showBanner` there excludes exactly that overlap.
+ */
+function LiveNowBanner({ title, onFollow }: { title: string | null; onFollow: () => void }) {
+  return (
+    <p className="notice notice-accent mb-4">
+      <IconBroadcast size={16} />
+      <span className="flex-1 truncate">{title === null ? 'Live now' : `Live now: ${title}`}</span>
+      <button type="button" className="btn btn-sm shrink-0" onClick={onFollow}>
+        Follow
+      </button>
+    </p>
   )
 }
 
@@ -413,22 +612,31 @@ export function FollowSession({ token }: { token: string }) {
  * notices — a fresh mount, forced by the key, is the reliable way to make that happen
  * every time, not just sometimes.
  *
- * There is no back link while `following`. Reaching it would set what is on screen back
- * to nothing (`displayedSlug === null` in the reconcile above), which the very next poll
- * — a few seconds later — would read as "different from what is on screen" and undo by
- * following the same song again. A control that visibly reverses itself is worse than
- * no control, so this screen does not offer it: the one way off a followed song is the
- * broadcast moving on, or ending.
+ * The back link stays hidden while `following`: reaching it on its own would not
+ * suspend anything, so the very next poll would read the screen as "different from what
+ * the broadcast is showing" and undo it by following the same song straight back.
+ * `onUnfollow` is the one thing that actually suspends — once it has, back is safe to
+ * offer, and `isLive` decides whether `onFollowLive` is offered beside it: there is
+ * nothing to rejoin on a song the broadcast is not actually showing.
  */
 function FollowedSong({
   song,
+  isLive,
   backLabel,
   onBack,
+  onUnfollow,
+  onFollowLive,
 }: {
   song: ShownSong
-  /** The songbook `onBack` leads to. Unused, and never shown, while following. */
+  /** Whether this exact song is what the broadcast is showing right now. */
+  isLive: boolean
+  /** The songbook `onBack` leads to. */
   backLabel: string
   onBack: () => void
+  /** Suspends following without leaving this song — see `FollowedSong`'s own doc comment. */
+  onUnfollow: () => void
+  /** Resumes following, at whatever the broadcast is showing right now. */
+  onFollowLive: () => void
 }) {
   const parsed = useMemo(() => parseChordPro(song.data.body), [song.data])
 
@@ -439,13 +647,25 @@ function FollowedSong({
       {song.following ? (
         <p className="notice notice-accent mb-4">
           <IconBroadcast size={16} />
-          Following the broadcast — the key changes with it, live.
+          <span className="flex-1">Following the broadcast — the key changes with it, live.</span>
+          <button type="button" className="btn btn-sm shrink-0" onClick={onUnfollow}>
+            Unfollow
+          </button>
         </p>
       ) : (
-        <button type="button" className="back-link mb-4" onClick={onBack}>
-          <IconChevronLeft size={16} />
-          <span className="truncate">{backLabel}</span>
-        </button>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button type="button" className="back-link" onClick={onBack}>
+            <IconChevronLeft size={16} />
+            <span className="truncate">{backLabel}</span>
+          </button>
+
+          {isLive && (
+            <button type="button" className="btn btn-sm shrink-0" onClick={onFollowLive}>
+              <IconBroadcast size={16} />
+              Follow
+            </button>
+          )}
+        </div>
       )}
 
       <header className="mb-4">
