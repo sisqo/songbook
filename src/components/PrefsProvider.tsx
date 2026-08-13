@@ -62,10 +62,19 @@ const PrefsContext = createContext<PrefsContextValue | null>(null)
  */
 export function PrefsProvider({
   songSlug,
+  persist = true,
   children,
 }: {
   /** Null on pages that show no single song, such as the index. */
   songSlug: string | null
+  /**
+   * False for Sing Together's guest view: a reader with no account of their own,
+   * remounted fresh for every song it follows. There is nothing of theirs to load and
+   * nothing to remember between songs — and, if the browser showing the link happens to
+   * also be signed in, nothing that may end up saved under that real account instead.
+   * State lives only in memory, gone the moment this provider unmounts.
+   */
+  persist?: boolean
   children: ReactNode
 }) {
   const [global, setGlobal] = useState<GlobalPrefs>(DEFAULT_GLOBAL_PREFS)
@@ -73,17 +82,20 @@ export function PrefsProvider({
   const [pending, setPending] = useState(0)
 
   useLayoutEffect(() => {
+    if (!persist) return
     setGlobal(readGlobalPrefs())
     setSong(songSlug === null ? DEFAULT_SONG_PREFS : readSongPrefs(songSlug))
-  }, [songSlug])
+  }, [songSlug, persist])
 
   useEffect(() => {
+    if (!persist) return
     prefsQueue.setHandlers({ saveGlobal: saveGlobalPrefs, saveSong: saveSongPrefs })
     prefsQueue.watchConnection()
     return prefsQueue.subscribe(setPending)
-  }, [])
+  }, [persist])
 
   useEffect(() => {
+    if (!persist) return
     let cancelled = false
 
     loadPrefs(songSlug)
@@ -106,7 +118,7 @@ export function PrefsProvider({
     return () => {
       cancelled = true
     }
-  }, [songSlug])
+  }, [songSlug, persist])
 
   /*
    * Setting a preference to the value it already has is not a change, and saying so
@@ -129,10 +141,11 @@ export function PrefsProvider({
       }
 
       setGlobal(next)
+      if (!persist) return
       writeGlobalPrefs(next)
       prefsQueue.enqueueGlobal(next)
     },
-    [global],
+    [global, persist],
   )
 
   const updateSong = useCallback(
@@ -146,11 +159,11 @@ export function PrefsProvider({
       }
 
       setSong(next)
-      if (songSlug === null) return
+      if (!persist || songSlug === null) return
       writeSongPrefs(songSlug, next)
       prefsQueue.enqueueSong(songSlug, next)
     },
-    [song, songSlug],
+    [song, songSlug, persist],
   )
 
   const value = useMemo<PrefsContextValue>(

@@ -243,3 +243,35 @@ export const userSongPrefs = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userEmail, table.songSlug] })],
 )
+
+/**
+ * A "Sing Together" broadcast: a token a guest can use to read the whole repertoire
+ * with no account, and the one song — and its key — its owner is currently showing
+ * everyone who followed that link.
+ *
+ * Keyed by the owner, not by the token: one active broadcast per person, not one row
+ * per link ever created. Starting a new one overwrites this row, so an old, forgotten
+ * link simply stops resolving to anything current instead of piling up rows nobody is
+ * watching. The token still needs its own uniqueness — two people's links must never
+ * collide — hence the separate constraint rather than making it the key.
+ *
+ * `lastActiveAt` moves only when the owner does something — starting the broadcast, or
+ * playing a song — never when a guest merely reads this row. A guest left polling
+ * cannot keep a session alive on their own: once its owner has stopped, it expires on
+ * schedule regardless of who is still watching.
+ */
+export const singAlongSessions = pgTable(
+  'sing_along_sessions',
+  {
+    ownerEmail: text('owner_email').primaryKey(),
+    token: text('token').notNull(),
+    /** Cleared, not left dangling, if the song itself is ever deleted mid-broadcast. */
+    currentSongSlug: text('current_song_slug').references(() => songs.slug, {
+      onDelete: 'set null',
+    }),
+    currentSemitones: integer('current_semitones').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique('sing_along_sessions_token').on(table.token)],
+)

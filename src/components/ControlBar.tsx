@@ -12,7 +12,8 @@ import {
   IconUndo,
 } from '@/components/icons'
 import { type CapoOption, MAX_CAPO, suggestCapo } from '@/lib/music/capo'
-import { SCROLL_SPEEDS, ZOOM_STEPS } from '@/lib/prefs/types'
+import { SCROLL_SPEEDS, ZOOM_STEPS, clampSemitones } from '@/lib/prefs/types'
+import { broadcastPlay, broadcastTranspose } from '@/lib/singAlong/session'
 import { useAutoScroll } from '@/lib/useAutoScroll'
 
 /**
@@ -28,13 +29,40 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * about how the song has been moved. The sheet does, in the chords themselves.
  */
 export function ControlBar({
+  songSlug,
   chords = [],
+  semitonesLocked = false,
+  broadcastEnabled = true,
 }: {
+  /**
+   * Which song this bar belongs to — needed only to tell Sing Together which song
+   * just started or was retuned. The ordinary reading flow never looks at it itself;
+   * it exists so `broadcastPlay` and `broadcastTranspose` below have something to say
+   * that is true even when nobody is broadcasting, in which case they say it to nobody.
+   */
+  songSlug: string
   /**
    * Every chord token of the song, for the capo suggestion. Empty is a fine answer —
    * the suggestion then has nothing to say and says nothing.
    */
   chords?: string[]
+  /**
+   * True only for the guest side's reuse of this same bar: a guest is following
+   * someone else's key, not choosing their own, so the buttons that would change it
+   * are disabled rather than hidden — the Key row still has to say what key this is.
+   * Always false here, on the reader's own copy of the bar, where the key is theirs
+   * to move.
+   */
+  semitonesLocked?: boolean
+  /**
+   * False only for Sing Together's guest view. `broadcastPlay`/`broadcastTranspose`
+   * would otherwise fire under whichever real account happens to be signed into the
+   * browser showing the link — not the guest reading it, since a guest has none — and
+   * silently retarget that account's own broadcast. A guest's own copy of this bar
+   * must never be able to call them, session or not; that is a categorical property of
+   * where the bar is mounted, not something to detect from whether a session exists.
+   */
+  broadcastEnabled?: boolean
 }) {
   const {
     global,
@@ -48,6 +76,20 @@ export function ControlBar({
   } = usePrefs()
   const { running, toggle } = useAutoScroll(song.scrollSpeed)
   const [open, setOpen] = useState(false)
+
+  /*
+   * The one thing Sing Together needs from every semitone change: not the raw value
+   * the buttons proposed, but the same clamped value `setSemitones` is about to save —
+   * computed once, here, and handed to both. Computing it twice, once inside
+   * `setSemitones` and again for the broadcast, would still agree today, but only
+   * because both happen to call the same clamp; this way there is one number, used
+   * twice, and no way for the two to drift apart if that ever stopped being true.
+   */
+  const setSemitonesAndBroadcast = (value: number) => {
+    const clamped = clampSemitones(value)
+    setSemitones(clamped)
+    if (broadcastEnabled) void broadcastTranspose(songSlug, clamped).catch(() => {})
+  }
 
   useEffect(() => {
     if (!open) return
@@ -83,11 +125,12 @@ export function ControlBar({
         {open && (
           <ReadingPanel
             semitones={song.semitones}
+            semitonesLocked={semitonesLocked}
             capo={song.capo}
             suggestion={suggestion}
             notation={global.notation}
             zoomStep={global.zoomStep}
-            setSemitones={setSemitones}
+            setSemitones={setSemitonesAndBroadcast}
             setCapo={setCapo}
             setNotation={setNotation}
             setZoomStep={setZoomStep}
@@ -97,7 +140,17 @@ export function ControlBar({
         <button
           type="button"
           className="control-button control-play"
-          onClick={toggle}
+          onClick={() => {
+            /*
+             * Only on the press that starts the scroll, never the one that stops it:
+             * pausing is a private, local thing to do while reading, and must not
+             * change what anyone else's screen is showing. `broadcastPlay` no-ops on
+             * its own when this reader has no broadcast running, so nothing here
+             * checks for one first.
+             */
+            if (!running && broadcastEnabled) void broadcastPlay(songSlug, song.semitones).catch(() => {})
+            toggle()
+          }}
           aria-pressed={running}
           aria-label={running ? 'Stop scrolling' : 'Start scrolling'}
         >
@@ -176,6 +229,7 @@ function formatSemitones(semitones: number): string {
  */
 function ReadingPanel({
   semitones,
+  semitonesLocked,
   capo,
   suggestion,
   notation,
@@ -186,6 +240,8 @@ function ReadingPanel({
   setZoomStep,
 }: {
   semitones: number
+  /** True for the guest side's reuse of this panel; always false in the ordinary flow. */
+  semitonesLocked: boolean
   capo: number
   suggestion: CapoOption | null
   notation: 'it' | 'int'
@@ -212,6 +268,7 @@ function ReadingPanel({
             type="button"
             className="segment-button"
             onClick={() => setSemitones(semitones - 1)}
+            disabled={semitonesLocked}
             aria-label="Lower by a semitone"
           >
             <span aria-hidden>−1</span>
@@ -222,9 +279,9 @@ function ReadingPanel({
             type="button"
             className="segment-button"
             onClick={() => setSemitones(0)}
-            disabled={semitones === 0}
+            disabled={semitonesLocked || semitones === 0}
             aria-label="Return to the written key"
-            title={semitones === 0 ? undefined : 'Return to the written key'}
+            title={semitonesLocked || semitones === 0 ? undefined : 'Return to the written key'}
           >
             <IconUndo size={15} />
           </button>
@@ -233,12 +290,24 @@ function ReadingPanel({
             type="button"
             className="segment-button"
             onClick={() => setSemitones(semitones + 1)}
+            disabled={semitonesLocked}
             aria-label="Raise by a semitone"
           >
             <span aria-hidden>+1</span>
           </button>
         </span>
       </div>
+
+      {/*
+        * Said only for the guest side's reuse of this panel — never here, since
+        * `semitonesLocked` is always false in the ordinary reading flow. The row
+        * above still shows the key; what a guest cannot do is move it.
+        */}
+      {semitonesLocked && (
+        <div className="control-hint">
+          <span>Following the leader&apos;s key.</span>
+        </div>
+      )}
 
       <div className="control-row">
         <span className="control-name">

@@ -50,6 +50,18 @@ export default auth((request) => {
     return response
   }
 
+  /**
+   * A Sing Together link: the one other page a browser with no session may reach.
+   * Always marked anonymous, signed in or not — the page it shows depends on the
+   * token in the URL, never on whoever happens to be looking at it, so it must never
+   * be cached as if it belonged to a particular reader.
+   */
+  if (/^\/follow\/[^/]+$/.test(pathname)) {
+    const response = NextResponse.next()
+    response.headers.set(ANONYMOUS_HEADER, '1')
+    return response
+  }
+
   if (!request.auth) {
     const response = NextResponse.redirect(new URL('/login', request.nextUrl.origin))
     response.headers.set(ANONYMOUS_HEADER, '1')

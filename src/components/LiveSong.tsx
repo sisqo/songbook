@@ -107,6 +107,6 @@ export function LiveSheet() {
  * in the editor counts the moment it is saved.
  */
 export function LiveControlBar() {
-  const { parsed } = useSong()
-  return <ControlBar chords={chordTokens(parsed)} />
+  const { song, parsed } = useSong()
+  return <ControlBar songSlug={song.slug} chords={chordTokens(parsed)} />
 }

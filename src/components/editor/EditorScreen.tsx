@@ -427,7 +427,7 @@ export function EditorScreen({ song }: { song: Song }) {
             * see the song the way it will be read, transposition included.
             */}
           <div className="bar-spacer" />
-          <ControlBar chords={chordTokens(parsed)} />
+          <ControlBar songSlug={song.slug} chords={chordTokens(parsed)} />
         </>
       )}
 

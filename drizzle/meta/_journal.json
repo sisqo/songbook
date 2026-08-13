@@ -92,6 +92,13 @@
       "when": 1786560336904,
       "tag": "0012_rename_songbooks_to_english",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786632951488,
+      "tag": "0013_equal_swarm",
+      "breakpoints": true
     }
   ]
 }
