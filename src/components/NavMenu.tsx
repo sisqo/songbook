@@ -137,7 +137,7 @@ export function NavMenu({
               <>
                 <Link href="/" className={item('songs')} role="menuitem" onClick={close}>
                   <IconNote size={17} />
-                  All songs
+                  Home
                 </Link>
 
                 {mayManageUsers && (

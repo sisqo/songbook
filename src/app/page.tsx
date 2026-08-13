@@ -23,7 +23,11 @@ export default async function Home() {
         <TopBar current="songs" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
-          <h1 className="screen-title mb-4">Songs</h1>
+          {/* Not a title anyone needs to read: this is the page you land on, and the
+              search box is the first thing to do here, not something to find under a
+              heading. Still an <h1>, just not a visible one — a screen reader moving by
+              heading still gets told which page this is. */}
+          <h1 className="sr-only">Home</h1>
 
           {/*
             * Every song's searchable text, even though this screen lists songbooks: the
