@@ -1785,7 +1785,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Migrazione dei membri esistenti | Convertiti as-is sull'account del proprietario scelto | Nessuno deve essere re-invitato per non perdere l'accesso che ha già oggi |
 | Account personale di chi c'era già | Creato al login successivo, stesso meccanismo dei nuovi utenti | Nessuna logica speciale in più solo per la migrazione |
 
-### Niente più ospiti (v3.1, pianificata)
+### Niente più ospiti (v3.1)
 
 | Decisione | Scelta | Perché |
 |---|---|---|
@@ -1797,6 +1797,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Poteri di un proprietario globale su un account altrui | Pieno controllo, invariato dalla v3.0 | Niente ruolo intermedio "in visita"; chi amministra l'installazione non perde potere perché i collaboratori spariscono |
 | Ruoli concedibili | Uno solo: admin (proprietario dell'account, o proprietario globale). Nessun equivalente di editor/viewer | Non esiste più nessuno a cui concedere un accesso parziale |
 | Migrazione dei quattro collaboratori esistenti | Un account proprio per ciascuno, vuoto a parte l'Example — non l'accesso a Cartoni animati | Coerente con "un account è un indirizzo": nessuno resta ospite di un account altrui dopo questa versione |
+| Password di un account altrui | Un proprietario globale può impostarla o rimuoverla dalla pagina Accounts (`setPasswordFor`/`removePasswordFor`, autorizzate su `isOwner` diretto) | Corretto poco dopo aver spedito la v3.1: senza email d'invito, era l'unico modo per far entrare un indirizzo creato da Accounts ma senza un account Google corrispondente — la domanda 21 lo aveva previsto come bivio possibile, la prima consegna aveva scelto il ramo sbagliato (cancellarle) |
 
 ## Domande aperte
 
@@ -1888,8 +1889,11 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
     avvisarli prima, è un messaggio da mandare fuori dall'app, non una funzionalità da
     costruire per questo.
 21. ~~**`setPasswordFor`/`removePasswordFor` autorizzano su `asAdmin()`, non su
-    `isOwner` (v3.1)**~~ — risolta: erano codice morto una volta tolto `MemberManager`, il
-    loro unico chiamante, e nessuna nuova interfaccia (la pagina Accounts compresa) ha più
-    bisogno di toccare la password di un indirizzo altrui — cancellate per intero, non
-    ri-autorizzate. `auth/actions.ts` offre solo `setOwnPassword`/`removeOwnPassword`, che
-    operano esclusivamente sulla sessione di chi chiama.
+    `isOwner` (v3.1)**~~ — risolta due volte. Prima consegna: cancellate come codice morto,
+    perché `MemberManager` — il loro unico chiamante — era sparito e nessuna nuova
+    interfaccia le richiamava ancora. Si è rivelato il ramo sbagliato: creare un account
+    dalla pagina Accounts non basta a farci entrare chi lo riceve, se quell'indirizzo non
+    ha un account Google corrispondente e l'app non manda inviti via email. Reintrodotte in
+    `auth/actions.ts`, questa volta autorizzate su `isOwner` diretto (non su `asAdmin()`,
+    che varrebbe per il proprietario di un account qualsiasi) e richiamate da un nuovo
+    `AccountPasswordButton` nella pagina Accounts.

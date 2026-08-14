@@ -17,6 +17,10 @@ export type PasswordFailure =
   | 'wrong-password'
   /** Asked to remove a password that was not there. */
   | 'no-password'
+  /** Only a global owner may set or remove another address's password. */
+  | 'not-allowed'
+  /** A global owner's own way in is not something another admin may overwrite silently. */
+  | 'is-owner'
   | 'failed'
 
 export type PasswordResult = { ok: true } | { ok: false; reason: PasswordFailure }
@@ -27,5 +31,7 @@ export const PASSWORD_MESSAGE: Record<PasswordFailure, string> = {
   'weak-password': `The password must be at least ${MIN_PASSWORD} characters.`,
   'wrong-password': 'The current password is not correct.',
   'no-password': 'This address has no password.',
+  'not-allowed': 'Only a global owner may do this.',
+  'is-owner': "A global owner's password can only be changed by themselves.",
   failed: 'Save failed. Please try again.',
 }

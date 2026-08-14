@@ -1,13 +1,17 @@
 'use server'
 
 /**
- * What the browser may ask about its own account, and do to it.
+ * What the browser may ask about its own account, and do to it — plus the one exception,
+ * a global owner setting or removing the password of an account they did not sign into
+ * themselves (v3.1's *Niente più ospiti* has no invite flow and no email to send one
+ * through, so this is the only way someone without a matching Google account ever gets a
+ * way in at all).
  *
- * The role is here because a screen has to know what to leave out. The passwords are here
- * because proving who you are is entirely your own business now (v3.1) — nobody else's
- * password is ever set from this file, or from anywhere else in the app.
+ * The role is here because a screen has to know what to leave out.
  */
 
+import { auth } from '@/auth'
+import { normalizeEmail, isOwner } from '@/lib/allowlist'
 import {
   deletePasswordHash,
   readPasswordHash,
@@ -94,6 +98,69 @@ export async function removeOwnPassword(): Promise<PasswordResult> {
     return { ok: true }
   } catch (error) {
     console.error('removeOwnPassword failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/**
+ * Sets or replaces the password of an account a global owner is not signed in as — the
+ * only way in for an address with no matching Google account, since there is no invite
+ * email to send one through. Authorized with `isOwner` directly, not the account's own
+ * `admin` role: every account's owner is `admin` on their own, and that would let anyone
+ * hand themselves — or anyone else — a way into an account they merely happen to own,
+ * which is not what this is for.
+ *
+ * A global owner may still target their own address here — the `is-owner` guard below
+ * only blocks *another* admin's — which skips the current-password check `setOwnPassword`
+ * requires. Not a new hole: `removeOwnPassword` already needs no current password either,
+ * so a hijacked session could reach the same result through it.
+ */
+export async function setPasswordFor(email: string, password: string): Promise<PasswordResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const session = await auth()
+  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) {
+    return { ok: false, reason: 'not-allowed' }
+  }
+
+  const address = normalizeEmail(email)
+  if (!isPasswordAcceptable(password)) return { ok: false, reason: 'weak-password' }
+  if (address !== normalizeEmail(session?.user?.email ?? '') && isOwner(address, process.env.ALLOWED_EMAILS)) {
+    return { ok: false, reason: 'is-owner' }
+  }
+
+  try {
+    await writePasswordHash(address, await hashPassword(password))
+    return { ok: true }
+  } catch (error) {
+    console.error('setPasswordFor failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/** Forgets the password of an account a global owner is not signed in as — see `setPasswordFor`. */
+export async function removePasswordFor(email: string): Promise<PasswordResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const session = await auth()
+  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) {
+    return { ok: false, reason: 'not-allowed' }
+  }
+
+  const address = normalizeEmail(email)
+  if (address !== normalizeEmail(session?.user?.email ?? '') && isOwner(address, process.env.ALLOWED_EMAILS)) {
+    return { ok: false, reason: 'is-owner' }
+  }
+
+  try {
+    if ((await readPasswordHash(address)) === null) {
+      return { ok: false, reason: 'no-password' }
+    }
+
+    await deletePasswordHash(address)
+    return { ok: true }
+  } catch (error) {
+    console.error('removePasswordFor failed', error)
     return { ok: false, reason: 'failed' }
   }
 }

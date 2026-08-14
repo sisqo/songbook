@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { AccountPasswordButton } from '@/components/AccountPasswordButton'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { CreateAccountForm } from '@/components/CreateAccountForm'
@@ -101,6 +102,7 @@ export default async function AccountsPage() {
                     ownerEmail={account.ownerEmail}
                     isCurrent={user?.accountOwnerEmail === account.ownerEmail}
                   />
+                  <AccountPasswordButton ownerEmail={account.ownerEmail} />
                   <DeleteAccountButton ownerEmail={account.ownerEmail} />
                 </li>
               ))}

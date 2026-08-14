@@ -14,10 +14,13 @@ import { useOnline } from '@/lib/useOnline'
 /**
  * Your own way in, set by you.
  *
- * Nobody else's password is ever set from anywhere in this app (v3.1): with no more
- * collaborators, there is no admin to hand this to on someone else's behalf, and no
- * `/users` page for it to live behind. Every signed-in reader has this screen — how
- * you get in is your own business, not something a role could ever gate.
+ * Every signed-in reader has this screen, unconditionally — how you get in is your own
+ * business, not something a role could ever gate. A global owner can also set or remove
+ * the password of an address that has never signed in, from the Accounts screen
+ * (`AccountPasswordButton`), which is the one exception: there is no invite email in this
+ * app, so it is the only way an address with no matching Google account ever gets a way
+ * in at all. That path never touches this screen, though it can still reach a global
+ * owner's own password — see `setPasswordFor`'s own comment on why that is not new risk.
  *
  * Nothing is baked in and nothing is cached: whether you have a password is a fact about
  * the server, and offline the honest answer is that it cannot be asked.
