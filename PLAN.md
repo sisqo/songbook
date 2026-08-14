@@ -1735,11 +1735,12 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 15. ~~**Chi prende in carico il repertorio esistente (v3.0)**~~ — risolta: **f.limberti@gmail.com**.
     L'altro proprietario globale, f.limberti@3nd.it, riceve il proprio account personale
     (vuoto, con il solo Example) al prossimo login, come chiunque altro.
-16. **Contenuto del canzoniere Example (v3.0)** — il canzoniere esiste (una sezione "Songs",
-    ancora senza brani). Resta da decidere se popolarlo con contenuto reale prima di
-    flaggarlo `isExampleTemplate`, o se un punto di partenza vuoto sia già sufficiente come
-    Example — nel qual caso la clonazione va comunque verificata con almeno un brano
-    segnaposto, per provare che il percorso funzioni davvero.
+16. ~~**Contenuto del canzoniere Example (v3.0)**~~ — risolta per ora con un unico brano
+    segnaposto ("Example Song"), aggiunto proprio per verificare la clonazione end-to-end
+    (confermata contro il database reale: un secondo account provisionato ha ricevuto
+    `example-2` con la sua sezione e il suo brano, slug tutti nuovi). Resta un contenuto
+    editoriale vero e proprio da scrivere quando qualcuno vorrà curarlo, non un blocco
+    tecnico.
 17. ~~**Precache offline per account multipli (v3.0)**~~ — risolta: nessun precache
     d'installazione per i brani. Un salvataggio è live subito (pagine dinamiche), e la
     copertura offline arriva da un warm-up per-lettore che copre solo gli account a cui chi
@@ -1749,3 +1750,13 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
     costruzione, v2.0/v2.1). Se in futuro ne comparisse uno, resterebbe da decidere se il suo
     account e i suoi canzonieri restano raggiungibili da chi vi era stato invitato come
     collaboratore, o se anche quell'accesso decade con lui.
+19. **Snapshot di `drizzle-kit` non aggiornato (v3.0)** — le due migrazioni di questa
+    versione (0015/0016) sono scritte a mano, non generate: `drizzle-kit generate` chiede
+    prompt interattivi (disambiguazione rinomina) che questo ambiente non può rispondere. Gli
+    snapshot in `drizzle/meta/0015_snapshot.json` e `0016_snapshot.json` sono quindi copie
+    invariate di quello precedente (v2.4), non una vera rappresentazione dello schema
+    risultante. Il database reale è corretto — le migrazioni sono state verificate riga per
+    riga contro di esso — ma il **prossimo** `npm run db:generate`, in un terminale vero,
+    proporrà di ricreare da capo `accounts`, le colonne di `songbooks`, la chiave di
+    `members` eccetera: da scartare, rigenerando invece lo snapshot a mano o rispondendo ai
+    prompt per farlo combaciare con la realtà, prima di fidarsi del diff che propone.
