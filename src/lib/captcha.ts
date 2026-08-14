@@ -17,6 +17,7 @@ const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
 interface SiteverifyResponse {
   success: boolean
+  'error-codes'?: string[]
 }
 
 export async function verifyTurnstile(
@@ -39,6 +40,11 @@ export async function verifyTurnstile(
     })
 
     const result = (await response.json()) as Partial<SiteverifyResponse>
+    // Cloudflare's own reason for a `false` that is not an exception — a client-side
+    // "Success" only means the challenge was solved, not that this call will accept it
+    // (a reused or expired token fails here even though the widget already showed its
+    // checkmark), so this is what tells the two apart when someone reports one.
+    if (result.success !== true) console.error('verifyTurnstile rejected', result['error-codes'])
     return result.success === true
   } catch (error) {
     console.error('verifyTurnstile failed', error)
