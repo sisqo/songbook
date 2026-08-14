@@ -1,45 +1,47 @@
 'use server'
 
 /**
- * Reads that keep a static page honest.
+ * Reads that keep a dynamic page's first paint honest.
  *
- * The pages are generated at build time, so between deploys the database is the
- * only place an edit exists. These two actions are how the browser finds out:
- * one song in full for the page that is being read, and the list without bodies
- * for the page that lists them.
+ * Every song/songbook page is rendered per request now (v3.0), but the shell it starts
+ * from is still a snapshot from whenever that request was made — these two are how the
+ * browser finds out it has changed since, the same reason a client-rendered app ever
+ * needs a refresh path.
  *
- * Both need a session, like every other action here. Neither is on the critical
- * path — the page has already painted from its own copy by the time they answer.
+ * Both need access to the *song's own* account (v3.0), not merely any session — a
+ * signed-in reader of one account has no business reading another's repertoire just
+ * because both happen to be signed in.
  */
 
-import { asc, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
-import { currentUser } from '@/lib/auth/session'
-import { rowToSong } from '@/lib/data/db'
-import { db } from '@/lib/db/client'
-import { sections, songs } from '@/lib/db/schema'
+import { accessTo, currentUser } from '@/lib/auth/session'
+import { songAccountOf } from '@/lib/data/access'
+import { listSongsForAccount, rowToSong } from '@/lib/data/db'
+import { db, hasDatabase } from '@/lib/db/client'
+import { songs } from '@/lib/db/schema'
 
 import type { SongIndexRow } from '@/lib/search-index'
 
 import type { SongContent } from './overlay'
 
-/** Reads, so any role: what a viewer may see is the whole repertoire. */
-async function authorized(): Promise<boolean> {
-  return (await currentUser()) !== null
-}
-
 /**
- * The current version of one song.
+ * The current version of one song, if the reader has access to *its* account.
  *
- * The three answers are kept apart on purpose. `missing` means the row is gone
- * and the reader is looking at a song that no longer exists; `unavailable` means
- * the question could not be asked, which is the normal state offline and must
- * never be mistaken for a deletion.
+ * The three answers are kept apart on purpose. `missing` means the row is gone, or the
+ * reader has no business seeing it — the two are answered the same way here, on purpose:
+ * telling apart "does not exist" from "exists, but is not yours" is exactly the leak
+ * this check exists to close. `unavailable` means the question could not be asked, which
+ * is the normal state offline and must never be mistaken for either.
  */
 export async function loadSongContent(slug: string): Promise<SongContent> {
-  if (!(await authorized())) return { state: 'unavailable' }
+  if (!hasDatabase) return { state: 'unavailable' }
 
   try {
+    const owner = await songAccountOf(slug)
+    if (owner === null) return { state: 'missing' }
+    if ((await accessTo(owner)) === null) return { state: 'missing' }
+
     const rows = await db().select().from(songs).where(eq(songs.slug, slug)).limit(1)
     if (rows.length === 0) return { state: 'missing' }
 
@@ -51,32 +53,29 @@ export async function loadSongContent(slug: string): Promise<SongContent> {
 }
 
 /**
- * Every song as it is now, without bodies.
+ * Every song of the reader's **current account** as it is now, without bodies.
  *
  * Bodies are what make a repertoire heavy and the list does not show them, so
  * this stays small enough to ask for on every visit to the list. Null means the
- * question could not be asked and the list should keep what the build gave it.
+ * question could not be asked and the list should keep what the shell already has.
+ *
+ * Ordered the same way `dbRepository.listSongs` orders — `listSongsForAccount` already
+ * applies that same query — so the list this overlays does not visibly reshuffle itself
+ * the moment this answers.
  */
 export async function loadSongIndex(): Promise<SongIndexRow[] | null> {
-  if (!(await authorized())) return null
+  const user = await currentUser()
+  if (user === null) return null
 
   try {
-    const rows = await db()
-      .select({
-        slug: songs.slug,
-        title: songs.title,
-        artist: songs.artist,
-        tags: songs.tags,
-        updatedAt: songs.updatedAt,
-      })
-      .from(songs)
-      // The same join and the same order as the build used — see `listSongs`, including
-      // why it is a left join — or the list would rearrange itself, and lose a row,
-      // the moment this answers.
-      .leftJoin(sections, eq(songs.sectionId, sections.id))
-      .orderBy(asc(sections.position), asc(songs.position), asc(songs.title))
-
-    return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }))
+    const rows = await listSongsForAccount(user.accountOwnerEmail)
+    return rows.map((song) => ({
+      slug: song.slug,
+      title: song.title,
+      artist: song.artist,
+      tags: song.tags,
+      updatedAt: song.updatedAt,
+    }))
   } catch (error) {
     console.error('loadSongIndex failed', error)
     return null

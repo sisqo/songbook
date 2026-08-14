@@ -18,6 +18,7 @@ import {
   IconNote,
   IconSettings,
   IconTuningFork,
+  IconSwitchAccount,
   IconUsers,
 } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
@@ -86,7 +87,7 @@ export function NavMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'settings' | 'sing-together'>('main')
-  const { mayManageUsers } = useRole()
+  const { mayManageUsers, mayShowAccountSwitcher } = useRole()
 
   /*
    * `undefined` until the read comes back, `null` once it has and there is nothing
@@ -417,6 +418,18 @@ export function NavMenu({
                   <Link href="/users" className={item('users')} role="menuitem" onClick={close}>
                     <IconUsers size={17} />
                     Users
+                  </Link>
+                )}
+
+                {/*
+                  * Hidden for the common case — one account, nothing to switch to — per
+                  * `mayShowAccountSwitcher`'s own comment. Shown for anyone who collaborates
+                  * on more than their own, and for a global owner, who can enter every one.
+                  */}
+                {mayShowAccountSwitcher && (
+                  <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
+                    <IconSwitchAccount size={17} />
+                    Accounts
                   </Link>
                 )}
 

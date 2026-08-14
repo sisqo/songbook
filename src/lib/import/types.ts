@@ -55,16 +55,6 @@ export type DeleteResult = { ok: true; slug: string } | { ok: false; reason: Sav
 /** What to do when a save hits a song with the same title and artist. */
 export type Decision = 'replace' | 'add'
 
-export type PublishFailure = 'no-session' | 'not-allowed' | 'no-hook' | 'failed'
-export type PublishResult = { ok: true } | { ok: false; reason: PublishFailure }
-
-export interface PendingSong {
-  slug: string
-  title: string
-  artist: string | null
-  updatedAt: string
-}
-
 export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
   'no-session': 'Session expired. Reload the page and sign in again.',
   'not-allowed': 'Your role does not allow editing the repertoire.',
@@ -74,12 +64,4 @@ export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
   'not-found': 'This song no longer exists.',
   duplicate: 'A song with this title and artist already exists.',
   failed: 'Save failed. Please try again.',
-}
-
-export const PUBLISH_MESSAGE: Record<PublishFailure, string> = {
-  'no-session': 'Session expired. Reload the page and sign in again.',
-  'not-allowed': 'Your role does not allow publishing.',
-  'no-hook':
-    'No deploy hook configured. Create one on Vercel under Settings → Git → Deploy Hooks and put it in DEPLOY_HOOK_URL.',
-  failed: 'Publish failed. Please try again.',
 }

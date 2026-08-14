@@ -5,8 +5,16 @@ import { SongbookProvider } from '@/components/SongbookProvider'
 import { SongbookSongs } from '@/components/SongbookSongs'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
+import { accessTo } from '@/lib/auth/session'
+import { songbookAccountOf } from '@/lib/data/access'
+import {
+  listSectionsForAccount,
+  listSongbooksForAccount,
+  listSongsForAccount,
+} from '@/lib/data/db'
 import { snapshot } from '@/lib/songbooks/snapshot'
 import { repository } from '@/lib/data'
+import { hasDatabase } from '@/lib/db/client'
 import { toIndexRow } from '@/lib/search-index'
 
 interface Props {
@@ -14,26 +22,39 @@ interface Props {
 }
 
 /**
- * One page per songbook, generated like the songs are.
- *
- * There deliberately was not one of these. The reasons given were that a songbook
- * created in the app would have no page until the next build, and that renaming one
- * would move its route — and only the first is true. The slug is generated once and
- * frozen (see `db/schema.ts`), so a rename touches the name and nothing else; and
- * needing a rebuild to be available offline is exactly the deal every imported song
- * already lives with, which is what «Rebuild now» is for.
- *
- * What was on the other side of the ledger: opening a songbook had to happen inside
- * the home page, as a fold, because there was nowhere else for it to happen.
+ * Rendered per request (v3.0), not generated at build time — same reasoning as
+ * `/songs/[slug]`: a songbook's account is only known once a reader is asking, and
+ * baking every account's songbooks into one build would leak them across accounts with
+ * nothing left to check at request time.
  */
-export async function generateStaticParams() {
-  const songbooks = await repository.listSongbooks()
-  return songbooks.map((songbook) => ({ slug: songbook.slug }))
+export const dynamic = 'force-dynamic'
+
+/**
+ * Which account's shelf this slug is on, and whether the asking reader may see it —
+ * `null` for either "no such songbook" or "not this reader's", on purpose, same as
+ * `songbooks/access.ts`'s own reasoning. `accountOwnerEmail` is `null` only when there
+ * is no database at all, in which case there is one local repertoire and nothing to
+ * check — see `lib/data/index.ts`.
+ */
+async function resolveSongbook(slug: string): Promise<{ accountOwnerEmail: string | null } | null> {
+  if (!hasDatabase) return { accountOwnerEmail: null }
+
+  const owner = await songbookAccountOf(slug)
+  if (owner === null) return null
+  if ((await accessTo(owner)) === null) return null
+
+  return { accountOwnerEmail: owner }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const songbooks = await repository.listSongbooks()
+  const resolved = await resolveSongbook(slug)
+  if (resolved === null) return { title: 'Songbook not found' }
+
+  const songbooks =
+    resolved.accountOwnerEmail === null
+      ? await repository.listSongbooks()
+      : await listSongbooksForAccount(resolved.accountOwnerEmail)
   const songbook = songbooks.find((entry) => entry.slug === slug)
 
   return { title: songbook?.name ?? 'Songbook not found' }
@@ -42,11 +63,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SongbookPage({ params }: Props) {
   const { slug } = await params
 
-  const [songs, songbooks, sections] = await Promise.all([
-    repository.listSongs(),
-    repository.listSongbooks(),
-    repository.listSections(),
-  ])
+  const resolved = await resolveSongbook(slug)
+  if (resolved === null) notFound()
+
+  const [songs, songbooks, sections] =
+    resolved.accountOwnerEmail === null
+      ? await Promise.all([
+          repository.listSongs(),
+          repository.listSongbooks(),
+          repository.listSections(),
+        ])
+      : await Promise.all([
+          listSongsForAccount(resolved.accountOwnerEmail),
+          listSongbooksForAccount(resolved.accountOwnerEmail),
+          listSectionsForAccount(resolved.accountOwnerEmail),
+        ])
 
   const songbook = songbooks.find((entry) => entry.slug === slug)
   if (songbook === undefined) notFound()

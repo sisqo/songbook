@@ -5,7 +5,7 @@ import { SignOutButton } from '@/components/SignOutButton'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
-export type Section = 'songs' | 'songbooks' | 'users' | 'password'
+export type Section = 'songs' | 'songbooks' | 'users' | 'password' | 'accounts'
 
 /**
  * The header, on every screen inside the app.

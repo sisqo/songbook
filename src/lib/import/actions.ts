@@ -1,45 +1,39 @@
 'use server'
 
 /**
- * Server actions for import, editing, deletion, publishing and export.
+ * Server actions for import, editing, deletion and export.
  *
- * Every call needs an **editor**. Nothing here has an offline queue: saving needs the
- * database and publishing needs a deploy, so there is nothing that could work without a
- * network and nothing worth holding.
+ * Every call needs an **editor** — on the song's own account, not merely on whichever
+ * account the caller currently has open (v3.0): a direct edit reaches a song by slug, and
+ * that song's account is the one to check against, the same reasoning `accessTo` and the
+ * dynamic song/songbook pages already apply.
+ *
+ * Publishing is gone (v3.0): every page here is dynamic now, so a save is live the moment
+ * it commits — there is no build for anything to wait for. What is offline is a separate
+ * question, answered per reader by the sync in `lib/offline/sync.ts`, not by a deploy.
  */
 
-import { and, asc, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, or, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
-import { asEditor } from '@/lib/auth/session'
+import { accessTo, asEditor } from '@/lib/auth/session'
+import { songAccountOf } from '@/lib/data/access'
 import { placeAfter } from '@/lib/songbooks/order'
 import { rowToSong } from '@/lib/data/db'
 import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { builds, songbooks, sections, songs } from '@/lib/db/schema'
+import { songbooks, sections, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
 import { choproFilename, toChoproFile } from './export'
-import type {
-  Decision,
-  DeleteResult,
-  PendingSong,
-  PublishResult,
-  SaveResult,
-  SongInput,
-} from './types'
+import type { Decision, DeleteResult, SaveFailure, SaveResult, SongInput } from './types'
 
 /**
- * Everything in this file changes the repertoire or acts on it as a whole, so all of it
- * needs an editor — including the two reads: the pending list and the export belong to the
- * import screen, which a viewer has no way to reach in the first place.
- *
- * Those two answer **null** when refused rather than an empty list, and the difference is
- * the same one `listMembers` and `loadSongContent` make: an empty answer is a fact about
- * the repertoire, and a refusal is not an answer at all. Returning `[]` would have the
- * screen say "nothing waiting to be published" to somebody whose role had just been taken
- * away with the page still open, and hand them a zip of nothing when they asked for an
- * export.
+ * The export answers **null** when refused rather than an empty list, and the difference
+ * is the same one `listMembers` and `loadSongContent` make: an empty answer is a fact
+ * about the repertoire, and a refusal is not an answer at all. Returning `[]` would hand
+ * somebody a zip of nothing when their role had just been taken away with the page still
+ * open.
  */
 
 /**
@@ -56,8 +50,17 @@ import type {
  * disagree is a stale form rather than a decision. Failing that: the songbook asked
  * for, or the unfiled one, and its first section — created as «Brani» if it somehow has
  * none, which is the same section the migration and `createSongbook` make.
+ *
+ * Everything here is scoped to `accountOwnerEmail` (v3.0), including the fallback: a
+ * songbook slug named by a stale form that no longer belongs to this account is treated
+ * the same as none being named at all, rather than filing the song under someone else's
+ * songbook. The Unfiled songbook itself is found **by name** within the account, not by
+ * `UNFILED.slug` — that constant is one fixed slug, and slugs are unique across every
+ * account (see `songbooks`' own comment), so a second account's Unfiled songbook needs a
+ * slug of its own, minted by `uniqueSlug` exactly like the Example songbook's clone is.
  */
 async function resolveSection(
+  accountOwnerEmail: string,
   songbookSlug: string,
   sectionId: number | null,
 ): Promise<{ songbookSlug: string; sectionId: number }> {
@@ -67,30 +70,40 @@ async function resolveSection(
     const found = await database
       .select({ id: sections.id, songbookSlug: sections.songbookSlug })
       .from(sections)
-      .where(eq(sections.id, sectionId))
+      .innerJoin(songbooks, eq(sections.songbookSlug, songbooks.slug))
+      .where(and(eq(sections.id, sectionId), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
       .limit(1)
 
     if (found.length > 0) return { songbookSlug: found[0].songbookSlug, sectionId: found[0].id }
   }
 
   const wanted = songbookSlug.trim()
-  let slug: string = UNFILED.slug
+  let slug: string | null = null
 
   if (wanted !== '') {
     const found = await database
       .select({ slug: songbooks.slug })
       .from(songbooks)
-      .where(eq(songbooks.slug, wanted))
+      .where(and(eq(songbooks.slug, wanted), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
       .limit(1)
 
     if (found.length > 0) slug = found[0].slug
   }
 
-  if (slug === UNFILED.slug) {
-    await database
-      .insert(songbooks)
-      .values({ slug: UNFILED.slug, name: UNFILED.name })
-      .onConflictDoNothing({ target: songbooks.slug })
+  if (slug === null) {
+    const unfiled = await database
+      .select({ slug: songbooks.slug })
+      .from(songbooks)
+      .where(and(eq(songbooks.name, UNFILED.name), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
+      .limit(1)
+
+    if (unfiled.length > 0) {
+      slug = unfiled[0].slug
+    } else {
+      const taken = (await database.select({ slug: songbooks.slug }).from(songbooks)).map((row) => row.slug)
+      slug = uniqueSlug(UNFILED.name, taken)
+      await database.insert(songbooks).values({ slug, name: UNFILED.name, accountOwnerEmail })
+    }
   }
 
   const first = await database
@@ -190,10 +203,41 @@ function sameSong(title: string, artist: string | null) {
   return and(normalisedTitle, sql`lower(trim(coalesce(${songs.artist}, ''))) = ${artist.trim().toLowerCase()}`)
 }
 
+/**
+ * Which account this save is against, and whether the caller may edit it.
+ *
+ * Two different questions depending on whether a song already exists: creating one is
+ * always for the caller's **current** account (there is nothing else it could mean), but
+ * editing one reaches it by slug, and that slug's own account is the one to check — the
+ * same reasoning `accessTo` and the dynamic song pages already apply, so that a link to
+ * someone else's song cannot be used to edit it merely by also being an editor somewhere.
+ */
+async function accountForSave(
+  slug: string | undefined,
+): Promise<{ ok: true; accountOwnerEmail: string } | { ok: false; reason: SaveFailure }> {
+  if (slug === undefined) {
+    const editor = await asEditor()
+    return editor.ok
+      ? { ok: true, accountOwnerEmail: editor.accountOwnerEmail }
+      : { ok: false, reason: editor.reason }
+  }
+
+  const owner = await songAccountOf(slug)
+  if (owner === null) return { ok: false, reason: 'not-found' }
+
+  const editor = await accessTo(owner)
+  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+    return { ok: false, reason: 'not-found' }
+  }
+  return { ok: true, accountOwnerEmail: owner }
+}
+
 export async function saveSong(input: SongInput, decision?: Decision): Promise<SaveResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  const target = await accountForSave(input.slug)
+  if (!target.ok) return target
+  const { accountOwnerEmail } = target
 
   const title = input.title.trim()
   if (title === '') return { ok: false, reason: 'invalid-title' }
@@ -206,7 +250,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       title,
       artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
-      ...(await resolveSection(input.songbookSlug, input.sectionId)),
+      ...(await resolveSection(accountOwnerEmail, input.songbookSlug, input.sectionId)),
       body: input.body,
       /**
        * The database's clock, not this server's.
@@ -261,7 +305,10 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
         sectionId: songs.sectionId,
       })
       .from(songs)
-      .where(sameSong(title, values.artist))
+      .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+      // Scoped to this account: the same title and artist landing twice in two
+      // different accounts is a coincidence, not a duplicate to warn anyone about.
+      .where(and(sameSong(title, values.artist), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
       .limit(1)
 
     if (twin.length > 0 && decision === undefined) {
@@ -315,8 +362,13 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
 
 export async function deleteSong(slug: string): Promise<DeleteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  const owner = await songAccountOf(slug)
+  if (owner === null) return { ok: false, reason: 'not-found' }
+  const editor = await accessTo(owner)
+  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+    return { ok: false, reason: 'not-found' }
+  }
 
   try {
     const removed = await db()
@@ -336,87 +388,40 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
   }
 }
 
-/**
- * Songs written since the last build, and therefore not yet on the site.
- *
- * Derived from the build stamp rather than a flag, so it reflects what the build
- * actually saw. With no stamp at all — a database that has never been built
- * from — everything counts as pending, which is the truthful answer.
- */
-export async function loadPending(): Promise<PendingSong[] | null> {
-  if (!(await asEditor()).ok) return null
-
-  const database = db()
-  const stamp = await database
-    .select({ builtAt: builds.builtAt })
-    .from(builds)
-    .orderBy(desc(builds.builtAt))
-    .limit(1)
-
-  const rows =
-    stamp.length === 0
-      ? await database
-          .select({
-            slug: songs.slug,
-            title: songs.title,
-            artist: songs.artist,
-            updatedAt: songs.updatedAt,
-          })
-          .from(songs)
-      : await database
-          .select({
-            slug: songs.slug,
-            title: songs.title,
-            artist: songs.artist,
-            updatedAt: songs.updatedAt,
-          })
-          .from(songs)
-          .where(gt(songs.updatedAt, stamp[0].builtAt))
-
-  return rows.map((row) => ({
-    slug: row.slug,
-    title: row.title,
-    artist: row.artist,
-    updatedAt: row.updatedAt.toISOString(),
-  }))
-}
-
-/** Triggers a rebuild, which is what turns pending songs into pages. */
-export async function publish(): Promise<PublishResult> {
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
-
-  const hook = process.env.DEPLOY_HOOK_URL
-  if (hook === undefined || hook === '') return { ok: false, reason: 'no-hook' }
-
-  try {
-    const response = await fetch(hook, { method: 'POST' })
-    return response.ok ? { ok: true } : { ok: false, reason: 'failed' }
-  } catch (error) {
-    console.error('publish failed', error)
-    return { ok: false, reason: 'failed' }
-  }
-}
-
 export interface ExportedFile {
   name: string
   content: string
 }
 
 /**
- * Every song as a `.chopro`, ready to be zipped by the browser.
+ * Every song of the caller's **current account** as a `.chopro`, ready to be zipped by
+ * the browser.
  *
  * These are the files `npm run seed` reads, so this archive is also the restore
  * path: put them back in `content/`, run the seed, and what is missing returns.
  */
 export async function exportAll(): Promise<ExportedFile[] | null> {
-  if (!(await asEditor()).ok) return null
+  const editor = await asEditor()
+  if (!editor.ok) return null
 
   const database = db()
   const [rows, names, divisions] = await Promise.all([
-    database.select().from(songs).orderBy(songs.slug),
-    database.select({ slug: songbooks.slug, name: songbooks.name }).from(songbooks),
-    database.select({ id: sections.id, name: sections.name }).from(sections),
+    database
+      .select({ song: songs })
+      .from(songs)
+      .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+      .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail))
+      .orderBy(songs.slug)
+      .then((result) => result.map((row) => row.song)),
+    database
+      .select({ slug: songbooks.slug, name: songbooks.name })
+      .from(songbooks)
+      .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail)),
+    database
+      .select({ id: sections.id, name: sections.name })
+      .from(sections)
+      .innerJoin(songbooks, eq(sections.songbookSlug, songbooks.slug))
+      .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail)),
   ])
 
   const nameBySlug = new Map(names.map((row) => [row.slug, row.name]))

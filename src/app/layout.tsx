@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
 
+import { OfflineSync } from '@/components/OfflineSync'
 import { RoleProvider } from '@/components/RoleProvider'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
@@ -89,6 +90,12 @@ export default function RootLayout({
           * allows — see RoleProvider.
           */}
         <RoleProvider>{children}</RoleProvider>
+        {/*
+          * Silent and stateless from the outside — see OfflineSync's own doc comment.
+          * Mounted once here rather than per-page so a client-side navigation between
+          * songs does not restart it.
+          */}
+        <OfflineSync />
       </body>
     </html>
   )

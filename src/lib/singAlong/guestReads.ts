@@ -1,21 +1,27 @@
 'use server'
 
 /**
- * What a guest may read with only a Sing Together token: the whole repertoire, the
- * same as any signed-in viewer would see, and nothing that needs an account — no
- * writes, no membership, no role. Kept apart from `./session`, which is the other
- * side of the same feature: what only the broadcast's own owner may change.
+ * What a guest may read with only a Sing Together token: the repertoire of the account
+ * that token's broadcast belongs to (v3.0) — not every account in the installation, and
+ * not necessarily the broadcaster's own, if they were broadcasting one they collaborate
+ * on. No writes, no membership, no role.
  *
- * Every export here starts by asking `isTokenActive`, and answers `null` if the
- * token does not resolve to a live broadcast — the same "refusal, not an empty
- * answer" rule the rest of the app uses for a reader whose role has just changed
- * under them.
+ * Kept apart from `./session`, which is the other side of the same feature: what only
+ * the broadcast's own owner may change.
+ *
+ * Every export here starts by resolving `broadcastAccountForToken`, and answers `null`
+ * both when the token does not resolve to a live broadcast and when the thing asked for
+ * is not on that account's shelf — the same "refusal, not an empty answer" rule the rest
+ * of the app uses for a reader whose role has just changed under them, and the same
+ * "missing, not a distinguishable leak" rule `loadSongContent` applies for a song that
+ * exists but is not the asker's to see.
  */
 
-import { repository } from '@/lib/data'
+import { songAccountOf } from '@/lib/data/access'
+import { listSectionsForAccount, listSongbooksForAccount, listSongsForAccount } from '@/lib/data/db'
 import type { Song } from '@/lib/data/types'
 
-import { isTokenActive } from './session'
+import { broadcastAccountForToken } from './session'
 
 export interface GuestSongbook {
   slug: string
@@ -24,11 +30,12 @@ export interface GuestSongbook {
 }
 
 export async function guestListSongbooks(token: string): Promise<GuestSongbook[] | null> {
-  if (!(await isTokenActive(token))) return null
+  const account = await broadcastAccountForToken(token)
+  if (account === null) return null
 
   const [songbooks, songs] = await Promise.all([
-    repository.listSongbooks(),
-    repository.listSongs(),
+    listSongbooksForAccount(account),
+    listSongsForAccount(account),
   ])
 
   return songbooks.map((songbook) => ({
@@ -50,19 +57,20 @@ export interface GuestSongbookContent {
 
 /**
  * One songbook's songs, grouped by section, in the same order the reading pages use —
- * `repository.listSongs()` already returns them section by section and then in place,
+ * `listSongsForAccount` already returns them section by section and then in place,
  * so grouping by section here is a filter, never a re-sort.
  */
 export async function guestListSongs(
   token: string,
   songbookSlug: string,
 ): Promise<GuestSongbookContent | null> {
-  if (!(await isTokenActive(token))) return null
+  const account = await broadcastAccountForToken(token)
+  if (account === null) return null
 
   const [songbooks, sections, songs] = await Promise.all([
-    repository.listSongbooks(),
-    repository.listSections(),
-    repository.listSongs(),
+    listSongbooksForAccount(account),
+    listSectionsForAccount(account),
+    listSongsForAccount(account),
   ])
 
   const songbook = songbooks.find((entry) => entry.slug === songbookSlug)
@@ -85,6 +93,12 @@ export async function guestListSongs(
 }
 
 export async function guestLoadSong(token: string, slug: string): Promise<Song | null> {
-  if (!(await isTokenActive(token))) return null
-  return repository.getSong(slug)
+  const account = await broadcastAccountForToken(token)
+  if (account === null) return null
+  // The token proves access to one account's shelf; a slug that belongs to a different
+  // one — even a real, existing song — is not this guest's to read.
+  if ((await songAccountOf(slug)) !== account) return null
+
+  const songs = await listSongsForAccount(account)
+  return songs.find((song) => song.slug === slug) ?? null
 }

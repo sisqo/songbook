@@ -85,3 +85,49 @@ export const dbRepository: SongRepository = {
     return rows satisfies Section[]
   },
 }
+
+/**
+ * The same three lists as `dbRepository`, scoped to one account (v3.0) — for the pages
+ * rendered at request time rather than at build time, which is every page that shows more
+ * than the one song or songbook a direct link already named. A song's account is its
+ * songbook's, so scoping `listSongs`/`listSections` means joining to `songbooks`; scoping
+ * `listSongbooks` is a plain `where`.
+ */
+export async function listSongbooksForAccount(accountOwnerEmail: string): Promise<Songbook[]> {
+  const rows = await db()
+    .select({ slug: songbooks.slug, name: songbooks.name })
+    .from(songbooks)
+    .where(eq(songbooks.accountOwnerEmail, accountOwnerEmail))
+    .orderBy(asc(songbooks.name))
+
+  return rows satisfies Songbook[]
+}
+
+export async function listSectionsForAccount(accountOwnerEmail: string): Promise<Section[]> {
+  const rows = await db()
+    .select({
+      id: sections.id,
+      songbookSlug: sections.songbookSlug,
+      name: sections.name,
+      position: sections.position,
+    })
+    .from(sections)
+    .innerJoin(songbooks, eq(sections.songbookSlug, songbooks.slug))
+    .where(eq(songbooks.accountOwnerEmail, accountOwnerEmail))
+    .orderBy(asc(sections.songbookSlug), asc(sections.position))
+
+  return rows satisfies Section[]
+}
+
+/** See `dbRepository.listSongs` for the join and ordering this mirrors. */
+export async function listSongsForAccount(accountOwnerEmail: string): Promise<Song[]> {
+  const rows = await db()
+    .select({ song: songs, sectionPosition: sections.position })
+    .from(songs)
+    .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+    .leftJoin(sections, eq(songs.sectionId, sections.id))
+    .where(eq(songbooks.accountOwnerEmail, accountOwnerEmail))
+    .orderBy(asc(sections.position), asc(songs.position), asc(songs.title))
+
+  return rows.map((row) => rowToSong(row.song))
+}

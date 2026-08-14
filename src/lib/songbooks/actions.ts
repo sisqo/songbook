@@ -15,41 +15,37 @@
 
 import { asc, eq, inArray, max, sql } from 'drizzle-orm'
 
-import { asEditor, currentUser } from '@/lib/auth/session'
+import { accessTo, asEditor, currentUser } from '@/lib/auth/session'
+import { songAccountOf } from '@/lib/data/access'
+import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
 import { DEFAULT_SECTION } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { songbooks, sections, songs } from '@/lib/db/schema'
 import { uniqueSlug } from '@/lib/slug'
 
+import { editableSongbook } from './access'
 import type { SongbookState, CreateResult, WriteResult } from './types'
 
 /**
- * Reads the whole mutable layer. Null when there is nothing to read from.
+ * Reads the whole mutable layer for the reader's **current** account. Null when there is
+ * nothing to read from.
  *
  * Any role, deliberately. This is where the names come from — the rows on the home, the
  * label on the way back from a song — so gating it to editors would leave a viewer
  * looking at a screen full of nameless containers.
  */
 export async function loadSongbooks(): Promise<SongbookState | null> {
-  if ((await currentUser()) === null) return null
-
-  const database = db()
+  const user = await currentUser()
+  if (user === null) return null
 
   const [entries, divisions, assigned] = await Promise.all([
-    database
-      .select({ slug: songbooks.slug, name: songbooks.name })
-      .from(songbooks)
-      .orderBy(asc(songbooks.name)),
-    database
-      .select({
-        id: sections.id,
-        songbookSlug: sections.songbookSlug,
-        name: sections.name,
-        position: sections.position,
-      })
-      .from(sections)
-      .orderBy(asc(sections.songbookSlug), asc(sections.position)),
-    database.select({ slug: songs.slug, sectionId: songs.sectionId }).from(songs),
+    listSongbooksForAccount(user.accountOwnerEmail),
+    listSectionsForAccount(user.accountOwnerEmail),
+    db()
+      .select({ slug: songs.slug, sectionId: songs.sectionId })
+      .from(songs)
+      .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+      .where(eq(songbooks.accountOwnerEmail, user.accountOwnerEmail)),
   ])
 
   const assignments: Record<string, number> = {}
@@ -79,6 +75,9 @@ export async function createSongbook(name: string): Promise<CreateResult> {
 
   try {
     return await db().transaction(async (tx) => {
+      // Global, deliberately: slugs are unique across every account, not just this one —
+      // see `songbooks`' own comment in `db/schema.ts` on why (static generation has no
+      // account to disambiguate a route by).
       const existing = await tx.select({ slug: songbooks.slug }).from(songbooks)
 
       // The slug is generated once, here, and never changes again.
@@ -87,7 +86,7 @@ export async function createSongbook(name: string): Promise<CreateResult> {
         existing.map((row) => row.slug),
       )
 
-      await tx.insert(songbooks).values({ slug, name: trimmed })
+      await tx.insert(songbooks).values({ slug, name: trimmed, accountOwnerEmail: editor.accountOwnerEmail })
       await tx
         .insert(sections)
         .values({ songbookSlug: slug, name: DEFAULT_SECTION, position: 1 })
@@ -103,11 +102,12 @@ export async function createSongbook(name: string): Promise<CreateResult> {
 /** Renames without touching the slug, so nothing that points at it moves. */
 export async function renameSongbook(slug: string, name: string): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
+
+  const target = await editableSongbook(slug)
+  if (!target.ok) return target
 
   try {
     const updated = await db()
@@ -133,19 +133,28 @@ export async function renameSongbook(slug: string, name: string): Promise<WriteR
  */
 export async function moveSong(songSlug: string, sectionId: number): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  const songOwner = await songAccountOf(songSlug)
+  if (songOwner === null) return { ok: false, reason: 'not-found' }
+  const editor = await accessTo(songOwner)
+  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+    return { ok: false, reason: 'not-found' }
+  }
 
   try {
     const database = db()
 
     const destination = await database
-      .select({ songbookSlug: sections.songbookSlug })
+      .select({ songbookSlug: sections.songbookSlug, accountOwnerEmail: songbooks.accountOwnerEmail })
       .from(sections)
+      .innerJoin(songbooks, eq(sections.songbookSlug, songbooks.slug))
       .where(eq(sections.id, sectionId))
       .limit(1)
 
     if (destination.length === 0) return { ok: false, reason: 'not-found' }
+    // A song may only move within its own account's songbooks — the destination section
+    // has to be one of theirs too, not merely any section that happens to exist.
+    if (destination[0].accountOwnerEmail !== songOwner) return { ok: false, reason: 'not-found' }
 
     const updated = await database
       .update(songs)
@@ -190,9 +199,10 @@ export async function removeSongbook(
   moveTo: string | null,
 ): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
   if (moveTo === slug) return { ok: false, reason: 'invalid-name' }
+
+  const target = await editableSongbook(slug)
+  if (!target.ok) return target
 
   try {
     const database = db()
@@ -213,12 +223,16 @@ export async function removeSongbook(
         if (moveTo === null) return { ok: false, reason: 'not-empty' } as WriteResult
 
         const destination = await tx
-          .select({ slug: songbooks.slug })
+          .select({ slug: songbooks.slug, accountOwnerEmail: songbooks.accountOwnerEmail })
           .from(songbooks)
           .where(eq(songbooks.slug, moveTo))
           .limit(1)
 
-        if (destination.length === 0) return { ok: false, reason: 'not-found' } as WriteResult
+        // Merging into a songbook of a different account would hand that account's
+        // songs to this one's — refused the same way a songbook nobody owns here is.
+        if (destination.length === 0 || destination[0].accountOwnerEmail !== target.accountOwnerEmail) {
+          return { ok: false, reason: 'not-found' } as WriteResult
+        }
 
         const theirs = await tx
           .select({ id: sections.id, name: sections.name })

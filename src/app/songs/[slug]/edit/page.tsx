@@ -6,9 +6,12 @@ import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { EditorScreen } from '@/components/editor/EditorScreen'
 import { IconInfo } from '@/components/icons'
-import { currentUser } from '@/lib/auth/session'
-import { snapshot } from '@/lib/songbooks/snapshot'
+import { accessTo } from '@/lib/auth/session'
+import { songAccountOf } from '@/lib/data/access'
+import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
 import { repository } from '@/lib/data'
+import { hasDatabase } from '@/lib/db/client'
+import { snapshot } from '@/lib/songbooks/snapshot'
 import { canEdit } from '@/lib/roles'
 
 interface Props {
@@ -36,14 +39,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EditSongPage({ params }: Props) {
   const { slug } = await params
 
-  const [song, songbooks, sections, user] = await Promise.all([
-    repository.getSong(slug),
-    repository.listSongbooks(),
-    repository.listSections(),
-    currentUser(),
-  ])
-
+  const song = await repository.getSong(slug)
   if (song === null) notFound()
+
+  /*
+   * The role checked here is on **this song's own account** (v3.0), not on whichever
+   * account the reader's switcher currently has open: this page is reached by a slug,
+   * exactly like the reading page and the guest broadcast reads, and the same reasoning
+   * applies — a link is not a promise that the account behind it is the one you meant.
+   * Without a database there is one local repertoire and no account to resolve; the
+   * session check that guarded this page before v3.0 is the whole of it there too.
+   */
+  const access = hasDatabase ? await accessTo((await songAccountOf(slug)) ?? '') : null
+  const role = hasDatabase ? (access?.role ?? null) : 'admin'
+
+  const [songbooks, sections] =
+    access !== null
+      ? await Promise.all([
+          listSongbooksForAccount(access.accountOwnerEmail),
+          listSectionsForAccount(access.accountOwnerEmail),
+        ])
+      : await Promise.all([repository.listSongbooks(), repository.listSections()])
 
   /*
    * The one page in the app that can refuse on the server, and it does.
@@ -53,7 +69,7 @@ export default async function EditSongPage({ params }: Props) {
    * viewer who types the address gets an answer instead of an editor full of controls
    * that would refuse — and the words of the song are not sent to them at all.
    */
-  if (!canEdit(user?.role ?? null)) {
+  if (!canEdit(role)) {
     return (
       <PrefsProvider songSlug={null}>
         <TopBar current="songs" back={{ href: `/songs/${slug}`, label: 'Back to song' }} />
@@ -72,8 +88,9 @@ export default async function EditSongPage({ params }: Props) {
   }
 
   /*
-   * This one song's own filing, and *every* section: the form's two menus offer the
-   * whole library, since moving a song is one of the things they are for.
+   * This one song's own filing, and *every* section of its own account: the form's two
+   * menus offer that account's library, since moving a song is one of the things they
+   * are for — and a song may only ever move within the account it already belongs to.
    */
   const initial = snapshot([song], songbooks, sections)
 

@@ -2,6 +2,7 @@
 
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 
+import { mayShowAccountSwitcher } from '@/lib/accounts/read'
 import { loadRole } from '@/lib/auth/actions'
 import { type Role, canEdit, canManageUsers } from '@/lib/roles'
 
@@ -11,6 +12,8 @@ interface RoleContextValue {
   known: boolean
   mayEdit: boolean
   mayManageUsers: boolean
+  /** Whether to offer the account switcher at all — see `mayShowAccountSwitcher`. */
+  mayShowAccountSwitcher: boolean
 }
 
 const RoleContext = createContext<RoleContextValue>({
@@ -18,6 +21,7 @@ const RoleContext = createContext<RoleContextValue>({
   known: false,
   mayEdit: false,
   mayManageUsers: false,
+  mayShowAccountSwitcher: false,
 })
 
 /**
@@ -44,15 +48,17 @@ const RoleContext = createContext<RoleContextValue>({
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(null)
   const [known, setKnown] = useState(false)
+  const [switcher, setSwitcher] = useState(false)
 
   useEffect(() => {
     let alive = true
 
     const ask = async () => {
       try {
-        const answer = await loadRole()
+        const [answer, showSwitcher] = await Promise.all([loadRole(), mayShowAccountSwitcher()])
         if (alive) {
           setRole(answer)
+          setSwitcher(showSwitcher)
           setKnown(true)
         }
       } catch {
@@ -84,8 +90,9 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       known,
       mayEdit: known && canEdit(role),
       mayManageUsers: known && canManageUsers(role),
+      mayShowAccountSwitcher: known && switcher,
     }),
-    [role, known],
+    [role, known, switcher],
   )
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>

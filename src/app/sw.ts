@@ -15,8 +15,15 @@
  * anonymous, which makes a bad cache impossible rather than merely unlikely.
  */
 
-import { defaultCache } from '@serwist/next/worker'
-import { NetworkOnly, type PrecacheEntry, type SerwistGlobalConfig, Serwist } from 'serwist'
+import { PAGES_CACHE_NAME, defaultCache } from '@serwist/next/worker'
+import {
+  ExpirationPlugin,
+  NetworkFirst,
+  NetworkOnly,
+  type PrecacheEntry,
+  type SerwistGlobalConfig,
+  Serwist,
+} from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -37,6 +44,56 @@ const rejectUnauthenticated = {
     return response
   },
 }
+
+/**
+ * Every page-navigation entry `defaultCache` runs on its own — RSC prefetches, plain RSC
+ * fetches, full HTML, and the same-origin catch-all it all falls through to when neither
+ * header matches (the one `/edit`'s own rule above was found sitting in, per this file's
+ * top comment).
+ *
+ * `precacheOptions.plugins` below only guards the *install-time* precache; runtime
+ * navigations landing in one of these four never passed through it (v3.0). Since every
+ * page is now rendered per request and scoped to whichever account's session made the
+ * request, a session that has just expired mid-visit is exactly the same failure mode
+ * `precacheOptions` was written to prevent, and needs the same guard. Matchers and cache
+ * names are copied verbatim from `defaultCache`'s own source so these four shadow it —
+ * first match wins — without changing what anything else in `defaultCache` does.
+ */
+const authenticatedPageCaching = (
+  [
+    [
+      ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
+        request.headers.get('RSC') === '1' &&
+        request.headers.get('Next-Router-Prefetch') === '1' &&
+        sameOrigin &&
+        !url.pathname.startsWith('/api/'),
+      PAGES_CACHE_NAME.rscPrefetch,
+    ],
+    [
+      ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
+        request.headers.get('RSC') === '1' && sameOrigin && !url.pathname.startsWith('/api/'),
+      PAGES_CACHE_NAME.rsc,
+    ],
+    [
+      ({ request, url, sameOrigin }: { request: Request; url: URL; sameOrigin: boolean }) =>
+        request.headers.get('Content-Type')?.includes('text/html') === true &&
+        sameOrigin &&
+        !url.pathname.startsWith('/api/'),
+      PAGES_CACHE_NAME.html,
+    ],
+    [
+      ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+        sameOrigin && !url.pathname.startsWith('/api/'),
+      'others',
+    ],
+  ] as const
+).map(([matcher, cacheName]) => ({
+  matcher,
+  handler: new NetworkFirst({
+    cacheName,
+    plugins: [new ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 1440 * 60 }), rejectUnauthenticated],
+  }),
+}))
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -69,6 +126,7 @@ const serwist = new Serwist({
       matcher: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('/edit'),
       handler: new NetworkOnly(),
     },
+    ...authenticatedPageCaching,
     ...defaultCache,
   ],
 })

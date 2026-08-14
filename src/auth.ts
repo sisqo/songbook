@@ -4,16 +4,20 @@ import Google from 'next-auth/providers/google'
 
 import { authConfig } from './auth.config'
 import { normalizeEmail } from './lib/allowlist'
+import { provisionAccount } from './lib/accounts/provision'
 import { readPasswordHash } from './lib/auth/credentials'
 import { verifyAgainstNothing, verifyPassword } from './lib/auth/password'
 import { recordSignIn } from './lib/auth/signIns'
-import { listMemberships } from './lib/members/read'
-import { roleOf } from './lib/roles'
+import { listMembershipsFor } from './lib/members/read'
+import { isAdmitted } from './lib/roles'
 
-/** Whether this address is allowed in at all, which is exactly what having a role means. */
+/**
+ * Whether this address is allowed in at all — a question with no account of its own; see
+ * `isAdmitted`'s own comment for why "some account, any account" is enough here.
+ */
 async function admitted(email: string | null | undefined): Promise<boolean> {
-  const role = roleOf(email, process.env.ALLOWED_EMAILS, await listMemberships())
-  return role !== null
+  if (!email) return false
+  return isAdmitted(email, process.env.ALLOWED_EMAILS, await listMembershipsFor(email))
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -79,11 +83,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * The role itself is deliberately not put in the token. A session lasts ninety days;
      * a role baked into it would keep its powers for ninety days after being taken away.
      *
-     * `recordSignIn` runs after admission, not before: a rejected attempt proved nothing
-     * about the address asking, so it leaves no mark. It runs here rather than from a
-     * `jwt`/`session` callback because those fire on every request a session is read on
-     * this token's ninety days, not only when one is created — this callback is the one
-     * place that happens only once per actual sign-in.
+     * `recordSignIn` and `provisionAccount` run after admission, not before: a rejected
+     * attempt proved nothing about the address asking, so it leaves no mark and gets no
+     * account. Both run here rather than from a `jwt`/`session` callback because those
+     * fire on every request a session is read on this token's ninety days, not only when
+     * one is created — this callback is the one place that happens only once per actual
+     * sign-in. `provisionAccount` is idempotent on top of that, by checking existence
+     * rather than trusting "only once" alone — see its own comment.
      */
     async signIn({ profile, user }) {
       const raw = profile?.email ?? user?.email
@@ -94,11 +100,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * Normalized here rather than trusted from the provider: `authorize` above already
        * normalizes before it ever reaches this callback, but Google's `profile.email`
        * never has, and `roleOf` only normalizes for its own comparison, not for whoever
-       * reads its answer next. Writing the raw casing would key `sign_ins` on whichever
-       * form happened to arrive first, splitting one person's history across two rows —
-       * see `signIns`' own comment on why it must agree with `members`/`ALLOWED_EMAILS`.
+       * reads its answer next. Writing the raw casing would key `sign_ins`/`accounts` on
+       * whichever form happened to arrive first, splitting one person's history across
+       * two rows — see `signIns`' own comment on why it must agree with
+       * `members`/`ALLOWED_EMAILS`.
        */
-      await recordSignIn(normalizeEmail(raw))
+      const email = normalizeEmail(raw)
+      await recordSignIn(email)
+      await provisionAccount(email)
       return true
     },
   },

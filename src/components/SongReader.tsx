@@ -5,6 +5,9 @@ import { SongProvider } from '@/components/SongProvider'
 import { TopBar } from '@/components/TopBar'
 import { parseChordPro } from '@/lib/chordpro'
 import { type Song, repository } from '@/lib/data'
+import { songAccountOf } from '@/lib/data/access'
+import { listSectionsForAccount, listSongbooksForAccount, listSongsForAccount } from '@/lib/data/db'
+import { hasDatabase } from '@/lib/db/client'
 
 /** The songbook this song is in: where the header's way back leads. */
 interface Home {
@@ -44,15 +47,29 @@ interface Series {
  *
  * So the neighbours are as stale as the pages they lead to — which is the only way for
  * them to agree — while what you are reading is not.
+ *
+ * Scoped to the song's own account (v3.0), not read globally: the siblings a reader
+ * steps through must be this account's songs, never another one's read alongside them
+ * by coincidence of a shared songbook slug — impossible today since slugs are unique
+ * per account's songbook already, but the scoped read is also just less to fetch.
  */
 async function placeOf(
   song: Song,
 ): Promise<{ home: Home | null; section: string | null; series: Series | null }> {
-  const [songs, songbooks, sections] = await Promise.all([
-    repository.listSongs(),
-    repository.listSongbooks(),
-    repository.listSections(),
-  ])
+  const owner = hasDatabase ? await songAccountOf(song.slug) : null
+
+  const [songs, songbooks, sections] =
+    owner !== null
+      ? await Promise.all([
+          listSongsForAccount(owner),
+          listSongbooksForAccount(owner),
+          listSectionsForAccount(owner),
+        ])
+      : await Promise.all([
+          repository.listSongs(),
+          repository.listSongbooks(),
+          repository.listSections(),
+        ])
 
   const found = songbooks.find((entry) => entry.slug === song.songbookSlug)
   const home = found === undefined ? null : { slug: found.slug, name: found.name }

@@ -14,6 +14,11 @@
  * `content/` means this script reinserts it. That is correct for a command meaning
  * "load what is missing", but it is why the placeholder fixtures should leave the repo
  * once real repertoire arrives.
+ *
+ * Loads into **the first owner in `ALLOWED_EMAILS`'s account** (v3.0). `content/` has no
+ * notion of accounts of its own — it is a single bootstrap fixture, same as it always
+ * was — so this script has to pick one, and the first configured owner is the least
+ * surprising choice: the person the deployment's environment already names first.
  */
 
 import { loadEnv } from './load-env'
@@ -25,12 +30,19 @@ async function main() {
     '../src/lib/data/files'
   )
   const { DEFAULT_SECTION, UNFILED } = await import('../src/lib/data/types')
+  const { parseAllowlist } = await import('../src/lib/allowlist')
   const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
-  const { songbooks, sections, songs } = await import('../src/lib/db/schema')
+  const { accounts, songbooks, sections, songs } = await import('../src/lib/db/schema')
   const { and, asc, eq } = await import('drizzle-orm')
 
   if (!hasDatabase) {
     console.error('DATABASE_URL is not set. Run `vercel env pull .env.local` first.')
+    process.exit(1)
+  }
+
+  const [accountOwnerEmail] = parseAllowlist(process.env.ALLOWED_EMAILS)
+  if (accountOwnerEmail === undefined) {
+    console.error('ALLOWED_EMAILS has no owner to seed into.')
     process.exit(1)
   }
 
@@ -52,6 +64,8 @@ async function main() {
 
   const database = db()
 
+  await database.insert(accounts).values({ ownerEmail: accountOwnerEmail }).onConflictDoNothing()
+
   /**
    * Songbooks named by the files, plus the unfiled one, created if missing.
    *
@@ -64,7 +78,7 @@ async function main() {
   for (const songbook of declared) {
     await database
       .insert(songbooks)
-      .values({ slug: songbook.slug, name: songbook.name })
+      .values({ slug: songbook.slug, name: songbook.name, accountOwnerEmail })
       .onConflictDoNothing({ target: songbooks.slug })
   }
   console.log(`Songbooks present (created if missing): ${declared.length}`)

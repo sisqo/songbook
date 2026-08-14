@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useDeferredValue, useMemo, useState } from 'react'
 
-import { PublishPanel } from '@/components/PublishPanel'
+import { ExportPanel } from '@/components/ExportPanel'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
@@ -434,7 +434,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
         * the "Publishing…" watch) regardless of what the search box holds, and losing
         * that state mid-wait would leave a rebuild running with no way to tell.
         */}
-      {mayEdit && <PublishPanel />}
+      {mayEdit && <ExportPanel />}
     </div>
   )
 }

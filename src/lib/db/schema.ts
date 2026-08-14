@@ -9,7 +9,9 @@
  * having one key everywhere.
  */
 
+import { sql } from 'drizzle-orm'
 import {
+  boolean,
   foreignKey,
   integer,
   pgTable,
@@ -18,7 +20,27 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
+
+/**
+ * One person's space: their own songbooks, and — through `members` — whoever they have
+ * let read or edit them.
+ *
+ * Keyed by its owner's email rather than a surrogate id, like every other person-scoped
+ * table in this schema (`sign_ins`, `user_prefs`). An account is never renamed and never
+ * changes hands: it is identified by who it belongs to, not by a name someone picked.
+ *
+ * A row here can exist before it owns anything — the moment a new email is admitted, this
+ * is written first, so the Example songbook has somewhere to be cloned into. Deriving "the
+ * set of accounts" from `songbooks` instead would leave that instant with no account at
+ * all, and would give the admin's "every account" screen nothing to list a person under
+ * until their first songbook exists.
+ */
+export const accounts = pgTable('accounts', {
+  ownerEmail: text('owner_email').primaryKey(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
 
 /**
  * A songbook is a container: every song belongs to exactly one.
@@ -26,13 +48,44 @@ import {
  * The slug is generated once from the initial name and never changes — renaming
  * touches `name` only. That is what makes a rename free: no foreign key to
  * update, no URL that moves, no precache entry to regenerate.
+ *
+ * `accountOwnerEmail` says which account this songbook belongs to (v3.0), but the slug
+ * stays the primary key, globally unique across every account rather than merely within
+ * one — see this file's own top comment on why a song's slug is also its identity, which
+ * did not stop being true when songs became per-account. `/songs/[slug]` and
+ * `/songbooks/[slug]` are generated **statically at build time**: `generateStaticParams`
+ * enumerates every slug once, with no request and no signed-in reader to resolve "which
+ * account" for. Two accounts minting a same-named clone of the Example songbook do not
+ * get to share a slug; `uniqueSlug` gives the clone a fresh one, the same tool
+ * `createSongbook` already uses for a name that collides with an existing songbook.
+ * Cross-account privacy is a permission check at read time, layered on top of a route
+ * that already resolves to exactly one songbook — not a second identity for the same one.
  */
-export const songbooks = pgTable('songbooks', {
-  slug: text('slug').primaryKey(),
-  name: text('name').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const songbooks = pgTable(
+  'songbooks',
+  {
+    slug: text('slug').primaryKey(),
+    accountOwnerEmail: text('account_owner_email')
+      .notNull()
+      .references(() => accounts.ownerEmail),
+    name: text('name').notNull(),
+    /**
+     * The one songbook, anywhere in the installation, that a new account's is cloned
+     * from. A partial unique index rather than application code is what keeps a second
+     * flagged row from ever existing: moving the flag to another songbook is a plain
+     * `UPDATE` on both rows, not a deploy, and the database itself refuses to leave two
+     * set at once even if that update is ever done out of order.
+     */
+    isExampleTemplate: boolean('is_example_template').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('songbooks_one_example_template')
+      .on(table.isExampleTemplate)
+      .where(sql`${table.isExampleTemplate}`),
+  ],
+)
 
 /**
  * A songbook is divided into sections, and every song is in exactly one of them.
@@ -46,6 +99,10 @@ export const songbooks = pgTable('songbooks', {
  * is a typo or a double tap — and it lets the import address a section *by name*
  * without ever creating a twin. `(id, songbook_slug)` exists only to be referenced:
  * see the composite key on `songs`.
+ *
+ * No `accountOwnerEmail` of its own (v3.0): `songbookSlug` is still globally unique (see
+ * `songbooks`' own comment), so which account a section belongs to is always one join
+ * away and never needs to be written here to agree with anything.
  */
 export const sections = pgTable(
   'sections',
@@ -65,6 +122,13 @@ export const sections = pgTable(
   ],
 )
 
+/**
+ * No `accountOwnerEmail` of its own either, for the same reason as `sections`: a song's
+ * `songbookSlug` is globally unique and always resolves to one songbook, which is always
+ * one account's. A query scoped to "the current account's songs" joins to `songbooks`
+ * for it; that join was already free to add next to the one this table's own reads
+ * already do against `sections`.
+ */
 export const songs = pgTable(
   'songs',
   {
@@ -143,47 +207,52 @@ export const songs = pgTable(
 )
 
 /**
- * One row, stamped by the build.
+ * Everyone let into some account other than their own.
  *
- * It answers "which songs are still waiting to be published": those whose
- * `updated_at` is newer than this stamp. Deriving it from what the build
- * actually saw is the only honest answer — a flag set by a publish action would
- * claim success even if the deploy failed.
+ * The owners of an account are not here, and there are two kinds of them. A *global*
+ * owner comes from `ALLOWED_EMAILS`, which the app cannot edit — see `lib/allowlist.ts`
+ * for why the list has two halves — and is admin on every account, this one included. The
+ * account's *own* owner is not there either, and is admin on this one account for the
+ * same structural reason: `roleOf` recognises both without a row to read, so an account
+ * with no row here at all is the ordinary state, not a locked door, and a row removed
+ * from it can never take away access that never lived in this table to begin with.
+ *
+ * Scoped to an account (v3.0): the primary key is `(account_owner_email, email)`, not
+ * the email alone, because the same person can be a collaborator on more than one
+ * account — a viewer on one, an editor on another — and each membership is independent.
+ * Before v3.0 there was exactly one account in the whole installation, so a bare email
+ * was already, coincidentally, scoped to "the" account; that coincidence is what this
+ * migration undoes.
+ *
+ * The email is stored already lowercased by the action that writes it, same as before,
+ * so the primary key still does real work within one account: the same address cannot
+ * be added twice in two different cases.
  */
-export const builds = pgTable('builds', {
-  id: text('id').primaryKey().default('last'),
-  builtAt: timestamp('built_at', { withTimezone: true }).notNull().defaultNow(),
-})
-
-/**
- * Everyone the owners have let in.
- *
- * The owners themselves are not here: they come from `ALLOWED_EMAILS`, which the app
- * cannot edit — see `lib/allowlist.ts` for why the list has two halves. So this table
- * being empty is the ordinary state, not a locked door, and a row removed from it
- * cannot take the last person's access away.
- *
- * The email is the key, because that is what Google hands back and therefore the only
- * thing the gate can compare. Stored already lowercased by the action that writes it,
- * so the primary key is doing real work: the same address cannot be added twice in two
- * different cases.
- */
-export const members = pgTable('members', {
-  email: text('email').primaryKey(),
-  /** Which owner or member let them in, kept as a plain address for the same reason. */
-  addedBy: text('added_by'),
-  /**
-   * What they may do: `admin`, `editor` or `viewer` — see `lib/roles.ts`.
-   *
-   * Text rather than an enum, and defaulted to the least of the three. An enum would put
-   * the list in two places and make adding a fourth a migration on the type; `readRole`
-   * treats anything it does not recognise as `viewer`, so a value nobody expected cannot
-   * become a way in. Owners have no row here and are admin by definition, which is why
-   * this column cannot demote anybody who matters.
-   */
-  role: text('role').notNull().default('viewer'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-})
+export const members = pgTable(
+  'members',
+  {
+    accountOwnerEmail: text('account_owner_email')
+      .notNull()
+      .references(() => accounts.ownerEmail, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    /** Which owner or member let them in, kept as a plain address for the same reason. */
+    addedBy: text('added_by'),
+    /**
+     * What they may do on *this* account: `editor` or `viewer` — see `lib/roles.ts`.
+     * `admin` never appears here: it is not a grant this or any account can hand out to a
+     * collaborator, only what an owner already is — globally from `ALLOWED_EMAILS`, or
+     * structurally for this one account by being the email this row's own key names.
+     *
+     * Text rather than an enum, and defaulted to the least of the two. An enum would put
+     * the list in two places and make adding a third a migration on the type; `readRole`
+     * treats anything it does not recognise as `viewer`, so a value nobody expected cannot
+     * become a way in.
+     */
+    role: text('role').notNull().default('viewer'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.accountOwnerEmail, table.email] })],
+)
 
 /**
  * How somebody proves they are the address they claim, when it is not Google saying so.
@@ -259,6 +328,13 @@ export const userSongPrefs = pgTable(
  * playing a song — never when a guest merely reads this row. A guest left polling
  * cannot keep a session alive on their own: once its owner has stopped, it expires on
  * schedule regardless of who is still watching.
+ *
+ * `broadcastAccountEmail` says *whose account's* repertoire is on show (v3.0) — almost
+ * always the same as `ownerEmail`, but not necessarily: someone editing on an account
+ * they collaborate on may broadcast that repertoire instead of their own. Kept apart from
+ * `ownerEmail` because the two answer different questions — who is in control of this
+ * broadcast, and which shelf of songs it is reading from — and the guest-facing reads
+ * (`guestReads.ts`) only ever need the second one.
  */
 /**
  * How often, and when last, each address has actually gotten in — through Google or a
@@ -282,6 +358,9 @@ export const singAlongSessions = pgTable(
   {
     ownerEmail: text('owner_email').primaryKey(),
     token: text('token').notNull(),
+    broadcastAccountEmail: text('broadcast_account_email')
+      .notNull()
+      .references(() => accounts.ownerEmail),
     /** Cleared, not left dangling, if the song itself is ever deleted mid-broadcast. */
     currentSongSlug: text('current_song_slug').references(() => songs.slug, {
       onDelete: 'set null',

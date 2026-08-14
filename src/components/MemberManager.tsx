@@ -14,10 +14,10 @@ import {
   type MemberResult,
   type SignInSummary,
 } from '@/lib/members/types'
-import { ROLES, type Role } from '@/lib/roles'
+import { MEMBER_ROLES, type MemberRole, type Role } from '@/lib/roles'
 import { useOnline } from '@/lib/useOnline'
 
-/** What each role is called on screen, and what it means in one line. */
+/** What each role is called on screen, and what it means in one line — the owner's own included, though it is never offered as a choice: see `MEMBER_ROLES`. */
 const ROLE_NAME: Record<Role, string> = {
   admin: 'Admin',
   editor: 'Editor',
@@ -52,7 +52,7 @@ export function MemberManager() {
   const [error, setError] = useState<string | null>(null)
 
   const [invited, setInvited] = useState('')
-  const [invitedRole, setInvitedRole] = useState<Role>('viewer')
+  const [invitedRole, setInvitedRole] = useState<MemberRole>('viewer')
   const [removing, setRemoving] = useState<string | null>(null)
   /** Whose password is being set, and to what. One at a time, like the removals. */
   const [pairing, setPairing] = useState<string | null>(null)
@@ -218,32 +218,31 @@ export function MemberManager() {
       )}
 
       <section>
-        <h2 className="section-title">Owners</h2>
+        <h2 className="section-title">Owner</h2>
         <p className="mb-2.5 text-sm leading-[1.45] text-muted">
-          They come from the server configuration and can&apos;t be removed from here, so they are
-          <strong> Admin</strong> by definition: it&apos;s the same thing that makes it impossible
-          to lock yourself out of your own application.
+          This account&apos;s own owner can&apos;t be removed from here, and is
+          <strong> Admin</strong> on it by definition: it&apos;s the same thing that makes it
+          impossible to lock yourself out of your own account. A global owner of the whole
+          installation has the same access here too, without a row of their own.
         </p>
 
         <ul className="row-list card">
-          {list.owners.map((owner) => (
-            <li key={owner.email}>
-              <div className="row">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{owner.email}</span>
-                  <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
-                    {signInLine(owner)}
-                  </span>
+          <li>
+            <div className="row">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{list.owner.email}</span>
+                <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
+                  {signInLine(list.owner)}
                 </span>
-                {owner.email === list.you && <span className="meta-chip">you</span>}
-                <span className="meta-chip">{hasPassword(owner.email) ? 'password' : 'Google'}</span>
-                <span className="meta-chip">Admin</span>
-                {/* Your own, and no one else's: see `keyButton`. */}
-                {owner.email === list.you && keyButton(owner.email)}
-              </div>
-              {passwordPanel(owner.email)}
-            </li>
-          ))}
+              </span>
+              {list.owner.email === list.you && <span className="meta-chip">you</span>}
+              <span className="meta-chip">{hasPassword(list.owner.email) ? 'password' : 'Google'}</span>
+              <span className="meta-chip">Admin</span>
+              {/* Your own, and no one else's: see `keyButton`. */}
+              {list.owner.email === list.you && keyButton(list.owner.email)}
+            </div>
+            {passwordPanel(list.owner.email)}
+          </li>
         </ul>
       </section>
 
@@ -256,7 +255,7 @@ export function MemberManager() {
         </p>
 
         <ul className="mb-3.5 grid gap-1 text-sm text-muted">
-          {ROLES.map((role) => (
+          {MEMBER_ROLES.map((role) => (
             <li key={role}>
               <strong>{ROLE_NAME[role]}</strong> — {ROLE_HINT[role]}
             </li>
@@ -278,7 +277,7 @@ export function MemberManager() {
                * offered, and it is said out loud rather than left looking like a second
                * account. Removing it is allowed, and is the tidy thing to do.
                */
-              const overridden = list.owners.some((owner) => owner.email === member.email)
+              const overridden = member.overridden
 
               return (
                 <li key={member.email} className="card p-[0.875rem] sm:px-4">
@@ -335,12 +334,12 @@ export function MemberManager() {
                             disabled={!online || busy}
                             onChange={(event) =>
                               void run(() =>
-                                setMemberRole(member.email, event.target.value as Role),
+                                setMemberRole(member.email, event.target.value as MemberRole),
                               )
                             }
                             className="picker-select"
                           >
-                            {ROLES.map((role) => (
+                            {MEMBER_ROLES.map((role) => (
                               <option key={role} value={role}>
                                 {ROLE_NAME[role]}
                               </option>
@@ -456,10 +455,10 @@ export function MemberManager() {
             <span className="sr-only">Role of the new user</span>
             <select
               value={invitedRole}
-              onChange={(event) => setInvitedRole(event.target.value as Role)}
+              onChange={(event) => setInvitedRole(event.target.value as MemberRole)}
               className="picker-select"
             >
-              {ROLES.map((role) => (
+              {MEMBER_ROLES.map((role) => (
                 <option key={role} value={role}>
                   {ROLE_NAME[role]}
                 </option>

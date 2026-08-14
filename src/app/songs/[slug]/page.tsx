@@ -3,23 +3,39 @@ import { notFound } from 'next/navigation'
 
 import { SongReader } from '@/components/SongReader'
 import { repository } from '@/lib/data'
+import { accessTo } from '@/lib/auth/session'
+import { songAccountOf } from '@/lib/data/access'
+import { hasDatabase } from '@/lib/db/client'
 
 interface Props {
   params: Promise<{ slug: string }>
 }
 
 /**
- * One static page per song, generated from whichever repository is active. This
- * is what lets the service worker precache the whole repertoire and what keeps
- * the database off the reading path.
+ * Rendered per request (v3.0), not generated at build time. A song's account is only
+ * known once a reader is asking — `generateStaticParams` would have to bake every
+ * account's songs into one build with nothing to tell them apart by, which is exactly
+ * the leak this route used to have before accounts existed to leak between.
  */
-export async function generateStaticParams() {
-  const songs = await repository.listSongs()
-  return songs.map((song) => ({ slug: song.slug }))
+export const dynamic = 'force-dynamic'
+
+/**
+ * Whether this reader may see this slug at all, with a database to ask. Without one
+ * there is a single local repertoire for one developer (`lib/data/index.ts`) and
+ * `middleware.ts`'s own session check is already the whole of it, same as before v3.0.
+ */
+async function permitted(slug: string): Promise<boolean> {
+  if (!hasDatabase) return true
+
+  const owner = await songAccountOf(slug)
+  if (owner === null) return false
+  return (await accessTo(owner)) !== null
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
+  if (!(await permitted(slug))) return { title: 'Song not found' }
+
   const song = await repository.getSong(slug)
   if (!song) return { title: 'Song not found' }
 
@@ -30,6 +46,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SongPage({ params }: Props) {
   const { slug } = await params
+  if (!(await permitted(slug))) notFound()
+
   const song = await repository.getSong(slug)
   if (!song) notFound()
 

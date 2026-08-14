@@ -1403,6 +1403,149 @@ Nota la progressione deliberata: la v1.1 ha aperto il percorso di scrittura su u
 minima — nomi e appartenenza — e la v1.2 lo estende al contenuto. Ogni passo ha portato una
 regola nuova su chi possiede cosa, ed è la parte da rileggere prima di toccare il seed.
 
+### v3.0 — account (pianificata, non ancora costruita)
+
+Finora un solo repertorio condiviso: canzonieri, sezioni e brani sono tabelle globali, e
+`members`/`ALLOWED_EMAILS` decidono soltanto chi, fra un insieme fisso di persone, può
+vederlo o modificarlo. Questa versione rompe quel presupposto — **ogni persona ammessa
+nell'app ha un proprio spazio**, con i propri canzonieri, e può essere invitata, in più,
+come collaboratrice nello spazio di qualcun altro.
+
+Il cancello d'ingresso **non cambia**: resta chiuso a chi non è né un proprietario
+(`ALLOWED_EMAILS`) né già invitato da qualcuno che c'è. Cambia solo cosa trova, chi entra:
+non più l'unico repertorio dell'installazione, ma il proprio.
+
+Passi, nell'ordine in cui una migrazione reale li richiede:
+
+1. **Nuova tabella `accounts`** — `ownerEmail` (chiave primaria), `createdAt`. Un account è
+   sempre di una persona sola e non si rinomina: è identificato dal proprietario, non da un
+   nome scelto. Serve come tabella a sé — non basta dedurre "gli account esistenti"
+   dall'elenco dei canzonieri — perché un account deve poter esistere anche un istante
+   prima che la clonazione del canzoniere Example gli scriva dentro qualcosa, e perché dà
+   un bersaglio pulito alle chiavi esterne che seguono.
+2. **`songbooks` guadagna `accountOwnerEmail`**, come colonna semplice — non come parte
+   della chiave primaria. L'idea originale era una chiave composta `(accountOwnerEmail,
+   slug)`, per permettere a due account di clonare lo stesso Example senza scontrarsi sullo
+   slug; si è rivelata incompatibile con `generateStaticParams`, che genera le pagine di
+   `/songs/[slug]` e `/songbooks/[slug]` **a build time**, senza alcun account di richiesta
+   con cui comporre la chiave. Lo slug resta quindi **globale** come oggi — `songbooks.slug`
+   e `songs.slug` restano chiavi primarie semplici, `sections` e `songs` non guadagnano
+   alcuna colonna — e la clonazione dell'Example evita le collisioni riusando `uniqueSlug()`
+   (già esistente) al momento della provisione, mintando uno slug nuovo per il canzoniere
+   clonato e per ciascun brano che contiene. La conseguenza più grande è altrove: uno slug
+   globale raggiungibile da chiunque sia autenticato è un confine di privacy che non regge
+   più da solo, il che è il motivo dei punti 12–14 più sotto.
+3. **`songbooks` guadagna `isExampleTemplate`** (booleano, default `false`), con un indice
+   unico parziale (`UNIQUE (isExampleTemplate) WHERE isExampleTemplate`) che garantisce che
+   al più un canzoniere in tutta l'installazione porti il flag. È quello che la
+   provisione clona per ogni nuovo account; spostarlo su un altro canzoniere in futuro è un
+   `UPDATE`, non un deploy.
+4. **`members` diventa per-account.** Chiave primaria `(accountOwnerEmail, memberEmail)`
+   invece di `email` da sola: la stessa persona può comparire più volte, una riga per ogni
+   account di cui è collaboratrice, con un ruolo — editor o viewer — indipendente in
+   ciascuno. `addedBy`, `role`, `createdAt` restano come sono oggi, solo scope diverso.
+5. **`userSongPrefs` non cambia**, di conseguenza al punto 2: restando `songs.slug` una
+   chiave globale, la chiave esterna verso `songs` e la chiave primaria
+   `(userEmail, songSlug)` restano quelle di oggi, senza bisogno di una colonna
+   `accountOwnerEmail` in più. `userPrefs` (zoom, notazione, strumento) resta comunque
+   **della persona**, non del repertorio che sta leggendo — quello non era mai stato in
+   discussione.
+6. **`singAlongSessions` guadagna `broadcastAccountEmail`.** `ownerEmail` continua a dire
+   *chi* sta trasmettendo (una trasmissione attiva a testa, come oggi); la nuova colonna
+   dice *il repertorio di quale account* sta mostrando — quasi sempre il proprio, ma non
+   necessariamente, se chi trasmette è anche collaboratore altrove (vedi punto 11).
+7. **`roleOf` accetta l'account bersaglio.** Restano tre ruoli — admin, editor, viewer — ma
+   editor/viewer smettono di essere un fatto globale sulla persona e diventano relativi
+   a un account: `roleOf(email, ALLOWED_EMAILS, accountOwnerEmail, members)` risponde
+   `admin` in due casi — l'email è un proprietario globale (ovunque, come oggi: il bypass
+   non cambia), **oppure** l'email è la proprietaria *di quello specifico account*. Il
+   secondo caso non è il primo travestito: un proprietario d'account ha pieno controllo
+   solo lì, non su nessun altro account — vedere ed entrare in *tutti* gli account resta
+   un potere del solo bypass globale, controllato a parte da chi mostra l'elenco (punto
+   10), non da `roleOf`. Solo se nessuno dei due si applica si cerca la riga
+   `(accountOwnerEmail, email)` in `members`, che non contiene mai `admin`: è un grado che
+   nessun account può concedere a un collaboratore, per costruzione — vedi *Account
+   (v3.0)* nella tabella delle Decisioni. `admitted()`, la guardia del login, resta invece
+   un controllo **senza** account di destinazione: esiste se l'email è proprietaria
+   globale **o compare in `members` per almeno un account qualsiasi** — è così che il
+   cancello resta chiuso a chi nessuno ha mai invitato da nessuna parte, senza dover già
+   sapere quale sarà il primo account che vedrà.
+8. **Provisione automatica alla prima sign-in riuscita**, dentro `signIn` in `auth.ts`,
+   accanto a `recordSignIn`: se l'email non ha ancora una riga in `accounts`, se ne crea
+   una e si clona il canzoniere con `isExampleTemplate`, con le sue sezioni e i suoi brani,
+   dentro il nuovo account. Idempotente per costruzione — controlla l'esistenza, non
+   l'occasione — quindi può girare a ogni login senza bisogno di distinguere "il primo".
+   Questo vale per **chiunque** superi `admitted()`, non solo per chi entra come
+   proprietario: un invitato come semplice collaboratore in un account altrui riceve
+   comunque il proprio, come richiesto.
+9. **Account corrente: un cookie, non il token di sessione.** A differenza del ruolo — che
+   resta fuori dal JWT per motivi di sicurezza (v2.1) — quale account si sta guardando è
+   solo una preferenza di navigazione, e può vivere in un cookie semplice, riletto e
+   **sempre riverificato** a ogni richiesta lato server: mai fidarsi del suo contenuto senza
+   ricontrollare che l'email in sessione abbia davvero accesso (admin, proprietà, o riga in
+   `members`) all'account che dice. Un cookie assente, invalido o che punta a un account non
+   più accessibile ricade sempre sul proprio account — che è anche, così, il comportamento
+   di default dopo il login, senza bisogno di un'azione dedicata a "apri il tuo account".
+   Cambiare account è una server action che valida l'accesso e riscrive solo il cookie.
+10. **`/utenti` diventa la gestione collaboratori dell'account corrente**; una nuova
+    schermata (solo per chi ha ruolo admin) elenca tutti gli account dell'installazione,
+    con un'azione "entra" per ciascuno che equivale a cambiare account. Nel menù, chi ha
+    accesso a un solo account (il proprio, il caso comune) non vede alcun selettore — chi
+    ne ha più di uno, perché è collaboratore altrove o perché è admin, sì.
+11. **Sing Together trasmette l'account corrente**, non "il" repertorio: chi avvia una
+    trasmissione deve avere editor o admin sull'account che ha aperto in quel momento — un
+    viewer può seguire un canzoniere, non esporlo pubblicamente con un link. Le letture
+    lato ospite (`guestReads.ts`) si filtrano per `broadcastAccountEmail` invece di leggere
+    tutte le tabelle senza condizione.
+12. **Slug globale + pagine statiche = una fuga di privacy**, scoperta durante
+    l'implementazione e non prevista dall'interview: con lo slug tornato globale (punto 2),
+    `/songs/[slug]` e `/songbooks/[slug]` restano generate a build time da
+    `generateStaticParams`, il che le rende raggiungibili da **chiunque sia autenticato**,
+    non solo da chi ha accesso all'account proprietario — indovinare uno slug altrui bastava.
+    Il precache d'installazione (`scripts/precache-routes.ts`) aggravava la cosa scaricando
+    ogni canzoniere di ogni account su ogni dispositivo, a prescindere da chi lo usa. Due
+    strade erano possibili — accettare la fuga com'è (nessun altro account esiste ancora),
+    o ricostruire il confine di privacy per davvero; la seconda è quella scelta, tutta in
+    un'unica consegna piuttosto che in due tempi.
+13. **Le pagine diventano dinamiche, il confine di privacy si sposta nel controllo
+    d'accesso.** `generateStaticParams` viene rimosso da `/songs/[slug]` e
+    `/songbooks/[slug]` (`export const dynamic = 'force-dynamic'` al suo posto); ogni
+    caricamento risolve l'account proprietario della risorsa (`songAccountOf`/
+    `songbookAccountOf`) e verifica `accessTo(accountOwnerEmail)` **prima** di leggere o
+    restituire qualunque dato, con `notFound()` sia per "non esiste" sia per "esiste ma non
+    è tuo" — indistinguibili di proposito, per non confermare a un estraneo che uno slug
+    indovinato esiste davvero. La stessa distinzione vale ovunque una risorsa si raggiunga
+    per slug/token invece che navigando l'account corrente: pagina di modifica, azioni di
+    salvataggio/spostamento/cancellazione, letture lato ospite di Sing Together. Da qui
+    anche la fine della tabella `builds` e del pannello "in attesa di pubblicazione": con
+    ogni pagina dinamica, un salvataggio è live all'istante, non c'è più una build da
+    aspettare.
+14. **L'offline si ricostruisce senza un precache unico.** Il precache d'installazione si
+    riduce a quattro rotte generiche (`/`, `/utenti`, `/password`, il manifest); la copertura
+    offline per lettore arriva invece da due meccanismi nuovi — il service worker applica lo
+    stesso controllo di sessione già usato per il precache anche alla cache di runtime delle
+    pagine (`authenticatedPageCaching` in `sw.ts`, prima limitato all'installazione), e un
+    warm-up in background (`OfflineSync`) che, una volta online, richiede da sé le pagine dei
+    soli account a cui chi legge ha accesso — mai quelle di un account altrui.
+
+**Migrazione dei dati esistenti, in ordine.** Il repertorio unico di oggi e i suoi
+`members` diventano l'account di **f.limberti@gmail.com** — scelto perché l'altro indirizzo
+di `ALLOWED_EMAILS`, f.limberti@3nd.it, riceve il proprio account personale vuoto al
+prossimo login, come chiunque altro (punto 8), pur restando proprietario globale nel
+frattempo. Concretamente: si crea la sua riga in `accounts`; si scrive `accountOwnerEmail`
+su ogni riga esistente di `songbooks` con quel valore (`sections` e `songs` non hanno
+bisogno di nulla, seguono `songbookSlug`); ogni riga attuale di `members` diventa una riga
+`(accountOwnerEmail: f.limberti@gmail.com, email, role, addedBy, createdAt)` invariata nel
+resto, cosa che preserva l'accesso di chi è già invitato senza bisogno di re-invitarlo;
+`userSongPrefs` non richiede backfill (punto 5). Le eventuali trasmissioni Sing Together
+già aperte al momento della migrazione, se presenti, si scartano piuttosto che collegarle a
+un account: sono trasmissioni interrotte, non repertorio.
+
+Il canzoniere Example esiste già (creato durante l'implementazione: un canzoniere dedicato,
+non uno dei segnaposto di `content/`, che restano il repertorio "vero" del primo account);
+resta da decidere se dargli un contenuto reale prima di flaggarlo `isExampleTemplate`, o
+lasciarlo come punto di partenza vuoto — vedi la domanda aperta corrispondente.
+
 ## Vincoli d'ambiente
 
 - **Node 18.20.8 in locale** (snap, nessun nvm), Node 24 su Vercel. Tailwind è fissato alla
@@ -1516,6 +1659,28 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Backup | Export manuale scaricabile | Scelta esplicita dell'utente, senza token; il rischio di dimenticarlo è accettato |
 | Ripristino | Il seed di solo inserimento | Dà all'export una via di rientro senza toccare ciò che esiste |
 
+### Account (v3.0, pianificata)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Account corrente | Cookie separato dal token di sessione, sempre riverificato lato server | Non è un fatto di sicurezza come il ruolo, ma una preferenza di navigazione; deve comunque non fidarsi di sé stesso |
+| URL | Invariati, l'account non compare nella rotta | Coerente con l'architettura sottile attuale; il costo è che un link copiato dipende da quale account ha attivo chi lo apre — accettato, Sing Together resta a parte con i suoi token |
+| Unicità di slug e brani | Globale, come prima della v3.0 — `accountOwnerEmail` resta una colonna su `songbooks`, non parte della chiave | Deciso in interview come chiave composta per account, poi rovesciato: `generateStaticParams` genera a build time, senza un account di richiesta con cui comporla. `uniqueSlug()` evita le collisioni alla clonazione dell'Example |
+| Confine di privacy per slug globali | Pagine dinamiche (`force-dynamic`) con controllo d'accesso per-richiesta, non più la generazione statica | Uno slug globale raggiungibile da chiunque sia autenticato è una fuga; il controllo deve stare nel caricamento, non nel fatto che la pagina esista già pre-generata |
+| Precache offline | Rimosso il precache d'installazione di tutti i brani; sostituito da caching di runtime autenticato (`sw.ts`) + warm-up per-lettore (`OfflineSync`) | Un unico precache per l'intera installazione scaricava ogni account su ogni dispositivo; con più account non c'è più un "tutti i brani" innocuo da precachizzare |
+| Pannello "in attesa di pubblicazione" | Rimosso, con la tabella `builds` | Aveva senso quando un salvataggio aspettava una build; con le pagine dinamiche un salvataggio è live subito |
+| Tabella `accounts` | Esplicita, non dedotta dai canzonieri | Un account deve poter esistere un istante prima che la clonazione gli scriva dentro qualcosa, e dà un bersaglio pulito alle chiavi esterne |
+| Canzoniere Example | Nuovo, dedicato, distinto dai canzonieri segnaposto in `content/` | Il repertorio "vero" del primo account non deve fare anche da template per tutti gli altri |
+| Come si segna l'Example | Flag booleano su `songbooks`, indice unico parziale | Spostarlo in futuro è un `UPDATE`, non un deploy |
+| Cancello d'ingresso | Invariato: proprietario o già presente in `members` per qualunque account | Aprire l'accesso a chiunque non è stato chiesto; solo il repertorio si moltiplica, non chi può entrare |
+| Creazione dell'account | Automatica al primo login riuscito, per chiunque superi il cancello | "Ogni utente ha il proprio account" è letto alla lettera, non solo per i proprietari |
+| Ruolo nel proprio account | Sempre admin *di quell'account*, non rimovibile, ma senza il potere di vedere gli altri account | Un editor non gestisce la lista delle persone (regola già esistente, v2.1); chi possiede un account deve poterne gestire i collaboratori. Distinto dal bypass globale, altrimenti "admin" smetterebbe di voler dire "vede tutto" |
+| `members.role` concedibile | Solo editor o viewer, mai admin | L'admin di un account non è un grado che si invita: o sei il proprietario, o sei un proprietario globale |
+| Chi può trasmettere (Sing Together) | Editor o admin sull'account aperto in quel momento | Un viewer può seguire un canzoniere, non esporlo pubblicamente con un link |
+| Preferenze globali (`userPrefs`) | Restano della persona, non dell'account | Zoom, notazione e strumento sono un'abitudine di lettura, non del repertorio guardato |
+| Migrazione dei membri esistenti | Convertiti as-is sull'account del proprietario scelto | Nessuno deve essere re-invitato per non perdere l'accesso che ha già oggi |
+| Account personale di chi c'era già | Creato al login successivo, stesso meccanismo dei nuovi utenti | Nessuna logica speciale in più solo per la migrazione |
+
 ## Domande aperte
 
 1. **Capotasto** — escluso dalla v1 (lo stepper a semitoni copre il bisogno principale).
@@ -1551,9 +1716,8 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
    repertorio attivo per primo, l'archivio in fondo) va aggiunta una colonna `position` e un
    riordino a trascinamento, come già hanno i brani dentro un canzoniere. Ora che la home è
    l'elenco dei canzonieri, la domanda pesa più di prima.
-10. **Canzonieri condivisi o per utente** — sono struttura della libreria, quindi condivisi
-    fra gli account in allowlist, come i brani. Va riconsiderato solo se entrasse qualcuno
-    che vuole un proprio ordinamento del materiale comune.
+10. ~~**Canzonieri condivisi o per utente**~~ — risolta dalla v3.0 (*Account*): ogni account
+    ha i propri canzonieri, non più struttura condivisa fra tutti gli ammessi.
 11. **Rinominare uno slug di brano** — non previsto nemmeno dall'import: lo slug si genera
     dal titolo alla creazione e poi resta. Cambiarlo orfanerebbe le preferenze salvate di
     quel brano, quindi servirebbe una tabella di alias.
@@ -1568,3 +1732,20 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 14. **Brani in attesa non leggibili** — prima della pubblicazione un brano si vede solo nella
     preview dell'import. Se capiterà di volerlo provare a suonare subito, l'alternativa è una
     pagina di lettura dinamica per i soli brani in attesa, fuori dal precache.
+15. ~~**Chi prende in carico il repertorio esistente (v3.0)**~~ — risolta: **f.limberti@gmail.com**.
+    L'altro proprietario globale, f.limberti@3nd.it, riceve il proprio account personale
+    (vuoto, con il solo Example) al prossimo login, come chiunque altro.
+16. **Contenuto del canzoniere Example (v3.0)** — il canzoniere esiste (una sezione "Songs",
+    ancora senza brani). Resta da decidere se popolarlo con contenuto reale prima di
+    flaggarlo `isExampleTemplate`, o se un punto di partenza vuoto sia già sufficiente come
+    Example — nel qual caso la clonazione va comunque verificata con almeno un brano
+    segnaposto, per provare che il percorso funzioni davvero.
+17. ~~**Precache offline per account multipli (v3.0)**~~ — risolta: nessun precache
+    d'installazione per i brani. Un salvataggio è live subito (pagine dinamiche), e la
+    copertura offline arriva da un warm-up per-lettore che copre solo gli account a cui chi
+    legge ha accesso — mai "tutti" indiscriminatamente.
+18. **Cosa succede a un account se il suo proprietario esce da `ALLOWED_EMAILS` (v3.0)** —
+    oggi non esiste alcun flusso di rimozione per un proprietario (è impossibile per
+    costruzione, v2.0/v2.1). Se in futuro ne comparisse uno, resterebbe da decidere se il suo
+    account e i suoi canzonieri restano raggiungibili da chi vi era stato invitato come
+    collaboratore, o se anche quell'accesso decade con lui.

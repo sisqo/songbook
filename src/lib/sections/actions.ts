@@ -11,11 +11,11 @@
 
 import { and, asc, eq, max } from 'drizzle-orm'
 
-import { asEditor } from '@/lib/auth/session'
+import { editableSection, editableSongbook } from '@/lib/songbooks/access'
 import { type ArrangedSection, sameMembers } from '@/lib/songbooks/order'
 import type { CreateSectionResult, WriteResult } from '@/lib/songbooks/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { songbooks, sections, songs } from '@/lib/db/schema'
+import { sections, songs } from '@/lib/db/schema'
 
 /** Postgres' code for a unique violation, which on this table can only be the name. */
 const DUPLICATE = '23505'
@@ -47,22 +47,15 @@ export async function createSection(
   name: string,
 ): Promise<CreateSectionResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
 
+  const target = await editableSongbook(songbookSlug)
+  if (!target.ok) return target
+
   try {
     return await db().transaction(async (tx) => {
-      const home = await tx
-        .select({ slug: songbooks.slug })
-        .from(songbooks)
-        .where(eq(songbooks.slug, songbookSlug))
-        .limit(1)
-
-      if (home.length === 0) return { ok: false, reason: 'not-found' } as CreateSectionResult
-
       const last = await tx
         .select({ position: max(sections.position) })
         .from(sections)
@@ -92,11 +85,12 @@ export async function createSection(
  */
 export async function renameSection(id: number, name: string): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
 
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
+
+  const target = await editableSection(id)
+  if (!target.ok) return target
 
   try {
     const updated = await db()
@@ -127,20 +121,14 @@ export async function renameSection(id: number, name: string): Promise<WriteResu
  */
 export async function removeSection(id: number, moveTo: number | null): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
   if (moveTo === id) return { ok: false, reason: 'invalid-name' }
+
+  const target = await editableSection(id)
+  if (!target.ok) return target
+  const songbookSlug = target.songbookSlug
 
   try {
     return await db().transaction(async (tx) => {
-      const mine = await tx
-        .select({ songbookSlug: sections.songbookSlug })
-        .from(sections)
-        .where(eq(sections.id, id))
-        .limit(1)
-
-      if (mine.length === 0) return { ok: false, reason: 'not-found' } as WriteResult
-
       const held = await tx.select({ slug: songs.slug }).from(songs).where(eq(songs.sectionId, id))
 
       if (held.length > 0) {
@@ -150,7 +138,7 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
           .select({ id: sections.id })
           .from(sections)
           .where(
-            and(eq(sections.id, moveTo), eq(sections.songbookSlug, mine[0].songbookSlug)),
+            and(eq(sections.id, moveTo), eq(sections.songbookSlug, songbookSlug)),
           )
           .limit(1)
 
@@ -173,7 +161,7 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
       const rest = await tx
         .select({ id: sections.id })
         .from(sections)
-        .where(eq(sections.songbookSlug, mine[0].songbookSlug))
+        .where(eq(sections.songbookSlug, songbookSlug))
         .orderBy(asc(sections.position))
 
       for (const [index, section] of rest.entries()) {
@@ -222,8 +210,9 @@ export async function arrangeSongbook(
   groups: ArrangedSection[],
 ): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
-  const editor = await asEditor()
-  if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  const target = await editableSongbook(songbookSlug)
+  if (!target.ok) return target
 
   try {
     return await db().transaction(async (tx) => {

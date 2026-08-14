@@ -1,87 +1,36 @@
 /**
- * Writes the list of page URLs the service worker must precache.
+ * Writes the list of page URLs the service worker installs with, eagerly, on every
+ * device.
  *
- * Serwist's own manifest covers build assets, not rendered pages, so without
- * this the app would have its JavaScript offline and none of its songs. The list
- * is generated before `next build` and read synchronously by next.config.ts,
- * which keeps the config file free of database access.
+ * Songs and songbooks are not among them any more (v3.0): which ones exist is now
+ * private per account, and this list is baked once into the build, identical for
+ * every device that ever installs it — there is no reader to scope it to yet. Their
+ * offline coverage moves to `lib/offline/sync.ts`, a warm-up that runs per signed-in
+ * reader instead, over exactly the accounts they can see.
+ *
+ * What is left here is genuinely account-agnostic: the shell routes fetched with
+ * *this device's own* cookies at install time (`/`, `/users`, `/password` render
+ * whatever that session's account already is), plus the public routes that need no
+ * session at all.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { sql } from 'drizzle-orm'
-
-import { loadEnv } from './load-env'
-
 async function main() {
-  // Before importing anything that reads DATABASE_URL at module scope.
-  loadEnv()
-
-  const { repository, repositoryKind } = await import('../src/lib/data')
-  const { closeDatabase, db, hasDatabase } = await import('../src/lib/db/client')
-  const { builds } = await import('../src/lib/db/schema')
-
-  const [songs, songbooks] = await Promise.all([
-    repository.listSongs(),
-    repository.listSongbooks(),
-  ])
-
   const routes = [
     '/',
     '/users',
     '/password',
     // A metadata route, not a file in public/, so it has to be listed here.
     '/manifest.webmanifest',
-    ...songs.map((song) => `/songs/${song.slug}`),
-    /*
-     * One page per songbook, and they matter offline as much as the songs do:
-     * the home page is now a list of these, so without them every row on the
-     * first screen would lead nowhere with no network.
-     */
-    ...songbooks.map((songbook) => `/songbooks/${songbook.slug}`),
   ]
 
   const output = path.join(process.cwd(), 'generated', 'precache-routes.json')
   await mkdir(path.dirname(output), { recursive: true })
   await writeFile(output, `${JSON.stringify(routes, null, 2)}\n`, 'utf8')
 
-  console.log(`Precache routes (${repositoryKind}): ${routes.length}`)
-
-  /**
-   * Stamp the build.
-   *
-   * Done here rather than after `next build` because this script runs before the
-   * pages are generated and therefore knows exactly which songs they will
-   * contain: anything written to the database after this moment is genuinely not
-   * in the build, and the home screen's publish panel should keep listing it as
-   * pending.
-   *
-   * The instant comes from the database, like `songs.updated_at`, because the
-   * pending list compares the two. A build machine whose clock ran a second ahead
-   * would otherwise stamp the future and quietly call a song published that it had
-   * not read.
-   */
-  if (hasDatabase) {
-    try {
-      const [stamped] = await db()
-        .insert(builds)
-        .values({ id: 'last', builtAt: sql`now()` })
-        .onConflictDoUpdate({ target: builds.id, set: { builtAt: sql`now()` } })
-        .returning({ builtAt: builds.builtAt })
-
-      console.log(`Build stamped at ${stamped.builtAt.toISOString()}`)
-    } catch (error) {
-      /**
-       * The stamp is not load-bearing for generating pages: without it the home
-       * screen's publish panel shows a stale pending list, which is a nuisance.
-       * Letting it fail the build would take the whole site down instead.
-       */
-      console.warn(`Could not stamp the build; the pending list will be stale: ${error}`)
-    }
-  }
-
-  await closeDatabase()
+  console.log(`Precache routes: ${routes.length}`)
 }
 
 main().catch((error) => {

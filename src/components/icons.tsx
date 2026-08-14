@@ -520,6 +520,16 @@ export function IconNote({ size = 16, className }: IconProps) {
   )
 }
 
+/** Two accounts, swapped: the account switcher. */
+export function IconSwitchAccount(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 8h13l-3-3" />
+      <path d="M20 16H7l3 3" />
+    </Icon>
+  )
+}
+
 /** Google's mark, in its own colours, as the sign-in button expects. */
 export function IconGoogle({ size = 18 }: { size?: number }) {
   return (

@@ -1,9 +1,15 @@
 /**
- * Who may enter, as the screen that manages it sees the question.
+ * Who may enter *this account*, as the screen that manages it sees the question.
  *
- * The two halves travel together and stay distinguishable, because the difference is
- * the whole point: an owner cannot be removed here, a member can. A payload of plain
- * addresses would make them look like one list with an arbitrary rule attached.
+ * The owner and the collaborators travel apart and stay distinguishable, because the
+ * difference is the whole point: an owner cannot be removed here, a collaborator can. A
+ * payload of plain addresses would make them look like one list with an arbitrary rule
+ * attached.
+ *
+ * There is exactly one owner per account (v3.0), not a list: an account belongs to one
+ * person, full stop. A signed-in **global** owner (`ALLOWED_EMAILS`) also has full access
+ * here without ever appearing on this screen — that bypass is a fact about the whole
+ * installation, not something each account's own member list needs to restate.
  */
 
 import type { Role } from '@/lib/roles'
@@ -23,21 +29,29 @@ export interface OwnerRow extends SignInSummary {
   email: string
 }
 
-export interface MemberListRow extends MemberRow, SignInSummary {}
+export interface MemberListRow extends MemberRow, SignInSummary {
+  /**
+   * True when this row's address has since become an owner — globally, or (in principle)
+   * of this very account — and so grants nothing any more: ownership already gives them
+   * everything this row could. Computed server-side, since only the server may read
+   * `ALLOWED_EMAILS`; the row is left in place rather than hidden so removing it (the
+   * tidy thing to do) is still offered.
+   */
+  overridden: boolean
+}
 
 export interface MemberList {
-  /**
-   * From `ALLOWED_EMAILS`, which only the server can read. Not removable from here, and
-   * admin by definition — see `lib/roles.ts` for why those two facts are the same one.
-   */
-  owners: OwnerRow[]
+  /** Whose account this is — the email this whole screen is scoped to. */
+  accountOwnerEmail: string
+  /** Admin here by construction, not by a row. Not removable from this screen. */
+  owner: OwnerRow
   members: MemberListRow[]
   /** The address asking, so the screen can mark it and refuse to remove it. */
   you: string
-  /** And their role, so it can refuse to let them change their own. */
+  /** And their role on this account, so it can refuse to let them change their own. */
   yourRole: Role
   /**
-   * Which addresses — owners included — can sign in with a password.
+   * Which addresses — the owner included — can sign in with a password.
    *
    * Not whether they have used it, and certainly not the hash: only that a password
    * exists, which is what decides whether the screen offers to set one or to replace it.
