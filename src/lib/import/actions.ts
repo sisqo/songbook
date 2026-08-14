@@ -23,6 +23,7 @@ import { rowToSong } from '@/lib/data/db'
 import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { songbooks, sections, songs } from '@/lib/db/schema'
+import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
 import { choproFilename, toChoproFile } from './export'
@@ -226,7 +227,7 @@ async function accountForSave(
   if (owner === null) return { ok: false, reason: 'not-found' }
 
   const editor = await accessTo(owner)
-  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+  if (editor === null || !canEdit(editor.role)) {
     return { ok: false, reason: 'not-found' }
   }
   return { ok: true, accountOwnerEmail: owner }
@@ -366,7 +367,7 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
   const owner = await songAccountOf(slug)
   if (owner === null) return { ok: false, reason: 'not-found' }
   const editor = await accessTo(owner)
-  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+  if (editor === null || !canEdit(editor.role)) {
     return { ok: false, reason: 'not-found' }
   }
 

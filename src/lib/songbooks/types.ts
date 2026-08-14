@@ -25,7 +25,7 @@ export interface SongbookState {
 
 export type WriteFailure =
   | 'no-session'
-  /** Signed in, but this is not theirs to change: a viewer. */
+  /** Signed in, but this account is not theirs to change. */
   | 'not-allowed'
   | 'no-database'
   /** The songbook still holds songs and no destination was given for them. */

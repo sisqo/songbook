@@ -6,10 +6,11 @@
  * sign-in (see `lib/auth/session.ts`), which account is on screen is not a security fact
  * at all — it is a navigation preference, no more sensitive than a scroll position. It
  * can live somewhere cheap to read and rewrite, as long as nothing here is ever trusted
- * without checking it against the reader's actual access on every request: the functions
- * below take that access as a plain argument rather than reading the database themselves,
- * so the one query behind it (`listMembershipsFor`) is made once per request by
- * `currentUser` and threaded through, not repeated here.
+ * without checking it against the reader's actual access on every request.
+ *
+ * That check no longer costs a query (v3.1): with collaborators gone, an email may only
+ * ever open the account it owns — its own, or, for a global owner, anyone's — so
+ * `mayAccess` is pure, and nothing here needs the database at all.
  *
  * No import of `@/lib/db/client` on purpose: this module is reachable from anywhere
  * `currentUser` is, and keeping it free of the Postgres driver keeps it free of the
@@ -19,37 +20,18 @@
 import { cookies } from 'next/headers'
 
 import { isOwner, normalizeEmail } from '@/lib/allowlist'
-import type { Membership } from '@/lib/roles'
 
 const COOKIE_NAME = 'songbook-account'
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
 
-/** Whether `email` may open the account owned by `accountOwnerEmail` at all — any role. */
+/** Whether `email` may open the account owned by `accountOwnerEmail` at all. */
 export function mayAccess(
   email: string,
   accountOwnerEmail: string,
   raw: string | undefined | null,
-  memberships: readonly Membership[] | null,
 ): boolean {
   if (isOwner(email, raw)) return true
-  if (normalizeEmail(email) === normalizeEmail(accountOwnerEmail)) return true
-
-  const wanted = normalizeEmail(accountOwnerEmail)
-  return (memberships ?? []).some((m) => normalizeEmail(m.accountOwnerEmail) === wanted)
-}
-
-/**
- * Every account `email` may open: their own, always first, then whichever accounts
- * `memberships` names, deduplicated. What the switcher offers, and what the admin list
- * (a different, wider question — see `lib/accounts/read.ts`) is not.
- */
-export function accessibleAccountsFor(
-  email: string,
-  memberships: readonly Membership[] | null,
-): string[] {
-  const own = normalizeEmail(email)
-  const rest = (memberships ?? []).map((m) => normalizeEmail(m.accountOwnerEmail))
-  return [own, ...new Set(rest.filter((account) => account !== own))]
+  return normalizeEmail(email) === normalizeEmail(accountOwnerEmail)
 }
 
 /**
@@ -61,10 +43,9 @@ export function accessibleAccountsFor(
 export function currentAccountFor(
   email: string,
   raw: string | undefined | null,
-  memberships: readonly Membership[] | null,
   requestedAccount: string | null,
 ): string {
-  if (requestedAccount !== null && mayAccess(email, requestedAccount, raw, memberships)) {
+  if (requestedAccount !== null && mayAccess(email, requestedAccount, raw)) {
     return normalizeEmail(requestedAccount)
   }
   return normalizeEmail(email)

@@ -12,8 +12,8 @@ import { useOnline } from '@/lib/useOnline'
  * A client component for one link, because the page around it is generated at build time
  * and cannot know who is reading. It takes two rules at its foot with it.
  *
- * **A role that may edit.** Nothing at all for a viewer, rather than a button that would
- * refuse, and nothing until the role is known.
+ * **A role that may edit.** Nothing at all for a reader with no account of their own on
+ * this one, rather than a button that would refuse, and nothing until the role is known.
  *
  * **A network.** This was the app's only write control without that condition, and it took
  * an adversarial read to see why it needed one: the editor route is deliberately

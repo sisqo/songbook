@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
@@ -8,16 +9,40 @@ import { provisionAccount } from './lib/accounts/provision'
 import { readPasswordHash } from './lib/auth/credentials'
 import { verifyAgainstNothing, verifyPassword } from './lib/auth/password'
 import { recordSignIn } from './lib/auth/signIns'
-import { listMembershipsFor } from './lib/members/read'
+import { db, hasDatabase } from './lib/db/client'
+import { accounts } from './lib/db/schema'
 import { isAdmitted } from './lib/roles'
 
 /**
+ * Whether this address already owns an account — the second way in, now that nobody can
+ * be admitted merely by being invited as a collaborator elsewhere (v3.1). Fails closed,
+ * same as every other read this gate depends on: a database that cannot answer must not
+ * become a door that opens.
+ */
+async function hasAccount(email: string): Promise<boolean> {
+  if (!hasDatabase) return false
+
+  try {
+    const rows = await db()
+      .select({ ownerEmail: accounts.ownerEmail })
+      .from(accounts)
+      .where(eq(accounts.ownerEmail, normalizeEmail(email)))
+      .limit(1)
+
+    return rows.length > 0
+  } catch (error) {
+    console.error('hasAccount failed', error)
+    return false
+  }
+}
+
+/**
  * Whether this address is allowed in at all — a question with no account of its own; see
- * `isAdmitted`'s own comment for why "some account, any account" is enough here.
+ * `isAdmitted`'s own comment for why owning one, or owning every one, is what it takes now.
  */
 async function admitted(email: string | null | undefined): Promise<boolean> {
   if (!email) return false
-  return isAdmitted(email, process.env.ALLOWED_EMAILS, await listMembershipsFor(email))
+  return isAdmitted(email, process.env.ALLOWED_EMAILS, await hasAccount(email))
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -72,9 +97,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * The gate, and the only place a new session can be created.
      *
      * Having a role at all *is* being allowed in, which is why there is no second question
-     * here: `roleOf` is pure and tested, and all this does is fetch the half that lives in
-     * the database. A table that could not be read arrives as null and admits nobody but
-     * the owners.
+     * here: `roleOf` is pure and tested, and all this does is fetch the one fact that lives
+     * in the database — whether this address already owns an account. A database that
+     * cannot be read comes back false and admits nobody but the owners.
      *
      * For Google the address comes from the verified profile; for a password it comes from
      * `authorize`, which has already checked the same thing. Two belts, and this is the one
@@ -103,7 +128,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        * reads its answer next. Writing the raw casing would key `sign_ins`/`accounts` on
        * whichever form happened to arrive first, splitting one person's history across
        * two rows — see `signIns`' own comment on why it must agree with
-       * `members`/`ALLOWED_EMAILS`.
+       * `accounts`/`ALLOWED_EMAILS`.
        */
       const email = normalizeEmail(raw)
       await recordSignIn(email)

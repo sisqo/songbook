@@ -9,9 +9,9 @@
  * reader instead, over exactly the accounts they can see.
  *
  * What is left here is genuinely account-agnostic: the shell routes fetched with
- * *this device's own* cookies at install time (`/`, `/users`, `/password` render
- * whatever that session's account already is), plus the public routes that need no
- * session at all.
+ * *this device's own* cookies at install time (`/`, `/password` render whatever
+ * that session's account already is), plus the public routes that need no session
+ * at all.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -20,7 +20,6 @@ import path from 'node:path'
 async function main() {
   const routes = [
     '/',
-    '/users',
     '/password',
     // A metadata route, not a file in public/, so it has to be listed here.
     '/manifest.webmanifest',

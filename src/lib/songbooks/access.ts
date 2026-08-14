@@ -14,6 +14,7 @@ import { accessTo } from '@/lib/auth/session'
 import { songbookAccountOf } from '@/lib/data/access'
 import { db } from '@/lib/db/client'
 import { sections } from '@/lib/db/schema'
+import { canEdit } from '@/lib/roles'
 
 import type { WriteFailure } from './types'
 
@@ -25,17 +26,13 @@ type EditableSection =
   | { ok: true; accountOwnerEmail: string; songbookSlug: string }
   | { ok: false; reason: WriteFailure }
 
-function canEditRole(role: string): boolean {
-  return role === 'admin' || role === 'editor'
-}
-
 export async function editableSongbook(slug: string): Promise<EditableSongbook> {
   const owner = await songbookAccountOf(slug)
   if (owner === null) return { ok: false, reason: 'not-found' }
 
   const editor = await accessTo(owner)
   if (editor === null) return { ok: false, reason: 'not-found' }
-  if (!canEditRole(editor.role)) return { ok: false, reason: 'not-allowed' }
+  if (!canEdit(editor.role)) return { ok: false, reason: 'not-allowed' }
 
   return { ok: true, accountOwnerEmail: owner }
 }

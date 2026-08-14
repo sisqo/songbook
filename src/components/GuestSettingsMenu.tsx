@@ -12,11 +12,12 @@ import { IconChevronLeft, IconMenu } from '@/components/icons'
  * broadcast or the repertoire — both are how *this one screen* looks, which is exactly
  * why a guest, who has no account and no session, is still allowed to touch them.
  *
- * This is not `NavMenu` with items hidden. Home, Users, the tuner, Sing Together,
- * Password, sign-out — every one of them is either meaningless with no session or not
- * this screen's to give, and threading a "guest mode" through a component built for a
- * signed-in reader's menu would mean every future addition to it has to remember this
- * exists too. A menu with exactly two rows is simpler built on its own.
+ * This is not `NavMenu` with items hidden. Home, Accounts, the tuner, Sing Together,
+ * Settings (Password among them), sign-out — every one of them is either meaningless
+ * with no session or not this screen's to give, and threading a "guest mode" through a
+ * component built for a signed-in reader's menu would mean every future addition to it
+ * has to remember this exists too. A menu with exactly two rows is simpler built on
+ * its own.
  *
  * `InstrumentPicker` still needs a `PrefsProvider` above it — see `FollowSession`'s own
  * top-level one, which this shares with whichever song is currently on screen, so a

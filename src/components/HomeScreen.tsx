@@ -196,9 +196,9 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
 
           {groups.length === 0 ? (
             /*
-              * An empty library, said differently to the two people who can be looking at
-              * it. Telling a viewer to create a songbook from a menu entry their role does
-              * not draw would send them hunting for something that is not there — and the
+              * An empty library, said differently depending on `mayEdit`. Telling someone
+              * who cannot edit to create a songbook from a menu entry their access does not
+              * draw would send them hunting for something that is not there — and the
               * action behind it would refuse them anyway. The editor's copy used to point
               * at a menu; now the create form is a few inches below, on this same screen.
               */

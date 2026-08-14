@@ -19,7 +19,6 @@ import {
   IconSettings,
   IconTuningFork,
   IconSwitchAccount,
-  IconUsers,
 } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 import {
@@ -59,10 +58,11 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  * action, and passing it in is what lets this component be interactive without
  * turning that action into a client-side call.
  *
- * One entry depends on what the reader may do, and it is absent until the answer
- * arrives rather than present and refusing. A viewer's menu is therefore the songs,
- * the tuner, singing together, and how they like to read — which is everything a
- * viewer has.
+ * One entry depends on who is asking, and it is absent until the answer arrives
+ * rather than present and refusing: Accounts, offered only to a global owner, who
+ * can enter more than their own. Nothing else here is conditional any more — with a
+ * single grantable role (v3.1), every signed-in reader is already admin on their own
+ * account.
  *
  * Settings is a second screen inside the same panel rather than a page of its own:
  * changing the theme or the instrument is something a reader does mid-song, and a
@@ -87,7 +87,7 @@ export function NavMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'settings' | 'sing-together'>('main')
-  const { mayManageUsers, mayShowAccountSwitcher } = useRole()
+  const { mayShowAccountSwitcher } = useRole()
 
   /*
    * `undefined` until the read comes back, `null` once it has and there is nothing
@@ -260,8 +260,8 @@ export function NavMenu({
                 <div className="menu-divider" />
 
                 {/*
-                  * Every role has one of these: how you get in is your own business, and
-                  * a viewer needs it as much as an admin.
+                  * Unconditional: how you get in is your own business, not something a
+                  * role could ever gate.
                   */}
                 <Link href="/password" className={item('password')} role="menuitem" onClick={close}>
                   <IconKey size={17} />
@@ -414,17 +414,10 @@ export function NavMenu({
                   Home
                 </Link>
 
-                {mayManageUsers && (
-                  <Link href="/users" className={item('users')} role="menuitem" onClick={close}>
-                    <IconUsers size={17} />
-                    Users
-                  </Link>
-                )}
-
                 {/*
-                  * Hidden for the common case — one account, nothing to switch to — per
-                  * `mayShowAccountSwitcher`'s own comment. Shown for anyone who collaborates
-                  * on more than their own, and for a global owner, who can enter every one.
+                  * Hidden for everybody but a global owner (v3.1) — per
+                  * `mayShowAccountSwitcher`'s own comment, nobody else ever has more than
+                  * their own account to switch to.
                   */}
                 {mayShowAccountSwitcher && (
                   <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
@@ -460,9 +453,10 @@ export function NavMenu({
                 </a>
 
                 {/*
-                  * Unconditional, like Home: any signed-in reader may start one, not only
-                  * an editor or an admin — reading a repertoire together is not editing it.
-                  * It sits with Home, Users and the tuner rather than behind the Settings
+                  * Unconditional, like Home: any signed-in reader may open this screen —
+                  * whether starting a broadcast succeeds is a question `startBroadcast`
+                  * answers on the server, not one this menu asks first.
+                  * It sits with Home and the tuner rather than behind the Settings
                   * divider below, because Settings is framed by its own comment down there
                   * as touching only this reader's own account, and this is very much about
                   * the repertoire — the songs this reader is about to sing from, sent to

@@ -106,10 +106,11 @@ export async function getMyBroadcast(): Promise<BroadcastState | null> {
  * Starts a broadcast of the reader's **current account**, or restarts this reader's own:
  * a fresh token, nothing showing yet.
  *
- * Requires editor or admin on that account (v3.0) — reading a repertoire together is not
- * editing it, which is why any role may *follow* one, but exposing one to strangers with
- * a link is closer to publishing than to reading, and a viewer's account may not be
- * theirs to expose that way.
+ * Requires admin on that account — the one role there is to hold (v3.1) — because
+ * reading a repertoire together is not editing it: a guest may *follow* one with no
+ * role at all (see `guestReads.ts`), but exposing one to strangers with a link is
+ * closer to publishing than to reading, and only that account's own admin, or a global
+ * owner who has switched into it, may do that.
  *
  * Restarting rather than refusing when one already exists: the previous link stops
  * working the moment a new one is made, so there is never more than one live link per
@@ -165,10 +166,11 @@ export async function stopBroadcast(): Promise<{ ok: boolean }> {
  * the link that was shared and long forgotten — under the exact same old token.
  *
  * Also silently does nothing if `songSlug` is not on the shelf the broadcast is actually
- * showing (v3.0): a reader who collaborates on more than one account could otherwise read
- * a private song from account B while broadcasting account A, and have it pushed straight
- * to A's guests. The broadcast shows only what it was started on, never whatever the
- * reader's browser tab happens to have open.
+ * showing: a global owner switched into account B while broadcasting account A could
+ * otherwise read a private song from B and have it pushed straight to A's guests — the
+ * only reader for whom this can even arise, now that nobody else ever has more than
+ * their own account open (v3.1). The broadcast shows only what it was started on, never
+ * whatever the reader's browser tab happens to have open.
  */
 export async function broadcastPlay(songSlug: string, semitones: number): Promise<void> {
   const user = await currentUser()

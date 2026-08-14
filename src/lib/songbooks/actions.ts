@@ -4,9 +4,10 @@
  * Server actions for songbooks: the app's first write path.
  *
  * Deliberately a small surface — names, membership and order, never song content — and
- * every write requires an **editor**, since songbooks are shared library structure
- * rather than per-reader preferences. Reading the layer needs only a session: a viewer's
- * home is drawn from it, and so is the name in the way back from a song.
+ * every write requires an **editor** (`canEdit`, the account's admin), since songbooks
+ * are shared library structure rather than per-reader preferences. Reading the layer
+ * needs only a session: any signed-in reader's home is drawn from it, and so is the
+ * name in the way back from a song.
  *
  * The sections of a songbook are next door, in `lib/sections/actions.ts`. The line
  * between the two files is which thing is being changed: the containers here, what is
@@ -21,6 +22,7 @@ import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
 import { DEFAULT_SECTION } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { songbooks, sections, songs } from '@/lib/db/schema'
+import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
 import { editableSongbook } from './access'
@@ -30,9 +32,10 @@ import type { SongbookState, CreateResult, WriteResult } from './types'
  * Reads the whole mutable layer for the reader's **current** account. Null when there is
  * nothing to read from.
  *
- * Any role, deliberately. This is where the names come from — the rows on the home, the
- * label on the way back from a song — so gating it to editors would leave a viewer
- * looking at a screen full of nameless containers.
+ * No edit permission required, deliberately — moot besides, now that the only role
+ * there is to hold is admin (v3.1). This is where the names come from — the rows on
+ * the home, the label on the way back from a song — so nothing more than a session is
+ * needed to know which account to read them from.
  */
 export async function loadSongbooks(): Promise<SongbookState | null> {
   const user = await currentUser()
@@ -137,7 +140,7 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
   const songOwner = await songAccountOf(songSlug)
   if (songOwner === null) return { ok: false, reason: 'not-found' }
   const editor = await accessTo(songOwner)
-  if (editor === null || (editor.role !== 'admin' && editor.role !== 'editor')) {
+  if (editor === null || !canEdit(editor.role)) {
     return { ok: false, reason: 'not-found' }
   }
 

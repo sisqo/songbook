@@ -152,11 +152,11 @@ const FAQ: FaqGroup[] = [
     ],
   },
   {
-    title: 'Roles and access',
+    title: 'Accounts and access',
     items: [
       {
-        q: 'Can I share my songbook with someone without giving them editing rights?',
-        a: "Yes. Add them as a Viewer, and they'll be able to follow along with the songbook without any risk of changing your content.",
+        q: 'Can I invite someone else to collaborate on my songbook?',
+        a: "No — there's no shared songbook to invite anyone into. Every allowed address gets its own account and its own collection, kept separate from everyone else's. Letting a new address in at all is up to whoever administers the installation.",
       },
     ],
   },
@@ -169,7 +169,7 @@ const FAQ: FaqGroup[] = [
       },
       {
         q: 'Is my collection private, or can others see it?',
-        a: "Your collection is private by default. It's visible only to the people you specifically invite, based on the role you give them.",
+        a: "Your collection is private by default, visible only to you — nobody else has access to an account that isn't theirs.",
       },
     ],
   },
@@ -217,8 +217,8 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <IconUsers size={20} />,
-    title: 'Who does what',
-    text: 'Admin, Editor or Viewer — choose who can play the songs, who can edit them, and who decides who gets in.',
+    title: 'Your own space',
+    text: "Every allowed address gets its own account and its own songbooks — nothing shared, nothing to manage on anyone else's behalf. An administrator decides who gets in; from there, it's yours alone.",
   },
 ]
 

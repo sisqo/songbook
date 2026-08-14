@@ -1403,7 +1403,7 @@ Nota la progressione deliberata: la v1.1 ha aperto il percorso di scrittura su u
 minima — nomi e appartenenza — e la v1.2 lo estende al contenuto. Ogni passo ha portato una
 regola nuova su chi possiede cosa, ed è la parte da rileggere prima di toccare il seed.
 
-### v3.0 — account (pianificata, non ancora costruita)
+### v3.0 — account
 
 Finora un solo repertorio condiviso: canzonieri, sezioni e brani sono tabelle globali, e
 `members`/`ALLOWED_EMAILS` decidono soltanto chi, fra un insieme fisso di persone, può
@@ -1541,10 +1541,114 @@ resto, cosa che preserva l'accesso di chi è già invitato senza bisogno di re-i
 già aperte al momento della migrazione, se presenti, si scartano piuttosto che collegarle a
 un account: sono trasmissioni interrotte, non repertorio.
 
-Il canzoniere Example esiste già (creato durante l'implementazione: un canzoniere dedicato,
-non uno dei segnaposto di `content/`, che restano il repertorio "vero" del primo account);
-resta da decidere se dargli un contenuto reale prima di flaggarlo `isExampleTemplate`, o
-lasciarlo come punto di partenza vuoto — vedi la domanda aperta corrispondente.
+Il canzoniere Example esiste (creato durante l'implementazione: un canzoniere dedicato, non
+uno dei segnaposto di `content/`, che restano il repertorio "vero" del primo account), è
+flaggato `isExampleTemplate` e contiene un brano segnaposto — aggiunto proprio per
+verificare la clonazione end-to-end contro il database reale prima di dichiarare la
+versione conclusa (vedi *Scostamenti dal piano* più sotto). Un contenuto editoriale vero
+resta da scrivere quando qualcuno vorrà curarlo, non è un blocco tecnico.
+
+### v3.1 — niente più ospiti
+
+La v3.0 aveva introdotto, accanto all'account personale, la possibilità di invitare
+collaboratori — editor o viewer — nell'account di qualcun altro. Questa versione la toglie:
+**un account è un indirizzo email, e un indirizzo email è un account**, senza eccezioni.
+Nessuno è più ospite di nessun altro. L'unico ruolo che resta sopra "il proprio account" è
+quello, già esistente, di proprietario globale (`ALLOWED_EMAILS`): può creare ed eliminare
+account per conto di altri indirizzi, vedere ed entrare in ognuno con pieno controllo — non
+in sola lettura, esattamente come già può fare oggi — ma non può più esistere una terza
+persona che vede un account senza esserne né la proprietaria né un proprietario globale.
+
+**Perché non è solo "restringere l'accesso alla pagina Accounts".** La prima idea era di
+lasciare tutto com'è e limitare la nuova pagina Accounts (con crea/elimina) ai soli
+proprietari globali. Ma la pagina di oggi serve anche a un secondo pubblico — chi
+collabora su più account può passare dall'uno all'altro da lì — e quel secondo pubblico
+sparisce del tutto in questa versione: se nessuno può più essere collaboratore altrove,
+nessuno ha mai più di un account, e non serve più alcun selettore per chi non è
+proprietario globale. La sezione "Yours" della pagina, e la funzione che la alimentava
+(`listMyAccounts`), non si semplificano: si tolgono.
+
+**Il rischio nascosto, trovato mappando il codice prima di scrivere questo piano.**
+`isAdmitted()` oggi ammette un indirizzo se è proprietario globale *o se ha una riga in
+`members`* — che sta per sparire. Senza cambiarla insieme alla rimozione, ogni indirizzo
+ammesso solo tramite un invito perderebbe l'accesso all'app appena questa versione va in
+produzione, e "l'admin crea un account" non avrebbe ancora nessun percorso di codice per
+farlo. Le due cose devono cambiare nello stesso rilascio:
+
+1. **`isAdmitted` guadagna una seconda condizione, al posto di `members`**: l'indirizzo ha
+   già una riga in `accounts` (come proprietario). Il parametro `members` sparisce dalla
+   firma; arriva invece un semplice booleano ("questo indirizzo ha già un account?"), letto
+   una volta da chi chiama (`auth.ts`), come già avveniva per le iscrizioni.
+2. **`provisionAccount(email)` non cambia nella sostanza** — resta la stessa funzione
+   idempotente chiamata ad ogni sign-in riuscito, che crea la riga in `accounts` e clona
+   l'Example se non esistono ancora. Diventa, in più, l'azione che gira quando un
+   proprietario globale preme "crea" sulla pagina Accounts: stessa funzione, due modi di
+   invocarla. Un account creato così esiste già, con l'Example dentro, prima ancora che
+   quell'indirizzo faccia il primo login — è così che "quando un utente nuovo si
+   registrerà, il suo account c'è già" diventa vero anche per chi non è mai stato
+   proprietario globale.
+3. **`roleOf` si riduce a un solo ruolo concedibile.** Non esistendo più collaboratori, non
+   esiste più nulla da leggere in una tabella per rispondere alla domanda "che ruolo ha
+   questa persona qui": o è la proprietaria dell'account (o una proprietaria globale), ed è
+   `admin`, oppure non ha alcun accesso, `null`. `ROLES`, `MEMBER_ROLES`, `MemberRole`,
+   `readRole`, `Membership` spariscono; `canManageUsers` sparisce con loro (non c'è più
+   nulla da "gestire" nel senso di persone da invitare). `canEdit(role)` resta, unica
+   domanda di permesso rimasta, anche se ora equivale letteralmente a `role === 'admin'` —
+   tenuta come funzione a sé, non inlineata, perché i punti che la chiamano (`asEditor`,
+   `asEditorOn`) restano più leggibili a dire "posso modificare questo" che "sono admin".
+4. **Tolto per intero**: la tabella `members` (nuova migrazione, solo dopo il deploy che
+   smette di scriverci — stesso schema in due tempi già usato per `builds`, qui però senza
+   una parte additiva: non c'è nulla da aggiungere, solo da togliere);
+   `src/lib/members/{actions,read,types}.ts`; `MemberManager.tsx`; la pagina `/utenti`
+   (`src/app/users/page.tsx`) e la voce corrispondente nel menù; `withPassword` in
+   `auth/credentials.ts` (l'unico chiamante era `loadMembers`); i casi editor/viewer nei
+   test di `roles.test.ts`; il testo su ruoli ed inviti nella pagina di login (FAQ e riquadro
+   funzionalità); il caso `'Editor'` di `RoleNotice`.
+5. **`accounts/current.ts`, `accounts/read.ts`, `accounts/actions.ts` perdono il parametro
+   `memberships`** ovunque compare — non c'è più nulla da leggere lì per rispondere "questo
+   indirizzo può aprire questo account": può, se è il suo, o se è un proprietario globale.
+   `mayShowAccountSwitcher` si riduce a "sei un proprietario globale?" — il ramo "hai più di
+   un account" non può più essere vero per nessun altro, quindi sparisce.
+6. **La pagina Accounts ha un solo pubblico**: i proprietari globali. Non più due sezioni
+   ("Yours" ed "Every account"), ma un solo elenco — ogni account dell'installazione, con
+   *Entra*, e adesso anche *Crea* (un campo email, riusa `provisionAccount`) ed *Elimina*
+   per ciascuna riga. La guardia della pagina passa da "proprietario globale o più di un
+   account" a "proprietario globale", punto.
+7. **Eliminare un account è una cascata immediata**, senza blocco se non è vuoto: canzoniere
+   per canzoniere, sezioni e brani (le preferenze di quei brani seguono da sole, la chiave
+   esterna verso `songs` è già `on delete cascade`), poi le eventuali trasmissioni Sing
+   Together che stanno mostrando il repertorio di quell'account (`broadcastAccountEmail`),
+   infine la riga in `accounts` stessa — tutto dentro una singola transazione, in
+   quest'ordine perché è quello che rispetta i vincoli già presenti nello schema (`restrict`
+   fra canzonieri/sezioni/brani, pensato apposta per impedire cancellazioni accidentali
+   *dagli altri percorsi* — qui l'ordine esplicito li rispetta invece di doverli allentare).
+   Le credenziali (password) dell'indirizzo si cancellano in più, ma solo se dopo la
+   rimozione quell'indirizzo non risulta più ammesso in nessun altro modo (stessa logica già
+   usata da `removeMember` per lo stesso motivo) — un proprietario globale il cui account
+   viene eliminato resta ammesso e ne riceve semplicemente uno nuovo, vuoto, al prossimo
+   login. L'unica rete di sicurezza è nell'interfaccia, non nel database: va ridigitato
+   l'indirizzo dell'account da eliminare prima che il pulsante funzioni davvero — una scelta
+   esplicita, discussa e confermata, di non bloccare la cancellazione di un account non
+   vuoto né quella dell'account di un proprietario globale.
+8. **Sing Together non cambia nel meccanismo.** `broadcastAccountEmail` resta distinto da
+   `ownerEmail` — serve ancora esattamente al caso "un proprietario globale è entrato
+   nell'account di qualcun altro e trasmette il suo repertorio", che questa versione non
+   toglie affatto: un proprietario globale continua ad avere pieno controllo su ogni
+   account, trasmissione compresa. Cambia solo cosa vuol dire poter avviare una
+   trasmissione: non più "editor o admin sull'account aperto", ma "admin sull'account
+   aperto" — che oggi è già vero per chiunque sia entrato nel proprio account o in uno
+   altrui da proprietario globale, quindi nessun brano di codice cambia in `session.ts`, solo
+   il significato di `canEdit` a monte.
+9. **Migrazione dei quattro indirizzi ammessi solo tramite `members`** (lconsegni@yahoo.it,
+   marcomassetti1980@gmail.com, albano.nicola@gmail.com, ing.paolo.guarducci@gmail.com):
+   ciascuno riceve un proprio account — stesso `provisionAccount` di sempre, eseguito da
+   script prima che il nuovo codice sia in produzione, non dopo, perché è `isAdmitted` a
+   decidere chi entra dal momento del deploy in poi, non la tabella `members` (che a quel
+   punto può ancora esistere per un istante, ma non viene più consultata). Nessuno dei
+   quattro vedrà più Cartoni animati: ripartono con un proprio Example, esattamente come un
+   utente mai visto prima — scelta esplicita, discussa e confermata, non un effetto
+   collaterale scoperto dopo. Le credenziali che hanno già impostato restano valide, non
+   sono legate a `members` in alcun modo.
 
 ## Vincoli d'ambiente
 
@@ -1659,7 +1763,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Backup | Export manuale scaricabile | Scelta esplicita dell'utente, senza token; il rischio di dimenticarlo è accettato |
 | Ripristino | Il seed di solo inserimento | Dà all'export una via di rientro senza toccare ciò che esiste |
 
-### Account (v3.0, pianificata)
+### Account (v3.0)
 
 | Decisione | Scelta | Perché |
 |---|---|---|
@@ -1680,6 +1784,19 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Preferenze globali (`userPrefs`) | Restano della persona, non dell'account | Zoom, notazione e strumento sono un'abitudine di lettura, non del repertorio guardato |
 | Migrazione dei membri esistenti | Convertiti as-is sull'account del proprietario scelto | Nessuno deve essere re-invitato per non perdere l'accesso che ha già oggi |
 | Account personale di chi c'era già | Creato al login successivo, stesso meccanismo dei nuovi utenti | Nessuna logica speciale in più solo per la migrazione |
+
+### Niente più ospiti (v3.1, pianificata)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Scope della pagina Accounts | Tutta la pagina, solo proprietari globali — non più "Yours" condiviso con azioni riservate | La seconda platea della pagina di oggi (collaboratori multi-account) sparisce del tutto in questa versione: non resta nulla da condividere |
+| Selettore per collaboratori multi-account | Tolto, non spostato | Non può più esistere nessuno con accesso a più di un account, a parte i proprietari globali, che hanno già Accounts |
+| Creare un account | Nuovo canale di ammissione: l'indirizzo può accedere anche se non è in `ALLOWED_EMAILS` né mai stato invitato | È il modo in cui "un utente nuovo trova il proprio account già pronto" resta vero senza più poter passare da un invito come collaboratore |
+| Invitare sconosciuti da altrove | Non esiste più: solo un proprietario globale ammette indirizzi nuovi, e solo da Accounts | Diretta conseguenza di "niente più ospiti": non c'era un secondo posto da cui farlo restare aperto |
+| Eliminazione di un account | Cascata immediata, nessun blocco se non vuoto, nemmeno per l'account di un proprietario globale | Scelta esplicita dopo un confronto sul rischio: l'unica rete voluta è la ridigitazione dell'indirizzo, non un divieto strutturale |
+| Poteri di un proprietario globale su un account altrui | Pieno controllo, invariato dalla v3.0 | Niente ruolo intermedio "in visita"; chi amministra l'installazione non perde potere perché i collaboratori spariscono |
+| Ruoli concedibili | Uno solo: admin (proprietario dell'account, o proprietario globale). Nessun equivalente di editor/viewer | Non esiste più nessuno a cui concedere un accesso parziale |
+| Migrazione dei quattro collaboratori esistenti | Un account proprio per ciascuno, vuoto a parte l'Example — non l'accesso a Cartoni animati | Coerente con "un account è un indirizzo": nessuno resta ospite di un account altrui dopo questa versione |
 
 ## Domande aperte
 
@@ -1749,14 +1866,30 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
     oggi non esiste alcun flusso di rimozione per un proprietario (è impossibile per
     costruzione, v2.0/v2.1). Se in futuro ne comparisse uno, resterebbe da decidere se il suo
     account e i suoi canzonieri restano raggiungibili da chi vi era stato invitato come
-    collaboratore, o se anche quell'accesso decade con lui.
-19. **Snapshot di `drizzle-kit` non aggiornato (v3.0)** — le due migrazioni di questa
-    versione (0015/0016) sono scritte a mano, non generate: `drizzle-kit generate` chiede
-    prompt interattivi (disambiguazione rinomina) che questo ambiente non può rispondere. Gli
-    snapshot in `drizzle/meta/0015_snapshot.json` e `0016_snapshot.json` sono quindi copie
-    invariate di quello precedente (v2.4), non una vera rappresentazione dello schema
-    risultante. Il database reale è corretto — le migrazioni sono state verificate riga per
-    riga contro di esso — ma il **prossimo** `npm run db:generate`, in un terminale vero,
-    proporrà di ricreare da capo `accounts`, le colonne di `songbooks`, la chiave di
-    `members` eccetera: da scartare, rigenerando invece lo snapshot a mano o rispondendo ai
-    prompt per farlo combaciare con la realtà, prima di fidarsi del diff che propone.
+    collaboratore, o se anche quell'accesso decade con lui. Diventa in gran parte superata
+    dalla v3.1: senza collaboratori, l'unica domanda che resta è se l'account in sé (i suoi
+    canzonieri) debba sparire insieme al proprietario o restare, orfano ma intatto, finché
+    un proprietario globale non decide di eliminarlo esplicitamente — quest'ultima è già la
+    risposta implicita di come `accounts`/`isAdmitted` sono scritte in v3.1: uscire da
+    `ALLOWED_EMAILS` non elimina nulla da sé.
+19. **Snapshot di `drizzle-kit` non aggiornato (v3.0, v3.1)** — le migrazioni scritte a mano
+    di entrambe le versioni (0015/0016, e ora 0017 che droppa `members`) usano
+    `drizzle-kit generate --custom`, che crea il file SQL vuoto e la voce di journal senza
+    mai ricalcolare lo snapshot dal vero `schema.ts`: ogni `NNNN_snapshot.json` da 0015 in
+    poi è quindi una copia byte-per-byte di quello precedente (v2.4), cambiano solo
+    `id`/`prevId`. Il database reale è corretto — ogni migrazione è stata verificata riga
+    per riga contro di esso — ma il **prossimo** `npm run db:generate`, in un terminale
+    vero, proporrà di ricreare da capo `accounts`, le colonne di `songbooks`, e persino di
+    *ricreare* `members` (lo snapshot non sa ancora che è stata droppata): da scartare,
+    rigenerando invece lo snapshot a mano o rispondendo ai prompt interattivi per farlo
+    combaciare con la realtà, prima di fidarsi del diff che propone.
+20. **Comunicare ai quattro collaboratori esistenti che perdono Cartoni animati (v3.1)** —
+    l'app non ha un sistema di notifiche o invio email; lo scopriranno aprendola. Se serve
+    avvisarli prima, è un messaggio da mandare fuori dall'app, non una funzionalità da
+    costruire per questo.
+21. ~~**`setPasswordFor`/`removePasswordFor` autorizzano su `asAdmin()`, non su
+    `isOwner` (v3.1)**~~ — risolta: erano codice morto una volta tolto `MemberManager`, il
+    loro unico chiamante, e nessuna nuova interfaccia (la pagina Accounts compresa) ha più
+    bisogno di toccare la password di un indirizzo altrui — cancellate per intero, non
+    ri-autorizzate. `auth/actions.ts` offre solo `setOwnPassword`/`removeOwnPassword`, che
+    operano esclusivamente sulla sessione di chi chiama.

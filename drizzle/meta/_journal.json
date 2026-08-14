@@ -120,6 +120,13 @@
       "when": 1786700264358,
       "tag": "0016_v3_accounts_breaking",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786707824301,
+      "tag": "0017_v3_1_drop_members",
+      "breakpoints": true
     }
   ]
 }

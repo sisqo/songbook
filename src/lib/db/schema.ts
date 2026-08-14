@@ -24,8 +24,10 @@ import {
 } from 'drizzle-orm/pg-core'
 
 /**
- * One person's space: their own songbooks, and — through `members` — whoever they have
- * let read or edit them.
+ * One person's space: their own songbooks, and nobody else's (v3.1) — an email and an
+ * account are the same thing, and no third party can be invited into someone else's. The
+ * only way in from outside is a global owner (`ALLOWED_EMAILS`), who can open any account
+ * with full control; there is nothing in between.
  *
  * Keyed by its owner's email rather than a surrogate id, like every other person-scoped
  * table in this schema (`sign_ins`, `user_prefs`). An account is never renamed and never
@@ -207,61 +209,13 @@ export const songs = pgTable(
 )
 
 /**
- * Everyone let into some account other than their own.
- *
- * The owners of an account are not here, and there are two kinds of them. A *global*
- * owner comes from `ALLOWED_EMAILS`, which the app cannot edit — see `lib/allowlist.ts`
- * for why the list has two halves — and is admin on every account, this one included. The
- * account's *own* owner is not there either, and is admin on this one account for the
- * same structural reason: `roleOf` recognises both without a row to read, so an account
- * with no row here at all is the ordinary state, not a locked door, and a row removed
- * from it can never take away access that never lived in this table to begin with.
- *
- * Scoped to an account (v3.0): the primary key is `(account_owner_email, email)`, not
- * the email alone, because the same person can be a collaborator on more than one
- * account — a viewer on one, an editor on another — and each membership is independent.
- * Before v3.0 there was exactly one account in the whole installation, so a bare email
- * was already, coincidentally, scoped to "the" account; that coincidence is what this
- * migration undoes.
- *
- * The email is stored already lowercased by the action that writes it, same as before,
- * so the primary key still does real work within one account: the same address cannot
- * be added twice in two different cases.
- */
-export const members = pgTable(
-  'members',
-  {
-    accountOwnerEmail: text('account_owner_email')
-      .notNull()
-      .references(() => accounts.ownerEmail, { onDelete: 'cascade' }),
-    email: text('email').notNull(),
-    /** Which owner or member let them in, kept as a plain address for the same reason. */
-    addedBy: text('added_by'),
-    /**
-     * What they may do on *this* account: `editor` or `viewer` — see `lib/roles.ts`.
-     * `admin` never appears here: it is not a grant this or any account can hand out to a
-     * collaborator, only what an owner already is — globally from `ALLOWED_EMAILS`, or
-     * structurally for this one account by being the email this row's own key names.
-     *
-     * Text rather than an enum, and defaulted to the least of the two. An enum would put
-     * the list in two places and make adding a third a migration on the type; `readRole`
-     * treats anything it does not recognise as `viewer`, so a value nobody expected cannot
-     * become a way in.
-     */
-    role: text('role').notNull().default('viewer'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [primaryKey({ columns: [table.accountOwnerEmail, table.email] })],
-)
-
-/**
  * How somebody proves they are the address they claim, when it is not Google saying so.
  *
- * A table of its own rather than a column on `members`, and the reason is the same fact
- * that makes the owners un-lockoutable: an owner has no row in `members`, so a column
- * there could never hold their password. Membership answers *whether* you may be here;
- * this answers only *how you prove you are that address*. A row here grants nothing —
- * `roleOf` still decides, and it does not consult this table.
+ * A table of its own rather than a column on `accounts`, because not everyone who can
+ * sign in with a password owns an account: a global owner needs no row in `accounts` at
+ * all to get in (v3.1), so a column there could never hold their hash. A row here grants
+ * nothing on its own — `roleOf` never consults this table — it only answers *how* someone
+ * proves they are the address they claim, never *whether* they may be here.
  *
  * The hash carries its own parameters (see `lib/auth/password.ts`), so this column is
  * opaque text on purpose: nothing but that module should read its shape.
@@ -330,11 +284,12 @@ export const userSongPrefs = pgTable(
  * schedule regardless of who is still watching.
  *
  * `broadcastAccountEmail` says *whose account's* repertoire is on show (v3.0) — almost
- * always the same as `ownerEmail`, but not necessarily: someone editing on an account
- * they collaborate on may broadcast that repertoire instead of their own. Kept apart from
- * `ownerEmail` because the two answer different questions — who is in control of this
- * broadcast, and which shelf of songs it is reading from — and the guest-facing reads
- * (`guestReads.ts`) only ever need the second one.
+ * always the same as `ownerEmail`, but not necessarily: a global owner who has switched
+ * into someone else's account may broadcast that repertoire instead of their own (v3.1 —
+ * nobody but a global owner can, now that an account has no collaborators to switch in
+ * as). Kept apart from `ownerEmail` because the two answer different questions — who is
+ * in control of this broadcast, and which shelf of songs it is reading from — and the
+ * guest-facing reads (`guestReads.ts`) only ever need the second one.
  */
 /**
  * How often, and when last, each address has actually gotten in — through Google or a
@@ -342,10 +297,12 @@ export const userSongPrefs = pgTable(
  * this is written from there, once admission is already decided. Never itself a gate:
  * a row here grants nothing, and a missing row simply means "not yet", not "not allowed".
  *
- * Keyed by email like everything else about a person, but never joined to `members`: an
- * owner signs in too, and an owner has no row there — see that table's own comment for
- * why. A row here is as true of an owner as of an invited member, which is exactly why it
- * cannot live on either.
+ * Keyed by email like everything else about a person, but never joined to `accounts`: a
+ * global owner signs in too, and this is written from `signIn` in `auth.ts` *before*
+ * `provisionAccount` runs on the same address, so the row this would join to may not
+ * exist yet even on the sign-in that writes it. A row here is as true of a global owner
+ * as of an ordinary account owner, which is exactly why it cannot depend on either having
+ * a row anywhere else.
  */
 export const signIns = pgTable('sign_ins', {
   email: text('email').primaryKey(),

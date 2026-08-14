@@ -26,7 +26,7 @@ export interface DuplicateOf {
 
 export type SaveFailure =
   | 'no-session'
-  /** Signed in, but this is not theirs to change: a viewer. */
+  /** Signed in, but this account is not theirs to change. */
   | 'not-allowed'
   | 'no-database'
   | 'invalid-title'

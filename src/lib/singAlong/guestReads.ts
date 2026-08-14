@@ -3,8 +3,8 @@
 /**
  * What a guest may read with only a Sing Together token: the repertoire of the account
  * that token's broadcast belongs to (v3.0) — not every account in the installation, and
- * not necessarily the broadcaster's own, if they were broadcasting one they collaborate
- * on. No writes, no membership, no role.
+ * not necessarily the broadcaster's own, if a global owner had switched into someone
+ * else's account before starting it (v3.1). No writes, no accounts of their own, no role.
  *
  * Kept apart from `./session`, which is the other side of the same feature: what only
  * the broadcast's own owner may change.

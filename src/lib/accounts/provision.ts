@@ -7,9 +7,10 @@
  * that is what lets it run on every sign-in with no cost once the account already exists,
  * the same shape as `recordSignIn` itself.
  *
- * This runs for **every** email that clears `admitted()`, not only for owners: someone
- * invited as a collaborator on someone else's account still gets their own, empty except
- * for the clone, on this same sign-in — see PLAN.md, *Account (v3.0)*, point 8.
+ * This runs for **every** email that clears `admitted()`, not only global owners: an
+ * address a global owner has already given its own account through `createAccount`
+ * reaches this same function again on its own first sign-in — a no-op by then, since
+ * `createAccount` already called it once (see PLAN.md, *Niente più ospiti*, point 2).
  */
 
 import { eq } from 'drizzle-orm'

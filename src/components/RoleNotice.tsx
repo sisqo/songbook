@@ -1,10 +1,6 @@
 'use client'
 
-import { useRole } from '@/components/RoleProvider'
 import { IconInfo } from '@/components/icons'
-
-/** How each role is named on screen, which is how the person was told about it. */
-const NAME = { admin: 'Admin', editor: 'Editor', viewer: 'Viewer' } as const
 
 /**
  * What to put where a tool would have been.
@@ -14,18 +10,16 @@ const NAME = { admin: 'Admin', editor: 'Editor', viewer: 'Viewer' } as const
  * they are the same page for everybody — and the actions behind them refuse anyway. This
  * is the sentence that turns a refusal into an explanation.
  *
- * It names the role they have as well as the one they would need: "serve Editor" alone
- * invites the reply "but I am an editor", and the answer to that is on the server.
+ * Only ever rendered for someone with no role at all on this account (v3.1): the one role
+ * left, admin, is exactly the one this notice is asking for, so there is no second case
+ * where the reader already has it and this would need to say so.
  */
-export function RoleNotice({ needed, what }: { needed: 'Editor' | 'Admin'; what: string }) {
-  const { role } = useRole()
-
+export function RoleNotice({ what }: { what: string }) {
   return (
     <p className="notice notice-accent" role="status">
       <IconInfo />
       <span>
-        You need the <strong>{needed}</strong> role to {what}.
-        {role !== null && ` Yours is ${NAME[role]}.`}
+        You need to be an <strong>admin</strong> on this account to {what}.
       </span>
     </p>
   )

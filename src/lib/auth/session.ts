@@ -9,22 +9,22 @@
  * leave the writes open behind it.
  *
  * What this cannot do is end a session that already exists. The cookie is a ninety-day
- * JWT and the pages are precached, so a reader who has been removed, or moved down to
- * viewer, keeps whatever their browser already holds until they sign in again. These
- * guards are what stop them changing anything shared in the meantime; `/users` says so
- * in as many words.
+ * JWT and the pages are precached, so a reader whose account has been removed keeps
+ * whatever their browser already holds until they sign in again. These guards are what
+ * stop them changing anything shared in the meantime.
  *
- * The table is read on every call, and that is the point rather than an oversight: it is
- * what makes a change of role take effect on the next action instead of the next
- * sign-in. The cost is one indexed lookup on a table with a handful of rows, on paths
- * that were already talking to the same database.
+ * Access is re-decided on every call rather than trusted from the token, and that is the
+ * point rather than an oversight: it is what makes losing an account — or, for a global
+ * owner, a change to `ALLOWED_EMAILS` — take effect on the next action instead of the next
+ * sign-in. Neither `roleOf` nor resolving *which* account is current needs the database
+ * for that any more (v3.1): with collaborators gone, both questions turn on nothing but
+ * the requested address, `ALLOWED_EMAILS`, and normalization.
  */
 
 import { auth } from '@/auth'
 import { currentAccountFor, readAccountCookie } from '@/lib/accounts/current'
 import { normalizeEmail } from '@/lib/allowlist'
-import { listMembershipsFor } from '@/lib/members/read'
-import { type Role, canEdit, canManageUsers, roleOf } from '@/lib/roles'
+import { type Role, canEdit, roleOf } from '@/lib/roles'
 
 export interface CurrentUser {
   email: string
@@ -35,22 +35,22 @@ export interface CurrentUser {
 
 /**
  * The signed-in reader, the account they are currently looking at, and their role on it —
- * or null when there is nobody, or somebody whose access to *that account* has been taken
- * away. Losing access to one account you collaborate on does not sign you out of your
- * own: the account resolved here already falls back to your own when the requested one no
- * longer answers, so "null" means what it always meant — nobody home at all.
+ * or null when there is nobody at all. A stale cookie pointing at an account this reader
+ * can no longer open does not produce that null: the account resolved here already falls
+ * back to their own when the requested one no longer answers, so "null" means what it
+ * always meant — nobody home at all.
  *
  * Deliberately **not** null merely because there is no database. Running from `content/`
  * with no `DATABASE_URL` is the normal way to work locally, and an owner is an owner there
- * too: `listMembershipsFor` answers null, `roleOf` reads the environment, and the owners
- * come out admin — which is the same property that keeps them in when the database is
- * unreachable in production. What refuses in that mode is each write, with `no-database`,
- * which is the true reason. Saying "your role does not allow this" instead would be a lie
- * with a plausible ring to it.
+ * too: `roleOf` reads the environment directly and needs nothing from the database to say
+ * so — which is the same property that keeps them in when the database is unreachable in
+ * production. What refuses in that mode is each write, with `no-database`, which is the
+ * true reason. Saying "your role does not allow this" instead would be a lie with a
+ * plausible ring to it.
  *
- * One membership query, not two: `currentAccountFor` needs the same list `roleOf` does to
- * validate the requested account, so it is fetched once here and handed to both rather
- * than each reaching for its own copy.
+ * Needs no database to validate the requested account either (v3.1): nobody collaborates
+ * on an account that is not theirs, so `currentAccountFor` — like `roleOf` — never reads a
+ * membership out of a table that no longer grants one.
  */
 export async function currentUser(): Promise<CurrentUser | null> {
   const session = await auth()
@@ -59,11 +59,10 @@ export async function currentUser(): Promise<CurrentUser | null> {
   const normalized = normalizeEmail(email)
 
   const raw = process.env.ALLOWED_EMAILS
-  const memberships = await listMembershipsFor(normalized)
   const requested = await readAccountCookie()
-  const accountOwnerEmail = currentAccountFor(normalized, raw, memberships, requested)
+  const accountOwnerEmail = currentAccountFor(normalized, raw, requested)
 
-  const role = roleOf(normalized, raw, accountOwnerEmail, memberships)
+  const role = roleOf(normalized, raw, accountOwnerEmail)
   return role === null ? null : { email: normalized, accountOwnerEmail, role }
 }
 
@@ -74,7 +73,8 @@ export async function currentUser(): Promise<CurrentUser | null> {
  * Two reasons, kept apart because they are two different things to be told: `no-session`
  * is "your session ended, sign in again", which is a thing the reader can fix, and
  * `not-allowed` is "this is not yours to change", which is not. Collapsing them would
- * have a viewer sent round the login loop for a button that will never work for them.
+ * have someone with no access to this account sent round a login loop for a button that
+ * will never work for them.
  */
 export type Permission =
   | { ok: true; email: string; accountOwnerEmail: string; role: Role }
@@ -108,10 +108,9 @@ export async function accessTo(accountOwnerEmail: string): Promise<CurrentUser |
   const normalized = normalizeEmail(email)
 
   const raw = process.env.ALLOWED_EMAILS
-  const memberships = await listMembershipsFor(normalized)
   const target = normalizeEmail(accountOwnerEmail)
 
-  const role = roleOf(normalized, raw, target, memberships)
+  const role = roleOf(normalized, raw, target)
   return role === null ? null : { email: normalized, accountOwnerEmail: target, role }
 }
 
@@ -142,7 +141,9 @@ export function asEditorOn(accountOwnerEmail: string): Promise<Permission> {
 }
 
 /**
- * Permission to change who enters the *current account*, and with which role.
+ * Permission to act as admin on the *current account* — the same question as `asEditor`
+ * now that admin is the only role there is to hold (v3.1), kept as its own function so
+ * call sites that mean "am I in charge here" can still say so, rather than "can I edit".
  *
  * Not a global check: the account's own owner passes this on their own account, by
  * design (see `roleOf`). Anything that must be restricted to a true, installation-wide
@@ -150,5 +151,5 @@ export function asEditorOn(accountOwnerEmail: string): Promise<Permission> {
  * process.env.ALLOWED_EMAILS)` directly, not this.
  */
 export function asAdmin(): Promise<Permission> {
-  return permit(canManageUsers)
+  return permit(canEdit)
 }

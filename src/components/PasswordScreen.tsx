@@ -14,9 +14,10 @@ import { useOnline } from '@/lib/useOnline'
 /**
  * Your own way in, set by you.
  *
- * Here rather than only in `/users` because a password only an admin can change is a
- * password the admin knows. Every role has this screen — how you get in is your own
- * business, and a viewer needs it as much as an admin.
+ * Nobody else's password is ever set from anywhere in this app (v3.1): with no more
+ * collaborators, there is no admin to hand this to on someone else's behalf, and no
+ * `/users` page for it to live behind. Every signed-in reader has this screen — how
+ * you get in is your own business, not something a role could ever gate.
  *
  * Nothing is baked in and nothing is cached: whether you have a password is a fact about
  * the server, and offline the honest answer is that it cannot be asked.

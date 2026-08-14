@@ -40,7 +40,7 @@ export type SaveResult = 'saved' | 'no-destination' | 'failed'
  *
  * **No role is checked here, and that is the design.** A transposition, a capo, a scroll
  * speed and a font size are not modifications of anything shared: they are how this one
- * reader reads, on their own screen. A viewer who could not save them would be a viewer
+ * reader reads, on their own screen. Someone who could not save them would be someone
  * who cannot use the app on stage, which is the only place it gets used.
  */
 

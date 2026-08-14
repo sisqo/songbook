@@ -65,9 +65,10 @@ export default async function EditSongPage({ params }: Props) {
    * The one page in the app that can refuse on the server, and it does.
    *
    * Everywhere else the role is checked in the browser, because the pages are generated
-   * at build time and are the same for everybody. This one is rendered per request, so a
-   * viewer who types the address gets an answer instead of an editor full of controls
-   * that would refuse — and the words of the song are not sent to them at all.
+   * at build time and are the same for everybody. This one is rendered per request, so
+   * somebody with no admin access here who types the address gets an answer instead of an
+   * editor full of controls that would refuse — and the words of the song are not sent to
+   * them at all.
    */
   if (!canEdit(role)) {
     return (
@@ -79,7 +80,7 @@ export default async function EditSongPage({ params }: Props) {
           <p className="notice notice-accent" role="status">
             <IconInfo />
             <span>
-              The <strong>Editor</strong> role is required to edit a song.
+              Only this account&apos;s owner, or a global owner, can edit a song here.
             </span>
           </p>
         </main>

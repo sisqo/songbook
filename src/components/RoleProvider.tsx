@@ -4,14 +4,13 @@ import { type ReactNode, createContext, useContext, useEffect, useMemo, useState
 
 import { mayShowAccountSwitcher } from '@/lib/accounts/read'
 import { loadRole } from '@/lib/auth/actions'
-import { type Role, canEdit, canManageUsers } from '@/lib/roles'
+import { type Role, canEdit } from '@/lib/roles'
 
 interface RoleContextValue {
   role: Role | null
   /** Whether the server has answered yet. Before that, nothing is offered. */
   known: boolean
   mayEdit: boolean
-  mayManageUsers: boolean
   /** Whether to offer the account switcher at all — see `mayShowAccountSwitcher`. */
   mayShowAccountSwitcher: boolean
 }
@@ -20,7 +19,6 @@ const RoleContext = createContext<RoleContextValue>({
   role: null,
   known: false,
   mayEdit: false,
-  mayManageUsers: false,
   mayShowAccountSwitcher: false,
 })
 
@@ -33,9 +31,10 @@ const RoleContext = createContext<RoleContextValue>({
  * survives navigation between them.
  *
  * **Nothing is cached, deliberately.** A remembered "admin" would draw buttons for
- * somebody who had since been moved down to viewer — buttons that refuse when pressed,
- * which is worse than buttons that were never there. And the cost of not caching is
- * nothing: everything a role unlocks needs the network anyway.
+ * somebody whose account had since been deleted, or whose global-owner status had since
+ * been revoked — buttons that refuse when pressed, which is worse than buttons that were
+ * never there. And the cost of not caching is nothing: everything a role unlocks needs
+ * the network anyway.
  *
  * Which is also why the answer is *hide until known* rather than show-then-hide. A
  * control that appears and vanishes is a control someone will have already reached for;
@@ -89,7 +88,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       role,
       known,
       mayEdit: known && canEdit(role),
-      mayManageUsers: known && canManageUsers(role),
       mayShowAccountSwitcher: known && switcher,
     }),
     [role, known, switcher],

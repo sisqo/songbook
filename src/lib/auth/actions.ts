@@ -4,18 +4,17 @@
  * What the browser may ask about its own account, and do to it.
  *
  * The role is here because a screen has to know what to leave out. The passwords are here
- * because they are one subject — how somebody proves who they are — and splitting them
- * between this file and the members screen would put the rule about owners in two places.
+ * because proving who you are is entirely your own business now (v3.1) — nobody else's
+ * password is ever set from this file, or from anywhere else in the app.
  */
 
-import { isOwner, normalizeEmail } from '@/lib/allowlist'
 import {
   deletePasswordHash,
   readPasswordHash,
   writePasswordHash,
 } from '@/lib/auth/credentials'
 import { hashPassword, isPasswordAcceptable, verifyPassword } from '@/lib/auth/password'
-import { asAdmin, currentUser } from '@/lib/auth/session'
+import { currentUser } from '@/lib/auth/session'
 import type { PasswordResult } from '@/lib/auth/types'
 import { hasDatabase } from '@/lib/db/client'
 import type { Role } from '@/lib/roles'
@@ -48,8 +47,8 @@ export async function loadAccount(): Promise<{
  *
  * The address comes from the session and nowhere else — there is no parameter for it, so
  * there is nothing for a caller to substitute. That is the whole of the authorisation:
- * every role may do this, including a viewer, because your own way of getting in is not
- * something shared.
+ * anyone signed in may do this, because your own way of getting in is not something
+ * shared.
  *
  * The current password is required when there is one. Someone who has only ever used
  * Google has none, and asking them for it would leave them unable to set a first one.
@@ -95,62 +94,6 @@ export async function removeOwnPassword(): Promise<PasswordResult> {
     return { ok: true }
   } catch (error) {
     console.error('removeOwnPassword failed', error)
-    return { ok: false, reason: 'failed' }
-  }
-}
-
-/**
- * Sets somebody else's password: an admin giving an invited member their first way in, or
- * replacing one that was forgotten.
- *
- * **Not for another owner.** An owner's access answers to the environment, and their
- * identity is Google's to vouch for; letting an admin write a password for one would be a
- * way to sign in as somebody who cannot be removed or demoted. Your own address is the
- * exception, and it is not really an exception — that is `setOwnPassword`'s territory,
- * allowed here so an owner can set their first password from the same screen.
- */
-export async function setPasswordFor(email: string, password: string): Promise<PasswordResult> {
-  if (!hasDatabase) return { ok: false, reason: 'no-database' }
-
-  const admin = await asAdmin()
-  if (!admin.ok) return { ok: false, reason: admin.reason }
-
-  const address = normalizeEmail(email)
-  if (!isPasswordAcceptable(password)) return { ok: false, reason: 'weak-password' }
-  if (address !== admin.email && isOwner(address, process.env.ALLOWED_EMAILS)) {
-    return { ok: false, reason: 'is-owner' }
-  }
-
-  try {
-    await writePasswordHash(address, await hashPassword(password))
-    return { ok: true }
-  } catch (error) {
-    console.error('setPasswordFor failed', error)
-    return { ok: false, reason: 'failed' }
-  }
-}
-
-/** Takes a password away, leaving Google — or nothing, for someone who has no Google account. */
-export async function removePasswordFor(email: string): Promise<PasswordResult> {
-  if (!hasDatabase) return { ok: false, reason: 'no-database' }
-
-  const admin = await asAdmin()
-  if (!admin.ok) return { ok: false, reason: admin.reason }
-
-  const address = normalizeEmail(email)
-  if (address !== admin.email && isOwner(address, process.env.ALLOWED_EMAILS)) {
-    return { ok: false, reason: 'is-owner' }
-  }
-
-  try {
-    if ((await readPasswordHash(address)) === null) {
-      return { ok: false, reason: 'no-password' }
-    }
-
-    await deletePasswordHash(address)
-    return { ok: true }
-  } catch (error) {
-    console.error('removePasswordFor failed', error)
     return { ok: false, reason: 'failed' }
   }
 }

@@ -4,17 +4,20 @@
  * Having a valid Google account is not enough: the gate exists because the
  * repertoire is copyrighted material, so membership is an explicit list.
  *
- * The list has two halves and they are not the same kind of thing. `ALLOWED_EMAILS`
- * holds the **owners**: set in the environment, readable only by the server, and not
- * removable from inside the app — which is what makes locking yourself out
- * impossible, and what keeps a database the app cannot reach from shutting the owner
- * out of it. The `members` table holds everyone the owners have since let in, added
- * and removed from the app itself and taking effect on the next sign-in with no
- * deploy.
+ * `ALLOWED_EMAILS` holds the **global owners**: set in the environment, readable only
+ * by the server, and not removable from inside the app — which is what makes locking
+ * yourself out impossible, and what keeps a database the app cannot reach from
+ * shutting an owner out of it. Nobody else can be admitted from here any more (v3.1):
+ * an address that is not a global owner gets in by already having a row in `accounts`
+ * — created for it by a global owner, or by its own first sign-in as one — which is
+ * `isAdmitted` in `lib/roles.ts`'s question to answer, not this file's. There is no
+ * second table of admitted outsiders any more; an account is an address and an
+ * address is an account.
  *
- * Both halves meet in one function, called from both places that ask the question —
- * the sign-in callback and the guard in front of every write. Two separate answers
- * to "may this person be here" is how one of them ends up wrong.
+ * `isOwner` here answers only the first half. It is called from both places that ask
+ * the full question — the sign-in callback and the guard in front of every write —
+ * alongside `isAdmitted`'s own second half, so that neither ever drifts from the
+ * other and ends up with two different answers to "may this person be here".
  */
 
 /** One address as it is compared: trimmed and lowercased, since nobody types it twice the same. */

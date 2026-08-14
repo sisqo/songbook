@@ -69,18 +69,20 @@ const nextConfig: NextConfig = {
       { source: '/canzonieri/:slug', destination: '/songbooks/:slug', permanent: true },
       { source: '/canzoni/:slug', destination: '/songs/:slug', permanent: true },
       { source: '/canzoni/:slug/modifica', destination: '/songs/:slug/edit', permanent: true },
-      { source: '/utenti', destination: '/users', permanent: true },
       { source: '/importa', destination: '/', permanent: true },
       /*
-       * '/songbooks' and '/import' were pages of their own — create/rename/remove a
-       * songbook, and import songs into one — folded into the home screen and into
-       * each songbook's own page rather than renamed. Nothing replaces them
-       * directly, so both land on '/'; '/canzonieri' and '/importa' above go
-       * straight there too, rather than bouncing through the routes they used to
-       * become before those were retired.
+       * '/songbooks', '/import' and '/users' were pages of their own — create/rename/
+       * remove a songbook, import songs into one, and manage collaborators — folded
+       * into the home screen, into each songbook's own page, or removed outright
+       * (collaborators, v3.1). Nothing replaces any of them directly, so all three
+       * land on '/'; '/canzonieri', '/importa' and '/utenti' above go straight there
+       * too, rather than bouncing through the routes they used to become before
+       * those were retired.
        */
       { source: '/songbooks', destination: '/', permanent: true },
       { source: '/import', destination: '/', permanent: true },
+      { source: '/users', destination: '/', permanent: true },
+      { source: '/utenti', destination: '/', permanent: true },
     ]
   },
 }
