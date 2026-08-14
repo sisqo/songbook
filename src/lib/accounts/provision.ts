@@ -7,10 +7,16 @@
  * that is what lets it run on every sign-in with no cost once the account already exists,
  * the same shape as `recordSignIn` itself.
  *
- * This runs for **every** email that clears `admitted()`, not only global owners: an
+ * This runs for **every** email a provider has authenticated, not only global owners: an
  * address a global owner has already given its own account through `createAccount`
  * reaches this same function again on its own first sign-in — a no-op by then, since
  * `createAccount` already called it once (see PLAN.md, *Niente più ospiti*, point 2).
+ *
+ * Returns whether it actually created the account (true) or found one already there —
+ * or failed (false). That bit is not for this function's own use: it is how a caller
+ * tells a brand-new arrival from a no-op repeat, which is what decides whether a welcome
+ * email goes out (v3.2, PLAN.md point 7). The email itself is not sent here — sending it
+ * is the caller's job, so this function does not need to know Resend exists.
  */
 
 import { eq } from 'drizzle-orm'
@@ -27,20 +33,22 @@ import { uniqueSlug } from '@/lib/slug'
  * Silent no-op with no database, same as `recordSignIn`: local work from `content/` has
  * no accounts table to write. Failures are logged, not thrown — a sign-in must still
  * succeed even if provisioning trips, the same reasoning `recordSignIn` already applies.
+ * Both of those paths report `false`: nothing was created, so there is nothing to send
+ * a welcome email about.
  */
-export async function provisionAccount(email: string): Promise<void> {
-  if (!hasDatabase) return
+export async function provisionAccount(email: string): Promise<boolean> {
+  if (!hasDatabase) return false
 
   const ownerEmail = normalizeEmail(email)
 
   try {
-    await db().transaction(async (tx) => {
+    return await db().transaction(async (tx) => {
       const existing = await tx
         .select({ ownerEmail: accounts.ownerEmail })
         .from(accounts)
         .where(eq(accounts.ownerEmail, ownerEmail))
         .limit(1)
-      if (existing.length > 0) return
+      if (existing.length > 0) return false
 
       await tx.insert(accounts).values({ ownerEmail })
 
@@ -51,7 +59,7 @@ export async function provisionAccount(email: string): Promise<void> {
         .limit(1)
       // No Example songbook flagged yet: the account still exists, just empty. Not an
       // error — see PLAN.md's own open question about writing this songbook's content.
-      if (template.length === 0) return
+      if (template.length === 0) return true
       const source = template[0]
 
       /*
@@ -117,8 +125,11 @@ export async function provisionAccount(email: string): Promise<void> {
           position: song.position,
         })
       }
+
+      return true
     })
   } catch (error) {
     console.error('provisionAccount failed', error)
+    return false
   }
 }

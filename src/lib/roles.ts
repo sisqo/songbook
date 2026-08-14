@@ -30,14 +30,17 @@ export function roleOf(
 }
 
 /**
- * Whether this email is allowed into the app at all — a question with no account of its
- * own, unlike `roleOf`. A global owner always is; anyone else needs their own row in
- * `accounts` already, which `hasAccount` is the caller's answer to (v3.1) — put there for
- * them by a global owner, or by a one-off migration, never earned by the sign-in attempt
- * itself: an address with no row yet cannot bootstrap one by trying, since `provisionAccount`
- * only ever runs *after* this check passes. There is no longer a separate table an outsider
- * could appear in without one — an invited collaborator with no account of their own does
- * not exist any more.
+ * Whether this email would still be let in today, with no account of its own to check
+ * against — a question `roleOf` cannot answer, since it always needs one. A global owner
+ * always passes; anyone else needs `hasAccount` true.
+ *
+ * No longer a gate in front of a sign-in (v3.2): registration is open, so
+ * `recordSignIn`/`provisionAccount` in `auth.ts` run for anyone a provider has already
+ * authenticated, without asking this function first. What is left is a real, separate
+ * question — `deleteAccount` (`accounts/actions.ts`) calls this *after* removing an
+ * address's account, to decide whether a stray `credentials` row for it should be purged
+ * too: `false` here means the address has no other way back in, so the leftover password
+ * hash is dead weight rather than an account nobody remembers exists.
  */
 export function isAdmitted(
   email: string | null | undefined,

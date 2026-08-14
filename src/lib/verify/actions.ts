@@ -1,0 +1,112 @@
+'use server'
+
+/**
+ * Turning a pending registration into a real account (v3.2, PLAN.md point 5) — the one
+ * write in the whole `/verifica` flow, and deliberately not something a page load can
+ * trigger on its own. Corporate email scanners routinely "click" every link in a message
+ * before a person ever sees it, to check where it goes; if that GET consumed the token,
+ * the scanner would burn it and the real click would land on an error. So the page
+ * (`app/verifica/page.tsx`) only ever reads — see `verify/check.ts` — and this, a real
+ * POST behind an explicit "Verify my email" button, is the only thing that writes.
+ */
+
+import { eq } from 'drizzle-orm'
+import { redirect } from 'next/navigation'
+
+import { provisionAccount } from '@/lib/accounts/provision'
+import { normalizeEmail } from '@/lib/allowlist'
+import { issueSessionCookie } from '@/lib/auth/session'
+import { hashToken } from '@/lib/auth/tokens'
+import { db, hasDatabase } from '@/lib/db/client'
+import { credentials, pendingRegistrations } from '@/lib/db/schema'
+import { sendEmail } from '@/lib/email/send'
+import { welcomeEmail } from '@/lib/email/templates'
+
+/**
+ * Bound with `email` and `token` from the page's own searchParams (`action={verifyEmail
+ * .bind(null, email, token)}`), so the `<form>` itself carries no fields of its own.
+ *
+ * Returns nothing on failure rather than a result the caller has to render: this writes
+ * nothing before the recheck below fails, so the automatic re-render every Server Action
+ * triggers on the form that called it runs the page's own read-only check again — which
+ * reaches the exact same "invalid or expired" branch on its own, with no error state to
+ * thread back by hand. A real result only exists on success, and it is a redirect, not a
+ * value: `redirect()` throws, so it must never sit inside the `try` below, or a genuine
+ * success would be logged and swallowed as a failure instead of navigating anywhere.
+ */
+export async function verifyEmail(email: string, token: string): Promise<void> {
+  if (!hasDatabase) return
+
+  const normalized = normalizeEmail(email)
+
+  let verified: boolean
+  try {
+    verified = await db().transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(pendingRegistrations)
+        .where(eq(pendingRegistrations.email, normalized))
+        .limit(1)
+
+      const row = rows[0]
+      if (row === undefined) return false
+      if (hashToken(token) !== row.verificationTokenHash) return false
+      if (row.expiresAt.getTime() <= Date.now()) return false
+
+      /*
+       * Not `writePasswordHash` (`lib/auth/credentials.ts`): it calls `db()` on its own,
+       * and `db()`'s pool holds a single connection (`max: 1`, `lib/db/client.ts`) —
+       * whichever query opened *this* transaction is already holding the only one there
+       * is. Calling anything that opens a second `db().transaction()` or a bare `db()`
+       * query from inside this callback would not fail, it would hang forever waiting
+       * for a connection this same transaction never gives back. The upsert is inlined
+       * for the same reason `provisionAccount` is called after this transaction, not
+       * inside it, below.
+       */
+      await tx
+        .insert(credentials)
+        .values({ email: normalized, passwordHash: row.passwordHash })
+        .onConflictDoUpdate({
+          target: credentials.email,
+          set: { passwordHash: row.passwordHash, updatedAt: new Date() },
+        })
+
+      await tx.delete(pendingRegistrations).where(eq(pendingRegistrations.email, normalized))
+
+      return true
+    })
+  } catch (error) {
+    console.error('verifyEmail failed', error)
+    return
+  }
+
+  if (!verified) return
+
+  /*
+   * Sequential, not nested in the transaction above — same single-connection reason.
+   * Deliberately not preceded by an `accounts` insert of its own: this transaction never
+   * wrote one, so `provisionAccount` finds none, creates it, and clones the Example
+   * songbook into it — `existing.length > 0` inside `provisionAccount` is what would have
+   * skipped the clone entirely, had an `accounts` row already been sitting there. This is
+   * "identical to every other admission path" (PLAN.md's own words for this step) for
+   * exactly that reason: nobody else pre-creates the row it is there to create.
+   */
+  const created = await provisionAccount(normalized)
+
+  // Gated on provisionAccount's own true/false, not assumed from the transaction above:
+  // that transaction only proves no `accounts` row existed a moment ago, not that this
+  // call is the one that creates it — a concurrent sign-in on the same address (Google,
+  // racing this same verification) could win that insert first, or the insert itself
+  // could fail and be caught inside `provisionAccount`. Either way `created` is false, and
+  // there is nothing to welcome anyone to (PLAN.md point 7: never on an idempotent or
+  // failed call).
+  if (created) await sendEmail({ to: normalized, ...welcomeEmail() })
+
+  /*
+   * Signs the person in immediately rather than sending them back to `/login` to retype
+   * the password they just chose — see `issueSessionCookie`'s own comment for why that
+   * needs a hand-built cookie instead of `signIn('credentials', ...)`.
+   */
+  await issueSessionCookie(normalized)
+  redirect('/')
+}

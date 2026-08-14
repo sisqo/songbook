@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { AuthError } from 'next-auth'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { signIn } from '@/auth'
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-  searchParams: Promise<{ error?: string; failed?: string }>
+  searchParams: Promise<{ error?: string; failed?: string; reset?: string }>
 }
 
 interface Feature {
@@ -241,7 +242,7 @@ const FEATURES: Feature[] = [
  * because telling those apart is telling a stranger which addresses exist here.
  */
 export default async function LoginPage({ searchParams }: Props) {
-  const { error, failed } = await searchParams
+  const { error, failed, reset } = await searchParams
 
   const message =
     failed !== undefined
@@ -251,6 +252,10 @@ export default async function LoginPage({ searchParams }: Props) {
         : error === 'AccessDenied'
           ? 'This account is not among the ones allowed in.'
           : 'Sign-in failed. Please try again.'
+
+  // Only shown when there is no failure to report instead — landing here with `?reset=1`
+  // straight after `/reimposta-password` (v3.2, PLAN.md point 6) is never itself an error.
+  const success = message === null && reset !== undefined ? 'Password changed. Sign in with your new password.' : null
 
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
@@ -283,8 +288,14 @@ export default async function LoginPage({ searchParams }: Props) {
             </p>
           )}
 
+          {success !== null && (
+            <p className="notice notice-accent text-start" role="status">
+              {success}
+            </p>
+          )}
+
           <form
-            className={message !== null ? 'mt-4' : undefined}
+            className={message !== null || success !== null ? 'mt-4' : undefined}
             action={async () => {
               'use server'
               await signIn('google', { redirectTo: '/' })
@@ -345,6 +356,11 @@ export default async function LoginPage({ searchParams }: Props) {
                 placeholder="Password"
                 className="form-field"
               />
+              <span className="mt-1.5 block text-end">
+                <Link href="/password-dimenticata" className="text-xs text-faint hover:underline">
+                  Forgot password?
+                </Link>
+              </span>
             </label>
 
             <button type="submit" className="btn btn-primary mt-1 w-full justify-center py-3">
@@ -354,7 +370,10 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
 
         <p className="mt-4 text-center text-xs text-faint">
-          Access is limited to approved email addresses.
+          Don&apos;t have an account?{' '}
+          <Link href="/registrati" className="text-accent hover:underline">
+            Register
+          </Link>
         </p>
       </div>
 

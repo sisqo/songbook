@@ -558,10 +558,13 @@ Due dettagli che costano tempo se non si sanno:
 |---|---|
 | `AUTH_SECRET` | Firma delle sessioni |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Client OAuth Google |
-| `ALLOWED_EMAILS` | I **proprietari**: sempre ammessi e sempre Admin, separati da virgola, non rimovibili né retrocedibili dall'app. Vuota, e con `members` vuota, nega tutti |
+| `ALLOWED_EMAILS` | I **proprietari globali**: sempre ammessi e con pieno controllo su ogni account, separati da virgola, non rimovibili né retrocedibili dall'app. Vuota: nessun proprietario globale, ma la registrazione (v3.2) resta aperta a chiunque per il proprio account |
 | `AUTH_URL` | Su Vercel: `https://songs.sisqo.dev`, così il callback OAuth combacia |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
 | `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |
+| `RESEND_API_KEY` | Invio reale delle email di registrazione (v3.2). Assente: le email vengono solo loggate in console, link incluso |
+| `RESEND_FROM` | Indirizzo mittente, es. `Songbook <no-reply@sisqo.dev>`. Deve essere su un dominio verificato su Resend — attenzione ai sottodomini: verificare `sisqo.dev` non copre `songs.sisqo.dev`, DKIM/SPF non sono ereditati. Assente: usa il default nel codice |
+| `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile, il CAPTCHA su registrazione e recupero password (v3.2). La seconda dev'essere `NEXT_PUBLIC_` perché Next.js la esponga al client. Assenti: nessun CAPTCHA, verifica lato server sempre superata |
 
 Per le password non serve nessuna variabile: stanno nella tabella `credentials`, e la firma
 delle sessioni è già `AUTH_SECRET`.

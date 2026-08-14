@@ -21,7 +21,11 @@
  * the requested address, `ALLOWED_EMAILS`, and normalization.
  */
 
+import { encode } from 'next-auth/jwt'
+import { cookies } from 'next/headers'
+
 import { auth } from '@/auth'
+import { authConfig } from '@/auth.config'
 import { currentAccountFor, readAccountCookie } from '@/lib/accounts/current'
 import { normalizeEmail } from '@/lib/allowlist'
 import { type Role, canEdit, roleOf } from '@/lib/roles'
@@ -152,4 +156,51 @@ export function asEditorOn(accountOwnerEmail: string): Promise<Permission> {
  */
 export function asAdmin(): Promise<Permission> {
   return permit(canEdit)
+}
+
+/**
+ * Signs someone in without a password — the one moment that has to (v3.2, PLAN.md point
+ * 5): right after `/verifica` proves an address by consuming its verification token,
+ * making that person type the password they *just chose* a second time would be pure
+ * friction with no security gained. `signIn('credentials', ...)` cannot be used here —
+ * it needs the plaintext password, and by this point only its scrypt hash exists (it was
+ * hashed at registration, in `register()`) — so this mints the exact cookie NextAuth's
+ * own JWT strategy would have written, by calling the same `encode` it calls internally.
+ *
+ * `salt` has to be the cookie's own name, not a fixed string: that is how `@auth/core`
+ * derives its encryption key (`lib/actions/session.js`, `salt = options.cookies
+ * .sessionToken.name`), so a mismatched salt here would not fail loudly — it would write
+ * a cookie `auth()` decodes into nothing, and the only symptom is `/verifica`'s own
+ * `redirect('/')` bouncing straight back to `/login` through the middleware. The
+ * `NODE_ENV` check has to mirror `writeAccountCookie`'s (`lib/accounts/current.ts`) for
+ * the same reason: `secure`/name and the `__Secure-` prefix must agree, or the browser
+ * either drops the cookie (secure over http) or stores it under the plain name while
+ * `auth()` looks for the prefixed one.
+ *
+ * The payload carries only what this app's `auth()` ever reads back out: `session.user
+ * .email` comes from `token.email`, and there is no custom `jwt` callback in this project
+ * that would need anything more (see `auth.ts`'s own comment on why the role is
+ * deliberately left out of the token). `maxAge` is imported from `authConfig` rather than
+ * repeated as a number, so the two can never drift apart.
+ */
+export async function issueSessionCookie(email: string): Promise<void> {
+  const normalized = normalizeEmail(email)
+  const secure = process.env.NODE_ENV === 'production'
+  const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+
+  const token = await encode({
+    salt: cookieName,
+    secret: process.env.AUTH_SECRET ?? '',
+    maxAge: authConfig.session.maxAge,
+    token: { email: normalized, sub: normalized, name: normalized },
+  })
+
+  const jar = await cookies()
+  jar.set(cookieName, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure,
+    path: '/',
+    maxAge: authConfig.session.maxAge,
+  })
 }

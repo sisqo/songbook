@@ -127,6 +127,13 @@
       "when": 1786707824301,
       "tag": "0017_v3_1_drop_members",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786715675167,
+      "tag": "0018_v3_2_registration_tables",
+      "breakpoints": true
     }
   ]
 }

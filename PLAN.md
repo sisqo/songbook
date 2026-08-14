@@ -46,7 +46,7 @@ costruisce da qui.
 | Accesso dati | **Drizzle ORM** + `postgres.js` (vedi *Scostamenti*) |
 | Auth | **Auth.js v5** (`next-auth@5`), provider Google, sessioni JWT |
 | PWA | **Serwist** (successore mantenuto di `next-pwa`) |
-| Lingua UI | Italiano, testi in chiaro nel codice — nessun framework i18n |
+| Lingua UI | Inglese (cambiata da italiano nel corso del progetto), testi in chiaro nel codice — nessun framework i18n |
 
 ### Flusso dei dati
 
@@ -1650,12 +1650,114 @@ farlo. Le due cose devono cambiare nello stesso rilascio:
    collaterale scoperto dopo. Le credenziali che hanno già impostato restano valide, non
    sono legate a `members` in alcun modo.
 
+### v3.2 — si entra da soli
+
+Finora ogni account nasceva per mano di qualcuno con potere di farlo: un proprietario
+globale al primo login, o un altro proprietario globale che lo crea da Accounts (v3.1).
+Questa versione apre la porta per davvero: **chiunque, con qualunque indirizzo email**,
+può crearsi un proprio account da solo — con Google o con email e password — senza che
+nessun admin debba fare nulla. Scelto esplicitamente, con il rischio che comporta discusso
+e mitigato nei punti 8 e 9: non è più un'app per una cerchia chiusa di persone reali, è un
+prodotto che chiunque su internet può trovare e usare.
+
+`ALLOWED_EMAILS` non è più il cancello d'ingresso — non lo è mai stato per tutti, dalla
+v3.0, ma ora smette di esserlo anche per il caso base. Resta esattamente quello che è
+sempre stato per il resto: la lista di chi è proprietario globale, con pieno controllo su
+ogni account dell'installazione. Le due cose — poter entrare, e poter amministrare tutto —
+erano già separate; questa versione toglie solo la prima come condizione per la seconda.
+
+1. **Il cancello non serve più.** `admitted()`/`isAdmitted()` esistono per tenere fuori
+   chi non ha diritto — ma con la registrazione aperta, chi bussa ha sempre diritto, se
+   arriva da uno dei due percorsi qui sotto. Vengono ritirate, non semplificate: la
+   callback `signIn` in `auth.ts` chiama `recordSignIn` e `provisionAccount` per chiunque
+   un provider abbia già autenticato con successo — un OAuth Google riuscito, o una
+   password che corrisponde a un `credentials` già verificato — senza più chiedere il
+   permesso a una funzione a parte. Un controllo aggiuntivo, non un cancello: il profilo
+   Google deve dichiarare `email_verified`, così un OAuth provider mal configurato non può
+   mai far entrare un indirizzo che Google stessa non garantisce.
+2. **Registrarsi con Google è già registrarsi.** Il protocollo OAuth non distingue "entra"
+   da "iscriviti": Google restituisce sempre la stessa cosa, un'identità verificata. Il
+   pulsante "Sign in with Google" già su `/login` diventa, di fatto, anche il modo per
+   registrarsi — nessun secondo pulsante, nessuna pagina diversa: la prima volta che quel
+   flusso ha successo, `provisionAccount` gli crea l'account, esattamente come oggi accade
+   a un proprietario globale al primo accesso.
+3. **Registrarsi con email e password è in due tempi.** Una nuova tabella
+   `pendingRegistrations` (`email` chiave primaria, `passwordHash`,
+   `verificationTokenHash`, `expiresAt`, `createdAt`) tiene una richiesta di registrazione
+   finché non è verificata — **non è un account**: nessuna riga in `accounts` o
+   `credentials`, nessun canzoniere clonato, finché il link nella mail di verifica non
+   viene cliccato. Coerente con come questo progetto tratta già "niente esiste finché non
+   ce n'è un motivo vero" (lo stesso principio dietro il canzoniere Example, o dietro il
+   non bloccare la cancellazione di un account: qui il motivo è il contrario, non creare
+   affatto finché non è provato che l'indirizzo è reale). Registrarsi con un indirizzo che
+   ha già un account vero viene rifiutato con un messaggio chiaro (accedi, o recupera la
+   password); registrarsi di nuovo con un indirizzo ancora in sospeso rinnova semplicemente
+   il token e rimanda la mail, senza errore — è così che "non mi è arrivata l'email"
+   si risolve senza una funzione a parte.
+4. **La pagina `/registrati`.** Stesso impianto di `/login`: un pulsante Google (il
+   medesimo flusso del punto 2) e un modulo email/password/conferma password, con il
+   CAPTCHA del punto 9. Il successo porta a una schermata "controlla la posta", con un
+   pulsante per rispedire la mail. `/login` guadagna un rimando a `/registrati`, e perde la
+   frase "Access is limited to approved email addresses", non più vera.
+5. **Verifica: `/verifica?token=...`.** Il token si confronta come una password — mai in
+   chiaro nel database, con lo stesso hashing già usato altrove — e se valido e non scaduto:
+   dentro una transazione, nasce la riga `accounts`, la riga `credentials` con l'hash già
+   pronto dalla registrazione, e parte la clonazione dell'Example (`provisionAccount`,
+   identica a ogni altro percorso di ammissione); la riga in `pendingRegistrations` si
+   cancella; parte la mail di benvenuto; chi ha appena verificato entra subito, senza dover
+   ridigitare la password che ha appena scelto. Un token scaduto o già usato mostra un
+   errore con un invito a rispedire, non un vicolo cieco.
+6. **Recupero password: `/password-dimenticata` e `/reimposta-password?token=...`.** La
+   prima chiede solo un indirizzo (più CAPTCHA) e risponde sempre allo stesso modo,
+   l'indirizzo esista o no, abbia già una password o no — esistere o meno non deve
+   trapelare da qui, stesso principio della reiezione a tempo costante già scritta in
+   `authorize()` per il login. Se un account vero esiste, nasce una riga in
+   `passwordResetTokens` (`email`, `tokenHash`, `expiresAt`) e parte una mail con il link.
+   La seconda pagina chiede la nuova password (`isPasswordAcceptable`, la stessa regola di
+   sempre) e la scrive con `writePasswordHash` — la stessa chiamata che già serve sia per
+   impostarne una prima volta sia per cambiarla, quindi un indirizzo senza password ancora
+   ne riceve una prima proprio da qui, senza bisogno di un percorso diverso. Il token si
+   cancella dopo l'uso; l'email risulta verificata come effetto collaterale, avendo appena
+   dimostrato di controllare quella casella.
+7. **Mail di benvenuto, una volta sola.** Parte nell'istante esatto in cui un account
+   comincia a esistere davvero — dentro `provisionAccount`, quando crea la riga e non la
+   trova già lì — mai sulle chiamate successive, che sono un no-op idempotente per
+   costruzione. `provisionAccount` deve poter dire al chiamante se ha creato qualcosa o no,
+   cosa che oggi non fa (ritorna `void`); guadagna quel bit di ritorno per questo motivo,
+   non per un altro.
+8. **Un fornitore di email: Resend.** Nuove variabili d'ambiente (`RESEND_API_KEY`,
+   un mittente come `Songbook <no-reply@songs.sisqo.dev>`), un modulo `lib/email/send.ts`
+   sottile sopra l'SDK, tre modelli semplici (verifica, benvenuto, reset) che riprendono la
+   stessa tavolozza chiara/scura dell'app senza inventarsi un sistema di design a parte.
+   Richiede una verifica del dominio via DNS, un passo fuori dall'app — stessa categoria
+   di setup già fatta per GitHub, Vercel e Neon.
+9. **Un CAPTCHA: Cloudflare Turnstile**, sulla registrazione e sul recupero password — le
+   due superfici che, su richiesta di chiunque, mandano un'email a un indirizzo scelto da
+   chi la chiede, quindi il vettore più ovvio di email-bombing di qualcun altro. Nuove
+   variabili d'ambiente (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — la
+   prima pubblica per forza, essendo Next.js a richiederlo per esporla al client),
+   verificate lato
+   server prima di scrivere qualunque riga in `pendingRegistrations` o
+   `passwordResetTokens`. Richiede un account Cloudflare gratuito, altro setup fuori
+   dall'app.
+10. **Un limite di frequenza, nel database, senza un servizio nuovo.** Una tabella
+    `rateLimitHits` (`key` chiave primaria, `windowStart`, `count`) condivisa da
+    registrazione, reinvio, recupero password — e, visto che il meccanismo costa poco una
+    volta che esiste, anche dal login stesso, chiave per indirizzo IP o email a seconda
+    dell'azione. I numeri esatti (una proposta ragionevole: 5 tentativi ogni 10 minuti per
+    chiave) restano da tarare quando ci sarà traffico reale da osservare, non un requisito
+    da azzeccare oggi.
+
+Nessuna migrazione dei dati esistenti: questa versione è puramente additiva sulla porta
+d'ingresso, non tocca un solo account, canzoniere o membro già presente.
+
 ## Vincoli d'ambiente
 
 - **Node 18.20.8 in locale** (snap, nessun nvm), Node 24 su Vercel. Tailwind è fissato alla
   v3 perché il binding nativo `@tailwindcss/oxide` della v4 richiede Node ≥ 20. Ogni nuova
   dipendenza va verificata su Node 18 prima di entrare: **Serwist e drizzle-kit sono i due
-  candidati a rompersi**, da provare per primi.
+  candidati a rompersi**, da provare per primi. Stesso motivo per cui `resend` è fissato a
+  `6.4.2` (non un range con `^`): 6.5.0 e successive richiedono Node ≥ 20.
 - Il build interroga Neon: se il database non è raggiungibile **il deploy fallisce**. È un
   compromesso accettato in cambio di pagine statiche, ma va saputo.
 - **L'ordine di attivazione del database non è indifferente.** Il build genera le pagine dai
@@ -1727,7 +1829,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Preferenze e ruoli | Aperte a tutti, viewer compresi | Trasporre non è modificare: è come una persona legge sul proprio schermo |
 | Sessione | 90 giorni | Un token scaduto senza rete chiuderebbe fuori dal repertorio |
 | Database | Neon via Vercel Marketplace | Variabili iniettate, zero configurazione manuale |
-| Lingua UI | Solo italiano | Un utente, nessun bisogno di i18n |
+| Lingua UI | Solo italiano (superata: l'interfaccia è passata all'inglese nel corso del progetto, vedi tabella Stack) | Un utente, nessun bisogno di i18n |
 
 ### Canzonieri (v1.1)
 
@@ -1798,6 +1900,20 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Ruoli concedibili | Uno solo: admin (proprietario dell'account, o proprietario globale). Nessun equivalente di editor/viewer | Non esiste più nessuno a cui concedere un accesso parziale |
 | Migrazione dei quattro collaboratori esistenti | Un account proprio per ciascuno, vuoto a parte l'Example — non l'accesso a Cartoni animati | Coerente con "un account è un indirizzo": nessuno resta ospite di un account altrui dopo questa versione |
 | Password di un account altrui | Un proprietario globale può impostarla o rimuoverla dalla pagina Accounts (`setPasswordFor`/`removePasswordFor`, autorizzate su `isOwner` diretto) | Corretto poco dopo aver spedito la v3.1: senza email d'invito, era l'unico modo per far entrare un indirizzo creato da Accounts ma senza un account Google corrispondente — la domanda 21 lo aveva previsto come bivio possibile, la prima consegna aveva scelto il ramo sbagliato (cancellarle) |
+
+### Si entra da soli (v3.2)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Apertura della registrazione | Completamente pubblica, nessuna restrizione di dominio o codice d'invito | Scelto esplicitamente dopo un confronto sul rischio di abuso, mitigato dalle due righe sotto |
+| Mitigazione abusi | Rate limiting lato database (nuova tabella `rateLimitHits`) + CAPTCHA (Cloudflare Turnstile) su registrazione e recupero password | Sono le due superfici che, su richiesta di chiunque, mandano un'email a un indirizzo scelto da chi la chiede — il vettore più ovvio di email-bombing di qualcun altro |
+| Account prima o dopo la verifica | Dopo: una tabella `pendingRegistrations` a parte, l'account vero (e l'Example clonato) nasce solo alla verifica | Coerente con "niente esiste finché non c'è un motivo vero" già seguito altrove nel progetto; nessun canzoniere vuoto per chi non completa mai la registrazione |
+| Servizio email | Resend | Integrazione ufficiale Vercel, piano gratuito ampio, stessa categoria di provisioning già usata per Neon |
+| Registrazione con Google | Lo stesso pulsante "Sign in with Google" di `/login` funge già da registrazione | OAuth non distingue login da signup a livello di protocollo: la creazione dell'account è un effetto collaterale di un'autenticazione riuscita, non un percorso separato |
+| `isAdmitted`/`hasAccount` in `auth.ts` | Ritirate, non semplificate | Senza più nessuno da tenere fuori, il cancello non ha più lavoro da fare: un OAuth Google riuscito o una password corretta contro un account già verificato bastano da soli |
+| Recupero password su un indirizzo senza password | Stessa risposta, stessa azione (`writePasswordHash`) di un vero reset | Equivale a "imposta la prima password"; nessuna distinzione visibile a chi la chiede |
+| Enumerazione degli indirizzi | `/password-dimenticata` risponde sempre allo stesso modo, l'indirizzo esista o meno | Evita di rivelare quali indirizzi hanno un account, stesso principio della reiezione a tempo costante già in `authorize()` |
+| `ALLOWED_EMAILS` dopo questa versione | Resta solo "chi è proprietario globale", smette di essere condizione per entrare | Le due cose erano già separate dalla v3.0; questa versione toglie solo la prima come requisito |
 
 ## Domande aperte
 
@@ -1873,17 +1989,18 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
     un proprietario globale non decide di eliminarlo esplicitamente — quest'ultima è già la
     risposta implicita di come `accounts`/`isAdmitted` sono scritte in v3.1: uscire da
     `ALLOWED_EMAILS` non elimina nulla da sé.
-19. **Snapshot di `drizzle-kit` non aggiornato (v3.0, v3.1)** — le migrazioni scritte a mano
-    di entrambe le versioni (0015/0016, e ora 0017 che droppa `members`) usano
+19. **Snapshot di `drizzle-kit` non aggiornato (v3.0, v3.1, v3.2)** — le migrazioni scritte
+    a mano di tutte e tre le versioni (0015/0016, 0017 che droppa `members`, e ora 0018 che
+    aggiunge `pendingRegistrations`/`passwordResetTokens`/`rateLimitHits`) usano
     `drizzle-kit generate --custom`, che crea il file SQL vuoto e la voce di journal senza
     mai ricalcolare lo snapshot dal vero `schema.ts`: ogni `NNNN_snapshot.json` da 0015 in
     poi è quindi una copia byte-per-byte di quello precedente (v2.4), cambiano solo
     `id`/`prevId`. Il database reale è corretto — ogni migrazione è stata verificata riga
     per riga contro di esso — ma il **prossimo** `npm run db:generate`, in un terminale
-    vero, proporrà di ricreare da capo `accounts`, le colonne di `songbooks`, e persino di
-    *ricreare* `members` (lo snapshot non sa ancora che è stata droppata): da scartare,
-    rigenerando invece lo snapshot a mano o rispondendo ai prompt interattivi per farlo
-    combaciare con la realtà, prima di fidarsi del diff che propone.
+    vero, proporrà di ricreare da capo `accounts`, le colonne di `songbooks`, le tre tabelle
+    del v3.2, e persino di *ricreare* `members` (lo snapshot non sa ancora che è stata
+    droppata): da scartare, rigenerando invece lo snapshot a mano o rispondendo ai prompt
+    interattivi per farlo combaciare con la realtà, prima di fidarsi del diff che propone.
 20. **Comunicare ai quattro collaboratori esistenti che perdono Cartoni animati (v3.1)** —
     l'app non ha un sistema di notifiche o invio email; lo scopriranno aprendola. Se serve
     avvisarli prima, è un messaggio da mandare fuori dall'app, non una funzionalità da
@@ -1897,3 +2014,28 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
     `auth/actions.ts`, questa volta autorizzate su `isOwner` diretto (non su `asAdmin()`,
     che varrebbe per il proprietario di un account qualsiasi) e richiamate da un nuovo
     `AccountPasswordButton` nella pagina Accounts.
+22. **Nessuna moderazione oltre la cancellazione (v3.2)** — un proprietario globale può solo
+    cancellare un account (v3.1), non bloccarlo in modo permanente: lo stesso indirizzo può
+    ri-registrarsi subito dopo. Se con la registrazione aperta emerge un bisogno reale di
+    tenere fuori un indirizzo specifico, va deciso e costruito a parte — non è nello scope
+    di questa versione.
+23. **Nessuna invalidazione delle sessioni dopo un reset password (v3.2)** — la sessione
+    resta un JWT di 90 giorni senza stato lato server, la stessa scelta deliberata già presa
+    per il ruolo (v2.1). Un dispositivo già connesso con la vecchia password resta connesso
+    finché il token non scade da solo; invalidarlo davvero richiederebbe un concetto di
+    epoca/versione di sessione controllato lato server, che è un cambiamento più grande di
+    "il giro di registrazione".
+24. **Numeri esatti del rate limiting (v3.2)** — la tabella e il meccanismo sono nello
+    scope, la soglia (proposta: 5 tentativi ogni 10 minuti per chiave) resta da tarare
+    quando ci sarà traffico reale da osservare.
+25. **Testo delle email di verifica, benvenuto e reset (v3.2)** — l'impianto (Resend, tre
+    modelli semplici nella stessa tavolozza dell'app) è deciso, il testo esatto no: resta
+    da scrivere e rivedere quando i modelli sono pronti da vedere.
+26. **Verifica DNS del dominio d'invio su Resend (v3.2)** — un passo di setup fuori
+    dall'app, come già fatto per GitHub, Vercel e Neon: va fatto prima che le email possano
+    davvero partire. `RESEND_API_KEY` è impostata (Vercel, tutti gli ambienti); il dominio
+    verificato su Resend è `sisqo.dev` (la radice, non `songs.sisqo.dev` — DKIM/SPF non si
+    ereditano ai sottodomini), quindi `RESEND_FROM` punta a `no-reply@sisqo.dev`. I tre
+    record DNS (DKIM, SPF via MX+TXT) sono stati aggiunti su Vercel DNS; la verifica lato
+    Resend resta `not_started` finché la propagazione non completa — si può controllare o
+    forzare da resend.com/domains.

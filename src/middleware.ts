@@ -33,7 +33,14 @@ export default auth((request) => {
   if (isPublicAsset(pathname)) return
 
   /**
-   * The login page is reachable without a session but still gets marked.
+   * The login page — and, since v3.2, registration and the whole self-serve email loop
+   * next to it — is reachable without a session but still gets marked.
+   *
+   * `/verifica`, `/password-dimenticata` and `/reimposta-password` all have to be here for
+   * the same reason `/registrati` is: every one of them is a link followed from an email,
+   * which lands with no session at all. Without this, the guard below would redirect all
+   * three straight to `/login` before their own page ever ran, and nobody could finish
+   * registering or recover a password.
    *
    * Marking only the redirect would not be enough: a precache fetch follows
    * redirects by default, so what the service worker inspects is this final 200,
@@ -42,7 +49,13 @@ export default auth((request) => {
    * Serwist's own redirect-copying plugin may already have cleared — and the
    * login page could end up cached under every song URL.
    */
-  if (pathname === '/login') {
+  if (
+    pathname === '/login' ||
+    pathname === '/registrati' ||
+    pathname === '/verifica' ||
+    pathname === '/password-dimenticata' ||
+    pathname === '/reimposta-password'
+  ) {
     if (request.auth) return
 
     const response = NextResponse.next()

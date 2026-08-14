@@ -1,4 +1,3 @@
-import { eq } from 'drizzle-orm'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
@@ -9,41 +8,12 @@ import { provisionAccount } from './lib/accounts/provision'
 import { readPasswordHash } from './lib/auth/credentials'
 import { verifyAgainstNothing, verifyPassword } from './lib/auth/password'
 import { recordSignIn } from './lib/auth/signIns'
-import { db, hasDatabase } from './lib/db/client'
-import { accounts } from './lib/db/schema'
-import { isAdmitted } from './lib/roles'
+import { sendEmail } from './lib/email/send'
+import { welcomeEmail } from './lib/email/templates'
+import { checkRateLimit, requestIp } from './lib/rateLimit'
 
-/**
- * Whether this address already owns an account — the second way in, now that nobody can
- * be admitted merely by being invited as a collaborator elsewhere (v3.1). Fails closed,
- * same as every other read this gate depends on: a database that cannot answer must not
- * become a door that opens.
- */
-async function hasAccount(email: string): Promise<boolean> {
-  if (!hasDatabase) return false
-
-  try {
-    const rows = await db()
-      .select({ ownerEmail: accounts.ownerEmail })
-      .from(accounts)
-      .where(eq(accounts.ownerEmail, normalizeEmail(email)))
-      .limit(1)
-
-    return rows.length > 0
-  } catch (error) {
-    console.error('hasAccount failed', error)
-    return false
-  }
-}
-
-/**
- * Whether this address is allowed in at all — a question with no account of its own; see
- * `isAdmitted`'s own comment for why owning one, or owning every one, is what it takes now.
- */
-async function admitted(email: string | null | undefined): Promise<boolean> {
-  if (!email) return false
-  return isAdmitted(email, process.env.ALLOWED_EMAILS, await hasAccount(email))
-}
+const LOGIN_RATE_LIMIT = 10
+const LOGIN_RATE_WINDOW_MS = 10 * 60 * 1000
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -55,13 +25,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * whose address is not a Google account at all.
      *
      * A password proves *which address you are*, and grants nothing: the same `roleOf` that
-     * answers for Google answers here, and it does not know this table exists.
+     * answers for Google answers here, and it does not know this table exists. A `credentials`
+     * row only ever exists for an address that has already been through email verification
+     * (v3.2) — set at registration, or by a global owner from Accounts — so a correct password
+     * against it is, on its own, enough to sign in: there is nothing left to ask permission from.
      *
-     * Everything that can fail returns the same null. No password set, a wrong one typed,
-     * or an address taken off the list this morning — the caller is told "wrong email or
-     * password" and nothing more, because otherwise this form would answer the question
-     * "does this person have an account here", which no login page should answer.
-     * `verifyAgainstNothing` is what stops the *timing* from answering it either.
+     * Everything that can fail returns the same null. No password set, or a wrong one typed —
+     * the caller is told "wrong email or password" and nothing more, because otherwise this
+     * form would answer the question "does this person have an account here", which no login
+     * page should answer. `verifyAgainstNothing` is what stops the *timing* from answering it
+     * either.
      */
     Credentials({
       credentials: {
@@ -73,6 +46,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = typeof raw?.password === 'string' ? raw.password : ''
         if (email === '' || password === '') return null
 
+        /*
+         * Same table as registration and password recovery (PLAN.md point 10) — a
+         * credential-stuffing run tries many passwords against one address, or one
+         * password against many addresses, so both keys are checked regardless of
+         * which one a given attempt would trip.
+         */
+        const ip = await requestIp()
+        const ipAllowed = ip === null || (await checkRateLimit(`login:ip:${ip}`, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_MS))
+        const emailAllowed = await checkRateLimit(`login:email:${email}`, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_MS)
+        if (!ipAllowed || !emailAllowed) return null
+
         const stored = await readPasswordHash(email)
         if (stored === null) {
           await verifyAgainstNothing(password)
@@ -81,45 +65,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!(await verifyPassword(password, stored))) return null
 
-        /*
-         * Asked here as well as in `signIn`, so that "not on the list" and "wrong password"
-         * are one outcome seen from outside instead of two. `signIn` remains the
-         * authoritative check; this one is about what the failure looks like.
-         */
-        if (!(await admitted(email))) return null
-
         return { id: email, email }
       },
     }),
   ],
   callbacks: {
     /**
-     * The gate, and the only place a new session can be created.
+     * The only place a new session can be created.
      *
-     * Having a role at all *is* being allowed in, which is why there is no second question
-     * here: `roleOf` is pure and tested, and all this does is fetch the one fact that lives
-     * in the database — whether this address already owns an account. A database that
-     * cannot be read comes back false and admits nobody but the owners.
-     *
-     * For Google the address comes from the verified profile; for a password it comes from
-     * `authorize`, which has already checked the same thing. Two belts, and this is the one
-     * that holds.
+     * With registration open to anyone (v3.2), there is no longer a question of *whether*
+     * this address may come in — a successful Google sign-in, or a password that matched an
+     * existing `credentials` row, has already answered that. What is left is one extra check,
+     * not a gate: for Google, `profile.email_verified` must be exactly `true`, since Google
+     * only guarantees the address when it says so — a misconfigured OAuth provider must not
+     * be able to hand out an address Google itself will not vouch for. The password path
+     * carries no such flag to check, because a `credentials` row only exists for an address
+     * that already went through email verification once, at registration (v3.2).
      *
      * The role itself is deliberately not put in the token. A session lasts ninety days;
      * a role baked into it would keep its powers for ninety days after being taken away.
      *
-     * `recordSignIn` and `provisionAccount` run after admission, not before: a rejected
-     * attempt proved nothing about the address asking, so it leaves no mark and gets no
-     * account. Both run here rather than from a `jwt`/`session` callback because those
+     * `recordSignIn` and `provisionAccount` run after that check, not before: a rejected
+     * attempt proved nothing trustworthy about the address asking, so it leaves no mark and
+     * gets no account. Both run here rather than from a `jwt`/`session` callback because those
      * fire on every request a session is read on this token's ninety days, not only when
      * one is created — this callback is the one place that happens only once per actual
      * sign-in. `provisionAccount` is idempotent on top of that, by checking existence
      * rather than trusting "only once" alone — see its own comment.
      */
-    async signIn({ profile, user }) {
+    async signIn({ account, profile, user }) {
       const raw = profile?.email ?? user?.email
       if (raw === null || raw === undefined) return false
-      if (!(await admitted(raw))) return false
+
+      if (account?.provider === 'google' && profile?.email_verified !== true) return false
 
       /*
        * Normalized here rather than trusted from the provider: `authorize` above already
@@ -132,7 +110,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
        */
       const email = normalizeEmail(raw)
       await recordSignIn(email)
-      await provisionAccount(email)
+      // The returned boolean says whether this call is the one that created the account
+      // (v3.2, PLAN.md point 7): true only the first time this address ever signs in
+      // successfully, false on every later sign-in that finds the row already there —
+      // exactly when, and only when, the welcome email belongs.
+      const created = await provisionAccount(email)
+      if (created) await sendEmail({ to: email, ...welcomeEmail() })
       return true
     },
   },

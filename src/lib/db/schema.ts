@@ -226,6 +226,58 @@ export const credentials = pgTable('credentials', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+/**
+ * A registration by email and password, before it is proven real (v3.2).
+ *
+ * Deliberately not `accounts`/`credentials`: the whole point is that nothing durable
+ * exists yet — no account, no cloned Example — until the link in the verification email
+ * is clicked. Same principle this project already applies elsewhere ("nothing exists
+ * until there is a real reason for it"), just pointed the other way: here the reason is
+ * proving the address is real, not proving an account is used.
+ *
+ * Keyed by email, not by the token, for the same reason `accounts` is keyed by owner:
+ * one attempt in flight per address, not one row per link ever sent. Registering again
+ * while a row is still pending overwrites it (`onConflictDoUpdate`) rather than adding a
+ * second one — a fresh token and a resent email is how "I never got it" is handled,
+ * with no separate resend path to keep in sync.
+ */
+export const pendingRegistrations = pgTable('pending_registrations', {
+  email: text('email').primaryKey(),
+  passwordHash: text('password_hash').notNull(),
+  verificationTokenHash: text('verification_token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * A password-reset link waiting to be used (v3.2).
+ *
+ * Keyed by email, like `pendingRegistrations`: at most one live reset per address, so
+ * asking again simply overwrites the row with a new token and a new expiry instead of
+ * leaving an older, still-valid link usable alongside it.
+ */
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  email: text('email').primaryKey(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * A fixed window rate limit, shared by every surface that needs one (v3.2) — no foreign
+ * key to anything, because `key` is not always an email: it can be an IP address, or an
+ * action name folded into the key, depending on what the caller is throttling.
+ *
+ * Keyed by that string directly rather than by a surrogate id, in the same spirit as
+ * every other row in this schema that names the thing it is about: there is exactly one
+ * live window per key, and a new one simply replaces the old rather than accumulating.
+ */
+export const rateLimitHits = pgTable('rate_limit_hits', {
+  key: text('key').primaryKey(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  count: integer('count').notNull().default(1),
+})
+
 /** Global preferences: one row per person. */
 export const userPrefs = pgTable('user_prefs', {
   userEmail: text('user_email').primaryKey(),
