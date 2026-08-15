@@ -9,9 +9,10 @@ import { EditorScreen } from '@/components/editor/EditorScreen'
 import { IconInfo } from '@/components/icons'
 import { accessTo } from '@/lib/auth/session'
 import { songAccountOf } from '@/lib/data/access'
-import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
+import { listSectionsForAccount, listSongbooksForAccount, listSongsForAccount } from '@/lib/data/db'
 import { repository } from '@/lib/data'
 import { hasDatabase } from '@/lib/db/client'
+import { seriesOf } from '@/lib/songbooks/series'
 import { snapshot } from '@/lib/songbooks/snapshot'
 import { canEdit } from '@/lib/roles'
 
@@ -54,13 +55,14 @@ export default async function EditSongPage({ params }: Props) {
   const access = hasDatabase ? await accessTo((await songAccountOf(slug)) ?? '') : null
   const role = hasDatabase ? (access?.role ?? null) : 'admin'
 
-  const [songbooks, sections] =
+  const [songbooks, sections, songs] =
     access !== null
       ? await Promise.all([
           listSongbooksForAccount(access.accountOwnerEmail),
           listSectionsForAccount(access.accountOwnerEmail),
+          listSongsForAccount(access.accountOwnerEmail),
         ])
-      : await Promise.all([repository.listSongbooks(), repository.listSections()])
+      : await Promise.all([repository.listSongbooks(), repository.listSections(), repository.listSongs()])
 
   /*
    * The one page in the app that can refuse on the server, and it does.
@@ -97,13 +99,25 @@ export default async function EditSongPage({ params }: Props) {
    * are for — and a song may only ever move within the account it already belongs to.
    */
   const initial = snapshot([song], songbooks, sections)
+  const series = seriesOf(song, songs)
 
   return (
     // The preview renders a real sheet and the real control bar, both of which read
     // this song's zoom, notation and transposition from here.
     <PrefsProvider songSlug={song.slug}>
       <SongbookProvider initial={initial} refreshOnMount={false}>
-        <TopBar current="songs" />
+        <TopBar
+          current="songs"
+          /*
+            * Same arrows as the reading page, so stepping to the next song does not
+            * cost a detour back out of the editor first — and it lands in the editor
+            * again, not on the sheet, since that is the screen this reader was on.
+            */
+          steps={{
+            previous: series?.previous ? `/songs/${series.previous}/edit` : null,
+            next: series?.next ? `/songs/${series.next}/edit` : null,
+          }}
+        />
 
         <main className="mx-auto max-w-3xl px-4 pb-12">
           <EditorScreen song={song} />

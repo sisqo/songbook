@@ -9,19 +9,12 @@ import { type Song, repository } from '@/lib/data'
 import { songAccountOf } from '@/lib/data/access'
 import { listSectionsForAccount, listSongbooksForAccount, listSongsForAccount } from '@/lib/data/db'
 import { hasDatabase } from '@/lib/db/client'
+import { type Series, seriesOf } from '@/lib/songbooks/series'
 
 /** The songbook this song is in: where the header's way back leads. */
 interface Home {
   slug: string
   name: string
-}
-
-/** Where a song sits among the others of its songbook. */
-interface Series {
-  position: number
-  total: number
-  previous: string | null
-  next: string | null
 }
 
 /**
@@ -33,12 +26,6 @@ interface Series {
  * step through, and returning null for both would have taken away the way back as well.
  * The sequence needs two songs; the way back needs only a songbook; the section needs
  * only the song.
- *
- * **The arrows do not stop at a section.** The siblings are the whole songbook in the
- * order `listSongs` reads it — section by section, and inside each the order somebody put
- * them in — so the last song of one section is followed by the first of the next. A
- * songbook stays one sequence and the sections are its structure: stopping at a boundary
- * would mean going back and reopening a section in the middle of an evening.
  *
  * All three are built from build-time data, unlike the song's own words, which are
  * refreshed from the database as soon as the page opens. The difference is deliberate:
@@ -76,22 +63,7 @@ async function placeOf(
   const home = found === undefined ? null : { slug: found.slug, name: found.name }
   const section = sections.find((entry) => entry.id === song.sectionId)?.name ?? null
 
-  const siblings = songs.filter((entry) => entry.songbookSlug === song.songbookSlug)
-  const index = siblings.findIndex((entry) => entry.slug === song.slug)
-  if (index === -1 || siblings.length < 2) return { home, section, series: null }
-
-  const at = (position: number): string | null => siblings[position]?.slug ?? null
-
-  return {
-    home,
-    section,
-    series: {
-      position: index + 1,
-      total: siblings.length,
-      previous: at(index - 1),
-      next: at(index + 1),
-    },
-  }
+  return { home, section, series: seriesOf(song, songs) }
 }
 
 /**
