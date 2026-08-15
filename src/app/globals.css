@@ -3012,7 +3012,14 @@
     /* Flush with the chip's own resting spot — see `.chord-row`'s comment for the
        headroom that makes that possible without clipping. */
     inset-block-end: 0;
-    inset-inline-start: -0.2rem;
+    /*
+     * Flush with the chip's own left edge too, not left of it: a chord on the very
+     * first letter of a line has no room to its left inside `.line-scroll` — there
+     * is no matching `padding-inline-start` on `.line-inner`, only the trailing one
+     * for the caret — so any negative offset here rode past the scrollable area's
+     * own left edge and got clipped, on exactly the chords likeliest to sit there.
+     */
+    inset-inline-start: 0;
     z-index: 5;
     visibility: visible;
   }
