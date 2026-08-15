@@ -3001,7 +3001,7 @@
    */
   .chord-editing {
     position: absolute;
-    inset-block-end: -0.15rem;
+    inset-block-end: -0.4rem;
     inset-inline-start: -0.2rem;
     z-index: 5;
     visibility: visible;
@@ -3010,13 +3010,21 @@
   .chord-field {
     visibility: visible;
     width: 5ch;
-    padding: 0.15rem 0.3rem;
+    padding: 0 0.3rem;
     border: 1px solid var(--accent);
     border-radius: var(--r-xs);
     background: var(--surface);
     color: var(--accent);
     /* 16px, again to stop iOS zooming when it takes focus. */
     font-size: 1rem;
+    /*
+     * Inherited from `.chord-row` otherwise (1.4), which is sized for the ghost
+     * text, not for this box: at 16px that line-height plus even this padding
+     * made the field taller than the row it hangs from, and `.line-scroll` clips
+     * vertically on purpose (see its own comment) — the excess got sheared off
+     * at the top rather than shown. Tight to the font itself is what fits.
+     */
+    line-height: 1;
     font-weight: 600;
   }
 
