@@ -27,3 +27,21 @@ export const ACCOUNT_MESSAGE: Record<AccountFailure, string> = {
   'confirm-mismatch': 'Type the account’s email exactly to confirm.',
   failed: 'Save failed. Please try again.',
 }
+
+/**
+ * Results for the one action every reader may take on their own account, own-owner
+ * or not: deleting it. A separate type from `AccountFailure` rather than one more
+ * member added to it — `deleteMyAccount` can never answer `not-allowed`,
+ * `invalid-email` or `already-exists`, and this project does not model states a
+ * function cannot reach (see `ResendFailure`, next to `RegisterFailure`, for the
+ * same reasoning).
+ */
+export type SelfDeleteFailure = 'no-database' | 'confirm-mismatch' | 'failed'
+
+export type SelfDeleteResult = { ok: true } | { ok: false; reason: SelfDeleteFailure }
+
+export const SELF_DELETE_MESSAGE: Record<SelfDeleteFailure, string> = {
+  'no-database': 'No database configured: accounts cannot be deleted.',
+  'confirm-mismatch': 'Type your email exactly to confirm.',
+  failed: 'Something went wrong. Please try again.',
+}

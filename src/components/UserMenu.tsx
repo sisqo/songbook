@@ -1,10 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { unstable_rethrow } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { useRole } from '@/components/RoleProvider'
-import { IconKey } from '@/components/icons'
+import { IconChevronLeft, IconKey, IconTrash } from '@/components/icons'
+import { deleteMyAccount } from '@/lib/accounts/actions'
+import { SELF_DELETE_MESSAGE } from '@/lib/accounts/types'
 import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
 
 /**
@@ -33,18 +36,25 @@ import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
 export function UserMenu({ children }: { children: React.ReactNode }) {
   const { email, known, isGlobalOwner } = useRole()
   const [open, setOpen] = useState(false)
+  /** A second screen inside the same panel, same pattern as Settings in `NavMenu`. */
+  const [view, setView] = useState<'main' | 'delete'>('main')
 
-  const close = () => setOpen(false)
+  const close = () => {
+    setOpen(false)
+    setView('main')
+  }
 
   useEffect(() => {
     if (!open) return
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close()
+      if (event.key !== 'Escape') return
+      if (view !== 'main') setView('main')
+      else close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open, view])
 
   if (!known || email === null) return null
 
@@ -71,27 +81,127 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
           <div className="menu-overlay" onClick={close} aria-hidden />
 
           <div className="menu-panel" role="menu">
-            <div className="user-menu-header">
-              <span className="avatar avatar-lg" style={{ background: `var(--avatar-${colorIndex})` }}>
-                {initials}
-              </span>
-              <div className="user-menu-identity">
-                <span className="user-menu-email">{email}</span>
-                {isGlobalOwner && <span className="badge mt-1">Owner</span>}
-              </div>
-            </div>
+            {view === 'main' && (
+              <>
+                <div className="user-menu-header">
+                  <span className="avatar avatar-lg" style={{ background: `var(--avatar-${colorIndex})` }}>
+                    {initials}
+                  </span>
+                  <div className="user-menu-identity">
+                    <span className="user-menu-email">{email}</span>
+                    {isGlobalOwner && <span className="badge mt-1">Owner</span>}
+                  </div>
+                </div>
 
-            <div className="menu-divider" />
+                <div className="menu-divider" />
 
-            <Link href="/password" className="menu-item" role="menuitem" onClick={close}>
-              <IconKey size={17} />
-              Change password
-            </Link>
+                <Link href="/password" className="menu-item" role="menuitem" onClick={close}>
+                  <IconKey size={17} />
+                  Change password
+                </Link>
 
-            {children}
+                {children}
+
+                <div className="menu-divider" />
+
+                {/*
+                 * Last row, past the divider that already separates it from Sign out:
+                 * every reader has this over their own account, own-owner or not — see
+                 * `deleteMyAccount`'s own comment on why it is a different power from
+                 * the one `/accounts` gives a global owner over every account.
+                 */}
+                <button
+                  type="button"
+                  className="menu-item w-full"
+                  role="menuitem"
+                  onClick={() => setView('delete')}
+                >
+                  <IconTrash size={17} />
+                  Delete account
+                </button>
+              </>
+            )}
+
+            {view === 'delete' && <DeleteMyAccountView email={email} onBack={() => setView('main')} />}
           </div>
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * The retype-to-confirm safety net, same shape as `DeleteAccountButton`'s own — the
+ * one difference being what happens on success: that button refreshes a list still on
+ * screen, this one has nothing left to show, since `deleteMyAccount` ends by signing
+ * the reader out and redirecting to `/login` on its own.
+ */
+function DeleteMyAccountView({ email, onBack }: { email: string; onBack: () => void }) {
+  const [confirmEmail, setConfirmEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const matches = confirmEmail.trim().toLowerCase() === email.toLowerCase()
+
+  const confirm = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await deleteMyAccount(confirmEmail)
+      // A failure comes back as a normal result; success never does — deleteMyAccount
+      // ends in a redirect instead, which unwinds through this same call as a thrown
+      // signal rather than a return, so there is nothing to do here on that path.
+      if (!result.ok) setError(SELF_DELETE_MESSAGE[result.reason])
+    } catch (thrown) {
+      // `deleteMyAccount`'s own redirect unwinds through this same call as a thrown
+      // signal, same as `signIn`'s in `login/page.tsx` — it has to pass through
+      // untouched, so only a real failure ever reaches `setError` below.
+      unstable_rethrow(thrown)
+      setError(SELF_DELETE_MESSAGE.failed)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="menu-item w-full" role="menuitem" aria-label="Back to the menu" onClick={onBack}>
+        <IconChevronLeft size={17} />
+        Delete account
+      </button>
+
+      <div className="menu-divider" />
+
+      <div className="px-1.5 pb-1 pt-1">
+        <p className="text-sm text-muted">
+          This permanently deletes your account and everything in it — every songbook,
+          section and song — and signs you out. Type <strong>{email}</strong> to confirm.
+        </p>
+
+        <input
+          autoFocus
+          value={confirmEmail}
+          onChange={(event) => setConfirmEmail(event.target.value)}
+          placeholder={email}
+          aria-label={`Retype ${email} to confirm deletion`}
+          className="form-field mt-3"
+        />
+
+        {error !== null && (
+          <p className="notice notice-error mt-2.5" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="button"
+          className="btn btn-danger btn-sm mt-3 w-full"
+          disabled={!matches || busy}
+          onClick={() => void confirm()}
+        >
+          Delete my account
+        </button>
+      </div>
+    </>
   )
 }
