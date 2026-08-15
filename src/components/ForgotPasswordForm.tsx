@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { TurnstileWidget } from '@/components/TurnstileWidget'
+import { resetTurnstile, TurnstileWidget } from '@/components/TurnstileWidget'
 import { requestPasswordReset } from '@/lib/forgotPassword/actions'
 import { REQUEST_RESET_MESSAGE } from '@/lib/forgotPassword/types'
 
@@ -29,9 +29,11 @@ export function ForgotPasswordForm() {
       if (result.ok) {
         setSent(true)
       } else {
+        resetTurnstile()
         setError(REQUEST_RESET_MESSAGE[result.reason])
       }
     } catch {
+      resetTurnstile()
       setError(REQUEST_RESET_MESSAGE.failed)
     } finally {
       setBusy(false)

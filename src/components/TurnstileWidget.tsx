@@ -4,6 +4,12 @@ import Script from 'next/script'
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
+declare global {
+  interface Window {
+    turnstile?: { reset: (widget?: string | HTMLElement) => void }
+  }
+}
+
 /**
  * Cloudflare Turnstile, dropped into a form with no JavaScript of this app's own
  * (v3.2, PLAN.md point 9). The `cf-turnstile` div is Turnstile's own implicit
@@ -33,4 +39,16 @@ export function TurnstileWidget() {
       <div className="cf-turnstile" data-sitekey={SITE_KEY} data-response-field-name="captchaToken" />
     </>
   )
+}
+
+/**
+ * Turnstile tokens are single-use — call this after a failed submit, before the person
+ * retries, or the retry silently resends the already-spent token and `verifyTurnstile`
+ * gets Cloudflare's `timeout-or-duplicate` back, even though the widget still shows its
+ * checkmark from the first solve. Never call this on a *successful* submit: `RegisterForm`
+ * relies on the token staying spent across its phase switch (see the comment there).
+ * Resets every widget on the page — safe here since no page renders more than one.
+ */
+export function resetTurnstile() {
+  if (typeof window !== 'undefined') window.turnstile?.reset()
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { TurnstileWidget } from '@/components/TurnstileWidget'
+import { resetTurnstile, TurnstileWidget } from '@/components/TurnstileWidget'
 import { MIN_PASSWORD } from '@/lib/auth/types'
 import { register } from '@/lib/register/actions'
 import { REGISTER_MESSAGE } from '@/lib/register/types'
@@ -44,9 +44,11 @@ export function RegisterForm() {
         setPhase('sent')
         setSentCount((count) => count + 1)
       } else {
+        resetTurnstile()
         setError(REGISTER_MESSAGE[result.reason])
       }
     } catch {
+      resetTurnstile()
       setError(REGISTER_MESSAGE.failed)
     } finally {
       setBusy(false)
@@ -126,11 +128,12 @@ export function RegisterForm() {
        * rendering (`TurnstileWidget`'s own comment) scans the DOM exactly once, at
        * script load, so a fresh `.cf-turnstile` node inserted later is never picked up
        * at all — remounting here would leave "Resend" with no captcha token, not
-       * merely a stale one. Keeping the same instance means "Resend" clicked right
-       * after "Create account" reuses the just-spent token and is correctly refused
-       * by `verifyTurnstile` (Turnstile tokens are single-use); Cloudflare's widget
-       * refreshes its own token automatically once that one expires, on its own
-       * schedule, with no reset call this app has to make.
+       * merely a stale one. `submit` only calls `resetTurnstile()` on the failure path,
+       * not on success: keeping the same spent token across the phase switch means
+       * "Resend" clicked right after "Create account" is correctly refused by
+       * `verifyTurnstile` (Turnstile tokens are single-use), the same way a plain retry
+       * after a failed "Create account" now gets a fresh token instead of resending the
+       * one `verifyTurnstile` already consumed.
        */}
       <TurnstileWidget />
 

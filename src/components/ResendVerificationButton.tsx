@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { TurnstileWidget } from '@/components/TurnstileWidget'
+import { resetTurnstile, TurnstileWidget } from '@/components/TurnstileWidget'
 import { resendVerification } from '@/lib/register/actions'
 import { RESEND_MESSAGE } from '@/lib/register/types'
 
@@ -29,9 +29,11 @@ export function ResendVerificationButton({ email }: { email: string }) {
       if (result.ok) {
         setSent(true)
       } else {
+        resetTurnstile()
         setError(RESEND_MESSAGE[result.reason])
       }
     } catch {
+      resetTurnstile()
       setError(RESEND_MESSAGE.failed)
     } finally {
       setBusy(false)
