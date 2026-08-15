@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useDeferredValue, useMemo, useState } from 'react'
 
-import { ExportPanel } from '@/components/ExportPanel'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
@@ -718,15 +717,6 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
 
         </>
       )}
-
-      {/*
-        * The console that used to sit at the bottom of `/import`. It has nothing to do
-        * with any one songbook, so unlike everything above it does not go away while
-        * searching — a publish already running keeps its own state (the pending list,
-        * the "Publishing…" watch) regardless of what the search box holds, and losing
-        * that state mid-wait would leave a rebuild running with no way to tell.
-        */}
-      {mayEdit && <ExportPanel />}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
+  IconDownload,
   IconExternal,
   IconMenu,
   IconNote,
@@ -76,7 +77,7 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
 export function NavMenu({ current }: { current: Section }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'settings' | 'sing-together'>('main')
-  const { isGlobalOwner } = useRole()
+  const { mayEdit, isGlobalOwner } = useRole()
 
   /*
    * `undefined` until the read comes back, `null` once it has and there is nothing
@@ -403,6 +404,18 @@ export function NavMenu({ current }: { current: Section }) {
                   <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
                     <IconSwitchAccount size={17} />
                     Accounts
+                  </Link>
+                )}
+
+                {/*
+                  * Hidden until a role arrives that can actually use it, same reasoning
+                  * as Accounts above: the actions behind this page already refuse anyone
+                  * without edit rights, so there is nothing for a viewer to do here.
+                  */}
+                {mayEdit && (
+                  <Link href="/export" className={item('export')} role="menuitem" onClick={close}>
+                    <IconDownload size={17} />
+                    Export
                   </Link>
                 )}
 
