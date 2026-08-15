@@ -3045,6 +3045,12 @@
     font-weight: 600;
   }
 
+  .chord-field:focus {
+    /* The accent border already says this is the one being edited — the browser's
+       own focus ring on top of it only drew a second, slightly offset outline. */
+    outline: none;
+  }
+
   /*
    * The two arrows that move the chord being edited — a sibling of `.line-scroll`
    * rather than something floating inside it, and that is the entire fix: a popover
