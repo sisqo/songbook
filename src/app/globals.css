@@ -2991,27 +2991,41 @@
     padding-inline-end: 0;
   }
 
-  /* The name and its two arrows, kept together at the letter the chord sits on. */
+  /*
+   * The name and its two arrows, kept together at the letter the chord sits on — but
+   * lifted onto its own floating panel rather than left inline with the row: a chord a
+   * few letters away used to paint over the arrows and swallow whichever one it
+   * covered, since neither had a stacking order of its own and the later one in the
+   * line simply won. A real background plus a `z-index` above every chip fixes that
+   * regardless of how close the next chord sits, and the room a popover affords is
+   * what let the arrows grow to something a thumb can actually land on.
+   */
   .chord-editing {
     position: absolute;
-    inset-block-end: -0.2rem;
-    inset-inline-start: 0;
+    inset-block-end: -0.5rem;
+    inset-inline-start: -0.5rem;
+    z-index: 5;
     visibility: visible;
     display: flex;
     align-items: center;
-    gap: 0.1rem;
+    gap: 0.3rem;
+    padding: 0.35rem;
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-panel);
   }
 
   .chord-nudge {
     display: inline-flex;
+    flex: none;
     align-items: center;
     justify-content: center;
-    width: 1.6rem;
-    height: 1.9rem;
-    border-radius: var(--r-xs);
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-sm);
     background: var(--surface-2);
     color: var(--ink);
-    font-size: 1rem;
+    font-size: 1.1rem;
     line-height: 1;
   }
 
@@ -3025,9 +3039,10 @@
   .chord-field {
     visibility: visible;
     width: 5ch;
-    padding: 0.1rem 0.2rem;
+    height: 2.5rem;
+    padding: 0.1rem 0.4rem;
     border: 1px solid var(--accent);
-    border-radius: var(--r-xs);
+    border-radius: var(--r-sm);
     background: var(--surface);
     color: var(--accent);
     /* 16px, again to stop iOS zooming when it takes focus. */
