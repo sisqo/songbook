@@ -2992,27 +2992,47 @@
   }
 
   /*
-   * The name and its two arrows, kept together at the letter the chord sits on — but
-   * lifted onto its own floating panel rather than left inline with the row: a chord a
-   * few letters away used to paint over the arrows and swallow whichever one it
-   * covered, since neither had a stacking order of its own and the later one in the
-   * line simply won. A real background plus a `z-index` above every chip fixes that
-   * regardless of how close the next chord sits, and the room a popover affords is
-   * what let the arrows grow to something a thumb can actually land on.
+   * The name, kept at the letter the chord sits on — floating over the row rather
+   * than in its flow, with a `z-index` above every chip so a chord a few letters
+   * away can never paint over it. Small on purpose: this still lives inside
+   * `.line-scroll`, which clips vertically on purpose of its own (see its comment),
+   * so anything placed here has a real ceiling. The two arrows do not: see
+   * `.chord-move-controls` below for where they actually live now.
    */
   .chord-editing {
     position: absolute;
-    inset-block-end: -0.5rem;
-    inset-inline-start: -0.5rem;
+    inset-block-end: -0.15rem;
+    inset-inline-start: -0.2rem;
     z-index: 5;
     visibility: visible;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.35rem;
-    border-radius: var(--r-lg);
+  }
+
+  .chord-field {
+    visibility: visible;
+    width: 5ch;
+    padding: 0.15rem 0.3rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--r-xs);
     background: var(--surface);
-    box-shadow: var(--shadow-panel);
+    color: var(--accent);
+    /* 16px, again to stop iOS zooming when it takes focus. */
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /*
+   * The two arrows that move the chord being edited — a sibling of `.line-scroll`
+   * rather than something floating inside it, and that is the entire fix: a popover
+   * tall enough to be worth a thumb's landing on it, rendered inside a box that
+   * clips vertically on purpose, simply got sheared off. Out here in the row's own
+   * layout there is no ceiling to hit, and a long line scrolling sideways never
+   * carries these out of view with it either.
+   */
+  .chord-move-controls {
+    display: flex;
+    flex: none;
+    align-self: center;
+    gap: 0.4rem;
   }
 
   .chord-nudge {
@@ -3022,6 +3042,7 @@
     justify-content: center;
     width: 2.5rem;
     height: 2.5rem;
+    border: 1px solid var(--line);
     border-radius: var(--r-sm);
     background: var(--surface-2);
     color: var(--ink);
@@ -3032,22 +3053,9 @@
   @media (hover: hover) {
     .chord-nudge:hover {
       background: var(--accent-soft);
+      border-color: var(--accent);
       color: var(--accent);
     }
-  }
-
-  .chord-field {
-    visibility: visible;
-    width: 5ch;
-    height: 2.5rem;
-    padding: 0.1rem 0.4rem;
-    border: 1px solid var(--accent);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    color: var(--accent);
-    /* 16px, again to stop iOS zooming when it takes focus. */
-    font-size: 1rem;
-    font-weight: 600;
   }
 
   .line-input {

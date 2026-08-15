@@ -395,6 +395,43 @@ function BlockRow({
           />
         </div>
       </div>
+
+      {/*
+        * The two arrows, kept out of `.line-scroll` entirely rather than floating over
+        * the chord being renamed: that box scrolls a long line sideways as one piece
+        * with `overflow-y: hidden` (see its own comment), and a popover tall enough for
+        * a real touch target rendered inside it simply got sheared off at the top —
+        * which is what "the tool doesn't fit above the row" turned out to mean. A
+        * sibling of the scrolling box, in the row's own layout, has no such ceiling and
+        * never scrolls out of view with a long line either.
+        */}
+      {editing !== null && (
+        <div className="chord-move-controls">
+          <button
+            type="button"
+            className="chord-nudge"
+            onMouseDown={(event) => {
+              // Before focus moves, so the name field being edited survives the press.
+              event.preventDefault()
+              onMoveChord(editing, -1)
+            }}
+            aria-label="Move the chord one letter left"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="chord-nudge"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onMoveChord(editing, 1)
+            }}
+            aria-label="Move the chord one letter right"
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -544,8 +581,9 @@ function ChordRow({
  * Typing a chord, and moving it.
  *
  * Empty and confirmed means the chord goes away — that is how one comes off a
- * syllable. The two arrows nudge it a letter at a time; they keep the field focused
- * on purpose, since losing focus would commit and close the very thing being moved.
+ * syllable. The two arrows that nudge it a letter at a time are not here any more —
+ * see `BlockRow`'s own comment — but Alt+Arrow still moves it without leaving the
+ * field, for whoever is on a keyboard.
  */
 function ChordField({
   name,
@@ -557,13 +595,6 @@ function ChordField({
   onMove: (delta: number) => void
 }) {
   const [value, setValue] = useState(name)
-
-  const nudge = (delta: number) => (event: React.MouseEvent) => {
-    // Before focus moves, so the field survives the press.
-    event.preventDefault()
-    event.stopPropagation()
-    onMove(delta)
-  }
 
   return (
     <span className="chord-editing" onClick={(event) => event.stopPropagation()}>
@@ -595,23 +626,6 @@ function ChordField({
         }}
         aria-label="Chord name"
       />
-
-      <button
-        type="button"
-        className="chord-nudge"
-        onMouseDown={nudge(-1)}
-        aria-label="Move the chord one letter left"
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        className="chord-nudge"
-        onMouseDown={nudge(1)}
-        aria-label="Move the chord one letter right"
-      >
-        ›
-      </button>
     </span>
   )
 }
