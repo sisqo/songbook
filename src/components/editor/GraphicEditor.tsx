@@ -224,14 +224,28 @@ function BlockRow({
    *
    * Each carries its own × . The toolbar can delete the line the cursor is on and
    * always could, but nobody found it there — a row you can see is a row you can
-   * remove.
+   * remove. Backspace (or Delete) does the same once the row is focused — reached by
+   * clicking it, same as any button — for a "— break —" in particular: a lyrics line
+   * becomes exactly this the moment its last word is backspaced away (see
+   * `readLyricLine`/`fromSource`), so finishing that same gesture with one more
+   * Backspace, rather than reaching for the mouse, is what completes it.
    */
   if (block.kind === 'blank' || block.kind === 'boundary' || block.kind === 'directive') {
     const section = block.kind === 'boundary' && block.section === 'chorus' ? 'chorus' : 'bridge'
 
     return (
       <div className={classes} data-line={index}>
-        <button type="button" className="editor-aside flex-1 text-start" onClick={() => onCaret(0)}>
+        <button
+          type="button"
+          className="editor-aside flex-1 text-start"
+          onClick={() => onCaret(0)}
+          onKeyDown={(event) => {
+            if (event.key === 'Backspace' || event.key === 'Delete') {
+              event.preventDefault()
+              onRemove()
+            }
+          }}
+        >
           {block.kind === 'blank' && <span className="editor-hint">— break —</span>}
 
           {block.kind === 'boundary' && (
