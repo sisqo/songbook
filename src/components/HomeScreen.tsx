@@ -184,18 +184,25 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
 
   return (
     <div>
-      <label className="search-field block">
-        <span className="sr-only">Search songs</span>
-        <IconSearch />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search title, artist, or lyrics"
-          autoComplete="off"
-          className="form-field"
-        />
-      </label>
+      {/*
+        * Hidden while arranging: typing here would flip `searching` true and swap
+        * the drag list out from under a reorder in progress — the same reasoning
+        * that already keeps the notices and the create form out of that mode.
+        */}
+      {mode !== 'organizing' && (
+        <label className="search-field block">
+          <span className="sr-only">Search songs</span>
+          <IconSearch />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search title, artist, or lyrics"
+            autoComplete="off"
+            className="form-field"
+          />
+        </label>
+      )}
 
       {searching ? (
         <>
