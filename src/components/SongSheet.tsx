@@ -234,7 +234,10 @@ function SheetChord({
       aria-label={shape !== null ? `${label}, tap for the fingering` : `${label}, show the shape`}
     >
       {shape !== null ? (
-        <ChordDiagram shape={shape} capo={capo} className="sheet-chord-shape" />
+        <>
+          <span className="sheet-chord-name">{label}</span>
+          <ChordDiagram shape={shape} capo={capo} className="sheet-chord-shape" />
+        </>
       ) : (
         label
       )}
