@@ -21,10 +21,24 @@ import {
   IconTuningFork,
   IconUsers,
 } from '@/components/icons'
+import { LandingCounters } from '@/components/LandingCounters'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 
 const TITLE = `${APP_NAME} — ${APP_PAYOFF}`
-const DESCRIPTION = 'Chords and lyrics you import, edit, export. Key, capo, auto-scroll. No network needed.'
+const DESCRIPTION =
+  'Play and sing with your own chords and lyrics — import, edit, export freely. Key, capo, auto-scroll, synced everywhere. Completely free.'
+
+/** The three short facts in the hero's pill row — glanceable before anyone reads a word. */
+interface HeroPill {
+  icon: React.ReactNode
+  text: string
+}
+
+const HERO_PILLS: HeroPill[] = [
+  { icon: <IconImport size={14} />, text: 'Bring your own songs' },
+  { icon: <IconOnStage size={14} />, text: 'Always with you, even offline' },
+  { icon: <IconTuningFork size={14} />, text: 'Key and capo, made smart' },
+]
 
 export const metadata: Metadata = {
   // `absolute`, not the root template: this page names itself, and "· Songbook" after
@@ -260,123 +274,145 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
-      <div className="login-glow" aria-hidden />
+      {/*
+        * The hero, full-bleed: `-mx-5 -mt-10 sm:-mt-16` cancels `<main>`'s own padding
+        * so the wash and the grain reach the viewport edge, and the inner wrapper puts
+        * the gutter back for the badge, the headline, the card and the counters.
+        */}
+      <section className="landing-hero -mx-5 -mt-10 w-full px-5 pb-10 pt-10 sm:-mt-16 sm:px-8 sm:pb-14 sm:pt-14 lg:px-20 lg:pb-16 lg:pt-16">
+        <div className="landing-hero-decor" aria-hidden />
+        <div className="landing-hero-grain" aria-hidden />
 
-      <div className="w-full max-w-sm text-center">
-        <span className="hero-mark">
-          <span className="hero-mark-fill">
-            <IconNote />
+        <div className="landing-hero-grid mx-auto w-full max-w-6xl">
+          <span className="hero-badge">
+            <span className="hero-badge-icon">
+              <IconNote />
+            </span>
+            {APP_NAME}
           </span>
-        </span>
 
-        <h1 className="landing-title mt-[18px] sm:mt-[22px]">{APP_NAME}</h1>
-        {/*
-          * Two short beats rather than the one clause `APP_PAYOFF` holds for the title
-          * bar and the manifest: this is the one line on the screen that is heard, not
-          * read for information, and it earns its own wording rather than borrowing theirs.
-          */}
-        <p className="landing-payoff mt-2 sm:mt-2.5">Your favorite songs. Ready to play.</p>
-        <p className="mx-auto mt-3 max-w-[19rem] text-sm leading-[1.45] text-muted sm:mt-3.5 sm:max-w-lg sm:text-[15px] sm:leading-[1.5]">
-          {DESCRIPTION}
-        </p>
-      </div>
+          {/*
+            * Two short beats rather than the one clause `APP_PAYOFF` holds for the title
+            * bar and the manifest: this is the one line on the screen that is heard, not
+            * read for information, and it earns its own wording rather than borrowing theirs.
+            */}
+          <h1 className="landing-hero-title">
+            Your favorite songs.
+            <br />
+            <span className="text-accent">Ready to play.</span>
+          </h1>
 
-      <div className="mt-7 w-full max-w-sm sm:mt-8">
-        <div className="card card-lead login-card p-6 sm:p-7">
-          {message !== null && (
-            <p className="notice notice-error text-start" role="alert">
-              {message}
-            </p>
-          )}
+          <p className="landing-hero-lede">{DESCRIPTION}</p>
 
-          {success !== null && (
-            <p className="notice notice-accent text-start" role="status">
-              {success}
-            </p>
-          )}
-
-          <form
-            className={message !== null || success !== null ? 'mt-4' : undefined}
-            action={async () => {
-              'use server'
-              await signIn('google', { redirectTo: '/' })
-            }}
-          >
-            <button type="submit" className="btn is-page w-full justify-center py-3 text-base">
-              <IconGoogle />
-              Sign in with Google
-            </button>
-          </form>
-
-          <div className="login-or">
-            <span>or</span>
+          <div className="hero-pills">
+            {HERO_PILLS.map((pill) => (
+              <span key={pill.text} className="hero-pill">
+                {pill.icon}
+                {pill.text}
+              </span>
+            ))}
           </div>
 
-          <form
-            className="grid gap-2.5"
-            action={async (data: FormData) => {
-              'use server'
+          <div className="landing-hero-card">
+            <div className="card card-lead login-card p-6 sm:p-7">
+              {message !== null && (
+                <p className="notice notice-error text-start" role="alert">
+                  {message}
+                </p>
+              )}
 
-              try {
-                await signIn('credentials', {
-                  email: String(data.get('email') ?? ''),
-                  password: String(data.get('password') ?? ''),
-                  redirectTo: '/',
-                })
-              } catch (thrown) {
-                /*
-                 * `signIn` reports success by throwing a redirect, so the redirect has to
-                 * pass through untouched — only a real `AuthError` means the attempt failed.
-                 * It is answered with a flag in the URL rather than with the error's own
-                 * code, because the code distinguishes cases this page must not.
-                 */
-                if (thrown instanceof AuthError) redirect('/login?failed=1')
-                throw thrown
-              }
-            }}
-          >
-            <label className="block">
-              <span className="sr-only">Email</span>
-              <input
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                placeholder="Email"
-                className="form-field"
-              />
-            </label>
+              {success !== null && (
+                <p className="notice notice-accent text-start" role="status">
+                  {success}
+                </p>
+              )}
 
-            <label className="block">
-              <span className="sr-only">Password</span>
-              <input
-                type="password"
-                name="password"
-                required
-                autoComplete="current-password"
-                placeholder="Password"
-                className="form-field"
-              />
-              <span className="mt-1.5 block text-end">
-                <Link href="/forgot-password" className="text-xs text-faint hover:underline">
-                  Forgot password?
-                </Link>
-              </span>
-            </label>
+              <form
+                className={message !== null || success !== null ? 'mt-4' : undefined}
+                action={async () => {
+                  'use server'
+                  await signIn('google', { redirectTo: '/' })
+                }}
+              >
+                <button type="submit" className="btn is-page w-full justify-center py-3 text-base">
+                  <IconGoogle />
+                  Sign in with Google
+                </button>
+              </form>
 
-            <button type="submit" className="btn btn-primary mt-1 w-full justify-center py-3">
-              Sign in
-            </button>
-          </form>
+              <div className="login-or">
+                <span>or</span>
+              </div>
+
+              <form
+                className="grid gap-2.5"
+                action={async (data: FormData) => {
+                  'use server'
+
+                  try {
+                    await signIn('credentials', {
+                      email: String(data.get('email') ?? ''),
+                      password: String(data.get('password') ?? ''),
+                      redirectTo: '/',
+                    })
+                  } catch (thrown) {
+                    /*
+                     * `signIn` reports success by throwing a redirect, so the redirect has to
+                     * pass through untouched — only a real `AuthError` means the attempt failed.
+                     * It is answered with a flag in the URL rather than with the error's own
+                     * code, because the code distinguishes cases this page must not.
+                     */
+                    if (thrown instanceof AuthError) redirect('/login?failed=1')
+                    throw thrown
+                  }
+                }}
+              >
+                <label className="block">
+                  <span className="sr-only">Email</span>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    autoComplete="email"
+                    placeholder="Email"
+                    className="form-field"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="sr-only">Password</span>
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    autoComplete="current-password"
+                    placeholder="Password"
+                    className="form-field"
+                  />
+                  <span className="mt-1.5 block text-end">
+                    <Link href="/forgot-password" className="text-xs text-faint hover:underline">
+                      Forgot password?
+                    </Link>
+                  </span>
+                </label>
+
+                <button type="submit" className="btn btn-primary mt-1 w-full justify-center py-3">
+                  Sign in
+                </button>
+              </form>
+            </div>
+
+            <p className="mt-4 text-center text-xs text-faint">
+              Don&apos;t have an account?{' '}
+              <Link href="/register" className="text-accent hover:underline">
+                Register
+              </Link>
+            </p>
+          </div>
+
+          <LandingCounters />
         </div>
-
-        <p className="mt-4 text-center text-xs text-faint">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-accent hover:underline">
-            Register
-          </Link>
-        </p>
-      </div>
+      </section>
 
       {/*
         * Sing Together, raised above the feature tour below rather than folded into
@@ -385,31 +421,50 @@ export default async function LoginPage({ searchParams }: Props) {
         * `.feature-spotlight`'s own comment in globals.css for why the fill is what
         * marks it out.
         */}
-      <section className="mt-11 w-full max-w-2xl lg:mt-14">
+      <section className="mt-11 w-full max-w-4xl lg:mt-14">
         <div className="feature-spotlight">
-          <span className="feature-spotlight-icon">
-            <IconBroadcast size={26} />
-          </span>
+          <svg
+            className="feature-spotlight-mark"
+            width="300"
+            height="300"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={0.6}
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none" />
+            <path d="M8.5 19a3.5 3.5 0 0 1 7 0" />
+            <path d="M5.5 19a6.5 6.5 0 0 1 13 0" />
+          </svg>
 
-          <h2 className="feature-spotlight-title">Sing Together</h2>
+          <div className="feature-spotlight-inner">
+            <div>
+              <span className="feature-spotlight-icon">
+                <IconBroadcast size={26} />
+              </span>
 
-          <p className="feature-spotlight-text">
-            Passing a songbook around, or crowding over one phone — it gets old fast.
-            With Sing Together, everyone follows the same song from their own device,
-            automatically — whoever&apos;s playing, however many, and everyone who&apos;s
-            singing along.
-          </p>
+              <h2 className="feature-spotlight-title">Sing Together</h2>
 
-          <div className="feature-spotlight-points">
-            {SING_TOGETHER_POINTS.map((point) => (
-              <div key={point.title}>
-                <div className="feature-spotlight-point-head">
+              <p className="feature-spotlight-text">
+                Passing a songbook around, or crowding over one phone — it gets old fast.
+                With Sing Together, everyone follows the same song from their own device,
+                automatically — whoever&apos;s playing, however many, and everyone who&apos;s
+                singing along.
+              </p>
+            </div>
+
+            <div className="feature-spotlight-points">
+              {SING_TOGETHER_POINTS.map((point) => (
+                <div key={point.title} className="feature-spotlight-point">
                   <span className="feature-spotlight-point-icon">{point.icon}</span>
-                  <h3 className="feature-spotlight-point-title">{point.title}</h3>
+                  <div>
+                    <h3 className="feature-spotlight-point-title">{point.title}</h3>
+                    <p className="feature-spotlight-point-text">{point.text}</p>
+                  </div>
                 </div>
-                <p className="feature-spotlight-point-text">{point.text}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>

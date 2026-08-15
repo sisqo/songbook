@@ -1030,21 +1030,57 @@
   /*
    * One feature raised above the rest, on the public page: Sing Together gets its own
    * panel rather than a card among the ones below, because it is the one thing here two
-   * people are doing at once rather than one person doing alone. The fill is the same
-   * `--accent-soft` a `.notice-accent` already reaches for — the one background in this
-   * app that already means "worth a second look" — so the page does not need a second
-   * way to say that.
+   * people are doing at once rather than one person doing alone. Solid `--accent` now
+   * rather than `--accent-soft` (v3.4) — the panel that used to say "worth a second
+   * look" the way `.notice-accent` does now says it as loudly as the sign-in button
+   * itself, which is the point of raising this one feature above the rest of the tour.
+   * `--on-accent` inverts together with `--accent` in dark mode (a light tan fill takes
+   * near-black text, not white), so every child below reaches for it with no theme
+   * check of its own — only the translucency amounts are hand-picked to match the
+   * mockup.
    */
   .feature-spotlight {
+    position: relative;
+    overflow: hidden;
     padding: 1.75rem 1.375rem;
-    background: var(--accent-soft);
+    background: var(--accent);
     border-radius: var(--r-2xl);
-    text-align: center;
+    color: color-mix(in srgb, var(--on-accent) 92%, transparent);
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 1024px) {
     .feature-spotlight {
-      padding: 2.5rem 2.25rem;
+      padding: 2.75rem 3rem;
+    }
+  }
+
+  /* The big, near-invisible mark behind the copy — decoration, not content. */
+  .feature-spotlight-mark {
+    position: absolute;
+    top: -4.375rem;
+    right: -4rem;
+    color: color-mix(in srgb, var(--on-accent) 14%, transparent);
+    pointer-events: none;
+  }
+
+  @media (min-width: 1024px) {
+    .feature-spotlight-mark {
+      top: -5.25rem;
+      right: -4.375rem;
+    }
+  }
+
+  .feature-spotlight-inner {
+    position: relative;
+    display: grid;
+    gap: 1.375rem;
+  }
+
+  @media (min-width: 1024px) {
+    .feature-spotlight-inner {
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: start;
     }
   }
 
@@ -1052,11 +1088,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 3.625rem;
+    height: 3.625rem;
     border-radius: 50%;
-    background: var(--accent);
+    background: color-mix(in srgb, var(--on-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--on-accent) 26%, transparent);
     color: var(--on-accent);
+  }
+
+  @media (min-width: 1024px) {
+    .feature-spotlight-icon {
+      width: 4rem;
+      height: 4rem;
+    }
   }
 
   .feature-spotlight-icon svg {
@@ -1065,62 +1109,56 @@
   }
 
   .feature-spotlight-title {
-    margin-top: 1.125rem;
+    margin-top: 1rem;
+    color: var(--on-accent);
     font-size: 1.375rem;
     font-weight: 500;
     letter-spacing: -0.02em;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 1024px) {
     .feature-spotlight-title {
-      font-size: 1.75rem;
+      margin-top: 1.125rem;
+      font-size: 2.125rem;
     }
   }
 
   .feature-spotlight-text {
-    margin: 0.75rem auto 0;
-    max-width: 30rem;
-    color: var(--muted);
+    margin: 0.75rem 0 0;
+    max-width: 26rem;
     font-size: 0.9375rem;
     line-height: 1.55;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 1024px) {
     .feature-spotlight-text {
-      font-size: 1rem;
+      font-size: 0.96875rem;
     }
   }
 
-  /* Stacked and left-aligned on a phone, where three short columns would each be too
-     narrow to read; a row of three, centred, once the panel is wide enough for them. */
+  /* The three points, as rows of one translucent list rather than a grid of three
+     columns — the 1px gaps between rows are the only border they get, carried by the
+     list's own background showing through. */
   .feature-spotlight-points {
     display: grid;
-    gap: 1.375rem;
-    margin-top: 1.75rem;
-    text-align: left;
-    grid-template-columns: 1fr;
+    gap: 2px;
+    margin-top: 1.375rem;
+    border-radius: var(--r-panel);
+    overflow: hidden;
+    background: color-mix(in srgb, var(--on-accent) 14%, transparent);
   }
 
   @media (min-width: 1024px) {
     .feature-spotlight-points {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-top: 2.25rem;
-      text-align: center;
+      margin-top: 0;
     }
   }
 
-  .feature-spotlight-point-head {
+  .feature-spotlight-point {
     display: flex;
-    align-items: center;
-    gap: 0.625rem;
-  }
-
-  @media (min-width: 1024px) {
-    .feature-spotlight-point-head {
-      flex-direction: column;
-      gap: 0.625rem;
-    }
+    gap: 0.875rem;
+    padding: 1.125rem 1.25rem;
+    background: color-mix(in srgb, var(--on-accent) 8%, transparent);
   }
 
   .feature-spotlight-point-icon {
@@ -1130,9 +1168,9 @@
     justify-content: center;
     width: 2.25rem;
     height: 2.25rem;
-    border-radius: 50%;
-    background: var(--surface);
-    color: var(--accent);
+    border-radius: 0.8125rem;
+    background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+    color: var(--on-accent);
   }
 
   .feature-spotlight-point-icon svg {
@@ -1142,15 +1180,15 @@
 
   .feature-spotlight-point-title {
     margin: 0;
+    color: var(--on-accent);
     font-size: 0.9375rem;
     font-weight: 500;
   }
 
   .feature-spotlight-point-text {
-    margin: 0.375rem 0 0;
-    font-size: 0.8125rem;
+    margin: 0.3125rem 0 0;
+    font-size: 0.84375rem;
     line-height: 1.5;
-    color: var(--muted);
   }
 
   /*
@@ -1204,6 +1242,339 @@
       color-mix(in srgb, var(--accent) 14%, transparent),
       transparent 70%
     );
+  }
+
+  /* ---- Landing hero (v3.4 redesign, /login only) ----------------------- */
+
+  /*
+   * The band behind the name, the pitch and the sign-in card — full-bleed, unlike
+   * every section under it, so the one screen a visitor lands on first reads as an
+   * entrance rather than a continuation of the plain page below. `-mx-5` in the
+   * markup cancels `<main>`'s own side padding so the wash reaches the viewport
+   * edge; `.landing-hero-inner` puts the gutter back for the content itself.
+   */
+  .landing-hero {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .landing-hero-decor {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(70% 90% at 78% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+      radial-gradient(40% 60% at 8% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%);
+  }
+
+  /* A faint grain over the wash, so the band is not a flat gradient. */
+  .landing-hero-grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background: repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ink) 5%, transparent) 0 1px,
+      transparent 1px 13px
+    );
+    mask-image: radial-gradient(70% 60% at 50% 30%, #000, transparent 78%);
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-grain {
+      mask-image: radial-gradient(60% 70% at 50% 40%, #000, transparent 75%);
+    }
+  }
+
+  /*
+   * Badge, title, pitch, pills, the card and the counters, in the order a phone
+   * shows them. Named areas rather than source order plus a CSS `order`, because
+   * the card moves from the bottom of the stack to a column of its own at the same
+   * breakpoint the grid itself reshapes — one property changes, not two.
+   */
+  .landing-hero-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas: 'badge' 'title' 'lede' 'pills' 'card' 'counters';
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-grid {
+      grid-template-columns: 1fr 372px;
+      column-gap: 3.25rem;
+      align-items: center;
+      grid-template-areas:
+        'badge card'
+        'title card'
+        'lede card'
+        'pills card'
+        'counters card';
+    }
+  }
+
+  /* The wordmark, folded into a small pill above the headline instead of being the
+     headline itself — the headline says the payoff now. Centred on a phone, where
+     it sits alone above left-aligned text; left-aligned itself once there is a
+     column of its own to sit in. */
+  .hero-badge {
+    grid-area: badge;
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    margin-inline: auto;
+    gap: 0.8125rem;
+    padding: 0.5rem 1.375rem 0.5rem 0.625rem;
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-1);
+    font-size: 1.1875rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-badge {
+      width: auto;
+      margin-inline: 0;
+      gap: 1rem;
+      padding: 0.625rem 1.75rem 0.625rem 0.75rem;
+      font-size: 1.375rem;
+    }
+  }
+
+  .hero-badge-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.375rem;
+    height: 2.375rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .hero-badge-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-badge-icon {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .hero-badge-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  /* The headline itself, now the payoff rather than the name — bigger than
+     `.landing-title` gets, and left-aligned rather than centred. */
+  .landing-hero-title {
+    grid-area: title;
+    margin-top: 1.5rem;
+    font-size: 2.5rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.035em;
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-title {
+      margin-top: 1.875rem;
+      font-size: 3.875rem;
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+    }
+  }
+
+  .landing-hero-lede {
+    grid-area: lede;
+    margin-top: 1rem;
+    max-width: 31rem;
+    color: var(--muted);
+    font-size: 0.96875rem;
+    line-height: 1.5;
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-lede {
+      margin-top: 1.625rem;
+      font-size: 1.15625rem;
+    }
+  }
+
+  /* Three short facts, as pills rather than another row of prose — glanceable
+     before the visitor has committed to reading anything. */
+  .hero-pills {
+    grid-area: pills;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.375rem;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-pills {
+      gap: 0.5625rem;
+      margin-top: 2rem;
+    }
+  }
+
+  .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  .hero-pill svg {
+    color: var(--accent);
+  }
+
+  @media (min-width: 1024px) {
+    .hero-pill {
+      padding: 0.5625rem 1rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  /* The three counters, plainly false until the real ones exist — see
+     `LandingCounters`'s own comment for why they still tick. */
+  .hero-counters {
+    grid-area: counters;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.875rem;
+    margin-top: 1.75rem;
+    padding-top: 1.625rem;
+    border-top: 1px solid var(--line);
+  }
+
+  @media (min-width: 1024px) {
+    .hero-counters {
+      grid-template-columns: repeat(3, auto);
+      justify-content: start;
+      gap: 2.75rem;
+      margin-top: 2.25rem;
+      padding-top: 1.875rem;
+    }
+  }
+
+  .hero-counter-value {
+    display: flex;
+    align-items: baseline;
+    gap: 1px;
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-counter-value {
+      font-size: 2.75rem;
+      letter-spacing: -0.035em;
+    }
+  }
+
+  .hero-counter-value.is-accent {
+    color: var(--accent);
+  }
+
+  .hero-counter-label {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
+
+  @media (min-width: 1024px) {
+    .hero-counter-label {
+      margin-top: 0.75rem;
+      font-size: 0.90625rem;
+    }
+  }
+
+  /* The rolling last digit: a cropped 1-character window the old digit leaves
+     upward through as the new one arrives from underneath. */
+  .hero-counter-digit {
+    position: relative;
+    display: inline-block;
+    width: 1ch;
+    height: 1em;
+    overflow: hidden;
+    vertical-align: baseline;
+  }
+
+  .hero-counter-digit-in,
+  .hero-counter-digit-out {
+    display: block;
+    will-change: transform;
+  }
+
+  .hero-counter-digit-out {
+    position: absolute;
+    inset: 0;
+    animation: rollUpOut 520ms cubic-bezier(0.3, 0.9, 0.3, 1) forwards;
+  }
+
+  .hero-counter-digit-in {
+    animation: rollUpIn 520ms cubic-bezier(0.3, 0.9, 0.3, 1) both;
+  }
+
+  @keyframes rollUpIn {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes rollUpOut {
+    from {
+      transform: none;
+    }
+    to {
+      transform: translateY(-100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-counter-digit-in {
+      animation: none;
+    }
+    .hero-counter-digit-out {
+      display: none;
+    }
+  }
+
+  .landing-hero-card {
+    grid-area: card;
+    width: 100%;
+    max-width: 28rem;
+    margin-inline: auto;
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-card {
+      max-width: none;
+      margin-inline: 0;
+    }
   }
 
   /* ---- Top bar -------------------------------------------------------- */
