@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { Footer } from '@/components/Footer'
 import { ForgotPasswordForm } from '@/components/ForgotPasswordForm'
 import { IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
@@ -38,6 +39,8 @@ export default function ForgotPasswordPage() {
           </Link>
         </p>
       </div>
+
+      <Footer />
     </main>
   )
 }

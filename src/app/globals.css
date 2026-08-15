@@ -1257,6 +1257,24 @@
     color: inherit;
   }
 
+  /* The fine print: Privacy, Terms, Cookies, Copyright — middle-dot separated, like the credit line above it. */
+  .app-footer-legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--faint);
+  }
+
+  .app-footer-legal a {
+    color: inherit;
+  }
+
+  .app-footer-legal span {
+    color: var(--faint);
+  }
+
   @media (hover: hover) {
     .app-footer-kofi:hover {
       opacity: 1;
@@ -1265,6 +1283,85 @@
     .app-footer-credit a:hover {
       color: var(--ink);
     }
+
+    .app-footer-legal a:hover {
+      color: var(--ink);
+    }
+  }
+
+  /*
+   * Body copy for the legal pages (privacy, terms, cookies, copyright) — semantic
+   * HTML written directly in each page, styled once here rather than as the same
+   * long chain of Tailwind utilities repeated across four nearly-identical documents.
+   */
+  .legal-content h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .legal-content .legal-updated {
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--faint);
+  }
+
+  .legal-content h2 {
+    margin-top: 2rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .legal-content p {
+    margin-top: 0.625rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .legal-content ul {
+    margin-top: 0.625rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+
+  .legal-content li {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .legal-content strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .legal-content a {
+    color: var(--accent);
+    text-underline-offset: 2px;
+  }
+
+  .legal-content table {
+    margin-top: 0.75rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+
+  .legal-content th,
+  .legal-content td {
+    padding: 0.5rem 0.625rem;
+    text-align: left;
+    vertical-align: top;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+
+  .legal-content th {
+    color: var(--ink);
+    font-weight: 600;
   }
 
   /*

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { Footer } from '@/components/Footer'
 import { ResendVerificationButton } from '@/components/ResendVerificationButton'
 import { IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
@@ -82,6 +83,8 @@ export default async function VerifyPage({ searchParams }: Props) {
           )}
         </div>
       </div>
+
+      <Footer />
     </main>
   )
 }

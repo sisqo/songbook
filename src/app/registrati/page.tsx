@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { signIn } from '@/auth'
+import { Footer } from '@/components/Footer'
 import { RegisterForm } from '@/components/RegisterForm'
 import { IconGoogle, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
@@ -61,6 +62,8 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      <Footer />
     </main>
   )
 }

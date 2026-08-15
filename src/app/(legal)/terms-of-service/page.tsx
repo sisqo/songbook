@@ -1,0 +1,151 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Terms of Service' }
+
+const CONTACT = 'info@songbook.sisqo.dev'
+
+export default function TermsOfServicePage() {
+  return (
+    <>
+      <h1>Terms of Service</h1>
+      <p className="legal-updated">Last updated: 15 August 2026</p>
+
+      <p>
+        These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Songbook (&ldquo;the
+        Service&rdquo;), a personal, non-commercial project provided free of charge at
+        songbook.sisqo.dev by an individual developer (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By
+        accessing or using Songbook, including by joining a Sing Together session through a shared
+        link, you agree to these Terms.
+      </p>
+
+      <h2>1. The Service</h2>
+      <p>
+        Songbook lets you import, organize, edit and export your own song lyrics and chords, and
+        offers features such as key/capo transposition and Sing Together, a feature that syncs a song
+        across multiple devices in real time.
+      </p>
+      <p>
+        <strong>Songbook does not provide, host, or include any pre-existing song lyrics or chord
+        charts.</strong> There is no built-in catalog or library of any kind, and the Service does not
+        search, fetch, or download content from third-party websites on your behalf. Every song in
+        your collection is content that you personally type in or import from a file on your own
+        device — the Service is only a tool for organizing and displaying your own material.
+      </p>
+
+      <h2>2. Accounts and access</h2>
+      <p>
+        Registration is open: you can create an account using an email address and password, or by
+        signing in with Google. You are responsible for maintaining the confidentiality of your
+        account and for all activity that occurs under it. Notify us promptly if you believe your
+        account has been accessed without your authorisation.
+      </p>
+      <p>
+        You may use the Service only if you are legally able to enter into these Terms under the law
+        of your country. If you are a minor, you may use Songbook only with the permission and
+        involvement of a parent or guardian, who accepts these Terms on your behalf.
+      </p>
+      <p>
+        We may refuse, suspend, or remove accounts at our discretion where necessary to protect the
+        Service or comply with the law.
+      </p>
+
+      <h2>3. Your content</h2>
+      <p>
+        You retain full ownership of the songs, lyrics, chords and other content you import into
+        Songbook (&ldquo;Your Content&rdquo;). We do not claim any ownership of it. You grant us only
+        the limited technical permission to store, process and display Your Content as needed to
+        operate the Service for you and for the participants you invite to a Sing Together session.
+      </p>
+      <p>By using Songbook, you confirm that:</p>
+      <ul>
+        <li>
+          you have the right to import, store and use Your Content (for example, because it is your
+          own work, in the public domain, or you otherwise hold the necessary rights or license);
+        </li>
+        <li>Your Content does not infringe the intellectual property rights of any third party.</li>
+      </ul>
+      <p>
+        Songbook is a tool for managing your own content — we do not license, provide, or claim any
+        rights over song lyrics or chord charts, and none are included with the Service. You are
+        solely responsible for the legality of the content you import and use.
+      </p>
+
+      <h2>4. Sing Together</h2>
+      <p>
+        When you start a Sing Together session, you act as the session leader and control what is
+        displayed on the devices of participants who join via your shared link.{' '}
+        <strong>Anyone holding the link can join without an account</strong> and can view the shared
+        content for the duration of the session. You are responsible for who you share that link
+        with, and for having the right to display Your Content to those participants.
+      </p>
+      <p>
+        Participants who join a session are bound by these Terms for the duration of their
+        participation, and must not record, redistribute, or otherwise reuse the content displayed to
+        them without the rightsholder&apos;s permission.
+      </p>
+
+      <h2>5. Acceptable use</h2>
+      <p>You agree not to use Songbook to:</p>
+      <ul>
+        <li>upload or share content that is illegal, infringes third-party rights, or that you do not have the right to use;</li>
+        <li>attempt to disrupt, reverse-engineer, or gain unauthorized access to the Service;</li>
+        <li>place an unreasonable load on the Service, including through automated or bulk access;</li>
+        <li>use the Service for any purpose other than personal, non-commercial use of your own song collection, unless otherwise agreed with us.</li>
+      </ul>
+
+      <h2>6. Availability and no warranty</h2>
+      <p>
+        Songbook is provided &ldquo;as is&rdquo; and free of charge, with no warranty of any kind,
+        express or implied. While we aim to keep the Service available and reliable, we do not
+        guarantee uninterrupted or error-free operation, and we are not liable for temporary
+        unavailability of the Service. We may modify, suspend or discontinue the Service, in whole or
+        in part, at any time; where reasonably possible we will give advance notice so that you can
+        export your collection.
+      </p>
+      <p>
+        <strong>Keep your own backups.</strong> The export feature lets you download your collection
+        at any time, and you should use it regularly rather than relying on Songbook as your only
+        copy.
+      </p>
+
+      <h2>7. Limitation of liability</h2>
+      <p>
+        Songbook is provided free of charge, on a non-commercial basis, and is maintained by a single
+        individual rather than by a company. To the extent permitted by law, we are not liable for any
+        indirect, incidental, or consequential damages arising from your use of Songbook, including
+        loss of data or of content you have imported.
+      </p>
+      <p>
+        Nothing in these Terms excludes or limits liability for death or personal injury caused by
+        negligence, for fraud or wilful misconduct, or any other liability that cannot be excluded
+        under applicable law — including mandatory consumer protection rights.
+      </p>
+
+      <h2>8. Termination</h2>
+      <p>
+        We may suspend or terminate access to the Service for accounts that violate these Terms. You
+        may stop using Songbook at any time and delete your account, together with all of Your
+        Content, directly from within the app. Deletion is immediate on the live service; see the
+        Privacy Policy for how residual copies in backups and logs are handled.
+      </p>
+
+      <h2>9. Changes to these Terms</h2>
+      <p>
+        We may update these Terms from time to time. If we make significant changes, we will notify
+        you through the app or by email. Continued use of Songbook after changes take effect
+        constitutes acceptance of the new Terms.
+      </p>
+
+      <h2>10. Governing law</h2>
+      <p>
+        These Terms are governed by the laws of Italy, without prejudice to any mandatory consumer
+        protection rights you may have under the laws of your country of residence.
+      </p>
+
+      <h2>11. Contact</h2>
+      <p>
+        For any question about these Terms, contact us at <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
+      </p>
+    </>
+  )
+}

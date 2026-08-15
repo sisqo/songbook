@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { Footer } from '@/components/Footer'
 import { ResetPasswordForm } from '@/components/ResetPasswordForm'
 import { IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
@@ -65,6 +66,8 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
           )}
         </div>
       </div>
+
+      <Footer />
     </main>
   )
 }

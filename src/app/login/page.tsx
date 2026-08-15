@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { signIn } from '@/auth'
+import { Footer } from '@/components/Footer'
 import {
   IconBooks,
   IconBroadcast,
@@ -467,6 +468,8 @@ export default async function LoginPage({ searchParams }: Props) {
           ))}
         </div>
       </section>
+
+      <Footer />
     </main>
   )
 }

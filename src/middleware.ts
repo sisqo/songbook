@@ -48,13 +48,23 @@ export default auth((request) => {
    * header here, the guard would rest entirely on `response.redirected` — which
    * Serwist's own redirect-copying plugin may already have cleared — and the
    * login page could end up cached under every song URL.
+   *
+   * The four legal pages are here for a different reason: nobody following one of
+   * them — a visitor deciding whether to sign up, a store reviewer, a data
+   * protection authority — has a session to check in the first place, and unlike
+   * the email-loop pages above, that stays true forever, not just until they finish
+   * registering.
    */
   if (
     pathname === '/login' ||
     pathname === '/registrati' ||
     pathname === '/verifica' ||
     pathname === '/password-dimenticata' ||
-    pathname === '/reimposta-password'
+    pathname === '/reimposta-password' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-of-service' ||
+    pathname === '/cookie-policy' ||
+    pathname === '/content-copyright-notice'
   ) {
     if (request.auth) return
 
