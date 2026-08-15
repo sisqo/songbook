@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
@@ -57,7 +58,32 @@ function publicEntries(): PrecacheEntry[] {
   }
 }
 
+/**
+ * The commit this build was made from, shown in the footer of every internal page.
+ *
+ * `git rev-parse` first, `VERCEL_GIT_COMMIT_SHA` as a fallback: a CLI deploy
+ * (`vercel --prod`) uploads sources without the `.git` directory, so the command fails
+ * there, and the env var Vercel injects covers it instead — same fallback order
+ * `easy-guitar-tuner`'s `vite.config.js` already uses for the same reason.
+ */
+function commitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim()
+  } catch {
+    return (process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)
+  }
+}
+
 const nextConfig: NextConfig = {
+  /**
+   * Inlined at build time wherever `process.env.COMMIT_HASH` is read, in server or
+   * client code alike — see `Footer.tsx`, the only reader.
+   */
+  env: {
+    COMMIT_HASH: commitHash(),
+  },
   /**
    * The app's routes were renamed from Italian to English (`/canzonieri` →
    * `/songbooks`, and so on). These carry anyone with an old bookmark or a

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { SongbookProvider } from '@/components/SongbookProvider'
+import { Footer } from '@/components/Footer'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { EditorScreen } from '@/components/editor/EditorScreen'
@@ -83,6 +84,8 @@ export default async function EditSongPage({ params }: Props) {
               Only this account&apos;s owner, or a global owner, can edit a song here.
             </span>
           </p>
+
+          <Footer />
         </main>
       </PrefsProvider>
     )
@@ -104,6 +107,8 @@ export default async function EditSongPage({ params }: Props) {
 
         <main className="mx-auto max-w-3xl px-4 pb-12">
           <EditorScreen song={song} />
+
+          <Footer />
         </main>
       </SongbookProvider>
     </PrefsProvider>

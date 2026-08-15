@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { Footer } from '@/components/Footer'
 import { SongbookProvider } from '@/components/SongbookProvider'
 import { SongbookSongs } from '@/components/SongbookSongs'
 import { PrefsProvider } from '@/components/PrefsProvider'
@@ -109,6 +110,8 @@ export default async function SongbookPage({ params }: Props) {
           </header>
 
           <SongbookSongs slug={slug} songs={mine} />
+
+          <Footer />
         </main>
       </SongbookProvider>
     </PrefsProvider>

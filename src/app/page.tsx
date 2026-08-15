@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { Footer } from '@/components/Footer'
 import { SongbookProvider } from '@/components/SongbookProvider'
 import { HomeScreen } from '@/components/HomeScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
@@ -65,6 +66,8 @@ export default async function Home() {
             * no use on stage.
             */}
           <HomeScreen songs={songs.map(toIndexEntry)} />
+
+          <Footer />
         </main>
       </SongbookProvider>
     </PrefsProvider>

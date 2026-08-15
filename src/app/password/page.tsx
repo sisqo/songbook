@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 
+import { Footer } from '@/components/Footer'
 import { PasswordScreen } from '@/components/PasswordScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
@@ -29,6 +30,8 @@ export default function PasswordPage() {
         </header>
 
         <PasswordScreen />
+
+        <Footer />
       </main>
     </PrefsProvider>
   )

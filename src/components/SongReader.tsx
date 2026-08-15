@@ -1,4 +1,5 @@
 import { EditSongLink } from '@/components/EditSongLink'
+import { Footer } from '@/components/Footer'
 import { LiveControlBar, LiveSheet, SongHeading } from '@/components/LiveSong'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { SongProvider } from '@/components/SongProvider'
@@ -175,6 +176,13 @@ export async function SongReader({ song }: { song: Song }) {
             * which is why it is a component of its own.
             */}
           <EditSongLink slug={song.slug} />
+
+          {/*
+            * Above the spacer, not after it: the spacer's whole job is to keep the
+            * floating control dock from covering whatever is last on the page, and
+            * that job now falls to this instead of to the edit link above it.
+            */}
+          <Footer />
 
           <div className="bar-spacer" />
         </main>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { AccountPasswordButton } from '@/components/AccountPasswordButton'
+import { Footer } from '@/components/Footer'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { CreateAccountForm } from '@/components/CreateAccountForm'
@@ -109,6 +110,8 @@ export default async function AccountsPage() {
             </ul>
           )}
         </section>
+
+        <Footer />
       </main>
     </PrefsProvider>
   )

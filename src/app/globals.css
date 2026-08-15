@@ -1196,6 +1196,51 @@
   }
 
   /*
+   * The credit line at the foot of an internal page: a Ko-fi badge above a muted
+   * "by SisQo · commit" line, the same shape as easy-guitar-tuner's own footer.
+   */
+  .app-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.625rem;
+    margin-top: 2.5rem;
+    padding-block: 1.5rem;
+    border-top: 1px solid var(--edge);
+    text-align: center;
+  }
+
+  .app-footer-kofi {
+    display: inline-flex;
+    opacity: 0.8;
+    transition: opacity 0.15s ease;
+  }
+
+  .app-footer-kofi img {
+    border-radius: var(--r-xs);
+  }
+
+  .app-footer-credit {
+    font-size: 0.8125rem;
+    letter-spacing: 0.01em;
+    color: var(--muted);
+  }
+
+  .app-footer-credit a {
+    color: inherit;
+  }
+
+  @media (hover: hover) {
+    .app-footer-kofi:hover {
+      opacity: 1;
+    }
+
+    .app-footer-credit a:hover {
+      color: var(--ink);
+    }
+  }
+
+  /*
    * An icon button in the header: a raised white square rather than a bare glyph.
    * The reading screen puts three of them in a row, and bare glyphs on a warm page
    * did not read as three separate targets.
