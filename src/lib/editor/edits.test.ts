@@ -41,6 +41,14 @@ describe('editing the words', () => {
   it('edits the text of a comment', () => {
     assert.equal(edit('{c: assolo}', (doc) => setLineText(doc, 0, 'assolo di guitar')), '{c: assolo di guitar}')
   })
+
+  it('turns a blank line into a real one the moment it holds text', () => {
+    // A freshly split or appended line is, byte for byte, the same empty string a
+    // genuine blank line already is — `fromSource` reads both back as `blank` — so
+    // this is the only place that gap can be closed: the edit itself has to promote
+    // the row, or nothing typed into it would ever survive being read back.
+    assert.equal(edit('uno\n', (doc) => setLineText(doc, 1, 'due')), 'uno\ndue')
+  })
 })
 
 describe('the chords themselves', () => {
@@ -131,6 +139,10 @@ describe('splitting and joining lines', () => {
   it('refuses to join a line onto a comment, which would swallow it', () => {
     const source = '{c: assolo}\n[la]uno'
     assert.equal(edit(source, (doc) => joinLines(doc, 1)), source)
+  })
+
+  it('joins a still-blank line into the one above, unlike a comment: it has nothing of its own to lose', () => {
+    assert.equal(edit('[la]uno\n', (doc) => joinLines(doc, 1)), '[la]uno')
   })
 
   it('never leaves the song with no lines at all', () => {

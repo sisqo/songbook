@@ -31,6 +31,17 @@ export function setLineText(document: SongDocument, index: number, text: string)
   if (block === undefined) return document
 
   if (block.kind === 'comment') return replace(document, index, { ...block, text })
+
+  /**
+   * A blank line is what a source file already looks like when there is nothing on
+   * it — indistinguishable, byte for byte, from a lyrics line whose text is empty.
+   * That is exactly the shape a freshly split or appended line starts in, which is
+   * why it renders as this same editable row rather than the "— break —" one a
+   * blank line already on the page keeps showing: the moment there is something to
+   * hold, it needs to become a real line, not stay a placeholder no edit can reach.
+   */
+  if (block.kind === 'blank') return replace(document, index, { kind: 'lyrics', text, chords: [] })
+
   if (block.kind !== 'lyrics') return document
 
   /**
@@ -181,13 +192,18 @@ export function splitLine(document: SongDocument, index: number, at: number): So
 /**
  * Backspace at the start of a line: it joins the one above.
  *
- * Only between two lyric lines. Merging a verse into a comment, or into `{soc}`,
- * would mean silently deciding which of the two the result is.
+ * Between two lyric lines, or a lyric line and a still-blank one under it: a blank
+ * line has no text and no chords of its own to bring along, so joining it in is
+ * unambiguous — unlike merging into a comment or into `{soc}`, which would mean
+ * silently deciding which of the two the result is.
  */
 export function joinLines(document: SongDocument, index: number): SongDocument {
   const previous = lyricsAt(document, index - 1)
-  const current = lyricsAt(document, index)
-  if (previous === null || current === null) return document
+  const block = document.blocks[index]
+  if (previous === null || block === undefined) return document
+  if (block.kind !== 'lyrics' && block.kind !== 'blank') return document
+
+  const current = block.kind === 'lyrics' ? block : { text: '', chords: [] as ChordAt[] }
 
   const blocks = [...document.blocks]
   blocks.splice(index - 1, 2, {

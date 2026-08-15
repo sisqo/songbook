@@ -150,6 +150,15 @@ export function GraphicEditor({
             }}
             onText={(text, at) => {
               onCaret({ line: index, at })
+
+              // Typing into a still-blank row promotes it to a real lyrics one (see
+              // `setLineText`), which is a different branch of this same function —
+              // a different shape of DOM at this position, not the same `<input>`
+              // React would otherwise keep focus on across an ordinary keystroke. The
+              // structural-change effect below is what every other reshaping edit
+              // already relies on to land the caret back where typing left it.
+              if (block.kind === 'blank') wanted.current = { line: index, at }
+
               apply(setLineText(doc, index, text), `typing:${index}`)
             }}
             onCaret={(at) => onCaret({ line: index, at })}
@@ -165,6 +174,18 @@ export function GraphicEditor({
               apply(joinLines(doc, index))
             }}
             onRemove={() => apply(removeLine(doc, index))}
+            onBackspaceOut={() => {
+              // A still-blank row has nothing of its own: Backspace on it either
+              // continues the line above (there is one to continue) or simply takes
+              // the row away (there is not) — never both a join and a delete.
+              const previous = doc.blocks[index - 1]
+              if (previous !== undefined && previous.kind === 'lyrics') {
+                wanted.current = { line: index - 1, at: previous.text.length }
+                apply(joinLines(doc, index))
+              } else {
+                apply(removeLine(doc, index))
+              }
+            }}
             onTabText={(text) => apply(setTabRows(doc, index, text.split('\n')), `tab:${index}`)}
           />
         </Fragment>
@@ -203,6 +224,7 @@ function BlockRow({
   onSplit,
   onJoin,
   onRemove,
+  onBackspaceOut,
   onTabText,
 }: {
   block: Block
@@ -219,22 +241,69 @@ function BlockRow({
   onSplit: (at: number) => void
   onJoin: () => void
   onRemove: () => void
+  onBackspaceOut: () => void
   onTabText: (text: string) => void
 }) {
   const classes = `editor-line is-${section}${focused ? ' is-focused' : ''}`
 
   /**
-   * The lines that are not words: a blank, a chorus marker, a directive.
-   *
-   * Each carries its own × . The toolbar can delete the line the cursor is on and
-   * always could, but nobody found it there — a row you can see is a row you can
-   * remove. Backspace (or Delete) does the same once the row is focused — reached by
-   * clicking it, same as any button — for a "— break —" in particular: a lyrics line
-   * becomes exactly this the moment its last word is backspaced away (see
-   * `readLyricLine`/`fromSource`), so finishing that same gesture with one more
-   * Backspace, rather than reaching for the mouse, is what completes it.
+   * A blank line, shown as a placeholder rather than a fixed label: a genuine blank
+   * line and a freshly split or appended one are the same byte-for-byte empty string
+   * (see `fromSource`), so this has to be the same editable row a lyrics line is —
+   * not a different affordance a new line could get stuck showing instead of one to
+   * type into. `setLineText` promotes it to a real `lyrics` block the moment there
+   * is anything typed; until then it round-trips through the file unchanged.
    */
-  if (block.kind === 'blank' || block.kind === 'boundary' || block.kind === 'directive') {
+  if (block.kind === 'blank') {
+    return (
+      <div className={classes} data-line={index}>
+        <div className="line-scroll">
+          <div className="line-inner">
+            <input
+              className="line-input"
+              value=""
+              placeholder="— break —"
+              onChange={(event) => onText(event.target.value, event.target.selectionStart ?? 0)}
+              onFocus={() => onCaret(0)}
+              onClick={() => onCaret(0)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  onSplit(0)
+                  return
+                }
+
+                // Nothing typed yet, so there is nothing for Backspace to cut: it
+                // either continues the line above, exactly as Backspace does at the
+                // start of any lyrics line, or — with nothing above to continue —
+                // takes the row away, finishing the gesture that emptied a lyrics
+                // line down to this in the first place.
+                if (event.key === 'Backspace' || event.key === 'Delete') {
+                  event.preventDefault()
+                  onBackspaceOut()
+                }
+              }}
+              aria-label={`Line ${index + 1}, a break`}
+            />
+          </div>
+        </div>
+
+        <button type="button" className="line-remove" onClick={onRemove} aria-label="Delete this break">
+          ×
+        </button>
+      </div>
+    )
+  }
+
+  /**
+   * The lines that are not words and are not blank either: a chorus/bridge marker, a
+   * directive. Neither has text of its own a line-input could hold — a marker is a
+   * pair of boundaries, a directive is edited in Source — so, unlike a blank line,
+   * there is no promotion to a lyrics row here. Each still carries its own × ; the
+   * toolbar can delete the line the cursor is on and always could, but nobody found
+   * it there. Backspace (or Delete) does the same once the row is focused.
+   */
+  if (block.kind === 'boundary' || block.kind === 'directive') {
     const section = block.kind === 'boundary' && block.section === 'chorus' ? 'chorus' : 'bridge'
 
     return (
@@ -249,18 +318,16 @@ function BlockRow({
               onRemove()
             }
 
-            // A break, a chorus marker or a directive has no text of its own to
-            // split, so `at` is never read for this row's kind — a new blank lyrics
-            // line simply opens after it, the same as pressing Enter at the end of
-            // any other line.
+            // Neither a chorus/bridge marker nor a directive has text of its own to
+            // split, so `at` is never read for this row's kind — a new blank line
+            // simply opens after it, the same as pressing Enter at the end of any
+            // other line.
             if (event.key === 'Enter') {
               event.preventDefault()
               onSplit(0)
             }
           }}
         >
-          {block.kind === 'blank' && <span className="editor-hint">— break —</span>}
-
           {block.kind === 'boundary' && (
             <span className="badge">
               {block.edge === 'start' ? `${section} start` : `${section} end`}
@@ -276,13 +343,7 @@ function BlockRow({
           type="button"
           className="line-remove"
           onClick={onRemove}
-          aria-label={
-            block.kind === 'blank'
-              ? 'Delete this break'
-              : block.kind === 'boundary'
-                ? 'Delete this marker'
-                : 'Delete this directive'
-          }
+          aria-label={block.kind === 'boundary' ? 'Delete this marker' : 'Delete this directive'}
         >
           ×
         </button>
