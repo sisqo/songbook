@@ -21,6 +21,12 @@
  * A form feed counts as a rule: text extracted from a PDF songbook carries one at
  * every page break, and those pages are songs.
  *
+ * None of the three marks are read inside a `{start_of_tab}` … `{end_of_tab}` block.
+ * A silent string across a whole bar is a run of dashes with nothing else on the
+ * line — indistinguishable from the rule someone types between two pasted songs —
+ * and a tab is exactly the material `RULE` was never meant to fire on. `document.ts`
+ * and `chordpro.ts` already treat a tab's rows as verbatim for the same reason.
+ *
  * Anything else is one song, which is the safe way to be wrong: the screen shows
  * what it found before saving, and one song too few is a re-paste, while one song
  * too many is a mess to clean up afterwards.
@@ -35,12 +41,19 @@ const TITLE = /^\{\s*(?:t|title)\s*:[^}]*\}$/i
 /** Three or more of one rule character, and nothing else. */
 const RULE = /^(?:-{3,}|={3,}|\*{3,}|_{3,})$/
 
+/** `{start_of_tab}` or `{sot}` — same aliases `document.ts` reads. */
+const START_OF_TAB = /^\{\s*(?:sot|start_of_tab)\s*\}$/i
+
+/** `{end_of_tab}` or `{eot}`. */
+const END_OF_TAB = /^\{\s*(?:eot|end_of_tab)\s*\}$/i
+
 export function splitSongs(text: string): string[] {
   // A form feed is a page break, and a page break in a songbook is a new song.
   const lines = text.replace(/\r\n?/g, '\n').replace(/\f/g, '\n---\n').split('\n')
 
   const songs: string[][] = []
   let current: string[] = []
+  let inTab = false
   const hasContent = () => current.some((line) => line.trim() !== '')
 
   const cut = () => {
@@ -50,6 +63,20 @@ export function splitSongs(text: string): string[] {
 
   for (const line of lines) {
     const trimmed = line.trim()
+
+    // Verbatim while a tab is open: none of the three marks mean here what they
+    // mean anywhere else, a silent-string rule of dashes least of all.
+    if (inTab) {
+      if (END_OF_TAB.test(trimmed)) inTab = false
+      current.push(line)
+      continue
+    }
+
+    if (START_OF_TAB.test(trimmed)) {
+      inTab = true
+      current.push(line)
+      continue
+    }
 
     if (RULE.test(trimmed) || NEW_SONG.test(trimmed)) {
       // The mark is not part of either song.

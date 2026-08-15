@@ -60,6 +60,32 @@ describe('splitting a paste into songs', () => {
     assert.deepEqual(splitSongs(pasted), [pasted])
   })
 
+  it('does not read a silent string inside a tab as a rule', () => {
+    // A whole bar with nothing played on a string is a run of dashes and nothing
+    // else — exactly what RULE looks like, and exactly what a tab is allowed to be.
+    const pasted = [
+      '{title: Tre passi avanti}',
+      '{start_of_tab}',
+      '--------------------------------------------',
+      '--------------------------------------------',
+      '-----------0---5---0--2---0-----------------',
+      '{end_of_tab}',
+      '[si]uno',
+    ].join('\n')
+
+    assert.deepEqual(splitSongs(pasted), [pasted])
+  })
+
+  it('accepts the short tab alias, {sot}/{eot}', () => {
+    const pasted = ['{title: Uno}', '{sot}', '---', '{eot}', '[la]uno'].join('\n')
+    assert.deepEqual(splitSongs(pasted), [pasted])
+  })
+
+  it('still cuts on a rule once a tab has closed', () => {
+    const pasted = ['{sot}', '---', '{eot}', 'Uno', '---', 'Due'].join('\n')
+    assert.deepEqual(splitSongs(pasted), [['{sot}', '---', '{eot}', 'Uno'].join('\n'), 'Due'])
+  })
+
   it('leaves the words of the songs untouched', () => {
     const first = ['Certe notti', 'Ligabue', '', 'Am        F', 'Certe notti la macchina'].join('\n')
     const second = ['Vasco', '', 'C         G', 'Albachiara'].join('\n')
