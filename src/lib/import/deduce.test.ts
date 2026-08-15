@@ -10,10 +10,19 @@ describe('deduce', () => {
 
     assert.equal(result.title, 'Certe notti')
     assert.equal(result.artist, 'Ligabue')
-    // Nothing was consumed, so the body is untouched — including the key directive,
-    // which nothing reads and nothing therefore has to strip.
-    assert.ok(result.body.includes('{key: G}'))
-    assert.ok(result.body.includes('{title: Certe notti}'))
+    // Read into their own fields, so the copies in the body are redundant —
+    // `export.ts` rewrites them from the row anyway — and stripped here rather than
+    // left as directive chips with nothing behind them in the visual editor.
+    assert.equal(result.body, '[Am]testo')
+  })
+
+  it('strips a songbook or section a re-import declares, and stray tags', () => {
+    const result = deduce('{title: Uno}\n{canzoniere: Cartoni animati}\n{sezione: Sigle}\n{tags: rock}\n[C]testo')
+
+    assert.equal(result.songbookName, 'Cartoni animati')
+    assert.equal(result.sectionName, 'Sigle')
+    assert.deepEqual(result.tags, ['rock'])
+    assert.equal(result.body, '[C]testo')
   })
 
   it('reads a two-line heading and removes it from the body', () => {

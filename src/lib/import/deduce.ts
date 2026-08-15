@@ -13,6 +13,19 @@
 
 import { parseChordPro } from '../chordpro'
 
+/**
+ * Directives that only ever repeat a column this row already has of its own —
+ * title, artist, tags, the songbook and section a re-import declares, and a key
+ * nothing has stored in years. `export.ts` writes every one of these fresh from the
+ * row rather than trusting a copy left in the body, so a copy that survived import
+ * has no job left: it cannot be shown (the reading layer never prints a directive it
+ * recognises), it cannot be exported (the row wins), and the one place it does show
+ * up is the visual editor, as a directive chip with nothing behind it to explain.
+ * Stripped here for the same reason `export.ts` strips it there.
+ */
+export const METADATA_DIRECTIVE =
+  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|sezione)\s*:[^}]*\}\s*$/i
+
 export interface Deduced {
   title: string
   artist: string | null
@@ -62,7 +75,11 @@ export function deduce(body: string): Deduced {
 
   const consumed = parsed.title === null ? headingLines(lines) : 0
   const heading = lines.slice(0, consumed).map((line) => line.trim())
-  const rest = lines.slice(consumed).join('\n').replace(/^\n+/, '')
+  const rest = lines
+    .slice(consumed)
+    .filter((line) => !METADATA_DIRECTIVE.test(line))
+    .join('\n')
+    .replace(/^\n+/, '')
 
   return {
     title: parsed.title ?? heading[0] ?? '',
@@ -70,6 +87,6 @@ export function deduce(body: string): Deduced {
     tags: parsed.tags,
     songbookName: parsed.songbookName,
     sectionName: parsed.sectionName,
-    body: consumed > 0 ? rest : body,
+    body: rest,
   }
 }

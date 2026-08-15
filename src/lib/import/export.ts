@@ -8,16 +8,7 @@
  */
 
 import type { Song } from '../data/types'
-
-/**
- * Directives to strip from the body before the head is written fresh.
- *
- * `key` is still in the list although nothing writes one any more: a body imported
- * from elsewhere may carry it, and a stripped directive the app ignores is tidier in
- * an exported file than one left in the middle of the words.
- */
-const METADATA =
-  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|sezione)\s*:[^}]*\}\s*$/i
+import { METADATA_DIRECTIVE } from './deduce'
 
 /**
  * The section is written too, and it is not symmetry for its own sake: without that
@@ -38,7 +29,7 @@ export function toChoproFile(
 
   const body = song.body
     .split(/\r?\n/)
-    .filter((line) => !METADATA.test(line))
+    .filter((line) => !METADATA_DIRECTIVE.test(line))
     .join('\n')
     .replace(/^\n+/, '')
     .trimEnd()
