@@ -32,9 +32,9 @@ interface CounterDef {
 const EPOCH_MS = Date.parse('2026-08-15T00:00:00Z')
 
 const COUNTERS: CounterDef[] = [
-  { key: 'books', base: 486, stepMs: 8 * 60 * 60 * 1000, label: 'songbooks created' },
-  { key: 'songs', base: 3214, stepMs: 30 * 60 * 1000, label: 'songs created' },
-  { key: 'played', base: 128412, stepMs: 15 * 1000, label: 'songs played', accent: true },
+  { key: 'books', base: 24, stepMs: 8 * 60 * 60 * 1000, label: 'songbooks created' },
+  { key: 'songs', base: 161, stepMs: 30 * 60 * 1000, label: 'songs created' },
+  { key: 'played', base: 6421, stepMs: 15 * 1000, label: 'songs played', accent: true },
 ]
 
 function valueAt(def: CounterDef, nowMs: number): number {
