@@ -335,7 +335,7 @@
   .sheet-chord-shape {
     display: block;
     width: auto;
-    height: 2.5em;
+    height: 3em;
     margin: 0 auto;
     stroke: color-mix(in srgb, var(--ink) 28%, transparent);
     color: var(--muted);
