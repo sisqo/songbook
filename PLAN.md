@@ -1,13 +1,15 @@
 # Songbook — Piano di implementazione
 
-> Il progetto si chiamava **songs** fino alla v2.4. Il repo, il dominio
-> (`songs.sisqo.dev`) e la tabella `songs` nel database restano quello che sono — è un
-> rebranding del nome mostrato, non un trasloco — quindi il resto di questo piano lo
-> nomina ancora quando parla di quelle cose, di proposito.
+> Il progetto si chiamava **songs** fino alla v2.4, quando è cambiato solo il nome
+> mostrato. Repo (`sisqo/songbook`) e dominio (`songbook.sisqo.dev`) sono stati spostati
+> in seguito, per allinearli. Resta ferma solo la tabella `songs` nel database: è il nome
+> di un brano, non del progetto — lo schema ha già una `songbooks` distinta per i
+> contenitori — quindi il resto di questo piano la nomina ancora quando parla di quella,
+> di proposito.
 
 > **Stato:** v1, **v1.1 — canzonieri**, **v1.2 — import e modifica** e **v1.3 — le
 > modifiche si vedono subito** sono consegnate e in produzione su
-> https://songs.sisqo.dev. La v1.2 ha cambiato chi possiede un brano: il database, non i
+> https://songbook.sisqo.dev. La v1.2 ha cambiato chi possiede un brano: il database, non i
 > file — va letta prima di toccare il seed. La v1.3 ha aggiunto lo strato che mostra la
 > versione del database sopra la pagina statica: va letta prima di toccare la lettura. La
 > v1.4 ha portato l'editor in una pagina sua, con la regola che nessuna modifica può
@@ -30,8 +32,8 @@ proprietari dall'ambiente, gli invitati da una tabella che si gestisce dall'app.
 ## Stato attuale
 
 Il progetto è già in piedi e in produzione: Next.js 15.5.19 (App Router, `src/`),
-TypeScript, Tailwind v3, repo `sisqo/songs`, deploy automatico su push a `main`,
-dominio `songs.sisqo.dev`. Contiene una sola pagina hello world. Tutto ciò che segue si
+TypeScript, Tailwind v3, repo `sisqo/songbook`, deploy automatico su push a `main`,
+dominio `songbook.sisqo.dev`. Contiene una sola pagina hello world. Tutto ciò che segue si
 costruisce da qui.
 
 ## Architettura
@@ -1730,7 +1732,7 @@ erano già separate; questa versione toglie solo la prima come condizione per la
    cosa che oggi non fa (ritorna `void`); guadagna quel bit di ritorno per questo motivo,
    non per un altro.
 8. **Un fornitore di email: Resend.** Nuove variabili d'ambiente (`RESEND_API_KEY`,
-   un mittente come `Songbook <no-reply@songs.sisqo.dev>`), un modulo `lib/email/send.ts`
+   un mittente come `Songbook <no-reply@songbook.sisqo.dev>`), un modulo `lib/email/send.ts`
    sottile sopra l'SDK, tre modelli semplici (verifica, benvenuto, reset) che riprendono la
    stessa tavolozza chiara/scura dell'app senza inventarsi un sistema di design a parte.
    Richiede una verifica del dominio via DNS, un passo fuori dall'app — stessa categoria
@@ -2084,7 +2086,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 26. **Verifica DNS del dominio d'invio su Resend (v3.2)** — un passo di setup fuori
     dall'app, come già fatto per GitHub, Vercel e Neon: va fatto prima che le email possano
     davvero partire. `RESEND_API_KEY` è impostata (Vercel, tutti gli ambienti); il dominio
-    verificato su Resend è `sisqo.dev` (la radice, non `songs.sisqo.dev` — DKIM/SPF non si
+    verificato su Resend è `sisqo.dev` (la radice, non `songbook.sisqo.dev` — DKIM/SPF non si
     ereditano ai sottodomini), quindi `RESEND_FROM` punta a `no-reply@sisqo.dev`. I tre
     record DNS (DKIM, SPF via MX+TXT) sono stati aggiunti su Vercel DNS; la verifica lato
     Resend resta `not_started` finché la propagazione non completa — si può controllare o
