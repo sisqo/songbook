@@ -248,6 +248,15 @@ function BlockRow({
               event.preventDefault()
               onRemove()
             }
+
+            // A break, a chorus marker or a directive has no text of its own to
+            // split, so `at` is never read for this row's kind — a new blank lyrics
+            // line simply opens after it, the same as pressing Enter at the end of
+            // any other line.
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              onSplit(0)
+            }
           }}
         >
           {block.kind === 'blank' && <span className="editor-hint">— break —</span>}
@@ -334,12 +343,32 @@ function BlockRow({
                 if (event.key === 'Enter') {
                   event.preventDefault()
                   onSplit(event.currentTarget.selectionStart ?? block.text.length)
+                  return
+                }
+
+                // Same trigger as the blank/boundary/directive rows' own remove: a
+                // comment holds text, but an empty one backspaced from its start has
+                // nothing left to join into (`joinLines` refuses a comment on either
+                // side), so removing the row is the only place that Backspace can go.
+                const input = event.currentTarget
+                if (
+                  (event.key === 'Backspace' || event.key === 'Delete') &&
+                  input.selectionStart === 0 &&
+                  input.selectionEnd === 0 &&
+                  block.text === ''
+                ) {
+                  event.preventDefault()
+                  onRemove()
                 }
               }}
               aria-label={`Comment on line ${index + 1}`}
             />
           </div>
         </div>
+
+        <button type="button" className="line-remove" onClick={onRemove} aria-label="Delete this comment">
+          ×
+        </button>
       </div>
     )
   }

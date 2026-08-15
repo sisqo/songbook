@@ -136,6 +136,12 @@ describe('splitting and joining lines', () => {
   it('never leaves the song with no lines at all', () => {
     assert.equal(edit('[la]sola', (doc) => removeLine(doc, 0)), '')
   })
+
+  it('opens a blank lyrics line after a break, a marker, or a directive', () => {
+    // None of the three has text of its own to cut, so a new empty line simply
+    // follows it — the same as pressing Enter at the end of any other line.
+    assert.equal(edit('uno\n\ndue', (doc) => splitLine(doc, 1, 0)), 'uno\n\n\ndue')
+  })
 })
 
 describe('comments', () => {
