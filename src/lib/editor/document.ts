@@ -35,6 +35,16 @@ export type Block =
   /** Any other directive, kept verbatim because something else may depend on it. */
   | { kind: 'directive'; raw: string }
   | { kind: 'blank'; raw: string }
+  /**
+   * `{start_of_tab}` … `{end_of_tab}`, one block for the whole run rather than one
+   * per row: its rows are never lyrics — never split at spaces, never read for
+   * chords — so there is nothing for the usual per-line model to do with them.
+   * `endDirective` is null only when the source never closed the tab; `lineOf`
+   * still writes a closing directive back out regardless (see its own comment),
+   * since leaving it open would swallow every line after it into the same tab
+   * the next time this is read.
+   */
+  | { kind: 'tab'; startDirective: string; endDirective: string | null; rows: string[] }
 
 export interface SongDocument {
   blocks: Block[]
@@ -56,6 +66,9 @@ const BOUNDARIES: Record<string, { edge: 'start' | 'end'; section: 'chorus' | 'b
   eob: { edge: 'end', section: 'bridge' },
   end_of_bridge: { edge: 'end', section: 'bridge' },
 }
+
+const TAB_START_NAMES = new Set(['sot', 'start_of_tab'])
+const TAB_END_NAMES = new Set(['eot', 'end_of_tab'])
 
 /**
  * Splits one lyric line into plain text and the chords above it.
@@ -99,35 +112,65 @@ export function writeLyricLine(text: string, chords: ChordAt[]): string {
 
 export function fromSource(source: string): SongDocument {
   const eol = source.includes('\r\n') ? '\r\n' : '\n'
+  const rawLines = source.split(/\r?\n/)
+  const blocks: Block[] = []
 
-  const blocks = source.split(/\r?\n/).map<Block>((line) => {
-    if (line.trim() === '') return { kind: 'blank', raw: line }
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i]
+
+    if (line.trim() === '') {
+      blocks.push({ kind: 'blank', raw: line })
+      continue
+    }
 
     const directive = DIRECTIVE.exec(line.trim())
     if (directive) {
       const name = directive[1].toLowerCase()
 
+      if (TAB_START_NAMES.has(name)) {
+        const rows: string[] = []
+        let endDirective: string | null = null
+
+        for (i += 1; i < rawLines.length; i += 1) {
+          const inner = rawLines[i]
+          const innerDirective = DIRECTIVE.exec(inner.trim())
+          if (innerDirective && TAB_END_NAMES.has(innerDirective[1].toLowerCase())) {
+            endDirective = innerDirective[1]
+            break
+          }
+          rows.push(inner)
+        }
+
+        blocks.push({ kind: 'tab', startDirective: directive[1], endDirective, rows })
+        continue
+      }
+
       if (COMMENT_NAMES.has(name)) {
-        return { kind: 'comment', directive: directive[1], text: directive[2] ?? '' }
+        blocks.push({ kind: 'comment', directive: directive[1], text: directive[2] ?? '' })
+        continue
       }
 
       const boundary = BOUNDARIES[name]
-      if (boundary) return { kind: 'boundary', directive: directive[1], ...boundary }
+      if (boundary) {
+        blocks.push({ kind: 'boundary', directive: directive[1], ...boundary })
+        continue
+      }
 
-      return { kind: 'directive', raw: line }
+      blocks.push({ kind: 'directive', raw: line })
+      continue
     }
 
-    return { kind: 'lyrics', ...readLyricLine(line) }
-  })
+    blocks.push({ kind: 'lyrics', ...readLyricLine(line) })
+  }
 
   return { blocks, eol }
 }
 
 export function toSource(document: SongDocument): string {
-  return document.blocks.map(lineOf).join(document.eol)
+  return document.blocks.map((block) => lineOf(block, document.eol)).join(document.eol)
 }
 
-function lineOf(block: Block): string {
+function lineOf(block: Block, eol: string): string {
   switch (block.kind) {
     case 'blank':
       return block.raw
@@ -139,6 +182,10 @@ function lineOf(block: Block): string {
       return `{${block.directive}}`
     case 'lyrics':
       return writeLyricLine(block.text, block.chords)
+    case 'tab':
+      return [`{${block.startDirective}}`, ...block.rows, `{${block.endDirective ?? 'end_of_tab'}}`].join(
+        eol,
+      )
   }
 }
 

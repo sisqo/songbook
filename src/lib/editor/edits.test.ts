@@ -6,12 +6,14 @@ import { fromSource, toSource } from './document'
 import {
   addChord,
   chordIndexAt,
+  insertTab,
   joinLines,
   moveChord,
   removeChord,
   removeLine,
   setChord,
   setLineText,
+  setTabRows,
   splitLine,
   toggleComment,
   toggleSection,
@@ -189,5 +191,33 @@ describe('choruses and bridges', () => {
 
     const boundaries = document.blocks.filter((block) => block.kind === 'boundary')
     assert.equal(boundaries.length, 2)
+  })
+})
+
+describe('tabs', () => {
+  it('inserts a blank six-string tab after the cursor', () => {
+    const after = edit('[la]uno', (doc) => insertTab(doc, 0))
+    const { blocks } = fromSource(after)
+
+    assert.equal(blocks.length, 2)
+    assert.equal(blocks[1].kind, 'tab')
+    if (blocks[1].kind === 'tab') {
+      assert.equal(blocks[1].rows.length, 6)
+      assert.deepEqual(
+        blocks[1].rows.map((row) => row[0]),
+        ['e', 'B', 'G', 'D', 'A', 'E'],
+      )
+    }
+  })
+
+  it('rewrites a tab wholesale rather than shifting anything inside it', () => {
+    const source = ['{sot}', 'e|---', '{eot}'].join('\n')
+    const after = edit(source, (doc) => setTabRows(doc, 0, ['e|-5-', 'B|-3-']))
+
+    assert.equal(after, ['{sot}', 'e|-5-', 'B|-3-', '{eot}'].join('\n'))
+  })
+
+  it('leaves anything that is not a tab alone', () => {
+    assert.equal(edit('[la]uno', (doc) => setTabRows(doc, 0, ['x'])), '[la]uno')
   })
 })

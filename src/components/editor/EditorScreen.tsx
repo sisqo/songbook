@@ -23,13 +23,14 @@ import {
   IconPencil,
   IconPlus,
   IconRemoveLine,
+  IconTab,
   IconTrash,
   IconUndo,
 } from '@/components/icons'
 import { chordTokens, parseChordPro } from '@/lib/chordpro'
 import type { Song } from '@/lib/data/types'
 import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
-import { addChord, removeLine, toggleComment, toggleSection } from '@/lib/editor/edits'
+import { addChord, insertTab, removeLine, toggleComment, toggleSection } from '@/lib/editor/edits'
 import { deleteSong, saveSong } from '@/lib/import/actions'
 import { SAVE_MESSAGE } from '@/lib/import/types'
 import { dropEdit, writeEdit } from '@/lib/library/store'
@@ -44,11 +45,17 @@ const MODES: { mode: Mode; label: string; icon: typeof IconPencil }[] = [
 
 /**
  * The commands that act on the line the cursor is in, in the order they are used:
- * mark a chorus, mark a bridge, turn the line into a comment, take the line out.
+ * mark a chorus, mark a bridge, turn the line into a comment, drop in a tab, take
+ * the line out.
  *
- * A table rather than five buttons written out, because they now differ only in an
- * icon, a name and one call — and five copies of the same markup is where a label and
- * an action drift apart.
+ * A table rather than six buttons written out, because they now differ only in an
+ * icon, a name and one call — and six copies of the same markup is where a label
+ * and an action drift apart.
+ *
+ * Tab is the one insertion in the row rather than a transform of the line the
+ * cursor is on — turning existing lyrics into a tab makes no sense the way turning
+ * them into a comment does, so it adds a fresh block after the cursor instead, the
+ * same as the "+ line" button at the foot of the graphic editor.
  */
 const COMMANDS: {
   label: string
@@ -66,6 +73,11 @@ const COMMANDS: {
     act: (line) => (document) => toggleSection(document, line, 'bridge'),
   },
   { label: 'Comment', icon: IconComment, act: (line) => (document) => toggleComment(document, line) },
+  {
+    label: 'Tab',
+    icon: IconTab,
+    act: (line) => (document) => insertTab(document, line),
+  },
   {
     label: 'Delete line',
     icon: IconRemoveLine,

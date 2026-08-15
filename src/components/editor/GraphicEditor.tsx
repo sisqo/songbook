@@ -19,6 +19,7 @@ import {
   removeLine,
   setChord,
   setLineText,
+  setTabRows,
   splitLine,
 } from '@/lib/editor/edits'
 
@@ -164,6 +165,7 @@ export function GraphicEditor({
               apply(joinLines(doc, index))
             }}
             onRemove={() => apply(removeLine(doc, index))}
+            onTabText={(text) => apply(setTabRows(doc, index, text.split('\n')), `tab:${index}`)}
           />
         </Fragment>
       ))}
@@ -201,6 +203,7 @@ function BlockRow({
   onSplit,
   onJoin,
   onRemove,
+  onTabText,
 }: {
   block: Block
   index: number
@@ -216,6 +219,7 @@ function BlockRow({
   onSplit: (at: number) => void
   onJoin: () => void
   onRemove: () => void
+  onTabText: (text: string) => void
 }) {
   const classes = `editor-line is-${section}${focused ? ' is-focused' : ''}`
 
@@ -271,6 +275,40 @@ function BlockRow({
                 : 'Delete this directive'
           }
         >
+          ×
+        </button>
+      </div>
+    )
+  }
+
+  /**
+   * A tab, edited as one block of raw monospace text rather than the per-letter
+   * chord-and-word model every `lyrics` line uses — alignment is the entire point
+   * of a tab, and nothing here should ever read a dash as a syllable to wrap. Enter
+   * inside it is a plain newline, a new row of the same tab, not a split into two
+   * blocks: unlike a verse, a tab is not a run of independent lines that happen to
+   * sit next to each other.
+   */
+  if (block.kind === 'tab') {
+    return (
+      <div className={classes} data-line={index}>
+        <div className="line-scroll">
+          <div className="line-inner">
+            <textarea
+              className="tab-input"
+              value={block.rows.join('\n')}
+              wrap="off"
+              spellCheck={false}
+              rows={Math.max(block.rows.length, 2)}
+              onChange={(event) => onTabText(event.target.value)}
+              onFocus={() => onCaret(0)}
+              onClick={() => onCaret(0)}
+              aria-label={`Tab, line ${index + 1}`}
+            />
+          </div>
+        </div>
+
+        <button type="button" className="line-remove" onClick={onRemove} aria-label="Delete this tab">
           ×
         </button>
       </div>

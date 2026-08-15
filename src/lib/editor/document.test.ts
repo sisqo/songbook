@@ -75,6 +75,51 @@ describe('a source survives being read and written', () => {
   })
 })
 
+describe('a tab', () => {
+  const TAB_SOURCE = [
+    '{start_of_tab}',
+    'e|-5--------5-6-8-6-5-6-5---------------',
+    'B|---8-6------------------8-------------',
+    '{end_of_tab}',
+  ].join('\n')
+
+  it('survives being read and written, dashes and all', () => {
+    assert.equal(toSource(fromSource(TAB_SOURCE)), TAB_SOURCE)
+  })
+
+  it('is one block, not one per row', () => {
+    const { blocks } = fromSource(TAB_SOURCE)
+    assert.equal(blocks.length, 1)
+    assert.equal(blocks[0].kind, 'tab')
+  })
+
+  it('keeps a blank-looking row as a row of the tab, not a break between blocks', () => {
+    const source = ['{sot}', 'e|---', '', 'B|---', '{eot}'].join('\n')
+    const { blocks } = fromSource(source)
+
+    assert.equal(blocks.length, 1)
+    assert.deepEqual(blocks[0].kind === 'tab' ? blocks[0].rows : null, ['e|---', '', 'B|---'])
+    assert.equal(toSource(fromSource(source)), source)
+  })
+
+  it('keeps the short alias spelling on both directives', () => {
+    const source = ['{sot}', 'e|---', '{eot}'].join('\n')
+    assert.equal(toSource(fromSource(source)), source)
+  })
+
+  it('closes a tab the source never did, rather than swallowing what follows it', () => {
+    const source = ['{start_of_tab}', 'e|-5-', 'una riga dopo, mai raggiunta'].join('\n')
+    const { blocks } = fromSource(source)
+
+    assert.equal(blocks.length, 1)
+    assert.equal(blocks[0].kind, 'tab')
+    assert.equal(
+      toSource(fromSource(source)),
+      ['{start_of_tab}', 'e|-5-', 'una riga dopo, mai raggiunta', '{end_of_tab}'].join('\n'),
+    )
+  })
+})
+
 describe('reading one line', () => {
   it('separates the words from the chords above them', () => {
     const { text, chords } = readLyricLine("[la]C'è un gran [mi]castello")

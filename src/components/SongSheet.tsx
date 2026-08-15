@@ -138,6 +138,16 @@ function SheetLine({
     return <p className="sheet-comment">{line.text}</p>
   }
 
+  /*
+   * Verbatim, in the app's own monospace — the same font the ChordPro editor
+   * measures words in (`layout.tsx`'s own comment on `--font-mono`), not a
+   * chord-notation matter: transposing moves a chord's name, not where a finger
+   * sits on a fret, so a tab ignores `shift`/`notation`/`currentKey` entirely.
+   */
+  if (line.kind === 'tab') {
+    return <pre className="sheet-tab">{line.rows.join('\n')}</pre>
+  }
+
   return (
     <p className="sheet-line">
       {line.words.map((word, wordIndex) => (

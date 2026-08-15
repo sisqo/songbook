@@ -193,6 +193,16 @@ export function IconComment(props: IconProps) {
   )
 }
 
+/** Tab: strings, and a fret marked on two of them. */
+export function IconTab(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+      <path d="M9 4v4M15 8v4" />
+    </Icon>
+  )
+}
+
 /** Remove line: two lines closing over the gap where one was. */
 export function IconRemoveLine(props: IconProps) {
   return (
@@ -526,6 +536,16 @@ export function IconSwitchAccount(props: IconProps) {
     <Icon {...props}>
       <path d="M4 8h13l-3-3" />
       <path d="M20 16H7l3 3" />
+    </Icon>
+  )
+}
+
+/** Two overlapping sheets: copying a songbook into another account. */
+export function IconCopy(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </Icon>
   )
 }

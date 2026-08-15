@@ -6,6 +6,7 @@ import { type Line, chordTokens, parseChordPro, parseLyricLine, plainLyrics } fr
 /** Compact view of a parsed line: one string per word, chords in brackets. */
 function shape(line: Line): string[] {
   if (line.kind === 'comment') return [`#${line.text}`]
+  if (line.kind === 'tab') return line.rows.map((row) => `|${row}`)
   return line.words.map((word) =>
     word.parts.map((part) => (part.chord ? `[${part.chord}]` : '') + part.text).join(''),
   )
@@ -158,6 +159,44 @@ describe('parseChordPro', () => {
     assert.equal(plainLyrics(parsed), 'parole')
   })
 
+  it('reads a tab as one line, verbatim, never split at spaces or read for chords', () => {
+    const source = [
+      '{start_of_tab}',
+      'e|-5--------5-6-8-6-5-6-5---------------',
+      'B|---8-6------------------8-------------',
+      '{end_of_tab}',
+      '[la]dopo',
+    ].join('\n')
+    const song = parseChordPro(source)
+
+    assert.equal(song.sections.length, 1)
+    assert.equal(song.sections[0].lines.length, 2)
+    assert.deepEqual(shape(song.sections[0].lines[0]), [
+      '|e|-5--------5-6-8-6-5-6-5---------------',
+      '|B|---8-6------------------8-------------',
+    ])
+    assert.deepEqual(shape(song.sections[0].lines[1]), ['[la]dopo'])
+  })
+
+  it('accepts the short tab alias', () => {
+    const song = parseChordPro('{sot}\ne|-0-\n{eot}')
+    assert.equal(song.sections[0].lines[0].kind, 'tab')
+  })
+
+  it('does not let a blank-looking row inside a tab close the section', () => {
+    const song = parseChordPro(['{sot}', 'e|---', '', 'B|---', '{eot}', '[la]dopo'].join('\n'))
+    assert.equal(song.sections.length, 1)
+    assert.equal(song.sections[0].lines.length, 2)
+  })
+
+  it('keeps whatever a tab never closes, rather than losing it', () => {
+    const song = parseChordPro('{sot}\ne|-0-')
+    assert.equal(song.sections[0].lines[0].kind, 'tab')
+    assert.deepEqual(song.sections[0].lines[0].kind === 'tab' ? song.sections[0].lines[0].rows : null, [
+      'e|-0-',
+    ])
+  })
+
   it('reads tags as a comma separated list', () => {
     assert.deepEqual(parseChordPro('{tags: rock, ita , da imparare}').tags, [
       'rock',
@@ -172,6 +211,11 @@ describe('plainLyrics', () => {
   it('strips chords and comments for the search index', () => {
     const song = parseChordPro('{c: nota}\n[Am]Certe [F]notti la [C]macchina')
     assert.equal(plainLyrics(song), 'Certe notti la macchina')
+  })
+
+  it('leaves a tab out of the search index — dashes are not lyrics', () => {
+    const song = parseChordPro('{sot}\ne|-5-\n{eot}\n[Am]testo')
+    assert.equal(plainLyrics(song), 'testo')
   })
 })
 

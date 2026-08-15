@@ -45,6 +45,13 @@ export function setLineText(document: SongDocument, index: number, text: string)
   })
 }
 
+/** A tab's rows changed — rewritten wholesale, since there is nothing in them to shift. */
+export function setTabRows(document: SongDocument, index: number, rows: string[]): SongDocument {
+  const block = document.blocks[index]
+  if (block === undefined || block.kind !== 'tab') return document
+  return replace(document, index, { ...block, rows })
+}
+
 /**
  * Where a chord sitting at `at` ends up in the list once the line has been written
  * out and read back.
@@ -199,6 +206,32 @@ export function insertLineAfter(document: SongDocument, index: number, block?: B
   const blocks = [...document.blocks]
   blocks.splice(index + 1, 0, block ?? { kind: 'lyrics', text: '', chords: [] })
   return { ...document, blocks }
+}
+
+/**
+ * A blank six-string guitar tab, ready to fill in — the instrument this app already
+ * defaults to everywhere else a shape has to be drawn for one (`DEFAULT_GLOBAL_PREFS`
+ * in `lib/prefs/types.ts`). Not tied to the reader's own instrument preference: that
+ * is how a song is *read*, and has nothing to do with what a tab written into it is
+ * *for* — the two can differ, and usually will not.
+ */
+const TAB_TEMPLATE_ROWS = [
+  'e|--------------------------------------',
+  'B|--------------------------------------',
+  'G|--------------------------------------',
+  'D|--------------------------------------',
+  'A|--------------------------------------',
+  'E|--------------------------------------',
+]
+
+/** Inserts a blank tab after `index`, the toolbar's "Tab" command. */
+export function insertTab(document: SongDocument, index: number): SongDocument {
+  return insertLineAfter(document, index, {
+    kind: 'tab',
+    startDirective: 'start_of_tab',
+    endDirective: 'end_of_tab',
+    rows: [...TAB_TEMPLATE_ROWS],
+  })
 }
 
 export function removeLine(document: SongDocument, index: number): SongDocument {

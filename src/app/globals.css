@@ -341,6 +341,25 @@
     color: var(--muted);
   }
 
+  /*
+   * A tab block (`{start_of_tab}` … `{end_of_tab}`): the app's own monospace, so
+   * every dash and fret number lines up the way it was typed. `pre` already keeps
+   * whitespace and forbids wrapping; the horizontal scroll is what a long tab does
+   * instead of breaking its own alignment to fit a phone.
+   */
+  .sheet-tab {
+    display: block;
+    overflow-x: auto;
+    margin: 0.6em 0;
+    padding: 0.6em 0.75em;
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    line-height: 1.5;
+  }
+
   .sheet-comment {
     color: var(--muted);
     font-size: 0.8em;
@@ -2666,6 +2685,31 @@
 
   .line-input::placeholder {
     color: var(--faint);
+  }
+
+  /*
+   * A tab's own text — the app's monospace, `resize: none` since the row count
+   * already tracks the number of rows typed (`GraphicEditor`'s own `rows={...}`),
+   * and `wrap="off"` (on the element itself) is what makes this scroll sideways
+   * instead of breaking a string's alignment to fit the width of the screen.
+   */
+  .tab-input {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0;
+    border: 0;
+    resize: none;
+    background: none;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .tab-input:focus {
+    outline: none;
   }
 
   /* The × that takes a stacco, a marker or a directive away. */

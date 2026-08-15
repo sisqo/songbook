@@ -22,6 +22,12 @@ export interface Word {
 export type Line =
   | { kind: 'lyrics'; words: Word[]; hasChords: boolean }
   | { kind: 'comment'; text: string }
+  /**
+   * A tablature block (`{start_of_tab}` … `{end_of_tab}`), verbatim — every row kept
+   * exactly as written, never split into words or read for chords: alignment is the
+   * whole point, and a string of dashes is not a syllable to wrap between.
+   */
+  | { kind: 'tab'; rows: string[] }
 
 export type SectionKind = 'verse' | 'chorus' | 'bridge'
 
@@ -79,6 +85,10 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   start_of_bridge: 'start_of_bridge',
   eob: 'end_of_bridge',
   end_of_bridge: 'end_of_bridge',
+  sot: 'start_of_tab',
+  start_of_tab: 'start_of_tab',
+  eot: 'end_of_tab',
+  end_of_tab: 'end_of_tab',
 }
 
 export function parseChordPro(source: string): ParsedSong {
@@ -93,6 +103,8 @@ export function parseChordPro(source: string): ParsedSong {
 
   let section: Section | null = null
   let forcedKind: SectionKind | null = null
+  /** Rows collected since `{start_of_tab}`, or null when not inside one. */
+  let tabRows: string[] | null = null
 
   const openSection = (kind: SectionKind): Section => {
     const created: Section = { kind, lines: [] }
@@ -102,6 +114,20 @@ export function parseChordPro(source: string): ParsedSong {
 
   for (const rawLine of source.split(/\r?\n/)) {
     const line = rawLine.trimEnd()
+
+    if (tabRows !== null) {
+      const closing = DIRECTIVE.exec(line.trim())
+      if (closing && DIRECTIVE_ALIAS[closing[1].toLowerCase()] === 'end_of_tab') {
+        section ??= openSection(forcedKind ?? 'verse')
+        section.lines.push({ kind: 'tab', rows: tabRows })
+        tabRows = null
+      } else {
+        // Verbatim, not `line`: trailing spaces inside a tab row are as much a
+        // part of its alignment as anything else in it.
+        tabRows.push(rawLine)
+      }
+      continue
+    }
 
     const directive = DIRECTIVE.exec(line.trim())
     if (directive) {
@@ -139,6 +165,9 @@ export function parseChordPro(source: string): ParsedSong {
           forcedKind = 'bridge'
           section = openSection('bridge')
           break
+        case 'start_of_tab':
+          tabRows = []
+          break
         case 'end_of_chorus':
         case 'end_of_bridge':
           forcedKind = null
@@ -160,6 +189,13 @@ export function parseChordPro(source: string): ParsedSong {
 
     section ??= openSection(forcedKind ?? 'verse')
     section.lines.push(parseLyricLine(line))
+  }
+
+  // A tab with no closing directive — malformed, but its rows are real content
+  // typed by someone, not something to drop silently for want of a `{end_of_tab}`.
+  if (tabRows !== null) {
+    section ??= openSection(forcedKind ?? 'verse')
+    section.lines.push({ kind: 'tab', rows: tabRows })
   }
 
   return song
@@ -255,7 +291,7 @@ export function plainLyrics(song: ParsedSong): string {
 
   for (const section of song.sections) {
     for (const line of section.lines) {
-      if (line.kind === 'comment') continue
+      if (line.kind !== 'lyrics') continue
       lines.push(line.words.map((word) => word.parts.map((part) => part.text).join('')).join(' '))
     }
   }
@@ -268,7 +304,7 @@ export function chordTokens(song: ParsedSong): string[] {
 
   for (const section of song.sections) {
     for (const line of section.lines) {
-      if (line.kind === 'comment') continue
+      if (line.kind !== 'lyrics') continue
       for (const word of line.words) {
         for (const part of word.parts) {
           if (part.chord !== null) seen.add(part.chord)
