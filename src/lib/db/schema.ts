@@ -292,6 +292,13 @@ export const userPrefs = pgTable('user_prefs', {
    * row already answers the question.
    */
   instrument: text('instrument').notNull().default('guitar'),
+  /**
+   * Whether the sheet shows a chord as its name or as its shape — `name` or `shape`.
+   * Defaulted rather than nullable, same reasoning as `instrument` right above:
+   * every existing row already answers the question, with the answer that changes
+   * nothing for a reader who has never touched this preference.
+   */
+  chordDisplay: text('chord_display').notNull().default('name'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

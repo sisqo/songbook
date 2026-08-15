@@ -18,7 +18,20 @@ const FRETS_SHOWN = 5
 
 const BOTTOM = TOP + FRET_GAP * FRETS_SHOWN
 
-export function ChordDiagram({ shape, capo = 0 }: { shape: ChordShape; capo?: number }) {
+export function ChordDiagram({
+  shape,
+  capo = 0,
+  className = 'chord-diagram',
+}: {
+  shape: ChordShape
+  capo?: number
+  /**
+   * The popup's own size by default. The sheet's inline shapes (`SheetChord`) pass
+   * `sheet-chord-shape` instead — a full replacement, not an addition, since the two
+   * are sized for entirely different places: a modal versus a slot above a syllable.
+   */
+  className?: string
+}) {
   const RIGHT = LEFT + STRING_GAP * (shape.frets.length - 1)
   const fretted = shape.frets.filter((fret): fret is number => fret !== null && fret > 0)
   const lowest = fretted.length === 0 ? 1 : Math.min(...fretted)
@@ -49,7 +62,7 @@ export function ChordDiagram({ shape, capo = 0 }: { shape: ChordShape; capo?: nu
   return (
     <svg
       viewBox={`0 0 ${RIGHT + LEFT} ${BOTTOM + 8}`}
-      className="chord-diagram"
+      className={className}
       role="img"
       aria-hidden
       focusable="false"

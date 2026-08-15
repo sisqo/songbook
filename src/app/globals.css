@@ -325,6 +325,22 @@
     white-space: pre;
   }
 
+  /*
+   * The shape, drawn in the same slot the chord's name would otherwise take
+   * (`SheetChord`'s "Show: Shape" toggle) — sized by height, same idea as the
+   * popup's own `.chord-diagram`, but for a slot above a syllable rather than a
+   * modal: a fraction of that height, not a fraction of its own rules, which is
+   * why this is a full replacement class rather than an addition to it.
+   */
+  .sheet-chord-shape {
+    display: block;
+    width: auto;
+    height: 2.5em;
+    margin: 0 auto;
+    stroke: color-mix(in srgb, var(--ink) 28%, transparent);
+    color: var(--muted);
+  }
+
   .sheet-comment {
     color: var(--muted);
     font-size: 0.8em;

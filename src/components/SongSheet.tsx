@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from 'react'
 
+import { ChordDiagram } from '@/components/ChordDiagram'
 import { ChordPopup } from '@/components/ChordPopup'
 import { usePrefs } from '@/components/PrefsProvider'
 import { type Line, type ParsedSong, chordTokens } from '@/lib/chordpro'
@@ -9,7 +10,8 @@ import { type Chord, type Notation, formatChord, parseChord, transposeChord } fr
 import { readKey, readShift } from '@/lib/music/capo'
 import { estimateKey } from '@/lib/music/key'
 import { type Key, C_MAJOR } from '@/lib/music/notes'
-import { ZOOM_STEPS } from '@/lib/prefs/types'
+import { type Instrument, shapeFor } from '@/lib/music/shapes'
+import { type ChordDisplay, ZOOM_STEPS } from '@/lib/prefs/types'
 
 const BLANK = ' '
 
@@ -84,6 +86,9 @@ export function SongSheet({ song }: { song: ParsedSong }) {
                 line={line}
                 shift={shift}
                 notation={global.notation}
+                chordDisplay={global.chordDisplay}
+                instrument={global.instrument}
+                capo={songPrefs.capo}
                 currentKey={currentKey}
                 roomForChords={roomForChords}
                 onPick={setShown}
@@ -110,6 +115,9 @@ function SheetLine({
   line,
   shift,
   notation,
+  chordDisplay,
+  instrument,
+  capo,
   currentKey,
   roomForChords,
   onPick,
@@ -118,6 +126,10 @@ function SheetLine({
   /** Transposition and capo together: how far the written chords move to reach the page. */
   shift: number
   notation: Notation
+  chordDisplay: ChordDisplay
+  instrument: Instrument
+  /** The fret the capo is on, for the shape's own capo bar — the shape unchanged, see `ChordDiagram`. */
+  capo: number
   currentKey: Key
   roomForChords: boolean
   onPick: (chord: Chord) => void
@@ -140,6 +152,9 @@ function SheetLine({
                     raw={part.chord}
                     shift={shift}
                     notation={notation}
+                    chordDisplay={chordDisplay}
+                    instrument={instrument}
+                    capo={capo}
                     currentKey={currentKey}
                     onPick={onPick}
                   />
@@ -165,12 +180,18 @@ function SheetChord({
   raw,
   shift,
   notation,
+  chordDisplay,
+  instrument,
+  capo,
   currentKey,
   onPick,
 }: {
   raw: string | null
   shift: number
   notation: Notation
+  chordDisplay: ChordDisplay
+  instrument: Instrument
+  capo: number
   currentKey: Key
   onPick: (chord: Chord) => void
 }) {
@@ -188,14 +209,25 @@ function SheetChord({
   const chord = transposeChord(parsed, shift, currentKey)
   const label = formatChord(chord, notation)
 
+  /*
+   * Falls back to the name whenever there is no shape to draw — an exotic suffix
+   * outside the table (`shapeFor`'s own comment) — rather than tapping leading
+   * nowhere: the button still opens `ChordPopup`, which says as much on its own.
+   */
+  const shape = chordDisplay === 'shape' ? shapeFor(chord, instrument) : null
+
   return (
     <button
       type="button"
       className="sheet-chord"
       onClick={() => onPick(chord)}
-      aria-label={`${label}, show the shape`}
+      aria-label={shape !== null ? `${label}, tap for the fingering` : `${label}, show the shape`}
     >
-      {label}
+      {shape !== null ? (
+        <ChordDiagram shape={shape} capo={capo} className="sheet-chord-shape" />
+      ) : (
+        label
+      )}
     </button>
   )
 }

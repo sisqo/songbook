@@ -25,6 +25,7 @@ import {
 import {
   DEFAULT_GLOBAL_PREFS,
   DEFAULT_SONG_PREFS,
+  type ChordDisplay,
   type GlobalPrefs,
   type SongPrefs,
   clampCapo,
@@ -41,6 +42,7 @@ interface PrefsContextValue {
   setZoomStep: (step: number) => void
   setNotation: (notation: Notation) => void
   setInstrument: (instrument: Instrument) => void
+  setChordDisplay: (chordDisplay: ChordDisplay) => void
   setSemitones: (semitones: number) => void
   setScrollSpeed: (step: number) => void
   setCapo: (fret: number) => void
@@ -151,7 +153,8 @@ export function PrefsProvider({
       if (
         next.zoomStep === global.zoomStep &&
         next.notation === global.notation &&
-        next.instrument === global.instrument
+        next.instrument === global.instrument &&
+        next.chordDisplay === global.chordDisplay
       ) {
         return
       }
@@ -194,6 +197,7 @@ export function PrefsProvider({
       setZoomStep: (step) => updateGlobal({ ...global, zoomStep: clampZoom(step) }),
       setNotation: (notation) => updateGlobal({ ...global, notation }),
       setInstrument: (instrument) => updateGlobal({ ...global, instrument }),
+      setChordDisplay: (chordDisplay) => updateGlobal({ ...global, chordDisplay }),
       setSemitones: (semitones) =>
         updateSong((prev) => ({ ...prev, semitones: clampSemitones(semitones) })),
       setScrollSpeed: (step) => updateSong((prev) => ({ ...prev, scrollSpeed: clampSpeed(step) })),

@@ -12,7 +12,7 @@ import {
   IconUndo,
 } from '@/components/icons'
 import { type CapoOption, MAX_CAPO, suggestCapo } from '@/lib/music/capo'
-import { SCROLL_SPEEDS, ZOOM_STEPS, clampSemitones } from '@/lib/prefs/types'
+import { type ChordDisplay, SCROLL_SPEEDS, ZOOM_STEPS, clampSemitones } from '@/lib/prefs/types'
 import { broadcastPlay, broadcastTranspose } from '@/lib/singAlong/session'
 import { useAutoScroll } from '@/lib/useAutoScroll'
 
@@ -70,6 +70,7 @@ export function ControlBar({
     pending,
     setZoomStep,
     setNotation,
+    setChordDisplay,
     setSemitones,
     setScrollSpeed,
     setCapo,
@@ -129,10 +130,12 @@ export function ControlBar({
             capo={song.capo}
             suggestion={suggestion}
             notation={global.notation}
+            chordDisplay={global.chordDisplay}
             zoomStep={global.zoomStep}
             setSemitones={setSemitonesAndBroadcast}
             setCapo={setCapo}
             setNotation={setNotation}
+            setChordDisplay={setChordDisplay}
             setZoomStep={setZoomStep}
           />
         )}
@@ -233,10 +236,12 @@ function ReadingPanel({
   capo,
   suggestion,
   notation,
+  chordDisplay,
   zoomStep,
   setSemitones,
   setCapo,
   setNotation,
+  setChordDisplay,
   setZoomStep,
 }: {
   semitones: number
@@ -245,10 +250,12 @@ function ReadingPanel({
   capo: number
   suggestion: CapoOption | null
   notation: 'it' | 'int'
+  chordDisplay: ChordDisplay
   zoomStep: number
   setSemitones: (value: number) => void
   setCapo: (value: number) => void
   setNotation: (value: 'it' | 'int') => void
+  setChordDisplay: (value: ChordDisplay) => void
   setZoomStep: (value: number) => void
 }) {
   return (
@@ -396,6 +403,36 @@ function ReadingPanel({
             aria-pressed={notation === 'int'}
           >
             C
+          </button>
+        </span>
+      </div>
+
+      {/*
+        * Whether the chord above a syllable reads as its name or as its shape,
+        * drawn the same size the name would take (`.sheet-chord-shape`, next to
+        * `SheetChord`'s own comment on why this sits in the sheet, not the popup).
+        */}
+      <div className="control-row">
+        <span className="control-name">
+          <span className="control-name-label">Show</span>
+        </span>
+
+        <span className="segment" role="group" aria-label="Chord display">
+          <button
+            type="button"
+            className={chordDisplay === 'name' ? 'segment-button is-on' : 'segment-button'}
+            onClick={() => setChordDisplay('name')}
+            aria-pressed={chordDisplay === 'name'}
+          >
+            Name
+          </button>
+          <button
+            type="button"
+            className={chordDisplay === 'shape' ? 'segment-button is-on' : 'segment-button'}
+            onClick={() => setChordDisplay('shape')}
+            aria-pressed={chordDisplay === 'shape'}
+          >
+            Shape
           </button>
         </span>
       </div>
