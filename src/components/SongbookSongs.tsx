@@ -7,12 +7,20 @@ import { ImportIntoSongbook } from '@/components/ImportIntoSongbook'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
-import { IconChevronDown, IconChevronRight, IconGrip, IconImport } from '@/components/icons'
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconGrip,
+  IconImport,
+  IconPencil,
+  IconTrash,
+} from '@/components/icons'
 import { loadSongIndex } from '@/lib/library/actions'
 import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
 import type { SongIndexRow } from '@/lib/search-index'
 import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/folds'
+import { WRITE_MESSAGE, type WriteResult } from '@/lib/songbooks/types'
 
 /**
  * The songs of one songbook, under the section each belongs to.
@@ -44,7 +52,8 @@ export function SongbookSongs({
   slug: string
   songs: SongIndexRow[]
 }) {
-  const { assignments, online, divisionsOf, nameOf } = useSongbooks()
+  const state = useSongbooks()
+  const { assignments, online, divisionsOf, nameOf } = state
   const { mayEdit } = useRole()
 
   const [rows, setRows] = useLiveRows(baked)
@@ -54,7 +63,38 @@ export function SongbookSongs({
   /** The song a link asked for, if one did. The *song*, not its section: see below. */
   const [asked, setAsked] = useState<string | null>(null)
 
+  /*
+   * Renaming and removing a section, right on this row — the same interaction a
+   * songbook gets on the screen above this one, not something only reachable
+   * through Arrange.
+   */
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+  const [removing, setRemoving] = useState<number | null>(null)
+  const [destination, setDestination] = useState('')
+  /** Set once "Delete everything instead" is tapped, to ask for it a second time. */
+  const [purging, setPurging] = useState<number | null>(null)
+
   const divisions = useMemo(() => divisionsOf(slug), [divisionsOf, slug])
+
+  const run = async (action: () => Promise<WriteResult>) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await action()
+      if (!result.ok) setError(WRITE_MESSAGE[result.reason])
+      return result.ok
+    } catch {
+      setError(WRITE_MESSAGE.failed)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const others = (id: number) => divisions.filter((section) => section.id !== id)
 
   /**
    * This songbook's songs, grouped by section, in the order the list holds them.
@@ -184,6 +224,12 @@ export function SongbookSongs({
             {divisions.length > 1 && ` · ${divisions.length} sections`}
           </p>
 
+          {mayEdit && error !== null && (
+            <p className="notice notice-error mb-3" role="alert">
+              {error}
+            </p>
+          )}
+
           {/*
             * A card each. A section is a thing that opens and closes, with its own name and
             * its own songs, so it gets its own card rather than a hairline inside a shared
@@ -192,23 +238,255 @@ export function SongbookSongs({
           <ul className="card-stack">
             {groups.map(({ section, songs }) => {
               const open = isOpen(section.id)
+              const isRenaming = renaming === section.id
+              const isRemoving = removing === section.id
 
               return (
                 <li key={section.id} className="card p-2">
-                  <button
-                    type="button"
-                    className="row w-full text-left"
-                    onClick={() => toggle(section.id)}
-                    aria-expanded={open}
-                  >
-                    {open ? (
-                      <IconChevronDown size={18} className="text-faint" />
+                  <div className="flex items-center gap-1">
+                    {isRenaming ? (
+                      <>
+                        <input
+                          autoFocus
+                          value={draft}
+                          onChange={(event) => setDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') setRenaming(null)
+                          }}
+                          aria-label={`New name for ${section.name}`}
+                          className="form-field flex-1"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          disabled={busy || draft.trim() === ''}
+                          onClick={async () => {
+                            if (await run(() => state.renameSection(section.id, draft))) {
+                              setRenaming(null)
+                            }
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet btn-sm"
+                          onClick={() => setRenaming(null)}
+                        >
+                          Cancel
+                        </button>
+                      </>
                     ) : (
-                      <IconChevronRight size={18} className="text-faint" />
+                      <>
+                        {/*
+                          * Same shape as a songbook's row on the screen above: name, count,
+                          * then the arrow — here it folds the section open rather than
+                          * navigating, so it stays a button, but the order matches.
+                          */}
+                        <button
+                          type="button"
+                          className="row min-w-0 flex-1 text-left"
+                          onClick={() => toggle(section.id)}
+                          aria-expanded={open}
+                        >
+                          <span className="min-w-0 flex-1 truncate font-medium">
+                            {section.name}
+                          </span>
+                          <span className="count-badge">{songs.length}</span>
+                          {open ? (
+                            <IconChevronDown size={18} className="text-faint" />
+                          ) : (
+                            <IconChevronRight size={18} className="text-faint" />
+                          )}
+                        </button>
+
+                        {mayEdit && (
+                          <>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              disabled={!online || busy}
+                              onClick={() => {
+                                setRenaming(section.id)
+                                setDraft(section.name)
+                                setRemoving(null)
+                                setError(null)
+                              }}
+                              aria-label={`Rename ${section.name}`}
+                            >
+                              <IconPencil size={17} />
+                            </button>
+                            {/* Turns red when its own confirmation is open, same as a songbook's. */}
+                            <button
+                              type="button"
+                              className={isRemoving ? 'icon-button is-danger' : 'icon-button'}
+                              disabled={!online || busy}
+                              onClick={() => {
+                                setRemoving(isRemoving ? null : section.id)
+                                setDestination(String(others(section.id)[0]?.id ?? ''))
+                                setPurging(null)
+                                setRenaming(null)
+                                setError(null)
+                              }}
+                              aria-label={`Remove ${section.name}`}
+                              aria-expanded={isRemoving}
+                            >
+                              <IconTrash size={17} />
+                            </button>
+                          </>
+                        )}
+                      </>
                     )}
-                    <span className="min-w-0 flex-1 truncate font-medium">{section.name}</span>
-                    <span className="count-badge">{songs.length}</span>
-                  </button>
+                  </div>
+
+                  {isRemoving && (
+                    <div className="panel mx-2 mb-2 mt-2 p-3.5 text-sm">
+                      {(() => {
+                        const held = songs.length
+                        const elsewhere = others(section.id)
+
+                        if (held === 0) {
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="flex-1">
+                                Remove &quot;{section.name}&quot;? It&apos;s empty.
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                disabled={busy}
+                                onClick={async () => {
+                                  if (await run(() => state.removeSection(section.id, null))) {
+                                    setRemoving(null)
+                                  }
+                                }}
+                              >
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-quiet btn-sm"
+                                onClick={() => setRemoving(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )
+                        }
+
+                        // A second tap of "Delete everything instead", asked once more
+                        // because nothing here destroys anything quietly.
+                        if (purging === section.id) {
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="flex-1">
+                                Delete &quot;{section.name}&quot; and all {held}{' '}
+                                {held === 1 ? 'song' : 'songs'} in it? This can&apos;t be undone.
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                disabled={busy}
+                                onClick={async () => {
+                                  if (await run(() => state.purgeSection(section.id))) {
+                                    setRemoving(null)
+                                    setPurging(null)
+                                  }
+                                }}
+                              >
+                                Delete everything
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-quiet btn-sm"
+                                onClick={() => setPurging(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )
+                        }
+
+                        if (elsewhere.length === 0) {
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="flex-1">
+                                Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s no
+                                other section to move them to.
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                onClick={() => setPurging(section.id)}
+                              >
+                                Delete everything
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-quiet btn-sm"
+                                onClick={() => setRemoving(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="flex-1">
+                              Contains {held} {held === 1 ? 'song' : 'songs'}. Move them to:
+                            </span>
+                            <label className="picker picker-raised">
+                              <span className="sr-only">Destination section</span>
+                              <select
+                                value={destination}
+                                onChange={(event) => setDestination(event.target.value)}
+                                className="picker-select"
+                              >
+                                {elsewhere.map((entry) => (
+                                  <option key={entry.id} value={String(entry.id)}>
+                                    {entry.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <IconChevronDown size={14} />
+                            </label>
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              disabled={busy || destination === ''}
+                              onClick={async () => {
+                                if (
+                                  await run(() =>
+                                    state.removeSection(section.id, Number(destination)),
+                                  )
+                                ) {
+                                  setRemoving(null)
+                                }
+                              }}
+                            >
+                              Move and remove
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-quiet btn-sm"
+                              onClick={() => setPurging(section.id)}
+                            >
+                              Delete everything instead
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-quiet btn-sm"
+                              onClick={() => setRemoving(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )}
 
                   {open &&
                     (songs.length === 0 ? (
