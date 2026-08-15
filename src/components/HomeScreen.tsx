@@ -11,6 +11,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconCopy,
+  IconGrip,
   IconOffline,
   IconPencil,
   IconPlus,
@@ -20,8 +21,10 @@ import {
 import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
 import { copySongbook } from '@/lib/songbooks/actions'
-import { WRITE_MESSAGE, countBySlug, type WriteResult } from '@/lib/songbooks/types'
+import { WRITE_MESSAGE, countBySlug, songbooksOf, type WriteResult } from '@/lib/songbooks/types'
 import type { SongIndexEntry } from '@/lib/search-index'
+
+import { ArrangeSongbooks } from './ArrangeSongbooks'
 
 /**
  * The first screen: the songbooks, and a way to search across all of them.
@@ -44,6 +47,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   const [songs] = useLiveIndex(baked)
   const [query, setQuery] = useState('')
   const deferred = useDeferredValue(query)
+  const [mode, setMode] = useState<'list' | 'organizing'>('list')
 
   /*
    * Create, rename and remove, lifted here from the retired `/songbooks` page.
@@ -168,12 +172,12 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
    */
   const groups = useMemo(
     () =>
-      songbooks.map((songbook) => ({
+      songbooksOf(state).map((songbook) => ({
         slug: songbook.slug,
         name: songbook.name,
         count: songs.filter((song) => homeOf(song.slug) === songbook.slug).length,
       })),
-    [songs, songbooks, homeOf],
+    [songs, state, homeOf],
   )
 
   const searching = deferred.trim() !== ''
@@ -212,6 +216,8 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
             </ul>
           )}
         </>
+      ) : mode === 'organizing' ? (
+        <ArrangeSongbooks rows={groups} onDone={() => setMode('list')} />
       ) : (
         <>
           {/*
@@ -595,6 +601,17 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                 )
               })}
             </ul>
+          )}
+
+          {mayEdit && online && groups.length > 1 && (
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm mt-4"
+              onClick={() => setMode('organizing')}
+            >
+              <IconGrip size={16} />
+              Arrange
+            </button>
           )}
 
           {mayEdit && (

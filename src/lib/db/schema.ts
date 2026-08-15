@@ -79,6 +79,14 @@ export const songbooks = pgTable(
      * set at once even if that update is ever done out of order.
      */
     isExampleTemplate: boolean('is_example_template').notNull().default(false),
+    /**
+     * Where this songbook sits among the reader's own, on the one screen that lists
+     * them all. Renumbered 1..N across the account on every arrangement, like a
+     * section's within its songbook. The migration that adds this column backfills
+     * every existing row with its alphabetical rank before making it required, so
+     * nothing here is ever unset.
+     */
+    position: integer('position').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

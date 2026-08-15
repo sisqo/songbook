@@ -100,10 +100,18 @@ async function readLibrary(): Promise<{
   const bySongbook = new Map<string, Songbook>()
   for (const { song, songbookName } of files) {
     if (!bySongbook.has(song.songbookSlug)) {
-      bySongbook.set(song.songbookSlug, { slug: song.songbookSlug, name: songbookName })
+      bySongbook.set(song.songbookSlug, { slug: song.songbookSlug, name: songbookName, position: 0 })
     }
   }
+  /*
+   * Alphabetical, same reasoning as a section's own invented order just below: with no
+   * database there is nowhere an order could have been dragged into, so this is the
+   * honest answer rather than a poor one.
+   */
   const songbooks = [...bySongbook.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'))
+  songbooks.forEach((songbook, index) => {
+    songbook.position = index + 1
+  })
 
   const sections: Section[] = []
   const idOf = new Map<string, number>()

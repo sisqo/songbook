@@ -75,10 +75,10 @@ async function main() {
    * app, so rows legitimately exist that no file ever declared.
    */
   const declared = [...songbookFiles, UNFILED]
-  for (const songbook of declared) {
+  for (const [index, songbook] of declared.entries()) {
     await database
       .insert(songbooks)
-      .values({ slug: songbook.slug, name: songbook.name, accountOwnerEmail })
+      .values({ slug: songbook.slug, name: songbook.name, accountOwnerEmail, position: index + 1 })
       .onConflictDoNothing({ target: songbooks.slug })
   }
   console.log(`Songbooks present (created if missing): ${declared.length}`)

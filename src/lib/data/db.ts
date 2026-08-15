@@ -64,9 +64,9 @@ export const dbRepository: SongRepository = {
 
   async listSongbooks() {
     const rows = await db()
-      .select({ slug: songbooks.slug, name: songbooks.name })
+      .select({ slug: songbooks.slug, name: songbooks.name, position: songbooks.position })
       .from(songbooks)
-      .orderBy(asc(songbooks.name))
+      .orderBy(asc(songbooks.accountOwnerEmail), asc(songbooks.position))
 
     return rows satisfies Songbook[]
   },
@@ -95,10 +95,10 @@ export const dbRepository: SongRepository = {
  */
 export async function listSongbooksForAccount(accountOwnerEmail: string): Promise<Songbook[]> {
   const rows = await db()
-    .select({ slug: songbooks.slug, name: songbooks.name })
+    .select({ slug: songbooks.slug, name: songbooks.name, position: songbooks.position })
     .from(songbooks)
     .where(eq(songbooks.accountOwnerEmail, accountOwnerEmail))
-    .orderBy(asc(songbooks.name))
+    .orderBy(asc(songbooks.position))
 
   return rows satisfies Songbook[]
 }

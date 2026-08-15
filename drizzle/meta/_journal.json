@@ -141,6 +141,13 @@
       "when": 1786788527399,
       "tag": "0019_chord_display",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786803468908,
+      "tag": "0020_songbook_position",
+      "breakpoints": true
     }
   ]
 }

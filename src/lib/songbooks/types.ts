@@ -72,6 +72,11 @@ export const WRITE_MESSAGE: Record<WriteFailure, string> = {
   failed: 'Save failed. Please try again.',
 }
 
+/** The reader's own songbooks, in the order the home screen lists them. */
+export function songbooksOf(state: SongbookState): Songbook[] {
+  return [...state.songbooks].sort((one, other) => one.position - other.position)
+}
+
 /** The sections of one songbook, in the order it is played through. */
 export function sectionsOf(state: SongbookState, songbookSlug: string): Section[] {
   return state.sections

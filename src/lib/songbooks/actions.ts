@@ -32,6 +32,7 @@ import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
 import { editableSongbook } from './access'
+import { sameMembers } from './order'
 import type { SongbookState, CreateResult, WriteResult } from './types'
 
 /**
@@ -95,7 +96,17 @@ export async function createSongbook(name: string): Promise<CreateResult> {
         existing.map((row) => row.slug),
       )
 
-      await tx.insert(songbooks).values({ slug, name: trimmed, accountOwnerEmail: editor.accountOwnerEmail })
+      const last = await tx
+        .select({ position: max(songbooks.position) })
+        .from(songbooks)
+        .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail))
+
+      await tx.insert(songbooks).values({
+        slug,
+        name: trimmed,
+        accountOwnerEmail: editor.accountOwnerEmail,
+        position: (last[0]?.position ?? 0) + 1,
+      })
       await tx
         .insert(sections)
         .values({ songbookSlug: slug, name: DEFAULT_SECTION, position: 1 })
@@ -128,6 +139,46 @@ export async function renameSongbook(slug: string, name: string): Promise<WriteR
     return updated.length === 0 ? { ok: false, reason: 'not-found' } : { ok: true }
   } catch (error) {
     console.error('renameSongbook failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/**
+ * Writes the order of the reader's own songbooks — the one screen that lists every
+ * one of them, the same reasoning `arrangeSongbook` (`lib/sections/actions.ts`) gives
+ * for a songbook's own sections.
+ *
+ * One staleness check: refuses unless the slugs sent are exactly the songbooks this
+ * account holds, so a songbook created or removed elsewhere while this list was open
+ * can never be numbered wrong or silently dropped.
+ */
+export async function arrangeSongbooks(slugs: string[]): Promise<WriteResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+  const editor = await asEditor()
+  if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  try {
+    return await db().transaction(async (tx) => {
+      const held = await tx
+        .select({ slug: songbooks.slug })
+        .from(songbooks)
+        .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail))
+
+      if (!sameMembers(held.map((row) => row.slug), slugs)) {
+        return { ok: false, reason: 'stale' } as WriteResult
+      }
+
+      for (const [index, slug] of slugs.entries()) {
+        await tx
+          .update(songbooks)
+          .set({ position: index + 1 })
+          .where(eq(songbooks.slug, slug))
+      }
+
+      return { ok: true } as WriteResult
+    })
+  } catch (error) {
+    console.error('arrangeSongbooks failed', error)
     return { ok: false, reason: 'failed' }
   }
 }
@@ -437,6 +488,11 @@ export async function copySongbook(
       )
       const copiedSlug = uniqueSlug(source[0].slug, takenSongbookSlugs)
 
+      const last = await tx
+        .select({ position: max(songbooks.position) })
+        .from(songbooks)
+        .where(eq(songbooks.accountOwnerEmail, target))
+
       await tx.insert(songbooks).values({
         accountOwnerEmail: target,
         slug: copiedSlug,
@@ -445,6 +501,9 @@ export async function copySongbook(
         // whole installation, and copying the Example songbook itself must not collide
         // with the row that already carries it.
         isExampleTemplate: false,
+        // Appended after whatever the destination account already has, same as a
+        // songbook created there by hand would be.
+        position: (last[0]?.position ?? 0) + 1,
       })
 
       const sourceSections = await tx

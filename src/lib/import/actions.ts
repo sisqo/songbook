@@ -13,7 +13,7 @@
  * question, answered per reader by the sync in `lib/offline/sync.ts`, not by a deploy.
  */
 
-import { and, asc, eq, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, max, or, sql } from 'drizzle-orm'
 
 import { accessTo, asEditor } from '@/lib/auth/session'
 import { songAccountOf } from '@/lib/data/access'
@@ -103,7 +103,15 @@ async function resolveSection(
     } else {
       const taken = (await database.select({ slug: songbooks.slug }).from(songbooks)).map((row) => row.slug)
       slug = uniqueSlug(UNFILED.name, taken)
-      await database.insert(songbooks).values({ slug, name: UNFILED.name, accountOwnerEmail })
+
+      const last = await database
+        .select({ position: max(songbooks.position) })
+        .from(songbooks)
+        .where(eq(songbooks.accountOwnerEmail, accountOwnerEmail))
+
+      await database
+        .insert(songbooks)
+        .values({ slug, name: UNFILED.name, accountOwnerEmail, position: (last[0]?.position ?? 0) + 1 })
     }
   }
 

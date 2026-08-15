@@ -101,6 +101,14 @@ describe('songbooks from the files', () => {
     )
   })
 
+  it('invents a 1..N position from the alphabetical order, with no database to have dragged one into', async () => {
+    const list = await fileRepository.listSongbooks()
+    assert.deepEqual(
+      list.map((entry) => entry.position),
+      [1, 2],
+    )
+  })
+
   it('assigns every song to a songbook', async () => {
     const known = new Set((await fileRepository.listSongbooks()).map((entry) => entry.slug))
     for (const song of await fileRepository.listSongs()) {

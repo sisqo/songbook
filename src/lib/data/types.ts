@@ -10,6 +10,8 @@ export interface Songbook {
   /** Generated once from the initial name and then frozen. */
   slug: string
   name: string
+  /** 1..N among the account's own songbooks, in the order the home screen lists them. */
+  position: number
 }
 
 /**

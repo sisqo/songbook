@@ -14,6 +14,7 @@ import {
 import { useOnline } from '@/lib/useOnline'
 
 import {
+  arrangeSongbooks,
   createSongbook,
   loadSongbooks,
   moveSong,
@@ -53,6 +54,8 @@ interface SongbookContextValue extends SongbookState {
   purge: (slug: string) => Promise<WriteResult>
   /** Sends a song to a section, of this songbook or of another. */
   move: (songSlug: string, sectionId: number) => Promise<WriteResult>
+  /** Writes the order of the reader's own songbooks — see `arrange` for a songbook's own. */
+  arrangeSongbooks: (slugs: string[]) => Promise<WriteResult>
 
   addSection: (songbookSlug: string, name: string) => Promise<CreateSectionResult>
   renameSection: (id: number, name: string) => Promise<WriteResult>
@@ -150,6 +153,7 @@ export function SongbookProvider({
       remove: async (slug, moveTo) => afterWrite(await removeSongbook(slug, moveTo)),
       purge: async (slug) => afterWrite(await purgeSongbook(slug)),
       move: async (songSlug, sectionId) => afterWrite(await moveSong(songSlug, sectionId)),
+      arrangeSongbooks: async (slugs) => afterWrite(await arrangeSongbooks(slugs)),
 
       addSection: async (songbookSlug, name) =>
         afterWrite(await createSection(songbookSlug, name)),

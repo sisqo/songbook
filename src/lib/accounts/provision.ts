@@ -80,6 +80,8 @@ export async function provisionAccount(email: string): Promise<boolean> {
         slug: clonedSongbookSlug,
         name: source.name,
         isExampleTemplate: false,
+        // The account's first songbook — nothing else of theirs exists yet to come after.
+        position: 1,
       })
 
       const sourceSections = await tx
