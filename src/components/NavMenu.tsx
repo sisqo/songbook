@@ -13,7 +13,6 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconExternal,
-  IconKey,
   IconMenu,
   IconNote,
   IconSettings,
@@ -54,10 +53,6 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  * the panel every entry carries its label, which the icon-only row on a phone
  * could not.
  *
- * Sign-out arrives as `children`: it is a server component wrapping a server
- * action, and passing it in is what lets this component be interactive without
- * turning that action into a client-side call.
- *
  * One entry depends on who is asking, and it is absent until the answer arrives
  * rather than present and refusing: Accounts, offered only to a global owner, who
  * can enter more than their own. Nothing else here is conditional any more — with a
@@ -78,16 +73,10 @@ const TUNER_URL = 'https://guitar.sisqo.dev'
  * `view` — `view` is reset by every close, and a broadcast the reader already started
  * is exactly the thing that must not be forgotten the next time they open this panel.
  */
-export function NavMenu({
-  current,
-  children,
-}: {
-  current: Section
-  children: React.ReactNode
-}) {
+export function NavMenu({ current }: { current: Section }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'settings' | 'sing-together'>('main')
-  const { mayShowAccountSwitcher } = useRole()
+  const { isGlobalOwner } = useRole()
 
   /*
    * `undefined` until the read comes back, `null` once it has and there is nothing
@@ -260,15 +249,6 @@ export function NavMenu({
                 <div className="menu-divider" />
 
                 {/*
-                  * Unconditional: how you get in is your own business, not something a
-                  * role could ever gate.
-                  */}
-                <Link href="/password" className={item('password')} role="menuitem" onClick={close}>
-                  <IconKey size={17} />
-                  Password
-                </Link>
-
-                {/*
                   * Neither is a destination, so neither closes the menu: the reader is
                   * looking at the thing they are changing, and the panel is part of it.
                   */}
@@ -416,10 +396,10 @@ export function NavMenu({
 
                 {/*
                   * Hidden for everybody but a global owner (v3.1) — per
-                  * `mayShowAccountSwitcher`'s own comment, nobody else ever has more than
-                  * their own account to switch to.
+                  * `isGlobalOwner`'s own comment, nobody else ever has more than their
+                  * own account to switch to.
                   */}
-                {mayShowAccountSwitcher && (
+                {isGlobalOwner && (
                   <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
                     <IconSwitchAccount size={17} />
                     Accounts
@@ -482,12 +462,13 @@ export function NavMenu({
                 {/*
                   * A second screen rather than a destination, so it does not close the
                   * panel — the chevron says as much, the same way the tuner's arrow says
-                  * the opposite. Last before sign-out and behind its own divider: nothing
-                  * here touches the repertoire, only this reader's own account and screen.
+                  * the opposite. Last row: nothing past it belongs to this menu any more —
+                  * change password and sign out both moved to `UserMenu` (v3.3), next to
+                  * this one rather than inside it.
                   */}
                 <button
                   type="button"
-                  className={current === 'password' ? 'menu-item is-on w-full' : 'menu-item w-full'}
+                  className="menu-item w-full"
                   role="menuitem"
                   aria-label="Settings, opens the settings list"
                   onClick={() => setView('settings')}
@@ -496,9 +477,6 @@ export function NavMenu({
                   Settings
                   <IconChevronRight size={15} className="ms-auto" />
                 </button>
-
-                <div className="menu-divider" />
-                {children}
               </>
             )}
           </div>

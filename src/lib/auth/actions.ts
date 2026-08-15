@@ -23,9 +23,14 @@ import type { PasswordResult } from '@/lib/auth/types'
 import { hasDatabase } from '@/lib/db/client'
 import type { Role } from '@/lib/roles'
 
-/** The signed-in reader's role, or null when there is nobody or nobody allowed. */
-export async function loadRole(): Promise<Role | null> {
-  return (await currentUser())?.role ?? null
+/**
+ * The signed-in reader's address and role, or null when there is nobody or nobody
+ * allowed — one `currentUser()` call for both, for `RoleProvider`, which needs the
+ * address too now (v3.3, the user menu) and would otherwise ask twice on every page.
+ */
+export async function loadIdentity(): Promise<{ email: string; role: Role } | null> {
+  const user = await currentUser()
+  return user === null ? null : { email: user.email, role: user.role }
 }
 
 /**

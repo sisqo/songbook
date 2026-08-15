@@ -1755,6 +1755,40 @@ erano già separate; questa versione toglie solo la prima come condizione per la
 Nessuna migrazione dei dati esistenti: questa versione è puramente additiva sulla porta
 d'ingresso, non tocca un solo account, canzoniere o membro già presente.
 
+### v3.3 — il menu utente
+
+Fino ad ora chi era loggato non aveva un modo per vedersi: l'indirizzo con cui si è
+entrati, se si è proprietari globali, e le due azioni che riguardano solo il proprio
+modo di entrare (password, sign out) vivevano sparse — la password dentro Impostazioni,
+il sign out in fondo al menu hamburger, nessuna delle due accanto a un'identità
+visibile. Questa versione aggiunge un secondo pulsante in testata, accanto
+all'hamburger: un monogramma a due lettere, colorato in base all'indirizzo, che apre
+un pannello con l'indirizzo per esteso, l'etichetta "Owner" per chi amministra l'intera
+installazione, e le due azioni che gli erano rimaste addosso.
+
+1. **"Owner" segue `isOwner`, non il ruolo `admin`.** Dalla v3.1 `admin` è l'unico ruolo
+   che esiste, ed è di chiunque abbia un account — mostrarlo per quel controllo avrebbe
+   acceso l'etichetta per ogni singolo utente registrato, senza distinguere nessuno.
+   `isGlobalOwner`, nel contesto (`RoleProvider`), è la stessa domanda già posta da
+   `mayShowAccountSwitcher` per il selettore Account, sotto il nome che questo pannello
+   legge.
+2. **Cambia password e Sign out si spostano, non si duplicano.** Uscivano dal menu
+   hamburger — password dentro Impostazioni, sign out in fondo — per vivere solo qui:
+   un solo posto per le azioni sul proprio account, l'hamburger resta solo navigazione.
+3. **L'avatar legge l'indirizzo, non il profilo Google.** Un account per email e
+   password (v3.2) non ha né nome né foto; usare quelli di Google per chi ha fatto
+   l'accesso così, e un monogramma per tutti gli altri, avrebbe fatto sembrare due
+   funzionalità diverse quella che è una sola. Iniziali e colore sono entrambi derivati
+   dall'indirizzo (`lib/avatar.ts`), deterministici: lo stesso indirizzo disegna sempre
+   lo stesso avatar, su ogni dispositivo.
+4. **Sign-out arriva come `children`, non come import.** È un componente server che
+   avvolge una server action inline; `UserMenu` è un componente client, e Next.js
+   rifiuta di raggrupparli insieme se l'uno importa l'altro direttamente — la stessa
+   ragione per cui `NavMenu` lo prendeva già così, prima che si spostasse qui.
+
+Nessuna migrazione: nessuna tabella nuova, nessuna colonna toccata — solo interfaccia e
+il contesto già esistente (`RoleProvider`), esteso con l'indirizzo che gli mancava.
+
 ## Vincoli d'ambiente
 
 - **Node 18.20.8 in locale** (snap, nessun nvm), Node 24 su Vercel. Tailwind è fissato alla
@@ -1918,6 +1952,15 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Recupero password su un indirizzo senza password | Stessa risposta, stessa azione (`writePasswordHash`) di un vero reset | Equivale a "imposta la prima password"; nessuna distinzione visibile a chi la chiede |
 | Enumerazione degli indirizzi | `/password-dimenticata` risponde sempre allo stesso modo, l'indirizzo esista o meno | Evita di rivelare quali indirizzi hanno un account, stesso principio della reiezione a tempo costante già in `authorize()` |
 | `ALLOWED_EMAILS` dopo questa versione | Resta solo "chi è proprietario globale", smette di essere condizione per entrare | Le due cose erano già separate dalla v3.0; questa versione toglie solo la prima come requisito |
+
+### Il menu utente (v3.3)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Significato dell'etichetta "Owner" | Proprietario globale (`isOwner`), non il ruolo `admin` | Dalla v3.1 `admin` è di chiunque abbia un account: mostrarlo per quel controllo non distinguerebbe nessuno |
+| Cambia password e Sign out | Spostati dal menu hamburger al nuovo menu utente, non duplicati | Un solo posto per le azioni sul proprio account; l'hamburger resta solo navigazione |
+| Sorgente dell'avatar | L'indirizzo email (iniziali + colore derivati), mai il profilo Google | Un account per email e password non ha nome né foto; due fonti diverse avrebbero fatto sembrare due funzionalità quella che è una sola |
+| Colore dell'avatar nei due temi | Fisso, non ridefinito in dark mode | Un colore per persona non è parte della palette della pagina come `--accent`; non deve cambiare con il tema, come non cambierebbe una foto |
 
 ## Domande aperte
 

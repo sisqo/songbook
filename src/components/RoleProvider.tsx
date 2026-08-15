@@ -3,23 +3,30 @@
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 import { mayShowAccountSwitcher } from '@/lib/accounts/read'
-import { loadRole } from '@/lib/auth/actions'
+import { loadIdentity } from '@/lib/auth/actions'
 import { type Role, canEdit } from '@/lib/roles'
 
 interface RoleContextValue {
+  email: string | null
   role: Role | null
   /** Whether the server has answered yet. Before that, nothing is offered. */
   known: boolean
   mayEdit: boolean
-  /** Whether to offer the account switcher at all — see `mayShowAccountSwitcher`. */
-  mayShowAccountSwitcher: boolean
+  /**
+   * A true, installation-wide owner (`isOwner`) — what decides whether to offer the
+   * account switcher in `NavMenu` (nobody else ever has more than their own account
+   * to switch to) and whether to show the user menu's "Owner" badge (v3.3, same
+   * question, different reader).
+   */
+  isGlobalOwner: boolean
 }
 
 const RoleContext = createContext<RoleContextValue>({
+  email: null,
   role: null,
   known: false,
   mayEdit: false,
-  mayShowAccountSwitcher: false,
+  isGlobalOwner: false,
 })
 
 /**
@@ -45,6 +52,7 @@ const RoleContext = createContext<RoleContextValue>({
  * decides what to draw.
  */
 export function RoleProvider({ children }: { children: ReactNode }) {
+  const [email, setEmail] = useState<string | null>(null)
   const [role, setRole] = useState<Role | null>(null)
   const [known, setKnown] = useState(false)
   const [switcher, setSwitcher] = useState(false)
@@ -54,9 +62,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
     const ask = async () => {
       try {
-        const [answer, showSwitcher] = await Promise.all([loadRole(), mayShowAccountSwitcher()])
+        const [identity, showSwitcher] = await Promise.all([loadIdentity(), mayShowAccountSwitcher()])
         if (alive) {
-          setRole(answer)
+          setEmail(identity?.email ?? null)
+          setRole(identity?.role ?? null)
           setSwitcher(showSwitcher)
           setKnown(true)
         }
@@ -85,12 +94,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<RoleContextValue>(
     () => ({
+      email,
       role,
       known,
       mayEdit: known && canEdit(role),
-      mayShowAccountSwitcher: known && switcher,
+      isGlobalOwner: known && switcher,
     }),
-    [role, known, switcher],
+    [email, role, known, switcher],
   )
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>

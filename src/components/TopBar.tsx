@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
+import { UserMenu } from '@/components/UserMenu'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
@@ -67,9 +68,10 @@ export function TopBar({
           </div>
         )}
 
-        <NavMenu current={current}>
+        <UserMenu>
           <SignOutButton />
-        </NavMenu>
+        </UserMenu>
+        <NavMenu current={current} />
       </div>
     </header>
   )

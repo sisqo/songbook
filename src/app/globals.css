@@ -58,6 +58,23 @@
   --danger-soft: #fbe7e4;
 
   /*
+   * The user menu's monogram avatar (v3.3): which of these six an address draws is
+   * decided by `avatarColorIndex` (`lib/avatar.ts`), hashed from the email so the
+   * same reader always gets the same colour. Deliberately not redefined in the
+   * dark-mode blocks below, unlike everything else in this file: a colour picked
+   * per person is not part of the page's own palette the way `--accent` is, so it
+   * does not need to change with the theme — same reasoning a photo avatar
+   * elsewhere would not invert for dark mode either. Chosen away from `--accent`'s
+   * and `--danger`'s own hues so an avatar is never mistaken for either.
+   */
+  --avatar-0: #6b5b95;
+  --avatar-1: #3f6b52;
+  --avatar-2: #37618c;
+  --avatar-3: #8a6d1f;
+  --avatar-4: #7a4a63;
+  --avatar-5: #4a6a6b;
+
+  /*
    * Corners, from the smallest control to the largest surface. Every step is a
    * job rather than a size, because the shapes nest: a button sits in a cluster
    * that sits in a card, and each has to look rounder than the thing inside it.
@@ -1356,6 +1373,73 @@
     height: 1px;
     margin: 0.35rem 0.2rem;
     background: var(--line);
+  }
+
+  /*
+   * The reader's own monogram, next to the hamburger (`UserMenu`, v3.3) — the
+   * button that opens the panel. Same footprint as `.nav-link` beside it, so the
+   * two sit flush at the same height, but round rather than square: a circle is
+   * what a monogram avatar has always looked like, everywhere this app borrows
+   * the pattern from.
+   */
+  .avatar-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-pill);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  /* The same monogram again, inside the open panel — see `.avatar-button`. */
+  .avatar {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-pill);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .avatar-lg {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 0.9375rem;
+  }
+
+  .user-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.4rem 0.5rem 0.6rem;
+  }
+
+  .user-menu-identity {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .user-menu-email {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink);
   }
 
   /*
