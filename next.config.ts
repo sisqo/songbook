@@ -109,6 +109,18 @@ const nextConfig: NextConfig = {
       { source: '/import', destination: '/', permanent: true },
       { source: '/users', destination: '/', permanent: true },
       { source: '/utenti', destination: '/', permanent: true },
+      /*
+       * The auth loop's own routes, renamed the same way. `/verifica` and
+       * `/reimposta-password` are the two that matter most: both are links already
+       * sitting unopened in real inboxes, `?token=` and `?email=` and all — a plain
+       * source/destination redirect with no path params forwards the whole query
+       * string untouched, so those links keep working rather than 404ing the moment
+       * this ships.
+       */
+      { source: '/registrati', destination: '/register', permanent: true },
+      { source: '/password-dimenticata', destination: '/forgot-password', permanent: true },
+      { source: '/reimposta-password', destination: '/reset-password', permanent: true },
+      { source: '/verifica', destination: '/verify', permanent: true },
     ]
   },
 }

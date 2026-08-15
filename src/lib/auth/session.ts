@@ -160,7 +160,7 @@ export function asAdmin(): Promise<Permission> {
 
 /**
  * Signs someone in without a password — the one moment that has to (v3.2, PLAN.md point
- * 5): right after `/verifica` proves an address by consuming its verification token,
+ * 5): right after `/verify` proves an address by consuming its verification token,
  * making that person type the password they *just chose* a second time would be pure
  * friction with no security gained. `signIn('credentials', ...)` cannot be used here —
  * it needs the plaintext password, and by this point only its scrypt hash exists (it was
@@ -170,7 +170,7 @@ export function asAdmin(): Promise<Permission> {
  * `salt` has to be the cookie's own name, not a fixed string: that is how `@auth/core`
  * derives its encryption key (`lib/actions/session.js`, `salt = options.cookies
  * .sessionToken.name`), so a mismatched salt here would not fail loudly — it would write
- * a cookie `auth()` decodes into nothing, and the only symptom is `/verifica`'s own
+ * a cookie `auth()` decodes into nothing, and the only symptom is `/verify`'s own
  * `redirect('/')` bouncing straight back to `/login` through the middleware. The
  * `NODE_ENV` check has to mirror `writeAccountCookie`'s (`lib/accounts/current.ts`) for
  * the same reason: `secure`/name and the `__Secure-` prefix must agree, or the browser

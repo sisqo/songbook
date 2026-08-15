@@ -21,7 +21,7 @@ interface Props {
  * (`verify/check.ts`), and shows a button rather than acting on its own. An email scanner
  * that "clicks" the link to see where it goes only ever exercises this render — the actual
  * write is `verifyEmail`, a real POST behind an explicit "Verify my email" tap that a
- * scanner never makes. Same shell as `/registrati`: the hero mark, `.login-card`, nothing
+ * scanner never makes. Same shell as `/register`: the hero mark, `.login-card`, nothing
  * else on screen to distract from the one thing this page is for.
  */
 export default async function VerifyPage({ searchParams }: Props) {
@@ -74,7 +74,7 @@ export default async function VerifyPage({ searchParams }: Props) {
                 <ResendVerificationButton email={email} />
               ) : (
                 <p className="mt-4 text-center text-sm text-muted">
-                  <Link href="/registrati" className="text-accent hover:underline">
+                  <Link href="/register" className="text-accent hover:underline">
                     Register again
                   </Link>
                 </p>

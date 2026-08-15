@@ -36,8 +36,8 @@ export default auth((request) => {
    * The login page — and, since v3.2, registration and the whole self-serve email loop
    * next to it — is reachable without a session but still gets marked.
    *
-   * `/verifica`, `/password-dimenticata` and `/reimposta-password` all have to be here for
-   * the same reason `/registrati` is: every one of them is a link followed from an email,
+   * `/verify`, `/forgot-password` and `/reset-password` all have to be here for
+   * the same reason `/register` is: every one of them is a link followed from an email,
    * which lands with no session at all. Without this, the guard below would redirect all
    * three straight to `/login` before their own page ever ran, and nobody could finish
    * registering or recover a password.
@@ -57,10 +57,10 @@ export default auth((request) => {
    */
   if (
     pathname === '/login' ||
-    pathname === '/registrati' ||
-    pathname === '/verifica' ||
-    pathname === '/password-dimenticata' ||
-    pathname === '/reimposta-password' ||
+    pathname === '/register' ||
+    pathname === '/verify' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
     pathname === '/privacy-policy' ||
     pathname === '/terms-of-service' ||
     pathname === '/cookie-policy' ||

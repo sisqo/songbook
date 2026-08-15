@@ -255,7 +255,7 @@ export default async function LoginPage({ searchParams }: Props) {
           : 'Sign-in failed. Please try again.'
 
   // Only shown when there is no failure to report instead — landing here with `?reset=1`
-  // straight after `/reimposta-password` (v3.2, PLAN.md point 6) is never itself an error.
+  // straight after `/reset-password` (v3.2, PLAN.md point 6) is never itself an error.
   const success = message === null && reset !== undefined ? 'Password changed. Sign in with your new password.' : null
 
   return (
@@ -358,7 +358,7 @@ export default async function LoginPage({ searchParams }: Props) {
                 className="form-field"
               />
               <span className="mt-1.5 block text-end">
-                <Link href="/password-dimenticata" className="text-xs text-faint hover:underline">
+                <Link href="/forgot-password" className="text-xs text-faint hover:underline">
                   Forgot password?
                 </Link>
               </span>
@@ -372,7 +372,7 @@ export default async function LoginPage({ searchParams }: Props) {
 
         <p className="mt-4 text-center text-xs text-faint">
           Don&apos;t have an account?{' '}
-          <Link href="/registrati" className="text-accent hover:underline">
+          <Link href="/register" className="text-accent hover:underline">
             Register
           </Link>
         </p>

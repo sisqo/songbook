@@ -1700,12 +1700,12 @@ erano già separate; questa versione toglie solo la prima come condizione per la
    password); registrarsi di nuovo con un indirizzo ancora in sospeso rinnova semplicemente
    il token e rimanda la mail, senza errore — è così che "non mi è arrivata l'email"
    si risolve senza una funzione a parte.
-4. **La pagina `/registrati`.** Stesso impianto di `/login`: un pulsante Google (il
+4. **La pagina `/register`.** Stesso impianto di `/login`: un pulsante Google (il
    medesimo flusso del punto 2) e un modulo email/password/conferma password, con il
    CAPTCHA del punto 9. Il successo porta a una schermata "controlla la posta", con un
-   pulsante per rispedire la mail. `/login` guadagna un rimando a `/registrati`, e perde la
+   pulsante per rispedire la mail. `/login` guadagna un rimando a `/register`, e perde la
    frase "Access is limited to approved email addresses", non più vera.
-5. **Verifica: `/verifica?token=...`.** Il token si confronta come una password — mai in
+5. **Verifica: `/verify?token=...`.** Il token si confronta come una password — mai in
    chiaro nel database, con lo stesso hashing già usato altrove — e se valido e non scaduto:
    dentro una transazione, nasce la riga `accounts`, la riga `credentials` con l'hash già
    pronto dalla registrazione, e parte la clonazione dell'Example (`provisionAccount`,
@@ -1713,7 +1713,7 @@ erano già separate; questa versione toglie solo la prima come condizione per la
    cancella; parte la mail di benvenuto; chi ha appena verificato entra subito, senza dover
    ridigitare la password che ha appena scelto. Un token scaduto o già usato mostra un
    errore con un invito a rispedire, non un vicolo cieco.
-6. **Recupero password: `/password-dimenticata` e `/reimposta-password?token=...`.** La
+6. **Recupero password: `/forgot-password` e `/reset-password?token=...`.** La
    prima chiede solo un indirizzo (più CAPTCHA) e risponde sempre allo stesso modo,
    l'indirizzo esista o no, abbia già una password o no — esistere o meno non deve
    trapelare da qui, stesso principio della reiezione a tempo costante già scritta in
@@ -1952,7 +1952,7 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Registrazione con Google | Lo stesso pulsante "Sign in with Google" di `/login` funge già da registrazione | OAuth non distingue login da signup a livello di protocollo: la creazione dell'account è un effetto collaterale di un'autenticazione riuscita, non un percorso separato |
 | `isAdmitted`/`hasAccount` in `auth.ts` | Ritirate, non semplificate | Senza più nessuno da tenere fuori, il cancello non ha più lavoro da fare: un OAuth Google riuscito o una password corretta contro un account già verificato bastano da soli |
 | Recupero password su un indirizzo senza password | Stessa risposta, stessa azione (`writePasswordHash`) di un vero reset | Equivale a "imposta la prima password"; nessuna distinzione visibile a chi la chiede |
-| Enumerazione degli indirizzi | `/password-dimenticata` risponde sempre allo stesso modo, l'indirizzo esista o meno | Evita di rivelare quali indirizzi hanno un account, stesso principio della reiezione a tempo costante già in `authorize()` |
+| Enumerazione degli indirizzi | `/forgot-password` risponde sempre allo stesso modo, l'indirizzo esista o meno | Evita di rivelare quali indirizzi hanno un account, stesso principio della reiezione a tempo costante già in `authorize()` |
 | `ALLOWED_EMAILS` dopo questa versione | Resta solo "chi è proprietario globale", smette di essere condizione per entrare | Le due cose erano già separate dalla v3.0; questa versione toglie solo la prima come requisito |
 
 ### Il menu utente (v3.3)

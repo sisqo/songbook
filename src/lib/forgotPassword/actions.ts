@@ -76,7 +76,7 @@ export async function requestPasswordReset(formData: FormData): Promise<RequestR
           set: { tokenHash: hash, expiresAt },
         })
 
-      const url = new URL('/reimposta-password', process.env.AUTH_URL ?? 'http://localhost:3000')
+      const url = new URL('/reset-password', process.env.AUTH_URL ?? 'http://localhost:3000')
       url.searchParams.set('email', email)
       url.searchParams.set('token', raw)
 
@@ -91,9 +91,9 @@ export async function requestPasswordReset(formData: FormData): Promise<RequestR
 }
 
 /**
- * The `/reimposta-password` form's own submit — already the explicit action a scanner
+ * The `/reset-password` form's own submit — already the explicit action a scanner
  * never takes (see `check.ts`'s own comment), so there is no separate confirmation step
- * here the way `/verifica` needs one.
+ * here the way `/verify` needs one.
  *
  * `writePasswordHash` is the exact call `setOwnPassword` and `setPasswordFor` already use
  * (`lib/auth/actions.ts`): it upserts, so it writes this address's *first* password

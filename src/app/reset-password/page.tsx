@@ -17,7 +17,7 @@ interface Props {
  * The landing page for the link in the password-reset email (v3.2, PLAN.md point 6).
  *
  * Shows the new-password form directly on this GET, with no intermediate button the way
- * `/verifica` needs one: typing a password and submitting it is already the explicit
+ * `/verify` needs one: typing a password and submitting it is already the explicit
  * action an email scanner never takes on its own, so there is nothing left for a button
  * to gate that the form itself does not already gate. The check (`checkPasswordResetToken`)
  * is still read-only — it is `resetPassword`'s own recheck at submit time that actually
@@ -58,7 +58,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
                 This link is invalid or has expired.
               </p>
               <p className="mt-4 text-center text-sm text-muted">
-                <Link href="/password-dimenticata" className="text-accent hover:underline">
+                <Link href="/forgot-password" className="text-accent hover:underline">
                   Request a new link
                 </Link>
               </p>

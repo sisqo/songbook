@@ -8,10 +8,10 @@ import { resetPassword } from '@/lib/forgotPassword/actions'
 import { RESET_PASSWORD_MESSAGE } from '@/lib/forgotPassword/types'
 
 /**
- * `/reimposta-password`'s form, rendered only once the page's own read-only check has
+ * `/reset-password`'s form, rendered only once the page's own read-only check has
  * already found a valid token (v3.2, PLAN.md point 6) — typing and submitting a password
  * is already the explicit action a scanner never takes, so this needs no intermediate
- * button the way `/verifica` does.
+ * button the way `/verify` does.
  *
  * `email` and `token` travel as hidden fields rather than being read back out of the URL
  * a second time inside `resetPassword`: the page already resolved them once, and a hidden

@@ -1,5 +1,5 @@
 /**
- * The read-only half of `/verifica` (v3.2, PLAN.md point 5) — whether a pending
+ * The read-only half of `/verify` (v3.2, PLAN.md point 5) — whether a pending
  * registration's token still checks out, with nothing written.
  *
  * Kept out of `verify/actions.ts` on purpose, and with no `'use server'` directive: this
@@ -22,7 +22,7 @@ export type PendingRegistrationCheck =
   /**
    * `canResend` is true whenever a row still exists for this address, whatever made the
    * token itself fail — expired, or simply wrong. False only means there is nothing left
-   * to extend: the address belongs on `/registrati` to start over with a real password,
+   * to extend: the address belongs on `/register` to start over with a real password,
    * not here with a link that no longer points at anything.
    */
   | { status: 'invalid'; canResend: boolean }

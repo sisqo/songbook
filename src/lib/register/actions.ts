@@ -89,7 +89,7 @@ export async function register(formData: FormData): Promise<RegisterResult> {
         set: { passwordHash, verificationTokenHash: hash, expiresAt },
       })
 
-    const url = new URL('/verifica', process.env.AUTH_URL ?? 'http://localhost:3000')
+    const url = new URL('/verify', process.env.AUTH_URL ?? 'http://localhost:3000')
     url.searchParams.set('email', email)
     url.searchParams.set('token', raw)
 
@@ -103,10 +103,10 @@ export async function register(formData: FormData): Promise<RegisterResult> {
 }
 
 /**
- * Resent from `/verifica`'s own error state (v3.2, PLAN.md point 5) — a different case
+ * Resent from `/verify`'s own error state (v3.2, PLAN.md point 5) — a different case
  * from the "no separate resend action" this file's own top comment describes, which only
  * holds while `RegisterForm` is still on screen with the password sitting in its state.
- * By the time someone opens `/verifica` from a stale or expired link, all that survives
+ * By the time someone opens `/verify` from a stale or expired link, all that survives
  * from that first submission is the address in the URL: the password was hashed away at
  * `register` time, and `register` needs the plaintext back to rehash it. So this rotates
  * the token and the expiry in place instead, leaving `passwordHash` untouched — asking
@@ -141,7 +141,7 @@ export async function resendVerification(formData: FormData): Promise<ResendResu
       .from(pendingRegistrations)
       .where(eq(pendingRegistrations.email, email))
       .limit(1)
-    // Nothing left to extend — the address belongs on /registrati to start over with a
+    // Nothing left to extend — the address belongs on /register to start over with a
     // fresh password, not here with one that no longer exists anywhere to reuse.
     if (rows.length === 0) return { ok: false, reason: 'not-pending' }
 
@@ -153,7 +153,7 @@ export async function resendVerification(formData: FormData): Promise<ResendResu
       .set({ verificationTokenHash: hash, expiresAt })
       .where(eq(pendingRegistrations.email, email))
 
-    const url = new URL('/verifica', process.env.AUTH_URL ?? 'http://localhost:3000')
+    const url = new URL('/verify', process.env.AUTH_URL ?? 'http://localhost:3000')
     url.searchParams.set('email', email)
     url.searchParams.set('token', raw)
 

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'Forgot password' }
 
 /**
  * Requesting a password reset link (v3.2, PLAN.md point 6) — same shell as `/login` and
- * `/registrati`: the hero mark, `.login-card`, one form.
+ * `/register`: the hero mark, `.login-card`, one form.
  */
 export default function ForgotPasswordPage() {
   return (

@@ -10,7 +10,7 @@ import { REGISTER_MESSAGE } from '@/lib/register/types'
 type Phase = 'form' | 'sent'
 
 /**
- * The email/password half of `/registrati` (v3.2, PLAN.md point 4) — the Google button
+ * The email/password half of `/register` (v3.2, PLAN.md point 4) — the Google button
  * next to it needs none of this, since a successful OAuth sign-in already redirects on
  * its own (see `page.tsx`).
  *

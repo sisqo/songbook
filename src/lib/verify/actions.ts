@@ -2,11 +2,11 @@
 
 /**
  * Turning a pending registration into a real account (v3.2, PLAN.md point 5) — the one
- * write in the whole `/verifica` flow, and deliberately not something a page load can
+ * write in the whole `/verify` flow, and deliberately not something a page load can
  * trigger on its own. Corporate email scanners routinely "click" every link in a message
  * before a person ever sees it, to check where it goes; if that GET consumed the token,
  * the scanner would burn it and the real click would land on an error. So the page
- * (`app/verifica/page.tsx`) only ever reads — see `verify/check.ts` — and this, a real
+ * (`app/verify/page.tsx`) only ever reads — see `verify/check.ts` — and this, a real
  * POST behind an explicit "Verify my email" button, is the only thing that writes.
  */
 
