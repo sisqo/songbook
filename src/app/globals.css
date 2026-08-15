@@ -2921,9 +2921,17 @@
    * The row's height comes from the hidden copy of the words, not from a number:
    * that copy is set in the same size as the input, so the row is exactly one line
    * of text tall and the chords have somewhere to sit.
+   *
+   * The top padding is headroom for one thing only: the name field a chord being
+   * edited opens into. That field is a real 16px input (see `.chord-field`'s own
+   * comment on why it can't be smaller) hung from the same baseline as a chip, and
+   * a chip's own small size never needed this space — only the taller field does,
+   * and without it the field rode above the row far enough for `.line-scroll`'s
+   * intentional vertical clip to shear its top off.
    */
   .chord-row {
     position: relative;
+    padding-block-start: 0.4rem;
     color: var(--accent);
     font-size: 1rem;
     line-height: 1.4;
@@ -3001,7 +3009,9 @@
    */
   .chord-editing {
     position: absolute;
-    inset-block-end: -0.4rem;
+    /* Flush with the chip's own resting spot — see `.chord-row`'s comment for the
+       headroom that makes that possible without clipping. */
+    inset-block-end: 0;
     inset-inline-start: -0.2rem;
     z-index: 5;
     visibility: visible;
