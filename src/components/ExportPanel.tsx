@@ -80,45 +80,66 @@ export function ExportPanel() {
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="section-title">Backup</h2>
-      <p className="mt-1.5 text-sm leading-[1.45] text-muted">
-        Every song of this account, as ChordPro files in a zip — the same format
-        <code> npm run seed </code>
-        reads back.
-      </p>
-
+    <section className="mt-8 flex flex-col gap-3">
       {notice !== null && (
-        <p className="notice mt-4" role="status">
+        <p className="notice" role="status">
           <IconInfo />
           {notice}
         </p>
       )}
 
-      <div className="mt-4">
-        <button type="button" className="btn" disabled={busy} onClick={() => void download()}>
+      <div className="card info-card">
+        <div className="info-card-main">
+          <span className="row-icon" aria-hidden>
+            <IconDownload size={19} />
+          </span>
+          <div className="info-card-body">
+            <h2 className="section-title">Backup</h2>
+            <p className="mt-1.5 text-[0.90625rem] leading-[1.45] text-muted">
+              Download every song in this account as a single zip — yours to keep, and ready to
+              bring back in with <code>npm run seed</code> whenever you need it.
+            </p>
+          </div>
+        </div>
+        <button type="button" className="btn btn-sm" disabled={busy} onClick={() => void download()}>
           <IconDownload size={16} />
           Download all
         </button>
       </div>
 
-      <h2 className="section-title mt-6">Organized export</h2>
-      <p className="mt-1.5 text-sm leading-[1.45] text-muted">
-        The same songs, in folders — one per songbook, numbered sections inside — meant for
-        reading or printing outside the app, not for restoring: numbered names are not what
-        <code> npm run seed </code>
-        reads back.
-      </p>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="btn" disabled={busy} onClick={() => void downloadOrganized('song')}>
-          <IconDownload size={16} />
-          Export by song
-        </button>
-        <button type="button" className="btn" disabled={busy} onClick={() => void downloadOrganized('section')}>
-          <IconDownload size={16} />
-          Export by section
-        </button>
+      <div className="card info-card">
+        <div className="info-card-main">
+          <span className="row-icon" aria-hidden>
+            <IconDownload size={19} />
+          </span>
+          <div className="info-card-body">
+            <h2 className="section-title">Organized export</h2>
+            <p className="mt-1.5 text-[0.90625rem] leading-[1.45] text-muted">
+              The same songs, in folders — one per songbook, numbered sections inside — meant for
+              reading or printing outside the app, not for restoring.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-none flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={() => void downloadOrganized('song')}
+          >
+            <IconDownload size={16} />
+            By song
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={busy}
+            onClick={() => void downloadOrganized('section')}
+          >
+            <IconDownload size={16} />
+            By section
+          </button>
+        </div>
       </div>
     </section>
   )

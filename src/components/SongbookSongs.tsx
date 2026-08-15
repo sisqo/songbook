@@ -8,6 +8,7 @@ import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
 import {
+  IconBooks,
   IconChevronDown,
   IconChevronRight,
   IconGrip,
@@ -199,8 +200,70 @@ export function SongbookSongs({
     )
   }
 
+  const name = nameOf(slug) ?? ''
+
   return (
     <>
+      {/*
+        * The name and its counts live here, not on the static page above: they come
+        * from the same live layer the cards below read, so a section added a moment
+        * ago is already counted here too rather than waiting for the next rebuild.
+        */}
+      <div className="screen-header">
+        <div className="min-w-0">
+          <h1 className="screen-title flex items-center gap-3.5">
+            <span className="row-icon row-icon-lg" aria-hidden>
+              <IconBooks size={21} />
+            </span>
+            <span className="min-w-0 truncate">{name}</span>
+          </h1>
+          <p className="screen-subtitle">
+            <span>
+              {total} {total === 1 ? 'song' : 'songs'}
+            </span>
+            {divisions.length > 0 && (
+              <>
+                <span className="screen-subtitle-dot" aria-hidden />
+                <span>
+                  {divisions.length} {divisions.length === 1 ? 'section' : 'sections'}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+
+        {/*
+          * Both need a network — one to save the layout, the other to save a song —
+          * and both are for someone whose songbook this is, not a reader. No minimum
+          * number of songs for Arrange: with sections there is a layout to change with
+          * one song — moving it to another section — and with none at all, which is
+          * making the first division. Adding a song has no minimum either: an empty
+          * songbook is exactly the case it exists for.
+          */}
+        {online && mayEdit && (
+          <div className="screen-header-actions">
+            <button type="button" className="btn btn-sm" onClick={() => setMode('organizing')}>
+              <IconGrip size={16} />
+              Arrange
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => setMode('importing')}
+            >
+              <IconImport size={16} />
+              Add song
+            </button>
+          </div>
+        )}
+      </div>
+
+      {mayEdit && error !== null && (
+        <p className="notice notice-error mt-4" role="alert">
+          {error}
+        </p>
+      )}
+
       {divisions.length === 0 && total === 0 ? (
         /*
          * No section at all is reachable now, not just no songs: `removeSection`
@@ -208,34 +271,18 @@ export function SongbookSongs({
          * from here — the standalone import screen's own songbook picker, which
          * could reach this songbook and its "new section" shortcut regardless of
          * what this page was showing — is gone with that screen. So the buttons
-         * below have to render past this message rather than being behind it: an
-         * editor's only way back to a section is Arrange or Import, both of which
-         * can make one.
+         * above render regardless of this message: an editor's only way back to a
+         * section is Arrange or Add song, both of which can make one.
          */
-        <p className="panel p-3.5 text-sm text-muted">No songs in this songbook.</p>
+        <p className="panel mt-4 p-3.5 text-sm text-muted">No songs in this songbook.</p>
       ) : (
         <>
-          {/*
-            * How much is in here, counted from the live layer rather than from the page.
-            * The static header above says only the name for that reason.
-            */}
-          <p className="mb-3 text-sm text-muted">
-            {total} {total === 1 ? 'song' : 'songs'}
-            {divisions.length > 1 && ` · ${divisions.length} sections`}
-          </p>
-
-          {mayEdit && error !== null && (
-            <p className="notice notice-error mb-3" role="alert">
-              {error}
-            </p>
-          )}
-
           {/*
             * A card each. A section is a thing that opens and closes, with its own name and
             * its own songs, so it gets its own card rather than a hairline inside a shared
             * one — and a fold then has a visible container to happen in.
             */}
-          <ul className="card-stack">
+          <ul className="card-stack mt-4">
             {groups.map(({ section, songs }) => {
               const open = isOpen(section.id)
               const isRenaming = renaming === section.id
@@ -246,16 +293,18 @@ export function SongbookSongs({
                   <div className="flex items-center gap-1">
                     {isRenaming ? (
                       <>
-                        <input
-                          autoFocus
-                          value={draft}
-                          onChange={(event) => setDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Escape') setRenaming(null)
-                          }}
-                          aria-label={`New name for ${section.name}`}
-                          className="form-field flex-1"
-                        />
+                        <div className="row min-w-0 flex-1">
+                          <input
+                            autoFocus
+                            value={draft}
+                            onChange={(event) => setDraft(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Escape') setRenaming(null)
+                            }}
+                            aria-label={`New name for ${section.name}`}
+                            className="form-field min-w-0 flex-1"
+                          />
+                        </div>
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
@@ -292,7 +341,9 @@ export function SongbookSongs({
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {section.name}
                           </span>
-                          <span className="count-badge">{songs.length}</span>
+                          <span className="text-[0.84375rem] text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                            {songs.length} {songs.length === 1 ? 'song' : 'songs'}
+                          </span>
                           {open ? (
                             <IconChevronDown size={18} className="text-faint" />
                           ) : (
@@ -312,6 +363,7 @@ export function SongbookSongs({
                                 setRemoving(null)
                                 setError(null)
                               }}
+                              title="Rename section"
                               aria-label={`Rename ${section.name}`}
                             >
                               <IconPencil size={17} />
@@ -328,6 +380,7 @@ export function SongbookSongs({
                                 setRenaming(null)
                                 setError(null)
                               }}
+                              title="Delete section"
                               aria-label={`Remove ${section.name}`}
                               aria-expanded={isRemoving}
                             >
@@ -495,10 +548,10 @@ export function SongbookSongs({
                       </p>
                     ) : (
                       <ul>
-                        {songs.map((song) => (
+                        {songs.map((song, index) => (
                           // The id is what the way back from a song points at.
                           <li key={song.slug} id={`song-${song.slug}`}>
-                            <SongRow song={song} />
+                            <SongRow song={song} index={index + 1} />
                           </li>
                         ))}
                       </ul>
@@ -508,35 +561,6 @@ export function SongbookSongs({
             })}
           </ul>
         </>
-      )}
-
-      {/*
-        * Both need a network — one to save the layout, the other to save a song — and
-        * both are for someone whose songbook this is, not a reader. No minimum number
-        * of songs for Arrange any more: with sections there is a layout to change with
-        * one song — moving it to another section — and with none at all, which is
-        * making the first division. Import has no minimum either: an empty songbook is
-        * exactly the case it exists for.
-        */}
-      {online && mayEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-quiet btn-sm"
-            onClick={() => setMode('organizing')}
-          >
-            <IconGrip size={16} />
-            Arrange
-          </button>
-          <button
-            type="button"
-            className="btn btn-quiet btn-sm"
-            onClick={() => setMode('importing')}
-          >
-            <IconImport size={16} />
-            Import
-          </button>
-        </div>
       )}
     </>
   )

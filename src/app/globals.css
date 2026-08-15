@@ -1025,6 +1025,46 @@
     letter-spacing: -0.02em;
   }
 
+  /*
+   * A screen's own header: its name and count on the left, what you can do here on
+   * the right. Wraps under the title on a narrow screen rather than crowding it —
+   * the two pills next to "Your songbooks" have nowhere else to go on a phone.
+   */
+  .screen-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.25rem 2rem;
+    padding-bottom: 1.375rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .screen-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: none;
+  }
+
+  .screen-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0.75rem 0 0;
+    color: var(--faint);
+    font-size: 0.9375rem;
+  }
+
+  .screen-subtitle-dot {
+    display: inline-block;
+    width: 3px;
+    height: 3px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--line);
+  }
+
   /* A label over a group of controls, in the reading panel and over a form field. */
   .group-label {
     display: block;
@@ -2111,6 +2151,102 @@
     font-size: 0.75rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The badge next to a songbook's name — its count sits under the name as plain
+   * text instead (see `.row-count`), so this is the only colour left in the row.
+   * `.row-icon-lg` doubles as the same badge at the size a page's own `<h1>` wants.
+   */
+  .row-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--r-md);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .row-icon-lg {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--r-lg);
+  }
+
+  /* The count under a songbook's name, where `.count-badge`'s accent pill would
+     otherwise compete with the icon badge for the one spot of colour in the row. */
+  .row-count {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--faint);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A song's place in its section — the artist sits at the row's far end instead
+     of stacked under the title, since the section it's in already says the rest. */
+  .row-index {
+    width: 1.25rem;
+    flex: none;
+    color: var(--faint);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /*
+   * The way back to the list, above a songbook's own title — plain text, unlike
+   * `.back-link` in the header bar: nothing else here needs a pill to stand apart
+   * from, so a pill would only add chrome a caption does not need.
+   */
+  .back-plain {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    color: var(--faint);
+    font-size: 0.875rem;
+    text-decoration: none;
+  }
+
+  @media (hover: hover) {
+    .back-plain:hover {
+      color: var(--muted);
+    }
+  }
+
+  /*
+   * An explainer with one action off to the side: the backup panel, and the
+   * organized export next to it. The icon badge says what kind of thing this is
+   * before the heading is even read — the same badge language as a songbook's row.
+   */
+  .info-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 1.625rem;
+  }
+
+  /*
+   * The icon and the text as one wrapping unit, separate from the action beside
+   * them: without a minimum width of its own, `.info-card-body`'s `flex: 1` shrank
+   * to fit next to the button rather than ever letting it drop to its own line,
+   * which on a narrow screen read as one word per line beside a floating button.
+   */
+  .info-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    min-width: 0;
+    flex: 1 1 16rem;
+  }
+
+  .info-card-body {
+    min-width: 0;
+    flex: 1;
   }
 
   /*

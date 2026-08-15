@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { Footer } from '@/components/Footer'
@@ -6,6 +7,7 @@ import { SongbookProvider } from '@/components/SongbookProvider'
 import { SongbookSongs } from '@/components/SongbookSongs'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
+import { IconChevronLeft } from '@/components/icons'
 import { accessTo } from '@/lib/auth/session'
 import { songbookAccountOf } from '@/lib/data/access'
 import {
@@ -95,20 +97,20 @@ export default async function SongbookPage({ params }: Props) {
   return (
     <PrefsProvider songSlug={null}>
       <SongbookProvider initial={initial}>
-        {/* No back link: the brand next to it already leads to the list of songbooks. */}
         <TopBar current="songbooks" />
 
         <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
-          {/*
-            * The name here, the counts inside: they belong to the list, and the list is
-            * the live one. Counting here would have this line and the cards below it
-            * disagree on the same screen until the next rebuild — a section created a
-            * minute ago is in the cards immediately.
-            */}
-          <header className="mb-4">
-            <h1 className="screen-title">{songbook.name}</h1>
-          </header>
+          <Link href="/" className="back-plain mb-3.5">
+            <IconChevronLeft size={15} />
+            Songbooks
+          </Link>
 
+          {/*
+            * The name and its counts live inside `SongbookSongs`, not here: they come
+            * from the same live layer the cards below read, so a section created a
+            * minute ago is already counted there instead of waiting for the next
+            * rebuild.
+            */}
           <SongbookSongs slug={slug} songs={mine} />
 
           <Footer />

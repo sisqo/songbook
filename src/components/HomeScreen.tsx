@@ -8,6 +8,7 @@ import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
 import {
+  IconBooks,
   IconChevronDown,
   IconChevronRight,
   IconCopy,
@@ -60,6 +61,9 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
+  /** The create form is a reveal under the header's own "New songbook", not a
+      fixture at the foot of the list — closed again once a songbook is made. */
+  const [creating, setCreating] = useState(false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [removing, setRemoving] = useState<string | null>(null)
@@ -227,6 +231,90 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
         <ArrangeSongbooks rows={groups} onDone={() => setMode('list')} />
       ) : (
         <>
+          <div className="screen-header mt-8">
+            <div className="min-w-0">
+              <h1 className="screen-title">Your songbooks</h1>
+              <p className="screen-subtitle">
+                <span>
+                  {groups.length} {groups.length === 1 ? 'songbook' : 'songbooks'}
+                </span>
+                <span className="screen-subtitle-dot" aria-hidden />
+                <span>
+                  {songs.length} {songs.length === 1 ? 'song' : 'songs'}
+                </span>
+              </p>
+            </div>
+
+            {mayEdit && (
+              <div className="screen-header-actions">
+                {online && groups.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => setMode('organizing')}
+                  >
+                    <IconGrip size={16} />
+                    Arrange
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={!online}
+                  onClick={() => {
+                    setCreating(!creating)
+                    setNewName('')
+                  }}
+                  aria-expanded={creating}
+                >
+                  <IconPlus size={16} />
+                  New songbook
+                </button>
+              </div>
+            )}
+          </div>
+
+          {creating && (
+            <form
+              className="panel mt-4 flex flex-wrap items-center gap-2 p-3.5"
+              onSubmit={async (event) => {
+                event.preventDefault()
+                if (await run(() => state.create(newName))) {
+                  setNewName('')
+                  setCreating(false)
+                }
+              }}
+            >
+              <label className="min-w-0 flex-1">
+                <span className="sr-only">New songbook name</span>
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') setCreating(false)
+                  }}
+                  placeholder="Songbook name"
+                  className="form-field"
+                />
+              </label>
+              <button
+                type="submit"
+                className="btn btn-primary btn-sm"
+                disabled={busy || newName.trim() === ''}
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet btn-sm"
+                onClick={() => setCreating(false)}
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+
           {/*
             * Offline and error notices for the management block below, raised above both
             * the list and the empty state: a failed create shows up even with zero
@@ -253,11 +341,11 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
               * who cannot edit to create a songbook from a menu entry their access does not
               * draw would send them hunting for something that is not there — and the
               * action behind it would refuse them anyway. The editor's copy used to point
-              * at a menu; now the create form is a few inches below, on this same screen.
+              * at a menu; now "New songbook" is in the header just above.
               */
             <p className="mt-8 text-center text-sm text-muted">
               {mayEdit
-                ? 'No songbook yet. Create one with the form below.'
+                ? 'No songbook yet. Create one with "New songbook" above.'
                 : 'No songbook yet. When one arrives, it will appear here.'}
             </p>
           ) : (
@@ -278,16 +366,21 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                     <div className="flex items-center gap-1 pr-1">
                       {isRenaming ? (
                         <>
-                          <input
-                            autoFocus
-                            value={draft}
-                            onChange={(event) => setDraft(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Escape') setRenaming(null)
-                            }}
-                            aria-label={`New name for ${group.name}`}
-                            className="form-field flex-1"
-                          />
+                          <div className="row min-w-0 flex-1">
+                            <span className="row-icon" aria-hidden>
+                              <IconBooks size={19} />
+                            </span>
+                            <input
+                              autoFocus
+                              value={draft}
+                              onChange={(event) => setDraft(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Escape') setRenaming(null)
+                              }}
+                              aria-label={`New name for ${group.name}`}
+                              className="form-field min-w-0 flex-1"
+                            />
+                          </div>
                           <button
                             type="button"
                             className="btn btn-primary btn-sm"
@@ -311,8 +404,15 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                       ) : (
                         <>
                           <Link href={`/songbooks/${group.slug}`} className="row min-w-0 flex-1">
-                            <span className="min-w-0 flex-1 truncate font-medium">{group.name}</span>
-                            <span className="count-badge">{group.count}</span>
+                            <span className="row-icon" aria-hidden>
+                              <IconBooks size={19} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">{group.name}</span>
+                              <span className="row-count">
+                                {group.count} {group.count === 1 ? 'song' : 'songs'}
+                              </span>
+                            </span>
                             <IconChevronRight size={18} className="text-faint" />
                           </Link>
 
@@ -329,10 +429,32 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                                   setCopying(null)
                                   setError(null)
                                 }}
+                                title="Rename"
                                 aria-label={`Rename ${group.name}`}
                               >
                                 <IconPencil size={17} />
                               </button>
+                              {/*
+                                * A global-owner power over two accounts at once
+                                * (`copySongbook`'s own comment on why), so shown only to one —
+                                * nobody else has a second account to copy into anyway. The
+                                * cross-account destination picker underneath is unchanged;
+                                * only what this button is called changed, to say what it does
+                                * rather than how — the account it lands in is chosen next.
+                                */}
+                              {isGlobalOwner && (
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  disabled={!online}
+                                  onClick={() => void toggleCopy(group.slug)}
+                                  title="Duplicate"
+                                  aria-label={`Duplicate ${group.name}`}
+                                  aria-expanded={isCopying}
+                                >
+                                  <IconCopy size={17} />
+                                </button>
+                              )}
                               {/*
                                 * Turns red when its own confirmation is open, so it is clear
                                 * which row the question below the list belongs to.
@@ -349,28 +471,12 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                                   setCopying(null)
                                   setError(null)
                                 }}
+                                title="Delete"
                                 aria-label={`Remove ${group.name}`}
                                 aria-expanded={isRemoving}
                               >
                                 <IconTrash size={17} />
                               </button>
-                              {/*
-                                * A global-owner power over two accounts at once
-                                * (`copySongbook`'s own comment on why), so shown only to one —
-                                * nobody else has a second account to copy into anyway.
-                                */}
-                              {isGlobalOwner && (
-                                <button
-                                  type="button"
-                                  className="icon-button"
-                                  disabled={!online}
-                                  onClick={() => void toggleCopy(group.slug)}
-                                  aria-label={`Copy ${group.name} to another account`}
-                                  aria-expanded={isCopying}
-                                >
-                                  <IconCopy size={17} />
-                                </button>
-                              )}
                             </>
                           )}
                         </>
@@ -610,44 +716,6 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
             </ul>
           )}
 
-          {mayEdit && online && groups.length > 1 && (
-            <button
-              type="button"
-              className="btn btn-quiet btn-sm mt-4"
-              onClick={() => setMode('organizing')}
-            >
-              <IconGrip size={16} />
-              Arrange
-            </button>
-          )}
-
-          {mayEdit && (
-            <form
-              className="mt-4 flex gap-2"
-              onSubmit={async (event) => {
-                event.preventDefault()
-                if (await run(() => state.create(newName))) setNewName('')
-              }}
-            >
-              <label className="flex-1">
-                <span className="sr-only">New songbook name</span>
-                <input
-                  value={newName}
-                  onChange={(event) => setNewName(event.target.value)}
-                  placeholder="New songbook"
-                  className="form-field min-h-12 rounded-pill px-[1.125rem]"
-                />
-              </label>
-              <button
-                type="submit"
-                className="btn btn-primary min-h-12 px-5"
-                disabled={!online || busy || newName.trim() === ''}
-              >
-                <IconPlus size={16} />
-                Create
-              </button>
-            </form>
-          )}
         </>
       )}
 
