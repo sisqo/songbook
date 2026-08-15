@@ -3,7 +3,14 @@ import { describe, it } from 'node:test'
 
 import { parseChordPro } from '../chordpro'
 import type { Song } from '../data/types'
-import { choproFilename, toChoproFile } from './export'
+import {
+  choproFilename,
+  type ExportRow,
+  numbered,
+  organizeExport,
+  sanitizeFilename,
+  toChoproFile,
+} from './export'
 
 const song: Song = {
   slug: 'certe-notti',
@@ -80,5 +87,151 @@ describe('toChoproFile', () => {
 describe('choproFilename', () => {
   it('names the file after the slug, which is how the seed reads it back', () => {
     assert.equal(choproFilename('certe-notti'), 'certe-notti.chopro')
+  })
+})
+
+describe('sanitizeFilename', () => {
+  it('leaves an ordinary title alone', () => {
+    assert.equal(sanitizeFilename('Nel blu dipinto di blu'), 'Nel blu dipinto di blu')
+  })
+
+  it('replaces characters no filesystem accepts, slashes included', () => {
+    // `/` gets no special pass: it is this archive's own folder separator, and a
+    // title that contained one would otherwise invent a folder nobody asked for.
+    assert.equal(sanitizeFilename('Rock/Pop: Coro?'), 'Rock-Pop- Coro-')
+  })
+
+  it('trims the trailing dots and spaces Windows refuses to keep', () => {
+    assert.equal(sanitizeFilename('Titolo... '), 'Titolo')
+  })
+
+  it('never returns an empty name', () => {
+    assert.equal(sanitizeFilename('...'), 'Untitled')
+  })
+
+  it('takes a caller-given fallback instead, for a name with no number ahead of it to tell it apart', () => {
+    // A songbook folder carries no number (only the sections and songs inside it
+    // do), so two songbooks that both sanitize away to nothing would otherwise
+    // collide on the same constant — the slug a caller passes here is unique by
+    // construction, unlike 'Untitled'.
+    assert.equal(sanitizeFilename('...', 'cartoni-animati'), 'cartoni-animati')
+  })
+})
+
+describe('numbered', () => {
+  it('pads to two digits and sanitizes the name', () => {
+    assert.equal(numbered(3, 'Coro'), '03 - Coro')
+    assert.equal(numbered(12, 'Coro'), '12 - Coro')
+  })
+})
+
+describe('organizeExport', () => {
+  const row = (over: Partial<Song> & { songbookName: string; sectionName: string }): ExportRow => ({
+    songbookName: over.songbookName,
+    sectionName: over.sectionName,
+    song: {
+      slug: over.slug ?? 'song',
+      title: over.title ?? 'Song',
+      artist: null,
+      tags: [],
+      songbookSlug: over.songbookSlug ?? 'canzoniere',
+      sectionId: over.sectionId ?? 1,
+      body: over.body ?? '[Am]Testo',
+      updatedAt: '2026-08-11T06:00:00.000Z',
+    },
+  })
+
+  it('names one file per song, inside a numbered section inside the songbook', () => {
+    const rows: ExportRow[] = [
+      row({
+        songbookName: 'Repertorio',
+        sectionName: 'Strofe',
+        sectionId: 1,
+        slug: 'uno',
+        title: 'Uno',
+      }),
+      row({
+        songbookName: 'Repertorio',
+        sectionName: 'Strofe',
+        sectionId: 1,
+        slug: 'due',
+        title: 'Due',
+      }),
+      row({
+        songbookName: 'Repertorio',
+        sectionName: 'Ritornelli',
+        sectionId: 2,
+        slug: 'tre',
+        title: 'Tre',
+      }),
+    ]
+
+    const files = organizeExport(rows, 'song')
+
+    assert.deepEqual(
+      files.map((file) => file.name),
+      [
+        'Repertorio/01 - Strofe/01 - Uno.chopro',
+        'Repertorio/01 - Strofe/02 - Due.chopro',
+        'Repertorio/02 - Ritornelli/01 - Tre.chopro',
+      ],
+    )
+  })
+
+  it('restarts section numbering at 1 in the next songbook', () => {
+    const rows: ExportRow[] = [
+      row({ songbookName: 'Uno', sectionName: 'Coro', sectionId: 1, songbookSlug: 'uno' }),
+      row({ songbookName: 'Due', sectionName: 'Coro', sectionId: 2, songbookSlug: 'due' }),
+    ]
+
+    const files = organizeExport(rows, 'song')
+
+    assert.deepEqual(
+      files.map((file) => file.name),
+      ['Uno/01 - Coro/01 - Song.chopro', 'Due/01 - Coro/01 - Song.chopro'],
+    )
+  })
+
+  it('pastes every song of a section into its one file, separated by {new_song}', () => {
+    const rows: ExportRow[] = [
+      row({ songbookName: 'Repertorio', sectionName: 'Strofe', sectionId: 1, title: 'Uno' }),
+      row({ songbookName: 'Repertorio', sectionName: 'Strofe', sectionId: 1, title: 'Due' }),
+    ]
+
+    const files = organizeExport(rows, 'section')
+
+    assert.deepEqual(
+      files.map((file) => file.name),
+      ['Repertorio/01 - Strofe.chopro'],
+    )
+
+    const [content] = files.map((file) => file.content)
+    assert.ok(content.includes('{title: Uno}'))
+    assert.ok(content.includes('{title: Due}'))
+    assert.ok(/\{title: Uno\}[\s\S]*\{new_song\}[\s\S]*\{title: Due\}/.test(content))
+  })
+
+  it('produces nothing for an empty songbook or section, since neither ever reaches it', () => {
+    assert.deepEqual(organizeExport([], 'song'), [])
+    assert.deepEqual(organizeExport([], 'section'), [])
+  })
+
+  it('tells two songbooks apart by slug when both of their names sanitize away to nothing', () => {
+    // Neither name is empty (both pass the "not empty" check a songbook is created
+    // under), but both are only dots — the one thing left of each after this file's
+    // own trailing-dot rule runs. A folder carries no number to tell them apart, so
+    // without the slug fallback both would become the same `Untitled` folder and one
+    // songbook's songs would land inside the other's.
+    const rows: ExportRow[] = [
+      row({ songbookName: '...', songbookSlug: 'uno', sectionName: 'Coro', sectionId: 1 }),
+      row({ songbookName: '..', songbookSlug: 'due', sectionName: 'Coro', sectionId: 2 }),
+    ]
+
+    const files = organizeExport(rows, 'song')
+
+    assert.deepEqual(
+      files.map((file) => file.name),
+      ['uno/01 - Coro/01 - Song.chopro', 'due/01 - Coro/01 - Song.chopro'],
+    )
   })
 })

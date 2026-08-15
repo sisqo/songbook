@@ -647,6 +647,40 @@ ed è un compromesso accettato consapevolmente.
 Il ripristino è il seed di solo inserimento: si rimettono i file in `content/`, si lancia
 `npm run seed`, e torna tutto ciò che manca senza toccare ciò che c'è.
 
+### Export organizzato
+
+Un secondo export, distinto da «Scarica tutto» e senza toccarlo: quello resta piatto, uno
+slug a file, perché è anche il percorso di ripristino — `npm run seed` rilegge `content/` con
+`readdir` non ricorsivo e ricava lo slug dal nome del file stesso, quindi cartelle o nomi
+numerati lì dentro lo romperebbero. L'export organizzato è pensato per un uso diverso:
+sfogliare, stampare, portarsi il canzoniere fuori dall'app — non per tornare nel database.
+
+Due pulsanti, accanto a «Scarica tutto» nel pannello Export:
+
+- **Esporta per canzone** — un `.chopro` a canzone, dentro `<Canzoniere>/<NN - Sezione>/<NN -
+  Canzone>.chopro`. Una cartella per canzoniere (solo il nome, senza numero: a numerare sono
+  le canzoni e le sezioni, non i canzonieri), una sottocartella per sezione.
+- **Esporta per sezione** — un `.chopro` a sezione, `<Canzoniere>/<NN - Sezione>.chopro`, con
+  tutte le canzoni di quella sezione incollate in sequenza e separate da `{new_song}` — la
+  stessa direttiva ChordPro standard che l'import sa già dividere da un incolla-multiplo, così
+  lo stesso file si taglierebbe di nuovo giusto se mai rientrasse da quella porta. Ogni canzone
+  mantiene tutte le proprie direttive, `{canzoniere:}`/`{sezione:}` comprese, come nell'export
+  attuale: sono ripetute su ogni canzone dello stesso file, ma restano ciò che rende una singola
+  canzone leggibile da sola se mai finisse fuori dal file o dalla cartella che oggi le tiene.
+
+La numerazione (`NN - `, due cifre, sempre presente) segue l'ordinamento già in mano
+all'utente — `sections.position` entro il canzoniere, `songs.position` entro la sezione,
+alfabetico dov'è ancora `null` — non un nuovo criterio. Il nome del file è il titolo così com'è
+scritto, ripulito solo dei caratteri che un filesystem non accetta: è pensato per essere letto,
+non per essere uno slug. Una sezione o un canzoniere vuoti non producono un file o una
+cartella vuoti.
+
+È una fotografia dell'ordine di adesso, non un archivio da confrontare nel tempo: la stessa
+sessione ha appena aggiunto il trascinamento a tutti e tre i livelli, quindi i numeri di un
+export di ieri e uno di oggi possono non coincidere più — accettato consapevolmente, per lo
+stesso motivo per cui il backup non ha un token: è uno strumento per il momento in cui serve,
+non un sistema da tenere sincronizzato.
+
 ### Ciò che può risorgere
 
 Un effetto da conoscere, non un difetto da correggere: se cancelli un brano dall'app e il suo
@@ -1964,6 +1998,21 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 | Sorgente dell'avatar | L'indirizzo email (iniziali + colore derivati), mai il profilo Google | Un account per email e password non ha nome né foto; due fonti diverse avrebbero fatto sembrare due funzionalità quella che è una sola |
 | Colore dell'avatar nei due temi | Fisso, non ridefinito in dark mode | Un colore per persona non è parte della palette della pagina come `--accent`; non deve cambiare con il tema, come non cambierebbe una foto |
 
+### Export organizzato (pianificato, non ancora costruito)
+
+| Decisione | Scelta | Perché |
+|---|---|---|
+| Rapporto con l'export-backup esistente | Nuovo e separato; «Scarica tutto» resta piatto e invariato | Quello è anche il percorso di ripristino (`npm run seed` legge `content/` con `readdir` non ricorsivo, slug ricavato dal nome del file): cartelle o nomi numerati lì dentro lo romperebbero |
+| Granularità | Due modalità, non tre: per canzone e per sezione | «Oppure ogni canzoniere» del messaggio originale si riferiva alle cartelle, non a un terzo formato — confermato esplicitamente |
+| Struttura cartelle (modalità per canzone) | Sottocartella per sezione dentro la cartella del canzoniere | Rispecchia il modello a tre livelli già in app; facile da sfogliare a mano |
+| Formato numero | `NN - Nome`, due cifre, zero iniziale | Ordina bene in qualunque file manager fino a 99 elementi per contenitore; leggibile |
+| Cartelle canzoniere | Solo il nome, mai numerate | L'utente ha specificato esplicitamente che a numerare sono canzoni e sezioni, non i canzonieri |
+| Formato file | `.chopro`, non PDF | L'unico formato che l'app sa già scrivere; un PDF impaginato è un motore da costruire da zero, non esiste ancora nulla del genere |
+| Base del nome file | Il titolo leggibile, ripulito dei soli caratteri illegali per un filesystem | Pensato per essere sfogliato da una persona, non per un URL; distinto di proposito dallo slug dell'export-backup |
+| Separatore fra canzoni nel file di sezione | `{new_song}`, la direttiva ChordPro standard | Già usata in lettura dall'import per dividere un incolla-multiplo; lo stesso file, se mai re-incollato, si taglierebbe di nuovo correttamente |
+| Numerazione e riordino | Accettato che i numeri di un export invecchino a ogni trascinamento | È una fotografia dell'ordine attuale, non un archivio da confrontare nel tempo — stesso spirito del backup senza token |
+| Punto d'accesso | Due pulsanti distinti nel pannello Export, non un selettore | Chiaro a colpo d'occhio, zero scelte da fare prima di scaricare |
+
 ## Domande aperte
 
 1. **Capotasto** — escluso dalla v1 (lo stepper a semitoni copre il bisogno principale).
@@ -2004,10 +2053,12 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 11. **Rinominare uno slug di brano** — non previsto nemmeno dall'import: lo slug si genera
     dal titolo alla creazione e poi resta. Cambiarlo orfanerebbe le preferenze salvate di
     quel brano, quindi servirebbe una tabella di alias.
-12. **Come si produce l'archivio dell'export** — un `.chopro` per brano dentro uno zip
-    richiede una libreria (`fflate` è piccola e senza dipendenze, da verificare su Node 18).
-    L'alternativa senza dipendenze è un unico file JSON, che però il seed dovrebbe imparare a
-    leggere e che non è più un archivio di `.chopro`. Da decidere in implementazione.
+12. ~~**Come si produce l'archivio dell'export**~~ — risolta: `fflate` (piccola, senza
+    dipendenze), un `.chopro` per brano, zip piatto — questo è anche il percorso di
+    ripristino, quindi resta senza cartelle né numeri. La domanda che ne era rimasta aperta,
+    un export pensato per essere sfogliato piuttosto che ripristinato, è risolta a parte in
+    *Export organizzato* (Decisioni), con due modalità (per canzone, per sezione), cartelle
+    per canzoniere e sezione, e numerazione — non ancora implementata.
 13. **Qualità della conversione** — l'euristica «accordi sopra il testo» fallirà su sorgenti
     con tabulazioni, etichette di sezione in mezzo, o accordi e testo sulla stessa riga. La
     preview e il corpo modificabile sono la mitigazione; se in pratica sbaglia troppo spesso

@@ -26,7 +26,14 @@ import { revalidateSong } from '@/lib/revalidate'
 import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
-import { choproFilename, toChoproFile } from './export'
+import {
+  choproFilename,
+  type ExportedFile,
+  type ExportGranularity,
+  type ExportRow,
+  organizeExport,
+  toChoproFile,
+} from './export'
 import type { Decision, DeleteResult, SaveFailure, SaveResult, SongInput } from './types'
 
 /**
@@ -370,10 +377,7 @@ export async function deleteSong(slug: string): Promise<DeleteResult> {
   }
 }
 
-export interface ExportedFile {
-  name: string
-  content: string
-}
+export type { ExportedFile } from './export'
 
 /**
  * Every song of the caller's **current account** as a `.chopro`, ready to be zipped by
@@ -417,4 +421,37 @@ export async function exportAll(): Promise<ExportedFile[] | null> {
       row.sectionId === null ? null : (nameById.get(row.sectionId) ?? null),
     ),
   }))
+}
+
+/**
+ * Every song of the caller's **current account**, organized into the folders and
+ * numbered names a person would browse or print from — one folder per songbook, a
+ * numbered section subfolder inside it, and, depending on `granularity`, either one
+ * numbered `.chopro` per song or one numbered `.chopro` per section with every one
+ * of its songs pasted in behind it.
+ *
+ * Distinct from `exportAll` on purpose: that one is also the restore path `npm run
+ * seed` reads back — flat, one slug-named file per song — and folders or numbered
+ * names would break it. This export never feeds back into the app; see
+ * `organizeExport`'s own comment for how the numbering and the grouping work.
+ */
+export async function exportOrganized(granularity: ExportGranularity): Promise<ExportedFile[] | null> {
+  const editor = await asEditor()
+  if (!editor.ok) return null
+
+  const rows = await db()
+    .select({ song: songs, songbookName: songbooks.name, sectionName: sections.name })
+    .from(songs)
+    .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+    .innerJoin(sections, eq(songs.sectionId, sections.id))
+    .where(eq(songbooks.accountOwnerEmail, editor.accountOwnerEmail))
+    .orderBy(asc(songbooks.position), asc(sections.position), asc(songs.position), asc(songs.title))
+
+  const exportRows: ExportRow[] = rows.map((row) => ({
+    song: rowToSong(row.song),
+    songbookName: row.songbookName,
+    sectionName: row.sectionName,
+  }))
+
+  return organizeExport(exportRows, granularity)
 }
