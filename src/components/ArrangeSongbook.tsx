@@ -96,6 +96,8 @@ export function ArrangeSongbook({
   const [draft, setDraft] = useState('')
   const [removing, setRemoving] = useState<number | null>(null)
   const [destination, setDestination] = useState('')
+  /** Set once "Delete everything instead" is tapped, to ask for it a second time. */
+  const [purging, setPurging] = useState<number | null>(null)
   const [newName, setNewName] = useState('')
 
   const elements = useRef(new Map<string, HTMLLIElement>())
@@ -434,6 +436,7 @@ export function ArrangeSongbook({
                       onClick={() => {
                         setRemoving(isRemoving ? null : row.sectionId)
                         setDestination(String(others(row.sectionId)[0]?.id ?? ''))
+                        setPurging(null)
                         setRenaming(null)
                         setError(null)
                       }}
@@ -546,12 +549,61 @@ export function ArrangeSongbook({
               )
             }
 
+            // A second tap of "Delete everything instead", asked once more because
+            // nothing here destroys anything quietly.
+            if (purging === id) {
+              return (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex-1">
+                    Delete &quot;{name}&quot; and all {held} {held === 1 ? 'song' : 'songs'} in
+                    it? This can&apos;t be undone.
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (await run(() => state.purgeSection(id))) {
+                        setRemoving(null)
+                        setPurging(null)
+                      }
+                    }}
+                  >
+                    Delete everything
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-sm"
+                    onClick={() => setPurging(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )
+            }
+
             if (elsewhere.length === 0) {
               return (
-                <span>
-                  Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s no other
-                  section to move them to. Create one before removing this one.
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex-1">
+                    Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s no other
+                    section to move them to.
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    onClick={() => setPurging(id)}
+                  >
+                    Delete everything
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-sm"
+                    onClick={() => setRemoving(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
               )
             }
 
@@ -586,6 +638,13 @@ export function ArrangeSongbook({
                   }}
                 >
                   Move and remove
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-quiet btn-sm"
+                  onClick={() => setPurging(id)}
+                >
+                  Delete everything instead
                 </button>
                 <button
                   type="button"

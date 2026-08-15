@@ -17,6 +17,7 @@ import {
   createSongbook,
   loadSongbooks,
   moveSong,
+  purgeSongbook,
   removeSongbook,
   renameSongbook,
 } from '@/lib/songbooks/actions'
@@ -34,6 +35,7 @@ import type { Section } from '@/lib/data/types'
 import {
   arrangeSongbook,
   createSection,
+  purgeSection,
   removeSection,
   renameSection,
 } from '@/lib/sections/actions'
@@ -47,12 +49,16 @@ interface SongbookContextValue extends SongbookState {
   create: (name: string) => Promise<CreateResult>
   rename: (slug: string, name: string) => Promise<WriteResult>
   remove: (slug: string, moveTo: string | null) => Promise<WriteResult>
+  /** Deletes a songbook and everything in it — its sections and their songs, no move. */
+  purge: (slug: string) => Promise<WriteResult>
   /** Sends a song to a section, of this songbook or of another. */
   move: (songSlug: string, sectionId: number) => Promise<WriteResult>
 
   addSection: (songbookSlug: string, name: string) => Promise<CreateSectionResult>
   renameSection: (id: number, name: string) => Promise<WriteResult>
   removeSection: (id: number, moveTo: number | null) => Promise<WriteResult>
+  /** Deletes a section and every song inside it, no move. */
+  purgeSection: (id: number) => Promise<WriteResult>
   arrange: (songbookSlug: string, groups: ArrangedSection[]) => Promise<WriteResult>
 
   nameOf: (slug: string | null | undefined) => string | null
@@ -142,12 +148,14 @@ export function SongbookProvider({
       create: async (name) => afterWrite(await createSongbook(name)),
       rename: async (slug, name) => afterWrite(await renameSongbook(slug, name)),
       remove: async (slug, moveTo) => afterWrite(await removeSongbook(slug, moveTo)),
+      purge: async (slug) => afterWrite(await purgeSongbook(slug)),
       move: async (songSlug, sectionId) => afterWrite(await moveSong(songSlug, sectionId)),
 
       addSection: async (songbookSlug, name) =>
         afterWrite(await createSection(songbookSlug, name)),
       renameSection: async (id, name) => afterWrite(await renameSection(id, name)),
       removeSection: async (id, moveTo) => afterWrite(await removeSection(id, moveTo)),
+      purgeSection: async (id) => afterWrite(await purgeSection(id)),
       arrange: async (songbookSlug, groups) =>
         afterWrite(await arrangeSongbook(songbookSlug, groups)),
 

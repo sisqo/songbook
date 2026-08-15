@@ -10,13 +10,16 @@ import { SongRow } from '@/components/SongRow'
 import {
   IconChevronDown,
   IconChevronRight,
+  IconCopy,
   IconOffline,
   IconPencil,
   IconPlus,
   IconSearch,
   IconTrash,
 } from '@/components/icons'
+import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
+import { copySongbook } from '@/lib/songbooks/actions'
 import { WRITE_MESSAGE, countBySlug, type WriteResult } from '@/lib/songbooks/types'
 import type { SongIndexEntry } from '@/lib/search-index'
 
@@ -36,7 +39,7 @@ import type { SongIndexEntry } from '@/lib/search-index'
 export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   const state = useSongbooks()
   const { songbooks, sections, assignments, nameOf, online } = state
-  const { mayEdit } = useRole()
+  const { mayEdit, isGlobalOwner } = useRole()
 
   const [songs] = useLiveIndex(baked)
   const [query, setQuery] = useState('')
@@ -57,6 +60,43 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
   const [draft, setDraft] = useState('')
   const [removing, setRemoving] = useState<string | null>(null)
   const [destination, setDestination] = useState('')
+  /** Set once "Delete everything instead" is tapped, to ask for it a second time. */
+  const [purging, setPurging] = useState<string | null>(null)
+
+  /*
+   * Copying a songbook into another account — a **global owner** power, not an editor
+   * one (see `copySongbook`'s own comment on why), so kept apart from `run`/`busy`/
+   * `error` above rather than folded into them: it acts on an account that is not the
+   * one this screen is reading from, and its own panel needs a list of destinations no
+   * other action here has any reason to fetch.
+   */
+  const [copying, setCopying] = useState<string | null>(null)
+  const [copyTargets, setCopyTargets] = useState<AccountSummary[] | null>(null)
+  const [copyDestination, setCopyDestination] = useState('')
+  const [copyBusy, setCopyBusy] = useState(false)
+  const [copyError, setCopyError] = useState<string | null>(null)
+  const [copyDone, setCopyDone] = useState<string | null>(null)
+
+  const toggleCopy = async (slug: string) => {
+    if (copying === slug) {
+      setCopying(null)
+      return
+    }
+
+    setCopying(slug)
+    setRenaming(null)
+    setRemoving(null)
+    setCopyError(null)
+    setCopyDone(null)
+    setCopyTargets(null)
+    setCopyDestination('')
+
+    try {
+      setCopyTargets((await listAllAccounts()) ?? [])
+    } catch {
+      setCopyTargets([])
+    }
+  }
 
   const run = async (action: () => Promise<WriteResult>) => {
     setBusy(true)
@@ -212,6 +252,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
               {groups.map((group) => {
                 const isRenaming = renaming === group.slug
                 const isRemoving = removing === group.slug
+                const isCopying = copying === group.slug
 
                 return (
                   <li key={group.slug}>
@@ -272,6 +313,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                                   setRenaming(group.slug)
                                   setDraft(group.name)
                                   setRemoving(null)
+                                  setCopying(null)
                                   setError(null)
                                 }}
                                 aria-label={`Rename ${group.name}`}
@@ -289,7 +331,9 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                                 onClick={() => {
                                   setRemoving(isRemoving ? null : group.slug)
                                   setDestination(others(group.slug)[0]?.slug ?? '')
+                                  setPurging(null)
                                   setRenaming(null)
+                                  setCopying(null)
                                   setError(null)
                                 }}
                                 aria-label={`Remove ${group.name}`}
@@ -297,6 +341,23 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                               >
                                 <IconTrash size={17} />
                               </button>
+                              {/*
+                                * A global-owner power over two accounts at once
+                                * (`copySongbook`'s own comment on why), so shown only to one —
+                                * nobody else has a second account to copy into anyway.
+                                */}
+                              {isGlobalOwner && (
+                                <button
+                                  type="button"
+                                  className="icon-button"
+                                  disabled={!online}
+                                  onClick={() => void toggleCopy(group.slug)}
+                                  aria-label={`Copy ${group.name} to another account`}
+                                  aria-expanded={isCopying}
+                                >
+                                  <IconCopy size={17} />
+                                </button>
+                              )}
                             </>
                           )}
                         </>
@@ -337,13 +398,61 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                             )
                           }
 
+                          // A second tap of "Delete everything instead", asked once more
+                          // because nothing here destroys anything quietly.
+                          if (purging === group.slug) {
+                            return (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="flex-1">
+                                  Delete &quot;{group.name}&quot; and all {held}{' '}
+                                  {held === 1 ? 'song' : 'songs'} in it? This can&apos;t be undone.
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger btn-sm"
+                                  disabled={busy}
+                                  onClick={async () => {
+                                    if (await run(() => state.purge(group.slug))) {
+                                      setRemoving(null)
+                                      setPurging(null)
+                                    }
+                                  }}
+                                >
+                                  Delete everything
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-quiet btn-sm"
+                                  onClick={() => setPurging(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )
+                          }
+
                           if (others(group.slug).length === 0) {
                             return (
-                              <span>
-                                Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s no
-                                other songbook to move them to. Create one before removing this
-                                one.
-                              </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="flex-1">
+                                  Contains {held} {held === 1 ? 'song' : 'songs'} and there&apos;s
+                                  no other songbook to move them to.
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger btn-sm"
+                                  onClick={() => setPurging(group.slug)}
+                                >
+                                  Delete everything
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-quiet btn-sm"
+                                  onClick={() => setRemoving(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             )
                           }
 
@@ -382,6 +491,13 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                               <button
                                 type="button"
                                 className="btn btn-quiet btn-sm"
+                                onClick={() => setPurging(group.slug)}
+                              >
+                                Delete everything instead
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-quiet btn-sm"
                                 onClick={() => setRemoving(null)}
                               >
                                 Cancel
@@ -389,6 +505,90 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
                             </div>
                           )
                         })()}
+                      </div>
+                    )}
+
+                    {isCopying && (
+                      <div className="panel mx-2 mb-2 p-3.5 text-sm">
+                        {copyDone !== null ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="flex-1">{copyDone}</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              onClick={() => setCopying(null)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            {copyError !== null && (
+                              <p className="notice notice-error w-full" role="alert">
+                                {copyError}
+                              </p>
+                            )}
+                            <span className="flex-1">Copy &quot;{group.name}&quot; into:</span>
+                            {copyTargets === null ? (
+                              <span className="text-muted">Loading accounts…</span>
+                            ) : copyTargets.length === 0 ? (
+                              <span className="text-muted">No other account exists yet.</span>
+                            ) : (
+                              <>
+                                <label className="picker picker-raised">
+                                  <span className="sr-only">Destination account</span>
+                                  <select
+                                    value={copyDestination}
+                                    onChange={(event) => setCopyDestination(event.target.value)}
+                                    className="picker-select"
+                                  >
+                                    <option value="" disabled>
+                                      Choose an account
+                                    </option>
+                                    {copyTargets.map((account) => (
+                                      <option key={account.ownerEmail} value={account.ownerEmail}>
+                                        {account.ownerEmail}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <IconChevronDown size={14} />
+                                </label>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  disabled={copyBusy || copyDestination === ''}
+                                  onClick={async () => {
+                                    setCopyBusy(true)
+                                    setCopyError(null)
+                                    try {
+                                      const result = await copySongbook(group.slug, copyDestination)
+                                      if (result.ok) {
+                                        setCopyDone(
+                                          'Copied. It will appear there after the next rebuild.',
+                                        )
+                                      } else {
+                                        setCopyError(WRITE_MESSAGE[result.reason])
+                                      }
+                                    } catch {
+                                      setCopyError(WRITE_MESSAGE.failed)
+                                    } finally {
+                                      setCopyBusy(false)
+                                    }
+                                  }}
+                                >
+                                  Copy
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-quiet btn-sm"
+                              onClick={() => setCopying(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </li>

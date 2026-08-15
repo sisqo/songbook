@@ -16,6 +16,7 @@ import { type ArrangedSection, sameMembers } from '@/lib/songbooks/order'
 import type { CreateSectionResult, WriteResult } from '@/lib/songbooks/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { sections, songs } from '@/lib/db/schema'
+import { revalidateSongbook } from '@/lib/revalidate'
 
 /** Postgres' code for a unique violation, which on this table can only be the name. */
 const DUPLICATE = '23505'
@@ -175,6 +176,59 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
     })
   } catch (error) {
     console.error('removeSection failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/**
+ * Deletes a section outright — itself and every song inside it — with nothing moved
+ * anywhere first. The songbook itself, and its other sections, are untouched.
+ *
+ * `removeSection` above always asks where its songs should go, and that question has no
+ * answer for a songbook with only one section, or for a reader who wants none of these
+ * songs kept at all: today that leaves "create another section first" as the only way
+ * through, purely to satisfy a database constraint nobody asked to work around. This is
+ * that door instead, and unlike `removeSection` it does not refuse to take the last
+ * section a songbook has — an empty songbook is already a reachable state (see
+ * `SongbookSongs`'s own comment on why), and there is nothing more special about reaching
+ * it by deleting a full section than an empty one.
+ */
+export async function purgeSection(id: number): Promise<WriteResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const target = await editableSection(id)
+  if (!target.ok) return target
+  const songbookSlug = target.songbookSlug
+
+  try {
+    const deletedSlugs = await db().transaction(async (tx) => {
+      const deleted = await tx
+        .delete(songs)
+        .where(eq(songs.sectionId, id))
+        .returning({ slug: songs.slug })
+      await tx.delete(sections).where(eq(sections.id, id))
+
+      // 1..N again, so a removal never leaves a gap in the order of the divisions.
+      const rest = await tx
+        .select({ id: sections.id })
+        .from(sections)
+        .where(eq(sections.songbookSlug, songbookSlug))
+        .orderBy(asc(sections.position))
+
+      for (const [index, section] of rest.entries()) {
+        await tx
+          .update(sections)
+          .set({ position: index + 1 })
+          .where(eq(sections.id, section.id))
+      }
+
+      return deleted.map((row) => row.slug)
+    })
+
+    revalidateSongbook(songbookSlug, deletedSlugs)
+    return { ok: true }
+  } catch (error) {
+    console.error('purgeSection failed', error)
     return { ok: false, reason: 'failed' }
   }
 }

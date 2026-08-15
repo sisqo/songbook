@@ -14,7 +14,6 @@
  */
 
 import { and, asc, eq, isNull, or, sql } from 'drizzle-orm'
-import { revalidatePath } from 'next/cache'
 
 import { accessTo, asEditor } from '@/lib/auth/session'
 import { songAccountOf } from '@/lib/data/access'
@@ -23,6 +22,7 @@ import { rowToSong } from '@/lib/data/db'
 import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { songbooks, sections, songs } from '@/lib/db/schema'
+import { revalidateSong } from '@/lib/revalidate'
 import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
@@ -122,33 +122,6 @@ async function resolveSection(
     .returning({ id: sections.id })
 
   return { songbookSlug: slug, sectionId: created[0].id }
-}
-
-/**
- * Drops the server's cached copy of every page this song appears on.
- *
- * Three: its own, the songbook that lists it, and the home, whose counts change when
- * a song arrives or leaves. The songbook is passed in rather than looked up, because
- * a delete has already removed the row by the time this runs.
- *
- * This is not what makes an edit visible: a browser that installed the app keeps
- * serving the page precached at the last deploy, and only the runtime overlay
- * gets past that. It is for the other kind of visit — a desktop browser with no
- * service worker, or a phone that never installed it — which would otherwise be
- * handed the old page from the server's cache until the next deploy.
- *
- * Failing here must not fail the write. The row is already committed by this
- * point, and reporting failure would invite a retry that, for a new song, would
- * save it twice.
- */
-function revalidateSong(slug: string, songbookSlug: string | null): void {
-  try {
-    revalidatePath(`/songs/${slug}`)
-    if (songbookSlug !== null) revalidatePath(`/songbooks/${songbookSlug}`)
-    revalidatePath('/')
-  } catch (error) {
-    console.warn(`could not revalidate ${slug}; the server keeps its cached page`, error)
-  }
 }
 
 function saved(song: Song): SaveResult {

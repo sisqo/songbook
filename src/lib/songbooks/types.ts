@@ -36,6 +36,8 @@ export type WriteFailure =
   | 'duplicate-name'
   /** The songs or the sections sent no longer match what the songbook holds. */
   | 'stale'
+  /** Copying: the destination named is the songbook's own account. */
+  | 'same-account'
   | 'failed'
 
 export type WriteResult = { ok: true } | { ok: false; reason: WriteFailure }
@@ -66,6 +68,7 @@ export const WRITE_MESSAGE: Record<WriteFailure, string> = {
   'invalid-name': 'A name is required.',
   'duplicate-name': 'A section with this name already exists in this songbook.',
   stale: 'The songbook changed elsewhere. Reload the page and try again.',
+  'same-account': 'Choose a different account: this songbook already lives in this one.',
   failed: 'Save failed. Please try again.',
 }
 

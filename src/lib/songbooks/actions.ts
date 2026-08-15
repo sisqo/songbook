@@ -7,7 +7,10 @@
  * every write requires an **editor** (`canEdit`, the account's admin), since songbooks
  * are shared library structure rather than per-reader preferences. Reading the layer
  * needs only a session: any signed-in reader's home is drawn from it, and so is the
- * name in the way back from a song.
+ * name in the way back from a song. One export breaks that pattern on purpose:
+ * `copySongbook`, a **global owner** power over two accounts at once, the same
+ * distinction `deleteAccount` and `listAllAccounts` (`lib/accounts/`) already draw
+ * between an account's own admin and the installation's.
  *
  * The sections of a songbook are next door, in `lib/sections/actions.ts`. The line
  * between the two files is which thing is being changed: the containers here, what is
@@ -16,12 +19,15 @@
 
 import { asc, eq, inArray, max, sql } from 'drizzle-orm'
 
+import { auth } from '@/auth'
+import { isOwner, normalizeEmail } from '@/lib/allowlist'
 import { accessTo, asEditor, currentUser } from '@/lib/auth/session'
 import { songAccountOf } from '@/lib/data/access'
 import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
 import { DEFAULT_SECTION } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
-import { songbooks, sections, songs } from '@/lib/db/schema'
+import { accounts, songbooks, sections, songs } from '@/lib/db/schema'
+import { revalidateSongbook } from '@/lib/revalidate'
 import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
 
@@ -322,6 +328,169 @@ export async function removeSongbook(
     })
   } catch (error) {
     console.error('removeSongbook failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/**
+ * Deletes a songbook outright — itself, its sections, and every song any of them held.
+ * Nothing moves anywhere first.
+ *
+ * `removeSongbook` above always insists on somewhere for the songs to go, which is right
+ * for tidying a repertoire up but leaves no way through for someone who wants none of
+ * these songs kept at all: today that reader's only option is to invent a decoy songbook
+ * just to satisfy `on delete restrict`. This is that door instead. The deletion order is
+ * the same the `restrict` foreign keys already force on `removeAccountAndContent`
+ * (`accounts/actions.ts`, the same cascade for a whole account) — songs, then sections,
+ * then the songbook itself — just scoped to one songbook rather than every one an account
+ * owns.
+ */
+export async function purgeSongbook(slug: string): Promise<WriteResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const target = await editableSongbook(slug)
+  if (!target.ok) return target
+
+  try {
+    const result = await db().transaction(async (tx) => {
+      const deletedSongs = await tx
+        .delete(songs)
+        .where(eq(songs.songbookSlug, slug))
+        .returning({ slug: songs.slug })
+      await tx.delete(sections).where(eq(sections.songbookSlug, slug))
+
+      const removed = await tx
+        .delete(songbooks)
+        .where(eq(songbooks.slug, slug))
+        .returning({ slug: songbooks.slug })
+
+      return {
+        write: (removed.length === 0
+          ? { ok: false, reason: 'not-found' }
+          : { ok: true }) as WriteResult,
+        deletedSlugs: deletedSongs.map((row) => row.slug),
+      }
+    })
+
+    if (result.write.ok) revalidateSongbook(slug, result.deletedSlugs)
+    return result.write
+  } catch (error) {
+    console.error('purgeSongbook failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
+/**
+ * Copies a songbook — its sections and every song in them — into another account,
+ * leaving the original exactly as it was.
+ *
+ * Authorized with `isOwner` directly, the same way `deleteAccount` and
+ * `listAllAccounts` are (`lib/accounts/`), and for the same reason: every account's own
+ * owner is already the one editor it can have (v3.1), so "only the owner may copy a
+ * songbook elsewhere" would restrict nothing at all if it meant that owner — the only
+ * reading that draws an actual line is the installation's global owner, who alone may
+ * reach across two accounts at once.
+ *
+ * Slugs stay globally unique, songbook and song alike (see `songbooks`' and `songs`' own
+ * comments in `db/schema.ts` on why `/songs/[slug]` and `/songbooks/[slug]` need that),
+ * so the clone itself is the same one `provisionAccount` already does for a brand-new
+ * account's Example songbook: `uniqueSlug` at both levels, and an old-section-id →
+ * new-section-id map, since a section's id is a surrogate a copy cannot reuse.
+ */
+export async function copySongbook(
+  sourceSlug: string,
+  targetAccountOwnerEmail: string,
+): Promise<CreateResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const session = await auth()
+  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) {
+    return { ok: false, reason: 'not-allowed' }
+  }
+
+  const target = normalizeEmail(targetAccountOwnerEmail)
+
+  try {
+    return await db().transaction(async (tx) => {
+      const source = await tx
+        .select()
+        .from(songbooks)
+        .where(eq(songbooks.slug, sourceSlug))
+        .limit(1)
+      if (source.length === 0) return { ok: false, reason: 'not-found' } as CreateResult
+
+      // Copying into the songbook's own account is a duplicate, not a copy "elsewhere" —
+      // the one thing this action is for — so it is refused rather than quietly allowed.
+      if (source[0].accountOwnerEmail === target) {
+        return { ok: false, reason: 'same-account' } as CreateResult
+      }
+
+      const destination = await tx
+        .select({ ownerEmail: accounts.ownerEmail })
+        .from(accounts)
+        .where(eq(accounts.ownerEmail, target))
+        .limit(1)
+      if (destination.length === 0) return { ok: false, reason: 'not-found' } as CreateResult
+
+      const takenSongbookSlugs = (await tx.select({ slug: songbooks.slug }).from(songbooks)).map(
+        (row) => row.slug,
+      )
+      const copiedSlug = uniqueSlug(source[0].slug, takenSongbookSlugs)
+
+      await tx.insert(songbooks).values({
+        accountOwnerEmail: target,
+        slug: copiedSlug,
+        name: source[0].name,
+        // Never the clone flag: the partial unique index allows exactly one across the
+        // whole installation, and copying the Example songbook itself must not collide
+        // with the row that already carries it.
+        isExampleTemplate: false,
+      })
+
+      const sourceSections = await tx
+        .select()
+        .from(sections)
+        .where(eq(sections.songbookSlug, sourceSlug))
+
+      const sectionIdMap = new Map<number, number>()
+      for (const section of sourceSections) {
+        const [copied] = await tx
+          .insert(sections)
+          .values({ songbookSlug: copiedSlug, name: section.name, position: section.position })
+          .returning({ id: sections.id })
+        sectionIdMap.set(section.id, copied.id)
+      }
+
+      const sourceSongs = await tx.select().from(songs).where(eq(songs.songbookSlug, sourceSlug))
+      const takenSongSlugs = new Set(
+        (await tx.select({ slug: songs.slug }).from(songs)).map((row) => row.slug),
+      )
+
+      for (const song of sourceSongs) {
+        const newSectionId = sectionIdMap.get(song.sectionId)
+        // Would mean a song pointed at a section outside its own songbook, which the
+        // composite foreign key on `songs` already makes impossible.
+        if (newSectionId === undefined) continue
+
+        const copiedSongSlug = uniqueSlug(song.slug, takenSongSlugs)
+        takenSongSlugs.add(copiedSongSlug)
+
+        await tx.insert(songs).values({
+          slug: copiedSongSlug,
+          title: song.title,
+          artist: song.artist,
+          tags: song.tags,
+          body: song.body,
+          songbookSlug: copiedSlug,
+          sectionId: newSectionId,
+          position: song.position,
+        })
+      }
+
+      return { ok: true, slug: copiedSlug } as CreateResult
+    })
+  } catch (error) {
+    console.error('copySongbook failed', error)
     return { ok: false, reason: 'failed' }
   }
 }
