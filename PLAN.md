@@ -1543,10 +1543,14 @@ un account: sono trasmissioni interrotte, non repertorio.
 
 Il canzoniere Example esiste (creato durante l'implementazione: un canzoniere dedicato, non
 uno dei segnaposto di `content/`, che restano il repertorio "vero" del primo account), è
-flaggato `isExampleTemplate` e contiene un brano segnaposto — aggiunto proprio per
+flaggato `isExampleTemplate` e conteneva un brano segnaposto — aggiunto proprio per
 verificare la clonazione end-to-end contro il database reale prima di dichiarare la
-versione conclusa (vedi *Scostamenti dal piano* più sotto). Un contenuto editoriale vero
-resta da scrivere quando qualcuno vorrà curarlo, non è un blocco tecnico.
+versione conclusa (vedi *Scostamenti dal piano* più sotto). Il contenuto editoriale è stato
+scritto in seguito (v3.2): «Example Song» usa ora ogni direttiva che il visualizzatore
+riconosce — title, artist, tags, canzoniere, sezione, comment, start_of_chorus/end_of_chorus,
+start_of_bridge/end_of_bridge — spiegando ciascuna con un commento visibile nel testo stesso,
+oltre a coprire i casi particolari dell'accordo in riga (a inizio parola, a metà parola, e una
+riga di soli accordi senza testo sotto).
 
 ### v3.1 — niente più ospiti
 
@@ -1969,12 +1973,15 @@ Ognuno è una scelta consapevole con un costo dichiarato, non una scorciatoia.
 15. ~~**Chi prende in carico il repertorio esistente (v3.0)**~~ — risolta: **f.limberti@gmail.com**.
     L'altro proprietario globale, f.limberti@3nd.it, riceve il proprio account personale
     (vuoto, con il solo Example) al prossimo login, come chiunque altro.
-16. ~~**Contenuto del canzoniere Example (v3.0)**~~ — risolta per ora con un unico brano
-    segnaposto ("Example Song"), aggiunto proprio per verificare la clonazione end-to-end
-    (confermata contro il database reale: un secondo account provisionato ha ricevuto
-    `example-2` con la sua sezione e il suo brano, slug tutti nuovi). Resta un contenuto
-    editoriale vero e proprio da scrivere quando qualcuno vorrà curarlo, non un blocco
-    tecnico.
+16. ~~**Contenuto del canzoniere Example (v3.0)**~~ — risolta in due tempi: prima con un
+    unico brano segnaposto ("Example Song"), aggiunto proprio per verificare la clonazione
+    end-to-end (confermata contro il database reale: un secondo account provisionato ha
+    ricevuto `example-2` con la sua sezione e il suo brano, slug tutti nuovi); poi (v3.2)
+    riscrivendone il corpo perché mostri, con commenti visibili nel testo, ogni direttiva
+    che `chordpro.ts` riconosce — restano fuori solo gli alias, che sono la stessa direttiva
+    scritta in un altro modo. Un account già provisionato prima di questa modifica tiene la
+    propria copia clonata col vecchio testo: la clonazione avviene una volta sola alla
+    creazione dell'account, non si ripete quando il template cambia.
 17. ~~**Precache offline per account multipli (v3.0)**~~ — risolta: nessun precache
     d'installazione per i brani. Un salvataggio è live subito (pagine dinamiche), e la
     copertura offline arriva da un warm-up per-lettore che copre solo gli account a cui chi
