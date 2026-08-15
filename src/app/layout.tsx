@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
 
@@ -96,6 +97,7 @@ export default function RootLayout({
           * songs does not restart it.
           */}
         <OfflineSync />
+        <Analytics />
       </body>
     </html>
   )
