@@ -42,8 +42,10 @@ export function ResendVerificationButton({ email }: { email: string }) {
 
   if (sent) {
     return (
-      <p className="notice notice-accent mt-4" role="status">
-        Check your inbox at <strong>{email}</strong> for a new link.
+      <p className="notice notice-success mt-4" role="status">
+        <span>
+          Check your inbox at <strong>{email}</strong> for a new link.
+        </span>
       </p>
     )
   }

@@ -58,9 +58,11 @@ export function RegisterForm() {
   return (
     <form className="grid gap-2.5" onSubmit={submit}>
       {phase === 'sent' && (
-        <p className="notice notice-accent" role="status">
-          {sentCount > 1 ? 'Sent again — check ' : 'Check '}
-          your inbox at <strong>{email}</strong> for a link to finish setting up your account.
+        <p className="notice notice-success" role="status">
+          <span>
+            {sentCount > 1 ? 'Sent again — check ' : 'Check '}
+            your inbox at <strong>{email}</strong> for a link to finish setting up your account.
+          </span>
         </p>
       )}
 

@@ -56,6 +56,8 @@
   --on-accent: #fffaf4;
   --danger: #9d2820;
   --danger-soft: #fbe7e4;
+  --success: #1a7a42;
+  --success-soft: #e1f3e6;
 
   /*
    * The user menu's monogram avatar (v3.3): which of these six an address draws is
@@ -121,6 +123,8 @@
     --on-accent: #1b1206;
     --danger: #ff9a90;
     --danger-soft: #2f1a18;
+    --success: #6fd88f;
+    --success-soft: #17281c;
 
     /*
      * Dark separates by border, not by shadow — so the two card shadows go, and
@@ -152,6 +156,8 @@
   --on-accent: #1b1206;
   --danger: #ff9a90;
   --danger-soft: #2f1a18;
+  --success: #6fd88f;
+  --success-soft: #17281c;
 
   --shadow-1: none;
   --shadow-2: none;
@@ -650,7 +656,8 @@
 
   /* The tinted ones need no edge and no lift: the fill is the whole message. */
   .notice-accent,
-  .notice-error {
+  .notice-error,
+  .notice-success {
     box-shadow: none;
   }
 
@@ -664,6 +671,12 @@
     border-color: transparent;
     background: var(--danger-soft);
     color: var(--danger);
+  }
+
+  .notice-success {
+    border-color: transparent;
+    background: var(--success-soft);
+    color: var(--success);
   }
 
   .notice svg {
