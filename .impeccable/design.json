@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-16T00:00:00.000Z",
+  "title": "Design System: Songbook",
+  "extensions": {
+    "colorMeta": {
+      "chord-terracotta": { "role": "primary", "displayName": "Chord Terracotta", "canonical": "#97490f", "tonalRamp": ["#2e1706", "#4a230a", "#6a300c", "#8a3e0e", "#97490f", "#b8642a", "#d99055", "#f4e7d9"] },
+      "chord-amber": { "role": "primary", "displayName": "Chord Amber", "canonical": "#f0b268", "tonalRamp": ["#1b1206", "#2a2118", "#4a350f", "#7a5518", "#a87a2c", "#d09a4a", "#f0b268", "#fbe3c4"] },
+      "paper-bg": { "role": "neutral", "displayName": "Paper", "canonical": "#f6f5f2", "tonalRamp": ["#16181d", "#5c626c", "#8d939c", "#dcdad4", "#f1efe9", "#edebe5", "#f6f5f2", "#ffffff"] },
+      "night-bg": { "role": "neutral", "displayName": "Night", "canonical": "#101216", "tonalRamp": ["#101216", "#181b21", "#1d2027", "#21252c", "#2b2f37", "#5f666f", "#99a0aa", "#eceef1"] }
+    },
+    "typographyMeta": {
+      "hero-title": { "displayName": "Hero", "purpose": "The public page's one headline — the payoff, not the app name." },
+      "screen-title": { "displayName": "Screen Title", "purpose": "The name of the current screen, deliberately lighter than a bold heading." },
+      "section-title": { "displayName": "Section Title", "purpose": "One step down from screen title, for a section inside a screen." },
+      "label": { "displayName": "Group / Field Label", "purpose": "Uppercase tracked caption over a control cluster or field — the only uppercase text in the system." },
+      "chord": { "displayName": "Chord Name", "purpose": "Smaller and lighter than the lyric beneath it, so it's read as a cue, not sung." },
+      "tab": { "displayName": "Tablature", "purpose": "Geist Mono, monospace alignment for ASCII tab blocks only." }
+    },
+    "shadows": [
+      { "name": "shadow-1", "value": "0 1px 2px rgb(22 24 29 / 5%)", "purpose": "Resting card in light mode; none in dark." },
+      { "name": "shadow-2", "value": "0 1px 2px rgb(22 24 29 / 5%), 0 10px 24px -18px rgb(22 24 29 / 40%)", "purpose": "A card that leads somewhere, lifted further; none in dark." },
+      { "name": "shadow-float", "value": "0 8px 30px -8px rgb(22 24 29 / 25%)", "purpose": "The floating reading control bar; kept (darkened) in dark mode too." },
+      { "name": "shadow-panel", "value": "0 12px 34px -10px rgb(22 24 29 / 28%)", "purpose": "Any popover — menu, reading panel, chord shape; kept (darkened) in dark mode too." }
+    ],
+    "motion": [
+      { "name": "control-transition", "value": "background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease", "purpose": "Default state transition for buttons and interactive controls." },
+      { "name": "counter-roll", "value": "520ms cubic-bezier(0.3, 0.9, 0.3, 1)", "purpose": "The hero counters' rolling digit; has a prefers-reduced-motion fallback that disables it." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one accent-filled pill action on a screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Importa</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.5rem 1.125rem; border-radius: 999px; font-size: 0.9375rem; font-weight: 500; transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease; } .ds-btn-primary { border: none; background: #97490f; color: #fffaf4; } .ds-btn-primary:hover { background: #86400d; } .ds-btn-primary:focus-visible { outline: 2px solid #97490f; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default pill button — white fill, hairline edge, resting shadow.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Annulla</button>",
+      "css": ".ds-btn-secondary { border: 1px solid transparent; background: #ffffff; color: #16181d; box-shadow: 0 1px 2px rgb(22 24 29 / 5%); } .ds-btn-secondary:hover { background: #edebe5; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The standard raised container — the first step off the warm page.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Canzoniere Example</div><div class=\"ds-card-body\">12 brani</div></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 1.375rem; padding: 1.375rem; box-shadow: 0 1px 2px rgb(22 24 29 / 5%); } .ds-card-title { font-size: 1.1875rem; font-weight: 500; letter-spacing: -0.02em; color: #16181d; } .ds-card-body { margin-top: 0.5rem; color: #5c626c; font-size: 0.875rem; }"
+    },
+    {
+      "name": "Form Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Text input on the warm page — hairline edge, resting shadow, 16px to stop iOS zoom.",
+      "html": "<label class=\"ds-field-label\">Titolo</label><input class=\"ds-field\" placeholder=\"Nome del brano\" />",
+      "css": ".ds-field-label { display: block; margin-bottom: 0.4rem; color: #8d939c; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; } .ds-field { display: block; width: 100%; padding: 0.875rem 1rem; border: 1px solid #dcdad4; border-radius: 1.125rem; background: #ffffff; box-shadow: 0 1px 2px rgb(22 24 29 / 5%); color: #16181d; font-size: 1rem; transition: border-color 0.15s ease; } .ds-field:focus-visible { border-color: #97490f; outline: none; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Accent-soft pill — a count or short label, never competing with the chord accent itself.",
+      "html": "<span class=\"ds-badge\">12</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 2.375rem; padding: 0.25rem 0.625rem; border-radius: 999px; background: #f4e7d9; color: #97490f; font-size: 0.8125rem; font-weight: 500; }"
+    },
+    {
+      "name": "Reading Control Dock",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The signature floating control bar — one pill-shaped dock holding play/speed, with a popover panel for key/notation/size behind one button.",
+      "html": "<div class=\"ds-dock\"><button class=\"ds-dock-btn ds-dock-play\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M8 5v14l11-7z\"/></svg></button><div class=\"ds-dock-speed\">1.0x</div><button class=\"ds-dock-btn ds-dock-open\">⋯</button></div>",
+      "css": ".ds-dock { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #ffffff; border-radius: 1.625rem; box-shadow: 0 8px 30px -8px rgb(22 24 29 / 25%); } .ds-dock-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2.875rem; height: 2.875rem; border-radius: 1.125rem; border: none; color: #16181d; } .ds-dock-play { background: #97490f; color: #fffaf4; } .ds-dock-open { background: #f4e7d9; color: #97490f; } .ds-dock-speed { flex: 1; height: 2.875rem; display: flex; align-items: center; justify-content: center; border-radius: 1.125rem; background: #edebe5; color: #5c626c; font-size: 0.875rem; }"
+    },
+    {
+      "name": "Sheet Chord",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "A chord marking above a lyric syllable — the one thing on the reading screen that must stay unmistakable from the lyric under it.",
+      "html": "<span class=\"ds-word\"><button class=\"ds-chord\">Am</button><span class=\"ds-lyric\">Hello</span></span>",
+      "css": ".ds-word { display: inline-block; white-space: nowrap; } .ds-chord { display: block; background: none; border: none; padding: 0; padding-inline-end: 0.45em; color: #97490f; font-size: 0.7em; font-weight: 500; line-height: 1.4; } .ds-lyric { display: block; white-space: pre; color: #16181d; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Warm Stage Sheet",
+    "overview": "Songbook reads like a sheet of paper laid on top of an app: warm, matte, unhurried, inset from the edges of the screen so the song itself — not the chrome around it — is the thing the eye lands on. Nothing here is decorative by default; every token exists because a specific reading condition demanded it. Light and dark are each their own considered surface, hand-tuned rather than one inverted from the other, because a tablet propped on an amp in a dark room and the same tablet at a kitchen table in daylight are both real, both designed for on purpose. The one color that is allowed to be loud — the chord accent, terracotta in light and amber in dark — is loud for exactly one reason: it marks the thing a player's eye must never mistake for a lyric. Everything else that borrows it (a badge, an active control) stays visibly quieter than the chords themselves, on purpose. This system explicitly rejects the cluttered, ad-driven chord-site aesthetic (Ultimate Guitar and its kind) and the generic flat-dark developer-tool look — a single neon accent on near-black. Depth here comes from a warm neutral palette and a considered surface ladder, not from gradients, glow, or noise.",
+    "keyCharacteristics": [
+      "Warm off-white paper in light, near-black (not pure black) in dark — never a cold or clinical neutral.",
+      "One accent color, reserved first for chords; everything else that uses it is deliberately quieter.",
+      "A corner-radius scale keyed to each shape's job, not its size — nested shapes are always rounder than their container.",
+      "Elevation is a shadow in light, a border in dark — the mechanism changes per theme, the meaning doesn't.",
+      "Pills are the one shape reserved for actions (buttons); nothing else in the app is pill-shaped."
+    ],
+    "rules": [
+      { "name": "The Chord-First Rule", "body": "The accent color's primary job is marking chords. Any other use of it must read as visibly quieter than a chord on the sheet.", "section": "colors" },
+      { "name": "The Two Designed Themes Rule", "body": "Dark mode is not light mode, inverted. Every color pair was chosen independently for its own theme.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "DM Sans, in weight 400 or 500, for everything except tablature. No second display font, no bold above 600 outside chord names.", "section": "typography" },
+      { "name": "The Shadow-Or-Border Rule", "body": "A surface is never given both a shadow and a visible border for depth. Light separates by shadow; dark separates by a hairline edge, except surfaces that genuinely float, which keep a shadow in both.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reserve the accent (Chord Terracotta / Chord Amber) for chords first; anything else using it must read quieter than a chord on the sheet.",
+      "Do design light and dark as two independent, hand-tuned surfaces — never assume a dark value by formula from its light counterpart.",
+      "Do use a shadow for elevation in light and a border (--edge) in dark; never both on the same surface.",
+      "Do size every corner radius by the shape's job (how nested it is), not by the shape's absolute size.",
+      "Do keep the pill shape exclusive to actionable buttons — a card, a field, a badge, none of those are pills.",
+      "Do provide a prefers-reduced-motion: reduce alternative for every animation.",
+      "Do hit a 2.75rem (44px) minimum control size anywhere a control is tapped repeatedly mid-performance."
+    ],
+    "donts": [
+      "Don't build anything resembling the ad-heavy, cluttered chord/tab site aesthetic (Ultimate Guitar and similar).",
+      "Don't default to a generic flat-dark developer-tool look (near-black surface, single neon accent).",
+      "Don't use a side-stripe (border-left/right > 1px) as a decorative colored accent outside the sheet's own chorus/bridge indent.",
+      "Don't give a disabled primary button a faded/opacity treatment — drop the fill to the flat disabled state instead.",
+      "Don't let a translucent or blurred surface sit over the song sheet.",
+      "Don't introduce a second display font or a bold weight above 600 outside chord names."
+    ]
+  }
+}
