@@ -1940,6 +1940,57 @@
   }
 
   /*
+   * Sing Together's own view of the menu panel needs more room than a row of
+   * links does — two explained steps, a QR code and a link — so it grows wider
+   * here rather than everywhere `.menu-panel` is used. Capped against the
+   * viewport, not just given a bigger fixed width: `inset-inline-end: 0` above
+   * anchors the panel's right edge to the header, so a fixed width wide enough
+   * for a two-sentence step on a tablet would run off the left edge of a
+   * narrow phone instead.
+   */
+  .menu-panel.is-wide {
+    width: min(19rem, calc(100vw - 2rem));
+  }
+
+  /* One step of Sing Together's "how it works", not a real ordered list: the
+     numbering is said with a badge instead of a marker so it can sit beside
+     the text rather than indenting it. */
+  .sing-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .sing-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .sing-step-num {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: 0.05rem;
+    border-radius: var(--r-xs);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .sing-step-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  /*
    * The reader's own monogram, next to the hamburger (`UserMenu`, v3.3) — the
    * button that opens the panel. Same footprint as `.nav-link` beside it, so the
    * two sit flush at the same height, but round rather than square: a circle is

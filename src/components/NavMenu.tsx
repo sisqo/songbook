@@ -227,7 +227,7 @@ export function NavMenu({ current }: { current: Section }) {
           {/* Catches the tap that means "never mind". */}
           <div className="menu-overlay" onClick={close} aria-hidden />
 
-          <div className="menu-panel" role="menu">
+          <div className={view === 'sing-together' ? 'menu-panel is-wide' : 'menu-panel'} role="menu">
             {view === 'settings' && (
               <>
                 {/*
@@ -305,84 +305,113 @@ export function NavMenu({ current }: { current: Section }) {
                     </>
                   )}
 
+                  {/*
+                    * The two steps, said in full, every time this view is reachable — not
+                    * only before the first broadcast: someone who stopped and reopened this
+                    * a week later needs the reminder as much as someone seeing it for the
+                    * first time. Step one's own body doubles as where the QR and link
+                    * appear once there is a broadcast to show them for; before that, it is
+                    * just the sentence explaining what sharing the link will do.
+                    */}
+                  {broadcast !== undefined && !askFailed && (
+                    <div className="sing-steps">
+                      <div className="sing-step">
+                        <span className="sing-step-num" aria-hidden>
+                          1
+                        </span>
+                        <div className="sing-step-body">
+                          <p className="text-sm text-muted">
+                            Share the link or QR code below. Whoever opens it follows the song
+                            and the key you&apos;re reading it in, live — no account needed on
+                            their side.
+                          </p>
+
+                          {broadcast !== null && broadcast !== undefined && (
+                            <>
+                              {/*
+                                * A data URL, not a file the browser fetches — `next/image`
+                                * optimizes requests to a source, and there is no source here
+                                * but the string already in memory. A plain `<img>` is the whole
+                                * of what this needs.
+                                */}
+                              {qr !== null ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- data URL held in memory, not a fetched image `next/image` could optimize
+                                <img
+                                  src={qr}
+                                  alt="QR code for the link that follows this broadcast"
+                                  className="mx-auto block h-auto w-36 rounded-[var(--r-md)]"
+                                />
+                              ) : (
+                                <div
+                                  className="mx-auto h-36 w-36 rounded-[var(--r-md)] bg-[var(--surface-2)]"
+                                  aria-hidden
+                                />
+                              )}
+
+                              {/*
+                                * Selectable rather than only copyable: the button beside it
+                                * can be refused by the browser, but a long-press on plain
+                                * text cannot.
+                                */}
+                              <p className="select-all break-all text-center text-xs text-muted">
+                                {followUrl(broadcast.token)}
+                              </p>
+
+                              <button
+                                type="button"
+                                className="btn btn-sm w-full"
+                                onClick={() => void copyLink()}
+                              >
+                                {copied ? <IconCheck size={14} /> : null}
+                                {copied ? 'Copied' : 'Copy link'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="sing-step">
+                        <span className="sing-step-num" aria-hidden>
+                          2
+                        </span>
+                        <div className="sing-step-body">
+                          <p className="text-sm text-muted">
+                            Press play on the song you want everyone to see. Whatever
+                            you&apos;re reading becomes what shows up on their screens, in the
+                            same key.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {error !== null && (
+                    <p className="notice notice-error mt-3" role="alert">
+                      {error}
+                    </p>
+                  )}
+
                   {broadcast === null && !askFailed && (
-                    <>
-                      <p className="text-sm text-muted">
-                        Share a link. Whoever opens it follows the song and the key you&apos;re
-                        reading it in, live — no account needed on their side.
-                      </p>
-
-                      {error !== null && (
-                        <p className="notice notice-error mt-3" role="alert">
-                          {error}
-                        </p>
-                      )}
-
-                      <button
-                        type="button"
-                        className="btn btn-primary mt-3 w-full"
-                        onClick={() => void startSinging()}
-                        disabled={busy}
-                      >
-                        <IconBroadcast size={16} />
-                        Start broadcasting
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className="btn btn-primary mt-3 w-full"
+                      onClick={() => void startSinging()}
+                      disabled={busy}
+                    >
+                      <IconBroadcast size={16} />
+                      Start broadcasting
+                    </button>
                   )}
 
                   {broadcast !== null && broadcast !== undefined && (
-                    <>
-                      {/*
-                        * A data URL, not a file the browser fetches — `next/image` optimizes
-                        * requests to a source, and there is no source here but the string
-                        * already in memory. A plain `<img>` is the whole of what this needs.
-                        */}
-                      {qr !== null ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- data URL held in memory, not a fetched image `next/image` could optimize
-                        <img
-                          src={qr}
-                          alt="QR code for the link that follows this broadcast"
-                          className="mx-auto block h-auto w-36 rounded-[var(--r-md)]"
-                        />
-                      ) : (
-                        <div
-                          className="mx-auto h-36 w-36 rounded-[var(--r-md)] bg-[var(--surface-2)]"
-                          aria-hidden
-                        />
-                      )}
-
-                      {/*
-                        * Selectable rather than only copyable: the button beside it can be
-                        * refused by the browser, but a long-press on plain text cannot.
-                        */}
-                      <p className="mt-3 select-all break-all text-center text-xs text-muted">
-                        {followUrl(broadcast.token)}
-                      </p>
-
-                      {error !== null && (
-                        <p className="notice notice-error mt-3" role="alert">
-                          {error}
-                        </p>
-                      )}
-
-                      <button
-                        type="button"
-                        className="btn btn-sm mt-3 w-full"
-                        onClick={() => void copyLink()}
-                      >
-                        {copied ? <IconCheck size={14} /> : null}
-                        {copied ? 'Copied' : 'Copy link'}
-                      </button>
-
-                      <button
-                        type="button"
-                        className="btn btn-danger mt-2 w-full"
-                        onClick={() => void stopSinging()}
-                        disabled={busy}
-                      >
-                        Stop
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      className="btn btn-danger mt-3 w-full"
+                      onClick={() => void stopSinging()}
+                      disabled={busy}
+                    >
+                      Stop
+                    </button>
                   )}
                 </div>
               </>
