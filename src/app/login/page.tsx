@@ -169,11 +169,24 @@ const FAQ: FaqGroup[] = [
     ],
   },
   {
+    title: 'Printing a booklet',
+    items: [
+      {
+        q: 'Does the printed booklet use my own key and capo, or the song as written?',
+        a: "The song as written. A booklet is meant to be printed and handed to other people, so it's typeset in each song's own key — not whatever transposition or capo you personally have set for reading, which wouldn't mean anything on somebody else's copy.",
+      },
+      {
+        q: 'Can I print more than one songbook at a time?',
+        a: "One PDF per songbook — pick which one from the Export screen and download it. If you keep separate songbooks for separate sets or bands, each one becomes its own booklet, complete with its own cover and index.",
+      },
+    ],
+  },
+  {
     title: 'Accounts and access',
     items: [
       {
         q: 'Can I invite someone else to collaborate on my songbook?',
-        a: "No — there's no shared songbook to invite anyone into. Every allowed address gets its own account and its own collection, kept separate from everyone else's. Letting a new address in at all is up to whoever administers the installation.",
+        a: "No — there's no shared songbook to invite anyone into. Anyone can create their own account — with an email and password, or with Google — and gets their own collection, kept separate from everyone else's.",
       },
     ],
   },
@@ -182,7 +195,7 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'Is Songbook free to use?',
-        a: 'Yes, Songbook is completely free to use, with no hidden costs.',
+        a: "Yes, Songbook is completely free to use, with no hidden costs. If it's earned a spot in your gig bag, the Ko-fi badge down in the footer is the closest thing this app has to a tip jar — entirely optional, always appreciated.",
       },
       {
         q: 'Is my collection private, or can others see it?',
@@ -240,7 +253,7 @@ const FEATURES: Feature[] = [
   {
     icon: <IconUsers size={20} />,
     title: 'Your own space',
-    text: "Every allowed address gets its own account and its own songbooks — nothing shared, nothing to manage on anyone else's behalf. An administrator decides who gets in; from there, it's yours alone.",
+    text: "Sign up with your email or with Google and get your own account and your own songbooks — nothing shared, nothing to manage on anyone else's behalf. From the moment you're in, it's yours alone.",
   },
 ]
 
@@ -271,7 +284,7 @@ export default async function LoginPage({ searchParams }: Props) {
       : error === undefined
         ? null
         : error === 'AccessDenied'
-          ? 'This account is not among the ones allowed in.'
+          ? "Google couldn't confirm this email address. Try again, or sign in a different way."
           : 'Sign-in failed. Please try again.'
 
   // Only shown when there is no failure to report instead — landing here with `?reset=1`

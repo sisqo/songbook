@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <>
       <h1>Privacy Policy</h1>
-      <p className="legal-updated">Last updated: 15 August 2026</p>
+      <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
         This Privacy Policy explains how Songbook (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses, and
@@ -22,7 +22,8 @@ export default function PrivacyPolicyPage() {
         individual developer, with no company or commercial entity behind it. That individual is the
         data controller for the personal data described in this policy, and can be reached at the
         contact address below. If you need the controller&apos;s full identity — for example to
-        exercise your rights or to file a complaint — we will provide it on request.
+        exercise your rights or to file a complaint — write to that address and we will provide it
+        without delay.
       </p>
       <p>
         For any privacy-related question, you can contact us at:{' '}
@@ -73,11 +74,14 @@ export default function PrivacyPolicyPage() {
         session identifier and the synchronisation data needed to keep devices in step. Participants
         can join a session through a shared link <strong>without creating an account</strong>; for
         those participants we process only the session identifier and the minimum technical data
-        needed to run the session, and this data is discarded when the session ends.
+        needed to run the session — see section 6 for how long that data lasts.
       </p>
       <p>
-        We do not collect payment information, as Songbook is free to use. For details on cookies and
-        local storage, see our <Link href="/cookie-policy">Cookie Policy</Link>.
+        We do not collect payment information, as Songbook is free to use. A donation link (Ko-fi)
+        appears in the footer of every page; if you choose to use it, that happens entirely on
+        Ko-fi&apos;s own site, under its own privacy policy — we don&apos;t receive or process anything
+        from it. For details on cookies and local storage, see our{' '}
+        <Link href="/cookie-policy">Cookie Policy</Link>.
       </p>
 
       <h2>3. Why we collect it, and on what legal basis</h2>
@@ -177,10 +181,11 @@ export default function PrivacyPolicyPage() {
       <p>
         We keep your account and content data for as long as your account is active. When you delete
         your account from within the app, your account and your songs are removed immediately from
-        the live service; residual copies in encrypted backups and technical logs are erased within 30
-        days, except where we are required to retain data by law. Sing Together session data is
-        discarded when the session ends. Analytics data is aggregated and retained in non-identifying
-        form.
+        the live service; residual copies in encrypted backups and technical logs are erased within
+        our normal backup rotation cycle, except where we are required to retain data by law. Sing
+        Together session data is deleted as soon as the broadcaster ends the session, and in any case
+        automatically stops being usable after a few hours of inactivity even if it is never
+        explicitly ended. Analytics data is aggregated and retained in non-identifying form.
       </p>
 
       <h2>7. Your rights</h2>

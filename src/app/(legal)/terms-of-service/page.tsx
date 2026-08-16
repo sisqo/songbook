@@ -148,7 +148,10 @@ export default function TermsOfServicePage() {
       <h2>11. Governing law</h2>
       <p>
         These Terms are governed by the laws of Italy, without prejudice to any mandatory consumer
-        protection rights you may have under the laws of your country of residence.
+        protection rights you may have under the laws of your country of residence. If you are a
+        consumer, any dispute is subject to the exclusive jurisdiction of the court of your own place
+        of residence or domicile, as Italian consumer law requires. In every other case, the
+        competent court is that of the developer&apos;s place of residence, in Italy.
       </p>
 
       <h2>12. Contact</h2>

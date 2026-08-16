@@ -8,7 +8,7 @@ export default function CookiePolicyPage() {
   return (
     <>
       <h1>Cookie Policy</h1>
-      <p className="legal-updated">Last updated: 15 August 2026</p>
+      <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
         This Cookie Policy explains how Songbook uses cookies and similar technologies when you use
@@ -27,7 +27,13 @@ export default function CookiePolicyPage() {
         <strong>Essential cookies and local storage.</strong> Used to keep you signed in, to maintain
         your session, and to store basic preferences such as your display settings. They are
         necessary for the Service to work and cannot be disabled without affecting core functionality.
-        If you sign in with Google, Google may also set cookies as part of the sign-in process.
+      </p>
+      <p>
+        <strong>Google sign-in cookies — only if you choose that method.</strong> Signing in with an
+        email and password sets none of these. If you choose to sign in with Google instead, Google
+        sets its own cookies on your device as part of that sign-in flow, before you ever reach
+        Songbook. Those cookies are set and controlled by Google under its own cookie and privacy
+        policies, not by us.
       </p>
       <p>
         <strong>Aggregate analytics — without cookies.</strong> We use Vercel Web Analytics and Speed

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Content & Copyright Notice' }
 
@@ -65,8 +66,21 @@ export default function ContentCopyrightNoticePage() {
       <p>
         If you believe that content stored by a user of Songbook infringes your copyright, contact us
         at <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with details of the content, the work you claim
-        is infringed, and your contact information. The matter will be reviewed in accordance with
-        applicable law, and content will be removed where the claim is well founded.
+        is infringed, and your contact information.
+      </p>
+      <p>
+        Content on Songbook lives inside private, individual accounts that we do not routinely access
+        or review — see our <Link href="/privacy-policy">Privacy Policy</Link>. Because of that, we
+        cannot verify the substance of a claim ourselves. What we do instead: within a few business
+        days, we forward a complete notice to the account holder and ask them to remove the content or
+        explain why it does not infringe; if the notice is clear-cut or they do not respond, we
+        restrict or disable access to the account rather than inspect its private content ourselves.
+      </p>
+      <p>
+        The account holder may reply with a counter-notice — for example, that the content is their
+        own work, is in the public domain, or is used under a license they hold — which we will pass
+        back to you. If the two of you cannot resolve it this way, the dispute remains between you and
+        the account holder, to pursue through whatever legal channels apply.
       </p>
 
       <h2>5. Changes to this notice</h2>
