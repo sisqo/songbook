@@ -17,7 +17,7 @@ describe('deduce', () => {
   })
 
   it('strips a songbook or section a re-import declares, and stray tags', () => {
-    const result = deduce('{title: Uno}\n{canzoniere: Cartoni animati}\n{sezione: Sigle}\n{tags: rock}\n[C]testo')
+    const result = deduce('{title: Uno}\n{songbook: Cartoni animati}\n{division: Sigle}\n{tags: rock}\n[C]testo')
 
     assert.equal(result.songbookName, 'Cartoni animati')
     assert.equal(result.sectionName, 'Sigle')

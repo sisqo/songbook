@@ -130,22 +130,33 @@ describe('parseChordPro', () => {
     assert.equal(bare.sections.length, 1)
   })
 
-  it('reads the canzoniere directive', () => {
-    assert.equal(parseChordPro('{canzoniere: Repertorio}').songbookName, 'Repertorio')
+  it('reads the songbook directive', () => {
     assert.equal(parseChordPro('{songbook: Repertorio}').songbookName, 'Repertorio')
-    assert.equal(parseChordPro('{canzoniere: }').songbookName, null)
+    assert.equal(parseChordPro('{songbook: }').songbookName, null)
     assert.equal(parseChordPro('[C]niente').songbookName, null)
+  })
+
+  // `{canzoniere: ...}` was the directive's own name before the rename to English —
+  // still read, so an export made before the rename still restores where it belongs.
+  it('reads the old canzoniere directive too', () => {
+    assert.equal(parseChordPro('{canzoniere: Repertorio}').songbookName, 'Repertorio')
   })
 
   it('keeps the songbook name verbatim, spaces and case included', () => {
     // The name is what the reader sees; slugging happens once, elsewhere.
-    assert.equal(parseChordPro('{canzoniere: Da imparare}').songbookName, 'Da imparare')
+    assert.equal(parseChordPro('{songbook: Da imparare}').songbookName, 'Da imparare')
   })
 
-  it('reads the sezione directive', () => {
-    assert.equal(parseChordPro('{sezione: Prima parte}').sectionName, 'Prima parte')
-    assert.equal(parseChordPro('{sezione: }').sectionName, null)
+  it('reads the division directive', () => {
+    assert.equal(parseChordPro('{division: Prima parte}').sectionName, 'Prima parte')
+    assert.equal(parseChordPro('{division: }').sectionName, null)
     assert.equal(parseChordPro('[C]niente').sectionName, null)
+  })
+
+  // `{sezione: ...}` was the directive's own name before the rename to English —
+  // still read, so an export made before the rename still restores where it belongs.
+  it('reads the old sezione directive too', () => {
+    assert.equal(parseChordPro('{sezione: Prima parte}').sectionName, 'Prima parte')
   })
 
   /**

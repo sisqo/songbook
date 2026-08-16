@@ -36,7 +36,7 @@ sul posto — poi incolli il testo. L'app riconosce se è già ChordPro o se son
 il testo e converte, deduce titolo e artista, e mostra il risultato prima di salvare.
 
 La destinazione scelta **vince** su quella che dice il testo: se un brano porta un
-`{canzoniere: …}` o un `{sezione: …}` — succede reimportando un export — la riga lo
+`{songbook: …}` o un `{division: …}` — succede reimportando un export — la riga lo
 segnala e lo ignora.
 
 ### Più brani in un colpo
@@ -106,8 +106,8 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {title: Titolo}
 {artist: Autore}
 {tags: lento}
-{canzoniere: Repertorio}
-{sezione: Prima parte}
+{songbook: Repertorio}
+{division: Prima parte}
 
 [Bb]Prima [Eb]riga del [F]testo
 
@@ -116,12 +116,12 @@ Un file `content/<slug>.chopro`, dove lo slug diventa l'URL:
 {end_of_chorus}
 ```
 
-`{sezione: …}` dice in quale sezione del canzoniere nasce il brano; senza, va nella
-sezione «Brani». Solo `{sezione}`, volutamente **non** `{section}`: altri programmi
-scrivono quella per indicare un *blocco* del brano — `{section: chorus}` — e leggerla qui
-archivierebbe la canzone in una sezione chiamata «chorus». Senza database le sezioni si
-ricavano da queste righe, in ordine alfabetico: non c'è nessun posto dove sia stato scritto
-un ordine.
+`{division: …}` dice in quale sezione del canzoniere nasce il brano; senza, va nella
+sezione «Brani». Non `{section}`: altri programmi scrivono quella per indicare un
+*blocco* del brano — `{section: chorus}` — e leggerla qui archivierebbe la canzone in
+una sezione chiamata «chorus». Le esportazioni di prima usavano `{sezione: …}`, ancora
+letta ma non più scritta. Senza database le sezioni si ricavano da queste righe, in
+ordine alfabetico: non c'è nessun posto dove sia stato scritto un ordine.
 
 Gli accordi si possono scrivere in **entrambe le notazioni**: `[Bb]` e `[sib]`, `[D]`
 e `[re]`, `[Em7]` e `[mi-7]`. Vengono letti allo stesso modo e mostrati nella
@@ -142,10 +142,11 @@ Un `{key: …}` nel file viene **ignorato**, come qualsiasi direttiva che l'app 
 conosce: nessuna colonna conserva la tonalità di un brano — vedi *Tonalità e capotasto* —
 e una direttiva che nessuno legge non finisce nemmeno fra le parole.
 
-`{canzoniere}` dice **soltanto dove il brano nasce**: il seed lo applica
+`{songbook}` dice **soltanto dove il brano nasce**: il seed lo applica
 all'inserimento, o quando la colonna è ancora vuota, e da lì in poi comanda il
 database. Un file senza la direttiva finisce in "Da ordinare". Rinominare o
-spostare si fa dall'app, e un `npm run seed` successivo non lo disfa.
+spostare si fa dall'app, e un `npm run seed` successivo non lo disfa. Le
+esportazioni di prima usavano `{canzoniere: …}`, ancora letta ma non più scritta.
 
 Il seed è di **solo inserimento**: carica ciò che manca e non aggiorna né cancella
 mai un brano, perché una riga esistente può portare una correzione fatta dall'app.

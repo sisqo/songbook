@@ -31,7 +31,8 @@ describe('toChoproFile', () => {
     assert.ok(file.startsWith('{title: Certe notti}\n'))
     assert.ok(file.includes('{artist: Ligabue}'))
     assert.ok(file.includes('{tags: lento}'))
-    assert.ok(file.includes('{canzoniere: Repertorio}'))
+    assert.ok(file.includes('{songbook: Repertorio}'))
+    assert.ok(file.includes('{division: Prima parte}'))
   })
 
   /*
@@ -53,8 +54,8 @@ describe('toChoproFile', () => {
     const bare = toChoproFile({ ...song, artist: null, tags: [] }, null, null)
     assert.ok(!bare.includes('{artist:'))
     assert.ok(!bare.includes('{tags:'))
-    assert.ok(!bare.includes('{canzoniere:'))
-    assert.ok(!bare.includes('{sezione:'))
+    assert.ok(!bare.includes('{songbook:'))
+    assert.ok(!bare.includes('{division:'))
   })
 
   it('round trips: the parser reads back what the columns said', () => {
@@ -69,17 +70,19 @@ describe('toChoproFile', () => {
   })
 
   /**
-   * The one directive an exported file must *not* carry back: a stale `{sezione}` in the
-   * body would be read as filing, and the head is written from the columns.
+   * The one directive an exported file must *not* carry back: a stale `{sezione}` — the
+   * directive's own name before the rename to English — in the body would be read as
+   * filing, and the head is written from the columns regardless.
    */
-  it('strips a sezione that was in the body', () => {
+  it('strips a stale sezione directive that was in the body', () => {
     const file = toChoproFile(
       { ...song, body: '{sezione: Vecchia}\n\n[Am]Certe notti' },
       'Repertorio',
       'Prima parte',
     )
 
-    assert.equal(file.match(/\{sezione:/g)?.length, 1)
+    assert.equal(file.match(/\{division:/g)?.length, 1)
+    assert.ok(!file.includes('{sezione:'))
     assert.ok(!file.includes('Vecchia'))
   })
 })

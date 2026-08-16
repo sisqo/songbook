@@ -170,7 +170,7 @@ duplica nulla.
 diventa di solo inserimento. Vedi *Import e modifica*.
 
 **Il canzoniere è l'eccezione a questa regola, e va capita bene.** La direttiva
-`{canzoniere: Repertorio}` in un `.chopro` dice dove il brano *nasce*, e il seed la applica
+`{songbook: Repertorio}` in un `.chopro` dice dove il brano *nasce*, e il seed la applica
 soltanto all'inserimento — o quando la colonna è ancora vuota, che è come i brani già
 esistenti ricevono il loro canzoniere senza uno script separato. In aggiornamento la
 direttiva viene **ignorata**: da quel momento comanda il database, altrimenti il primo
@@ -232,7 +232,7 @@ ChordPro, con accordi inline tra parentesi quadre. Direttive supportate in v1:
 {title: Certe notti}
 {artist: Ligabue}
 {tags: lento, acustico}
-{canzoniere: Repertorio}     ← solo il valore iniziale, vedi Contenuti e seed
+{songbook: Repertorio}       ← solo il valore iniziale, vedi Contenuti e seed
 {start_of_chorus} … {end_of_chorus}
 {comment: assolo}
 
@@ -513,7 +513,7 @@ di ripristino dell'export (vedi sotto).
 ### Cosa si incolla
 
 Prima **dove**, poi **cosa**: il canzoniere di destinazione è il primo campo della
-schermata, vale per tutto ciò che si incolla, e vince su un `{canzoniere: …}` nel testo. Poi
+schermata, vale per tutto ciò che si incolla, e vince su un `{songbook: …}` nel testo. Poi
 un solo campo di testo, e il formato viene riconosciuto:
 
 - se il testo contiene accordi fra parentesi quadre è già ChordPro e passa così com'è;
@@ -640,7 +640,7 @@ server non risponde, l'elenco resta quello del build, dove ogni riga porta da qu
 ### Export e ripristino
 
 I file non sono più la rete di sicurezza, quindi ne serve un'altra: un pulsante **Scarica
-tutto** produce un archivio dei `.chopro`, direttive `{canzoniere:}` comprese, da conservare
+tutto** produce un archivio dei `.chopro`, direttive `{songbook:}` comprese, da conservare
 dove si vuole. Nessun token e nessuna infrastruttura; la copia dipende da chi se ne ricorda,
 ed è un compromesso accettato consapevolmente.
 
@@ -664,7 +664,7 @@ Due pulsanti, accanto a «Scarica tutto» nel pannello Export:
   tutte le canzoni di quella sezione incollate in sequenza e separate da `{new_song}` — la
   stessa direttiva ChordPro standard che l'import sa già dividere da un incolla-multiplo, così
   lo stesso file si taglierebbe di nuovo giusto se mai rientrasse da quella porta. Ogni canzone
-  mantiene tutte le proprie direttive, `{canzoniere:}`/`{sezione:}` comprese, come nell'export
+  mantiene tutte le proprie direttive, `{songbook:}`/`{division:}` comprese, come nell'export
   attuale: sono ripetute su ogni canzone dello stesso file, ma restano ciò che rende una singola
   canzone leggibile da sola se mai finisse fuori dal file o dalla cartella che oggi le tiene.
 
@@ -887,7 +887,7 @@ posizione: «1 di 2 in Sabato in cantina».
 **La destinazione prima del testo.** Il canzoniere era il quarto campo di un form che
 compariva *dopo* l'analisi: un momento strano per chiedere dove stai mettendo una cosa, e
 impossibile da rispondere una volta per venti brani. Ora è il primo campo, vale per tutta
-la pasta, e vince su un eventuale `{canzoniere: …}` nel testo — che la riga segnala, perché
+la pasta, e vince su un eventuale `{songbook: …}` nel testo — che la riga segnala, perché
 reimportare un export significa portarsi dietro la vecchia archiviazione e sovrascriverla in
 silenzio sarebbe una sorpresa. Nel form del brano singolo il campo è sparito: due controlli
 per una decisione, senza sapere quale vince, è il problema di prima al contrario.

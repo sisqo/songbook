@@ -24,7 +24,7 @@ import { parseChordPro } from '../chordpro'
  * Stripped here for the same reason `export.ts` strips it there.
  */
 export const METADATA_DIRECTIVE =
-  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|sezione)\s*:[^}]*\}\s*$/i
+  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|division|sezione)\s*:[^}]*\}\s*$/i
 
 export interface Deduced {
   title: string

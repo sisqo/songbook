@@ -29,8 +29,8 @@ export function toChoproFile(
 
   if (song.artist !== null && song.artist !== '') head.push(`{artist: ${song.artist}}`)
   if (song.tags.length > 0) head.push(`{tags: ${song.tags.join(', ')}}`)
-  if (songbookName !== null) head.push(`{canzoniere: ${songbookName}}`)
-  if (sectionName !== null) head.push(`{sezione: ${sectionName}}`)
+  if (songbookName !== null) head.push(`{songbook: ${songbookName}}`)
+  if (sectionName !== null) head.push(`{division: ${sectionName}}`)
 
   const body = song.body
     .split(/\r?\n/)

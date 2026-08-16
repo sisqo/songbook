@@ -6,8 +6,8 @@
  * all. It is not a fallback for a database that failed: the choice is made once,
  * in `data/index.ts`, by whether DATABASE_URL is set.
  *
- * Songbooks and their sections are derived here from the `{canzoniere:}` and
- * `{sezione:}` directives, so the app looks the same before a database exists. Once one
+ * Songbooks and their sections are derived here from the `{songbook:}` and
+ * `{division:}` directives, so the app looks the same before a database exists. Once one
  * does, the database owns both and these directives are only an initial value.
  */
 

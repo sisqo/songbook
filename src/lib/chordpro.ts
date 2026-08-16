@@ -45,17 +45,22 @@ export interface ParsedSong {
    * the seed applies it on insert, or when the column is still empty, and
    * ignores it afterwards. From then on the database owns the assignment, or a
    * reseed would wipe every rename and move made in the app.
+   *
+   * Written as `{songbook: ...}`. `{canzoniere: ...}` — this directive's own name
+   * before the rename to English — is still read, so an export made before the
+   * rename still restores where it belongs.
    */
   songbookName: string | null
   /**
    * Name of the section of that songbook the song *starts* in, on the same terms as
    * the line above: an initial value, never an instruction.
    *
-   * Only `{sezione: ...}` is read, deliberately not `{section: ...}`. Other tools write
-   * that one to mean a block of the song — `{section: chorus}` — and reading it here
-   * would file the song into a section called «chorus». What this app exports it also
-   * reads back, and it exports `{sezione}` — the directive keyword stays Italian on
-   * purpose, so it never collides with that other meaning.
+   * Written and read as `{division: ...}`, deliberately not `{section: ...}`. Other
+   * tools write that one to mean a block of the song — `{section: chorus}` — and
+   * reading it here would file the song into a section called «chorus». `{sezione:
+   * ...}` — this app's own directive before the rename to English, kept Italian for
+   * the same reason `{section}` doesn't work — is still read, so an export made
+   * before the rename still restores where it belongs.
    */
   sectionName: string | null
   sections: Section[]
@@ -74,6 +79,7 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   tag: 'tags',
   canzoniere: 'songbookName',
   songbook: 'songbookName',
+  division: 'sectionName',
   sezione: 'sectionName',
   c: 'comment',
   comment: 'comment',
