@@ -286,9 +286,20 @@ export const rateLimitHits = pgTable('rate_limit_hits', {
   count: integer('count').notNull().default(1),
 })
 
-/** Global preferences: one row per person. */
+/**
+ * Global preferences: one row per person.
+ *
+ * `userEmail` is foreign-keyed to `accounts.ownerEmail` with `onDelete: 'cascade'`
+ * (v3.5) — unlike `sign_ins`, a preference has no reason to outlive the account it
+ * belongs to, and before this it did not: an account deleted through the app left
+ * this row behind for good, since nothing else in the schema pointed at it to clean
+ * it up. Found as stray rows in production, keyed by addresses `accounts` no longer
+ * had — see `userSongPrefs.userEmail`'s own comment for the other half of the gap.
+ */
 export const userPrefs = pgTable('user_prefs', {
-  userEmail: text('user_email').primaryKey(),
+  userEmail: text('user_email')
+    .primaryKey()
+    .references(() => accounts.ownerEmail, { onDelete: 'cascade' }),
   zoomStep: integer('zoom_step').notNull().default(2),
   notation: text('notation').notNull().default('int'),
   /**
@@ -310,11 +321,23 @@ export const userPrefs = pgTable('user_prefs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-/** Per-song preferences: the key you sing it in, and the speed you read it at. */
+/**
+ * Per-song preferences: the key you sing it in, and the speed you read it at.
+ *
+ * `songSlug` cascading on the *song's* deletion only ever cleans up half of this
+ * table for a deleted account: it clears everyone's preferences on the songs that
+ * account owned, but not that account's own preferences on songs it never owned —
+ * a global owner switched into another account, say, who moved a capo there before
+ * ever switching back. `userEmail` now cascades on `accounts.ownerEmail` too (v3.5)
+ * for exactly that other half — see `userPrefs.userEmail`'s own comment for how the
+ * gap this closes was found.
+ */
 export const userSongPrefs = pgTable(
   'user_song_prefs',
   {
-    userEmail: text('user_email').notNull(),
+    userEmail: text('user_email')
+      .notNull()
+      .references(() => accounts.ownerEmail, { onDelete: 'cascade' }),
     songSlug: text('song_slug')
       .notNull()
       .references(() => songs.slug, { onDelete: 'cascade' }),

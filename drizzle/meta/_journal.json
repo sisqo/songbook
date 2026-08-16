@@ -148,6 +148,13 @@
       "when": 1786803468908,
       "tag": "0020_songbook_position",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786884459740,
+      "tag": "0021_prefs_cascade_on_account_delete",
+      "breakpoints": true
     }
   ]
 }
