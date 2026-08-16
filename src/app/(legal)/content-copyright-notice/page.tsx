@@ -8,7 +8,7 @@ export default function ContentCopyrightNoticePage() {
   return (
     <>
       <h1>Content &amp; Copyright Notice</h1>
-      <p className="legal-updated">Last updated: 15 August 2026</p>
+      <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
         Songbook (songbook.sisqo.dev) is a free, non-commercial project — a tool for managing your own
@@ -54,6 +54,11 @@ export default function ContentCopyrightNoticePage() {
         This is not a publishing or distribution feature. It does not grant any rights over the
         underlying copyrighted work to Songbook or to session participants, and participants should
         not record or redistribute what is shown to them.
+      </p>
+      <p>
+        Exporting works the same way. The backup and the printable booklet let you download or print
+        your collection for yourself — Songbook does not review what comes out of either, and using it
+        beyond personal, informal use is your responsibility, not something the Service authorizes.
       </p>
 
       <h2>4. Copyright concerns</h2>

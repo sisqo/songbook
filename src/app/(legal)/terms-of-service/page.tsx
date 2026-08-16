@@ -8,7 +8,7 @@ export default function TermsOfServicePage() {
   return (
     <>
       <h1>Terms of Service</h1>
-      <p className="legal-updated">Last updated: 15 August 2026</p>
+      <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Songbook (&ldquo;the
@@ -84,7 +84,16 @@ export default function TermsOfServicePage() {
         them without the rightsholder&apos;s permission.
       </p>
 
-      <h2>5. Acceptable use</h2>
+      <h2>5. Exporting and printing</h2>
+      <p>
+        Songbook lets you export Your Content as a backup, or as a typeset PDF booklet meant to be
+        printed. Once downloaded, a file is outside the Service and entirely in your own hands. You are
+        responsible for having the right to print, copy, or hand out Your Content in that form, the
+        same as for anything you import or display within the app — Songbook does not review, endorse,
+        or track what happens to an exported file once it has left the Service.
+      </p>
+
+      <h2>6. Acceptable use</h2>
       <p>You agree not to use Songbook to:</p>
       <ul>
         <li>upload or share content that is illegal, infringes third-party rights, or that you do not have the right to use;</li>
@@ -93,7 +102,7 @@ export default function TermsOfServicePage() {
         <li>use the Service for any purpose other than personal, non-commercial use of your own song collection, unless otherwise agreed with us.</li>
       </ul>
 
-      <h2>6. Availability and no warranty</h2>
+      <h2>7. Availability and no warranty</h2>
       <p>
         Songbook is provided &ldquo;as is&rdquo; and free of charge, with no warranty of any kind,
         express or implied. While we aim to keep the Service available and reliable, we do not
@@ -108,7 +117,7 @@ export default function TermsOfServicePage() {
         copy.
       </p>
 
-      <h2>7. Limitation of liability</h2>
+      <h2>8. Limitation of liability</h2>
       <p>
         Songbook is provided free of charge, on a non-commercial basis, and is maintained by a single
         individual rather than by a company. To the extent permitted by law, we are not liable for any
@@ -121,7 +130,7 @@ export default function TermsOfServicePage() {
         under applicable law — including mandatory consumer protection rights.
       </p>
 
-      <h2>8. Termination</h2>
+      <h2>9. Termination</h2>
       <p>
         We may suspend or terminate access to the Service for accounts that violate these Terms. You
         may stop using Songbook at any time and delete your account, together with all of Your
@@ -129,20 +138,20 @@ export default function TermsOfServicePage() {
         Privacy Policy for how residual copies in backups and logs are handled.
       </p>
 
-      <h2>9. Changes to these Terms</h2>
+      <h2>10. Changes to these Terms</h2>
       <p>
         We may update these Terms from time to time. If we make significant changes, we will notify
         you through the app or by email. Continued use of Songbook after changes take effect
         constitutes acceptance of the new Terms.
       </p>
 
-      <h2>10. Governing law</h2>
+      <h2>11. Governing law</h2>
       <p>
         These Terms are governed by the laws of Italy, without prejudice to any mandatory consumer
         protection rights you may have under the laws of your country of residence.
       </p>
 
-      <h2>11. Contact</h2>
+      <h2>12. Contact</h2>
       <p>
         For any question about these Terms, contact us at <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
       </p>
