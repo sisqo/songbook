@@ -68,13 +68,13 @@ export function ChordPopup({
         <p className="chord-notes">{notes.join(' · ')}</p>
 
         {shape?.simplified === true && (
-          <p className="mt-2 text-xs text-faint">
+          <p className="mt-2 text-xs text-muted">
             Simplified shape: contains only notes of the chord, not all the ones written.
           </p>
         )}
 
         {chord.bassName !== null && (
-          <p className="mt-2 text-xs text-faint">
+          <p className="mt-2 text-xs text-muted">
             Bass {notation === 'it' ? noteToItalian(chord.bassName) : chord.bassName}, to be
             played beneath this shape.
           </p>

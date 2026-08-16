@@ -153,7 +153,7 @@ export function ArrangeSongbooks({
         <button type="button" className="btn btn-sm" onClick={onDone}>
           Done
         </button>
-        <span className="text-xs text-faint">Saved right away.</span>
+        <span className="text-xs text-muted">Saved right away.</span>
       </div>
     </div>
   )

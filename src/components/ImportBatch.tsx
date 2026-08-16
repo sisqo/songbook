@@ -300,7 +300,7 @@ function BatchRow({
         )}
       </div>
 
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <span>{FORMAT_LABEL[row.format] ?? row.format}</span>
         {/* Said, not obeyed: the destination above is the answer. */}
         {row.declares !== null && row.declares !== songbookName && (

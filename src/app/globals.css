@@ -50,6 +50,12 @@
   --line: #dcdad4;
   /* Invisible here. In dark it becomes --line: see the note above. */
   --edge: transparent;
+  /*
+   * Reserved for decorative glyphs (chevrons, dividers) and WCAG-exempt disabled
+   * controls — never for real text. It measures under 4.5:1 against every surface
+   * above, so any label, count, or placeholder a sighted reader is meant to read
+   * uses --muted instead, which clears AA everywhere.
+   */
   --accent: #97490f;
   --accent-soft: #f4e7d9;
   /* Text on an accent fill. Not white: warm, so the fill does not look printed. */
@@ -192,7 +198,7 @@
   }
 
   ::placeholder {
-    color: var(--faint);
+    color: var(--muted);
   }
 
   ::selection {
@@ -817,7 +823,7 @@
     align-items: center;
     gap: 0.75rem;
     margin: 1.25rem 0;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.75rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1052,7 +1058,7 @@
     align-items: center;
     gap: 0.625rem;
     margin: 0.75rem 0 0;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.9375rem;
   }
 
@@ -1068,7 +1074,7 @@
   /* A label over a group of controls, in the reading panel and over a form field. */
   .group-label {
     display: block;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -1731,7 +1737,7 @@
     justify-content: center;
     gap: 0.5rem;
     font-size: 0.75rem;
-    color: var(--faint);
+    color: var(--muted);
   }
 
   .app-footer-legal a {
@@ -1739,7 +1745,7 @@
   }
 
   .app-footer-legal span {
-    color: var(--faint);
+    color: var(--muted);
   }
 
   @media (hover: hover) {
@@ -1770,7 +1776,7 @@
   .legal-content .legal-updated {
     margin-top: 0.375rem;
     font-size: 0.8125rem;
-    color: var(--faint);
+    color: var(--muted);
   }
 
   .legal-content h2 {
@@ -2232,7 +2238,7 @@
   .row-count {
     display: block;
     margin-top: 0.125rem;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
   }
@@ -2242,7 +2248,7 @@
   .row-index {
     width: 1.25rem;
     flex: none;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -2257,14 +2263,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4375rem;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.875rem;
     text-decoration: none;
   }
 
   @media (hover: hover) {
     .back-plain:hover {
-      color: var(--muted);
+      color: var(--ink);
     }
   }
 
@@ -2648,7 +2654,7 @@
   .control-name-value {
     display: block;
     margin-top: 1px;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.6875rem;
     font-variant-numeric: tabular-nums;
   }
@@ -2718,7 +2724,7 @@
   .field-label {
     display: block;
     margin-bottom: 0.4rem;
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.08em;
@@ -2842,7 +2848,7 @@
 
   /* A canzoniere with nothing in it: shown, so it does not look lost, but dead. */
   .chip.is-empty {
-    color: var(--faint);
+    color: var(--muted);
     border-style: dashed;
   }
 
@@ -3304,7 +3310,7 @@
   }
 
   .line-input::placeholder {
-    color: var(--faint);
+    color: var(--muted);
   }
 
   /*
@@ -3338,7 +3344,7 @@
     width: 1.9rem;
     height: 1.9rem;
     border-radius: var(--r-xs);
-    color: var(--faint);
+    color: var(--muted);
     font-size: 1.1rem;
     line-height: 1;
   }
@@ -3391,7 +3397,7 @@
 
   /* The line the source-mode buttons will act on, marked while typing. */
   .editor-hint {
-    color: var(--faint);
+    color: var(--muted);
     font-size: 0.75rem;
   }
 
@@ -3401,6 +3407,42 @@
     height: 0.45rem;
     border-radius: 50%;
     background: var(--accent);
+  }
+
+  /* ---- Skeletons -------------------------------------------------------- */
+
+  /*
+   * A loading bone: the recessed fill, not a generic gray, so a loading screen
+   * still looks like this app rather than a placeholder. The reduced-motion block
+   * at the foot of this file already flattens the pulse to a static tint.
+   */
+  .skeleton {
+    background: var(--surface-2);
+    border-radius: var(--r-sm);
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  /*
+   * The blanket rule at the foot of this file shortens every transition and
+   * animation to near-zero, but an `infinite` one just keeps looping at that
+   * speed instead of stopping — every frame a different opacity reads as flicker,
+   * not stillness. Same fix as `.hero-counter-digit-in` above: turn it off outright.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton {
+      animation: none;
+      opacity: 0.75;
+    }
   }
 }
 

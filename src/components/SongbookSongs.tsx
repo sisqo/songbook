@@ -13,6 +13,7 @@ import {
   IconChevronRight,
   IconGrip,
   IconImport,
+  IconOffline,
   IconPencil,
   IconTrash,
 } from '@/components/icons'
@@ -239,16 +240,26 @@ export function SongbookSongs({
           * one song — moving it to another section — and with none at all, which is
           * making the first division. Adding a song has no minimum either: an empty
           * songbook is exactly the case it exists for.
+          *
+          * Both render regardless of `online` and go `disabled` instead — same pattern
+          * as the songbooks list's own header actions, so an editor sees why these two
+          * are inert (the notice below says so) instead of finding them simply gone.
           */}
-        {online && mayEdit && (
+        {mayEdit && (
           <div className="screen-header-actions">
-            <button type="button" className="btn btn-sm" onClick={() => setMode('organizing')}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={!online}
+              onClick={() => setMode('organizing')}
+            >
               <IconGrip size={16} />
               Arrange
             </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"
+              disabled={!online}
               onClick={() => setMode('importing')}
             >
               <IconImport size={16} />
@@ -257,6 +268,14 @@ export function SongbookSongs({
           </div>
         )}
       </div>
+
+      {mayEdit && !online && (
+        <p className="notice notice-accent mt-4">
+          <IconOffline />
+          Without a connection, this songbook can only be viewed. Arranging it or adding
+          songs needs a connection.
+        </p>
+      )}
 
       {mayEdit && error !== null && (
         <p className="notice notice-error mt-4" role="alert">
@@ -341,7 +360,7 @@ export function SongbookSongs({
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {section.name}
                           </span>
-                          <span className="text-[0.84375rem] text-faint" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          <span className="text-[0.84375rem] text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
                             {songs.length} {songs.length === 1 ? 'song' : 'songs'}
                           </span>
                           {open ? (

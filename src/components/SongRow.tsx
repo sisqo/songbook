@@ -51,8 +51,8 @@ export function SongRow({
         {(song.artist !== null || where !== null) && (
           <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
             {song.artist}
-            {song.artist !== null && where !== null && <span className="text-faint"> · </span>}
-            {where !== null && <span className="text-faint">{where}</span>}
+            {song.artist !== null && where !== null && <span className="text-muted"> · </span>}
+            {where !== null && <span className="text-muted">{where}</span>}
           </span>
         )}
       </span>

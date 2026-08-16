@@ -93,7 +93,7 @@ export default async function AccountsPage() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{account.ownerEmail}</span>
-                    <span className="mt-0.5 block truncate text-[0.8125rem] text-faint">
+                    <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
                       {account.signInCount === 0
                         ? 'Never signed in'
                         : `${account.signInCount} sign-in${account.signInCount === 1 ? '' : 's'}`}

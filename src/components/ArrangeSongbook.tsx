@@ -459,7 +459,7 @@ export function ArrangeSongbook({
                   if (element === null) elements.current.delete(key)
                   else elements.current.set(key, element)
                 }}
-                className="row row-nested text-sm text-faint"
+                className="row row-nested text-sm text-muted"
               >
                 {/* A line to aim at: a section with no row could never be filled. */}
                 Empty. Drag a song here.
@@ -690,7 +690,7 @@ export function ArrangeSongbook({
           * waits for a rebuild is the pair of arrows inside a song, and the section named
           * in its header, which come from the pages themselves.
           */}
-        <span className="text-xs text-faint">
+        <span className="text-xs text-muted">
           Saved right away. The arrows inside the song follow it after the next rebuild.
         </span>
       </div>

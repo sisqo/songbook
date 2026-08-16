@@ -209,7 +209,7 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
 
       {searching ? (
         <>
-          <p className="mb-1 mt-6 px-1 text-xs text-faint" aria-live="polite">
+          <p className="mb-1 mt-6 px-1 text-xs text-muted" aria-live="polite">
             {`${results.length} of ${songs.length}`}
           </p>
 
@@ -246,10 +246,18 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
 
             {mayEdit && (
               <div className="screen-header-actions">
-                {online && groups.length > 1 && (
+                {/*
+                  * `disabled`, not hidden, when offline — same pattern as "New
+                  * songbook" beside it, so the two don't answer the same condition
+                  * two different ways. `groups.length > 1` still hides it outright:
+                  * that's not a connection problem, there's structurally nothing to
+                  * arrange with zero or one songbook.
+                  */}
+                {groups.length > 1 && (
                   <button
                     type="button"
                     className="btn btn-sm"
+                    disabled={!online}
                     onClick={() => setMode('organizing')}
                   >
                     <IconGrip size={16} />

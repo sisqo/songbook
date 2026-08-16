@@ -390,7 +390,7 @@ export default async function LoginPage({ searchParams }: Props) {
                     className="form-field"
                   />
                   <span className="mt-1.5 block text-end">
-                    <Link href="/forgot-password" className="text-xs text-faint hover:underline">
+                    <Link href="/forgot-password" className="text-xs text-muted hover:underline">
                       Forgot password?
                     </Link>
                   </span>
@@ -402,7 +402,7 @@ export default async function LoginPage({ searchParams }: Props) {
               </form>
             </div>
 
-            <p className="mt-4 text-center text-xs text-faint">
+            <p className="mt-4 text-center text-xs text-muted">
               Don&apos;t have an account?{' '}
               <Link href="/register" className="text-accent hover:underline">
                 Register

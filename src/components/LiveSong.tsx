@@ -47,7 +47,7 @@ export function SongHeading({ place }: { place: Place | null }) {
       <p className="mt-2.5 flex flex-wrap items-center gap-2 text-base text-muted">
         {song.artist !== null && <span>{song.artist}</span>}
         {place !== null && (
-          <span className="text-faint">
+          <span className="text-muted">
             {place.within !== null && `${place.within} · `}
             {place.position} of {place.total}
           </span>

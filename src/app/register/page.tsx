@@ -55,7 +55,7 @@ export default function RegisterPage() {
           <RegisterForm />
         </div>
 
-        <p className="mt-4 text-center text-xs text-faint">
+        <p className="mt-4 text-center text-xs text-muted">
           Already have an account?{' '}
           <Link href="/login" className="text-accent hover:underline">
             Sign in
