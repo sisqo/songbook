@@ -210,6 +210,8 @@ describe('familyOf', () => {
     assert.deepEqual(familyOf('13'), { family: '7', simplified: true })
     assert.deepEqual(familyOf('7b9'), { family: '7', simplified: true })
     assert.deepEqual(familyOf('m11'), { family: 'm7', simplified: true })
+    // The shorthand chord sites use for a sus4 (`A4`, `D4`, `E4`).
+    assert.deepEqual(familyOf('4'), { family: 'sus4', simplified: true })
   })
 
   it('only ever omits a note, never contradicts one', () => {

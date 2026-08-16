@@ -213,6 +213,10 @@ export function familyOf(rawSuffix: string): { family: string; simplified: boole
   if (has('7sus') || (has('sus') && has('7'))) return near('7sus4')
   if (has('sus')) return near('sus4')
 
+  // A bare `4` (`A4`, `D4`, `E4`) is how chord sites shorten `sus4` — never a
+  // stacked 11th, since nothing else in the suffix asks for one.
+  if (suffix === '4') return near('sus4')
+
   // A sixth and a ninth together is not a dominant: no seventh belongs in it.
   if (has('6') && has('9')) return near('add9')
   if (has('add9')) return near('add9')
