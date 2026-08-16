@@ -402,6 +402,62 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
   }
 }
 
+/**
+ * A blank song, filed and titled, with nothing else — the counterpart to
+ * import for someone who wants to type a song into the editor rather than
+ * paste one into it.
+ *
+ * Deliberately not `saveSong` with an empty body glossed over: `saveSong`'s
+ * duplicate check would offer to overwrite an existing song's own lyrics
+ * with this blank one if the title collided (see its `'replace'` branch) —
+ * exactly the data loss a blank-slate gesture must not risk. A title
+ * collision here just makes two songs sharing a title, same as typing the
+ * same title into the editor twice would; `uniqueSlug` keeps them addressable.
+ */
+export async function createSong(
+  title: string,
+  songbookSlug: string,
+  sectionId: number | null,
+): Promise<SaveResult> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const target = await accountForSave(undefined)
+  if (!target.ok) return target
+  const { accountOwnerEmail } = target
+
+  const trimmed = title.trim()
+  if (trimmed === '') return { ok: false, reason: 'invalid-title' }
+
+  try {
+    const database = db()
+
+    const values = {
+      title: trimmed,
+      artist: null,
+      tags: [] as string[],
+      ...(await resolveSection(accountOwnerEmail, songbookSlug, sectionId)),
+      body: '',
+      updatedAt: sql`now()`,
+    }
+
+    const taken = (await database.select({ slug: songs.slug }).from(songs)).map((row) => row.slug)
+    const slug = uniqueSlug(trimmed, taken)
+
+    const inserted = await database.transaction(async (tx) => {
+      const place = await placeLast(tx, values.sectionId, slug)
+      return tx
+        .insert(songs)
+        .values({ slug, ...values, position: place })
+        .returning()
+    })
+
+    return saved(rowToSong(inserted[0]))
+  } catch (error) {
+    console.error('createSong failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+}
+
 export async function deleteSong(slug: string): Promise<DeleteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
 

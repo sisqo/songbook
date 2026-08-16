@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 import { ArrangeSongbook } from '@/components/ArrangeSongbook'
@@ -15,8 +16,11 @@ import {
   IconImport,
   IconOffline,
   IconPencil,
+  IconPlus,
   IconTrash,
 } from '@/components/icons'
+import { createSong } from '@/lib/import/actions'
+import { SAVE_MESSAGE } from '@/lib/import/types'
 import { loadSongIndex } from '@/lib/library/actions'
 import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
@@ -54,12 +58,26 @@ export function SongbookSongs({
   slug: string
   songs: SongIndexRow[]
 }) {
+  const router = useRouter()
   const state = useSongbooks()
   const { assignments, online, divisionsOf, nameOf } = state
   const { mayEdit } = useRole()
 
   const [rows, setRows] = useLiveRows(baked)
   const [mode, setMode] = useState<'list' | 'organizing' | 'importing'>('list')
+
+  /*
+   * A blank song is a single title (plus a section, if there's more than one
+   * to choose from) followed by a redirect straight into the editor — not
+   * its own screen the way Arrange and Add song are, since there's nothing
+   * left to show here once it's created. An inline panel, same shape as
+   * renaming a section just above, fits that better than a third `mode`.
+   */
+  const [creating, setCreating] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newSectionId, setNewSectionId] = useState('')
+  const [creatingBusy, setCreatingBusy] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const [folds, setFolds] = useState<Folds>({})
   /** The song a link asked for, if one did. The *song*, not its section: see below. */
@@ -258,6 +276,20 @@ export function SongbookSongs({
             </button>
             <button
               type="button"
+              className="btn btn-sm"
+              disabled={!online}
+              onClick={() => {
+                setCreating(true)
+                setNewTitle('')
+                setNewSectionId(String(divisions[0]?.id ?? ''))
+                setCreateError(null)
+              }}
+            >
+              <IconPlus size={16} />
+              New song
+            </button>
+            <button
+              type="button"
               className="btn btn-primary btn-sm"
               disabled={!online}
               onClick={() => setMode('importing')}
@@ -275,6 +307,78 @@ export function SongbookSongs({
           Without a connection, this songbook can only be viewed. Arranging it or adding
           songs needs a connection.
         </p>
+      )}
+
+      {mayEdit && creating && (
+        <div className="panel mt-4 p-3.5">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-[0.84375rem] text-muted">Title</span>
+              <input
+                autoFocus
+                value={newTitle}
+                onChange={(event) => setNewTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setCreating(false)
+                }}
+                placeholder="Song title"
+                className="form-field min-w-0 flex-1"
+              />
+            </label>
+            {divisions.length > 1 && (
+              <label className="picker picker-raised">
+                <span className="sr-only">Section</span>
+                <select
+                  value={newSectionId}
+                  onChange={(event) => setNewSectionId(event.target.value)}
+                  className="picker-select"
+                >
+                  {divisions.map((section) => (
+                    <option key={section.id} value={String(section.id)}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
+                <IconChevronDown size={14} />
+              </label>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={creatingBusy || newTitle.trim() === ''}
+              onClick={async () => {
+                setCreatingBusy(true)
+                setCreateError(null)
+                try {
+                  const result = await createSong(
+                    newTitle,
+                    slug,
+                    newSectionId === '' ? null : Number(newSectionId),
+                  )
+                  if (!result.ok) {
+                    setCreateError(SAVE_MESSAGE[result.reason])
+                    return
+                  }
+                  router.push(`/songs/${result.song.slug}/edit`)
+                } catch {
+                  setCreateError(SAVE_MESSAGE.failed)
+                } finally {
+                  setCreatingBusy(false)
+                }
+              }}
+            >
+              Create
+            </button>
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setCreating(false)}>
+              Cancel
+            </button>
+          </div>
+          {createError !== null && (
+            <p className="notice notice-error mt-2" role="alert">
+              {createError}
+            </p>
+          )}
+        </div>
       )}
 
       {mayEdit && error !== null && (
