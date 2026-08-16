@@ -33,30 +33,40 @@
  * Standard-14 Helvetica has only normal and bold, not the mockup's medium (500)
  * — every weight below is rounded to whichever of the two reads closer.
  *
- * Cover, index, songs, in one document built in two passes. The index has to
- * print a page number next to every song, and there is no way to know those
- * before the songs themselves are laid out — a page is as long as its own
- * lyrics make it, not a fixed slot. So the first pass renders every song (and
- * the index) once each, on its own, purely to count the physical pages it
- * takes; the second pass is the real document, built with the page numbers
- * the first pass measured. `pdf-lib` reads the throwaway PDFs back only for
- * that count — see `countPages`.
+ * Cover, index, songs — the index has to print a page number next to every
+ * song, and there is no way to know those before the songs themselves are
+ * laid out, since a page is as long as its own lyrics make it, not a fixed
+ * slot. `pdf-lib` reads a throwaway rendered PDF back just to count its
+ * physical pages — see `countPages` — which is also how each song finds its
+ * own page breaks: `paginateSong` renders growing prefixes of a song's
+ * sections and asks `countPages` whether they still fit on one physical
+ * page, binary-searching for the largest prefix that does. `@react-pdf/renderer`
+ * lays out a fixed tree and won't balance text across columns as it
+ * overflows the way a browser's own CSS columns would, so this is the
+ * closest a fixed layout can get to that: a page's own worth of sections,
+ * once found, is what decides how many physical pages the whole song needs —
+ * there's no separate measuring pass to reconcile with a later render.
  *
- * The two-column song layout is a one-shot split by line count, not a real
- * CSS-style reflow: `@react-pdf/renderer` lays out a fixed tree, it doesn't
- * balance text across columns as it overflows. A section never splits across
- * the divide (see `splitByRows`), and a stanza never splits across a column or
- * page break either (see the `stanza` style's own comment) — a song long
- * enough to overflow both columns of a page simply starts a fresh page with
- * its next stanza in the left column, leaving that page's right column short.
- * The index accepts the same trade-off for the same reason.
+ * A section never splits across the column divide (see `splitByRows`), and a
+ * stanza never splits across a column or page break either (see the
+ * `stanza` style's own comment). A page whose sections all land in one
+ * column — the common case for a page down to its last stanza or two —
+ * renders as one full-width column rather than a half-width one sitting next
+ * to empty space; see `BookletSongPage`'s own comment.
+ *
+ * The index doesn't get this same per-page measurement treatment — it still
+ * splits its groups into two columns once by row count (`splitGroupsIntoColumns`)
+ * and leaves any overflow to `@react-pdf/renderer`'s own pagination, so a long
+ * enough index can show the same half-width-column-next-to-blank-space
+ * artifact a song page used to. Nobody's reported that in practice, since a
+ * songbook's own index rarely spans more than a page or two.
  */
 
 import { Document, Font, Page, Path, StyleSheet, Svg, Text, View, pdf } from '@react-pdf/renderer'
 import { PDFDocument } from 'pdf-lib'
 
 import type { Booklet, BookletSong } from './actions'
-import { type Line, type Section, type SectionKind, chordTokens, parseChordPro } from '../chordpro'
+import { type Line, type Section, chordTokens, parseChordPro } from '../chordpro'
 import { type Notation, parseChord, transposeChord, formatChord } from '../music/chord'
 import { estimateKey } from '../music/key'
 import { C_MAJOR } from '../music/notes'
@@ -73,19 +83,15 @@ const INK = '#16181d'
 const MUTED = '#5c626c'
 const FAINT = '#8d939c'
 const FOOTER_GREY = '#a8aab0'
-const STANZA_LABEL_GREY = '#b0b2b8'
+const CONTINUATION_GREY = '#b0b2b8'
 const RULE = '#e6e3dc'
 const COLUMN_RULE = '#efece5'
 const LEADER_DOTS = '#d5d1c8'
 const ACCENT = '#97490f'
 const ACCENT_BG = '#faf6f1'
 const BADGE_TEXT = '#fffaf4'
-
-const SECTION_KIND_LABEL: Record<SectionKind, string> = {
-  verse: 'Verse',
-  chorus: 'Chorus',
-  bridge: 'Bridge',
-}
+/** `ACCENT` diluted against a white page — a bridge's own rule, quieter than a chorus's solid one. */
+const BRIDGE_RULE = '#dbbfab'
 
 const styles = StyleSheet.create({
   coverPage: {
@@ -283,10 +289,15 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   continuationSuffix: {
-    color: STANZA_LABEL_GREY,
+    color: CONTINUATION_GREY,
   },
   columns: {
     flexDirection: 'row',
+    flex: 1,
+    marginTop: 19.5,
+  },
+  /** A page whose content all lands in one column (see `BookletSongPage`) gets the full width instead of sitting next to an empty second column. */
+  columnsSingle: {
     flex: 1,
     marginTop: 19.5,
   },
@@ -303,6 +314,7 @@ const styles = StyleSheet.create({
   stanza: {
     marginBottom: 12,
   },
+  /** A chorus's graphical reference: a solid accent rule and a tinted box — no label needed to tell it apart. */
   stanzaChorus: {
     paddingTop: 8.25,
     paddingHorizontal: 9,
@@ -311,16 +323,12 @@ const styles = StyleSheet.create({
     borderLeftColor: ACCENT,
     backgroundColor: ACCENT_BG,
   },
-  stanzaLabel: {
-    fontSize: 7.875,
-    fontWeight: 'bold',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-    color: STANZA_LABEL_GREY,
-    marginBottom: 6,
-  },
-  stanzaLabelChorus: {
-    color: ACCENT,
+  /** A bridge's graphical reference: the same indent as a chorus but a quieter rule and no fill, plus italics — matches the reading screen's own `is-bridge` treatment. */
+  stanzaBridge: {
+    paddingLeft: 9,
+    borderLeftWidth: 1.5,
+    borderLeftColor: BRIDGE_RULE,
+    fontStyle: 'italic',
   },
   comment: {
     fontSize: 8.625,
@@ -575,7 +583,19 @@ function Stanzas({
       {sections.map((section, sectionIndex) => (
         <View
           key={sectionIndex}
-          style={section.kind === 'chorus' ? [styles.stanza, styles.stanzaChorus] : styles.stanza}
+          /*
+           * No text ever names a section — a chorus and a bridge tell
+           * themselves apart by their own rule and fill (or italics), the
+           * same graphical-only distinction the reading screen's own
+           * `is-chorus`/`is-bridge` styling makes, never a printed word.
+           */
+          style={
+            section.kind === 'chorus'
+              ? [styles.stanza, styles.stanzaChorus]
+              : section.kind === 'bridge'
+                ? [styles.stanza, styles.stanzaBridge]
+                : styles.stanza
+          }
           /*
            * Never split, on a column or a page break alike: print convention
            * keeps a verse or chorus whole, and it also happens to be the
@@ -584,11 +604,6 @@ function Stanzas({
            */
           wrap={false}
         >
-          <Text
-            style={section.kind === 'chorus' ? [styles.stanzaLabel, styles.stanzaLabelChorus] : styles.stanzaLabel}
-          >
-            {SECTION_KIND_LABEL[section.kind]}
-          </Text>
           {section.lines.map((line, lineIndex) => (
             <View key={lineIndex} style={lineIndex > 0 ? styles.lineSpacing : undefined}>
               <BookletLine line={line} chordLabel={chordLabel} roomForChords={roomForChords} />
@@ -628,49 +643,66 @@ function splitByRows(sections: Section[]): [Section[], Section[]] {
   return [left, right]
 }
 
+/**
+ * One physical page of a song: its own slice of sections, already known (by
+ * `paginateSong`) to fit here, split into columns by `splitByRows`. That split
+ * leaves the right column empty exactly when the last section alone already
+ * carries at least half the page's own lines — in practice, a page trailing
+ * off with just one or two short stanzas left. Rather than sit that lone
+ * content in a half-width column next to a blank one, the page renders it as
+ * a single full-width column instead.
+ */
 function BookletSongPage({
-  song,
+  title,
+  artist,
   sectionName,
-  notation,
+  sections,
+  chordLabel,
+  roomForChords,
+  isFirstPage,
 }: {
-  song: BookletSong
+  title: string
+  artist: string | null
   /** The songbook section this song lives in — shown as a running header on every page. */
   sectionName: string
-  notation: Notation
+  sections: Section[]
+  chordLabel: (raw: string | null) => string | null
+  roomForChords: boolean
+  isFirstPage: boolean
 }) {
-  const { parsed, chordLabel, roomForChords } = prepare(song, notation)
-  const [left, right] = splitByRows(parsed.sections)
+  const [left, right] = splitByRows(sections)
 
   return (
     <Page size="A4" style={styles.page} wrap>
-      <View
-        fixed
-        render={({ subPageNumber }) =>
-          subPageNumber === 1 ? (
-            <View style={styles.songHeader}>
-              <Text style={styles.songHeaderLabel}>{sectionName}</Text>
-              <Text style={styles.songTitle}>{song.title}</Text>
-              {song.artist !== null && <Text style={styles.songArtist}>{song.artist}</Text>}
-            </View>
-          ) : (
-            <View style={styles.continuationHeader}>
-              <Text style={styles.continuationTitle}>
-                {song.title} <Text style={styles.continuationSuffix}>— continues</Text>
-              </Text>
-              <Text style={styles.songHeaderLabel}>{sectionName}</Text>
-            </View>
-          )
-        }
-      />
+      {isFirstPage ? (
+        <View style={styles.songHeader}>
+          <Text style={styles.songHeaderLabel}>{sectionName}</Text>
+          <Text style={styles.songTitle}>{title}</Text>
+          {artist !== null && <Text style={styles.songArtist}>{artist}</Text>}
+        </View>
+      ) : (
+        <View style={styles.continuationHeader}>
+          <Text style={styles.continuationTitle}>
+            {title} <Text style={styles.continuationSuffix}>— continues</Text>
+          </Text>
+          <Text style={styles.songHeaderLabel}>{sectionName}</Text>
+        </View>
+      )}
 
-      <View style={styles.columns}>
-        <View style={styles.columnLeft}>
+      {right.length === 0 ? (
+        <View style={styles.columnsSingle}>
           <Stanzas sections={left} chordLabel={chordLabel} roomForChords={roomForChords} />
         </View>
-        <View style={styles.column}>
-          <Stanzas sections={right} chordLabel={chordLabel} roomForChords={roomForChords} />
+      ) : (
+        <View style={styles.columns}>
+          <View style={styles.columnLeft}>
+            <Stanzas sections={left} chordLabel={chordLabel} roomForChords={roomForChords} />
+          </View>
+          <View style={styles.column}>
+            <Stanzas sections={right} chordLabel={chordLabel} roomForChords={roomForChords} />
+          </View>
         </View>
-      </View>
+      )}
 
       <Footer />
     </Page>
@@ -702,17 +734,93 @@ async function countPages(page: React.ReactElement): Promise<number> {
   return rendered.getPageCount()
 }
 
+/**
+ * The largest prefix of `remaining` that still renders onto a single
+ * physical page, by binary search over `countPages` — trusting a real render
+ * rather than a line-count estimate, since a stanza's actual height depends
+ * on word-wrap and chorus padding that counting lines can't see. Always
+ * returns at least 1, so a single stanza taller than a page still makes
+ * progress on the next page rather than looping forever.
+ *
+ * The binary search assumes a longer prefix never fits in fewer pages than a
+ * shorter one — true for the lines themselves, but not exactly true of
+ * `render`'s own output: `BookletSongPage` switches between a full-width and
+ * a half-width column depending on how a prefix happens to split (see its own
+ * comment), and text wraps more in the narrower one. So this can occasionally
+ * settle for a shorter page than the tallest one that would still fit — never
+ * a page that overflows, since every `lo` is a prefix actually measured to
+ * fit — just an occasional missed few lines of capacity.
+ */
+async function sectionsPerPage(
+  remaining: Section[],
+  render: (sections: Section[]) => React.ReactElement,
+): Promise<number> {
+  if (remaining.length === 1) return 1
+  if ((await countPages(render(remaining))) <= 1) return remaining.length
+
+  let lo = 1
+  let hi = remaining.length - 1
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    const pageCount = await countPages(render(remaining.slice(0, mid)))
+    if (pageCount <= 1) {
+      lo = mid
+    } else {
+      hi = mid - 1
+    }
+  }
+  return lo
+}
+
+/**
+ * Splits one song into the physical pages it will actually take, finding
+ * each page break by measurement (see `sectionsPerPage`) instead of
+ * splitting the whole song once by line count and hoping `@react-pdf/renderer`'s
+ * own pagination lines the two columns up sensibly across a page break — it
+ * doesn't (see this file's own top comment for the failure that caused).
+ */
+async function paginateSong(
+  song: BookletSong,
+  sectionName: string,
+  notation: Notation,
+): Promise<{ pages: Section[][]; chordLabel: (raw: string | null) => string | null; roomForChords: boolean }> {
+  const { parsed, chordLabel, roomForChords } = prepare(song, notation)
+
+  const renderCandidate = (sections: Section[], isFirstPage: boolean) => (
+    <BookletSongPage
+      title={song.title}
+      artist={song.artist}
+      sectionName={sectionName}
+      sections={sections}
+      chordLabel={chordLabel}
+      roomForChords={roomForChords}
+      isFirstPage={isFirstPage}
+    />
+  )
+
+  const pages: Section[][] = []
+  let remaining = parsed.sections
+  while (remaining.length > 0) {
+    const isFirstPage = pages.length === 0
+    const count = await sectionsPerPage(remaining, (sections) => renderCandidate(sections, isFirstPage))
+    pages.push(remaining.slice(0, count))
+    remaining = remaining.slice(count)
+  }
+  // An empty song body still gets one (empty) page, so the index has somewhere to point.
+  if (pages.length === 0) pages.push([])
+
+  return { pages, chordLabel, roomForChords }
+}
+
 /** Renders the booklet to a downloadable blob — the one thing the export panel needs. */
 export async function bookletToBlob(booklet: Booklet, notation: Notation): Promise<Blob> {
   const entries = flatten(booklet)
 
-  // Pass one: measure. Every song starts a fresh page and shares no flow with
-  // its neighbours, so how long it runs depends only on its own words — safe
-  // to measure in isolation, in parallel, before any page number exists.
-  const songPageCounts = await Promise.all(
-    entries.map((entry) =>
-      countPages(<BookletSongPage song={entry.song} sectionName={entry.sectionName} notation={notation} />),
-    ),
+  // Every song starts a fresh page and shares no flow with its neighbours, so
+  // how it paginates depends only on its own words — safe to do in parallel,
+  // before any page number exists.
+  const songPagination = await Promise.all(
+    entries.map((entry) => paginateSong(entry.song, entry.sectionName, notation)),
   )
 
   // The index's own length turns on how many songs and sections there are,
@@ -727,12 +835,12 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
     <IndexPage songbookName={booklet.songbookName} groups={measureGroups} />,
   )
 
-  // Pass two: the real thing. Page 1 is the cover, the index follows it, and
-  // every song starts right where the one before it left off.
+  // Page 1 is the cover, the index follows it, and every song starts right
+  // where the one before it left off.
   let page = 1 + indexPageCount + 1
-  const pages: number[] = entries.map((_entry, index) => {
+  const startPages: number[] = songPagination.map((songPages) => {
     const startsAt = page
-    page += songPageCounts[index]
+    page += songPages.pages.length
     return startsAt
   })
 
@@ -740,7 +848,7 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
   const indexGroups: IndexGroup[] = booklet.sections.map((section) => ({
     sectionName: section.name,
     entries: section.songs.map((song) => {
-      const entry: IndexEntry = { title: song.title, page: pages[i] }
+      const entry: IndexEntry = { title: song.title, page: startPages[i] }
       i += 1
       return entry
     }),
@@ -750,9 +858,20 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
     <Document title={booklet.songbookName}>
       <CoverPage booklet={booklet} />
       <IndexPage songbookName={booklet.songbookName} groups={indexGroups} />
-      {entries.map((entry, index) => (
-        <BookletSongPage key={index} song={entry.song} sectionName={entry.sectionName} notation={notation} />
-      ))}
+      {entries.map((entry, index) =>
+        songPagination[index].pages.map((sections, pageIndex) => (
+          <BookletSongPage
+            key={`${index}-${pageIndex}`}
+            title={entry.song.title}
+            artist={entry.song.artist}
+            sectionName={entry.sectionName}
+            sections={sections}
+            chordLabel={songPagination[index].chordLabel}
+            roomForChords={songPagination[index].roomForChords}
+            isFirstPage={pageIndex === 0}
+          />
+        )),
+      )}
     </Document>
   )
 
