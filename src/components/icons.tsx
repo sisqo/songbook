@@ -119,6 +119,17 @@ export function IconDownload(props: IconProps) {
   )
 }
 
+/** A printed booklet: paper feeding into the printer, and the page it prints. */
+export function IconPrint(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 8V4h10v4" />
+      <rect x="4" y="8" width="16" height="8" rx="1.5" />
+      <path d="M7 13h10v7H7z" />
+    </Icon>
+  )
+}
+
 /** Songbooks: stacked books. */
 export function IconBooks(props: IconProps) {
   return (

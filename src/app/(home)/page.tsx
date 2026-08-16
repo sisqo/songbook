@@ -6,7 +6,12 @@ import { HomeScreen } from '@/components/HomeScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { currentUser } from '@/lib/auth/session'
-import { listSectionsForAccount, listSongbooksForAccount, listSongsForAccount } from '@/lib/data/db'
+import {
+  listRecentlyOpened,
+  listSectionsForAccount,
+  listSongbooksForAccount,
+  listSongsForAccount,
+} from '@/lib/data/db'
 import { snapshot } from '@/lib/songbooks/snapshot'
 import { repository } from '@/lib/data'
 import { hasDatabase } from '@/lib/db/client'
@@ -47,6 +52,12 @@ export default async function Home() {
   // names; the client refreshes it from the server after mount.
   const initial = snapshot(songs, songbooks, sections)
 
+  // Nothing to have recently played without an account of one's own, and nothing
+  // in `content/`'s own single-repertoire mode either — there is no reader to
+  // scope it to.
+  const recentlyPlayed =
+    user === null ? [] : await listRecentlyOpened(user.accountOwnerEmail, user.email, 6)
+
   return (
     <PrefsProvider songSlug={null}>
       <SongbookProvider initial={initial}>
@@ -65,7 +76,7 @@ export default async function Home() {
             * index is baked in rather than fetched — a search that needs the network is
             * no use on stage.
             */}
-          <HomeScreen songs={songs.map(toIndexEntry)} />
+          <HomeScreen songs={songs.map(toIndexEntry)} recentlyPlayed={recentlyPlayed} />
 
           <Footer />
         </main>

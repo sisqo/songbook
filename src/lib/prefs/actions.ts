@@ -87,6 +87,7 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
           semitones: clampSemitones(songRows[0].semitones),
           scrollSpeed: clampSpeed(songRows[0].scrollSpeed),
           capo: clampCapo(songRows[0].capo),
+          note: songRows[0].note,
         }
 
   return { global, song }
@@ -126,6 +127,7 @@ export async function saveSongPrefs(songSlug: string, prefs: SongPrefs): Promise
     semitones: clampSemitones(prefs.semitones),
     scrollSpeed: clampSpeed(prefs.scrollSpeed),
     capo: clampCapo(prefs.capo),
+    note: prefs.note,
   }
 
   try {
@@ -140,5 +142,32 @@ export async function saveSongPrefs(songSlug: string, prefs: SongPrefs): Promise
   } catch (error) {
     console.error('saveSongPrefs failed', error)
     return 'failed'
+  }
+}
+
+/**
+ * Marks this song as opened by this reader, right now — the one fact "Recently
+ * played" on the home screen is built from.
+ *
+ * Deliberately not folded into `saveSongPrefs`: that one only runs when a real
+ * preference changes, and a song read start to finish without ever touching the
+ * key or the capo must still count as opened. No result to report and nothing
+ * queued or retried if it fails — missing an occasional "recently played" entry
+ * is a cosmetic gap, not one worth the offline queue's own complexity.
+ */
+export async function recordSongOpened(songSlug: string): Promise<void> {
+  const email = (await currentUser())?.email ?? null
+  if (email === null) return
+
+  try {
+    await db()
+      .insert(userSongPrefs)
+      .values({ userEmail: email, songSlug, lastOpenedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [userSongPrefs.userEmail, userSongPrefs.songSlug],
+        set: { lastOpenedAt: new Date() },
+      })
+  } catch (error) {
+    console.error('recordSongOpened failed', error)
   }
 }

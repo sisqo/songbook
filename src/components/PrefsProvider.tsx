@@ -14,7 +14,7 @@ import {
 
 import type { Notation } from '@/lib/music/chord'
 import type { Instrument } from '@/lib/music/shapes'
-import { loadPrefs, saveGlobalPrefs, saveSongPrefs } from '@/lib/prefs/actions'
+import { loadPrefs, recordSongOpened, saveGlobalPrefs, saveSongPrefs } from '@/lib/prefs/actions'
 import { prefsQueue } from '@/lib/prefs/queue'
 import {
   readGlobalPrefs,
@@ -46,6 +46,7 @@ interface PrefsContextValue {
   setSemitones: (semitones: number) => void
   setScrollSpeed: (step: number) => void
   setCapo: (fret: number) => void
+  setNote: (note: string) => void
 }
 
 const PrefsContext = createContext<PrefsContextValue | null>(null)
@@ -133,6 +134,12 @@ export function PrefsProvider({
         // Offline or signed out: the cache already gave us something to read.
       })
 
+    // Fire-and-forget, and deliberately not awaited alongside the read above: a
+    // slow or failing write here must never delay the sheet showing the right key.
+    // `recordSongOpened` already catches its own errors, so there is nothing to
+    // catch here — only a promise this effect does not need to wait for.
+    if (songSlug !== null) void recordSongOpened(songSlug)
+
     return () => {
       cancelled = true
     }
@@ -175,7 +182,8 @@ export function PrefsProvider({
       if (
         next.semitones === prev.semitones &&
         next.scrollSpeed === prev.scrollSpeed &&
-        next.capo === prev.capo
+        next.capo === prev.capo &&
+        next.note === prev.note
       ) {
         return
       }
@@ -202,6 +210,7 @@ export function PrefsProvider({
         updateSong((prev) => ({ ...prev, semitones: clampSemitones(semitones) })),
       setScrollSpeed: (step) => updateSong((prev) => ({ ...prev, scrollSpeed: clampSpeed(step) })),
       setCapo: (fret) => updateSong((prev) => ({ ...prev, capo: clampCapo(fret) })),
+      setNote: (note) => updateSong((prev) => ({ ...prev, note })),
     }),
     [global, song, pending, updateGlobal, updateSong],
   )

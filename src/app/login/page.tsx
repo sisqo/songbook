@@ -17,6 +17,7 @@ import {
   IconLink,
   IconNote,
   IconOnStage,
+  IconPrint,
   IconSliders,
   IconTuningFork,
   IconUsers,
@@ -192,7 +193,7 @@ const FAQ: FaqGroup[] = [
 ]
 
 /**
- * Eight, not an exhaustive list. Each is something a visitor can picture doing on
+ * Nine, not an exhaustive list. Each is something a visitor can picture doing on
  * stage, in one sentence — the README says the rest, for whoever is already inside.
  */
 const FEATURES: Feature[] = [
@@ -230,6 +231,11 @@ const FEATURES: Feature[] = [
     icon: <IconSliders size={20} />,
     title: 'Zoom and scroll',
     text: 'Bigger text, auto-scroll at your pace — readable in any condition, on any phone or tablet. Your hands stay on the instrument.',
+  },
+  {
+    icon: <IconPrint size={20} />,
+    title: 'Print a real booklet',
+    text: 'Turn any songbook into a typeset PDF — chords above the words, one song a page, a cover and an index — ready to print and hand out.',
   },
   {
     icon: <IconUsers size={20} />,

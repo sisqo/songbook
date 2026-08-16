@@ -8,11 +8,13 @@
  * form renders the same sheet with no provider anywhere near it.
  */
 
+import { useState } from 'react'
+
 import { ControlBar } from '@/components/ControlBar'
 import { usePrefs } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
-import { IconNote } from '@/components/icons'
+import { IconNote, IconPencil, IconPlus } from '@/components/icons'
 import { chordTokens } from '@/lib/chordpro'
 
 /**
@@ -55,6 +57,7 @@ export function SongHeading({ place }: { place: Place | null }) {
       </p>
 
       <CapoNote />
+      <SongNote />
 
       {/*
         * Said only when the server has answered that the row is gone — never
@@ -93,6 +96,62 @@ function CapoNote() {
       <IconNote size={13} />
       capo on fret {prefs.capo} · the chords are already what to play
     </p>
+  )
+}
+
+/**
+ * A reminder to self, above the sheet rather than behind a button: the point of
+ * "watch the bridge" or "capo 2, not 3" is to be read before the fingers start
+ * moving, not found by whoever remembers a panel exists.
+ *
+ * Saved through the same debounced queue as the key and the capo — see
+ * `PrefsProvider`'s own comment — so there is nothing here to explicitly save.
+ * "Done" only closes the editor; every keystroke before it already queued.
+ */
+function SongNote() {
+  const { song: prefs, setNote } = usePrefs()
+  const [editing, setEditing] = useState(false)
+
+  if (!editing) {
+    if (prefs.note.trim() === '') {
+      return (
+        <button type="button" className="btn btn-quiet btn-sm mt-2.5" onClick={() => setEditing(true)}>
+          <IconPlus size={13} />
+          Add a note
+        </button>
+      )
+    }
+
+    return (
+      <div className="song-note mt-2.5">
+        <IconNote size={13} />
+        <span className="song-note-text">{prefs.note}</span>
+        <button
+          type="button"
+          className="song-note-edit"
+          onClick={() => setEditing(true)}
+          aria-label="Edit note"
+        >
+          <IconPencil size={13} />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-2.5">
+      <textarea
+        autoFocus
+        value={prefs.note}
+        onChange={(event) => setNote(event.target.value)}
+        placeholder="Capo 2, watch the bridge…"
+        rows={2}
+        className="form-field song-note-field text-sm"
+      />
+      <button type="button" className="btn btn-sm mt-2" onClick={() => setEditing(false)}>
+        Done
+      </button>
+    </div>
   )
 }
 

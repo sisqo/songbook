@@ -19,6 +19,7 @@ import {
   IconTrash,
 } from '@/components/icons'
 import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
+import type { RecentSong } from '@/lib/data/db'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
 import { copySongbook } from '@/lib/songbooks/actions'
 import { WRITE_MESSAGE, countBySlug, songbooksOf, type WriteResult } from '@/lib/songbooks/types'
@@ -39,7 +40,14 @@ import { ArrangeSongbooks } from './ArrangeSongbooks'
  * songbook. It replaces the list with matches from everywhere, each saying where it
  * lives, and the list comes back when the box is emptied.
  */
-export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
+export function HomeScreen({
+  songs: baked,
+  recentlyPlayed,
+}: {
+  songs: SongIndexEntry[]
+  /** This reader's own last-opened songs, most recent first — empty for nobody yet. */
+  recentlyPlayed: RecentSong[]
+}) {
   const state = useSongbooks()
   const { songbooks, sections, assignments, nameOf, online } = state
   const { mayEdit, isGlobalOwner } = useRole()
@@ -723,6 +731,24 @@ export function HomeScreen({ songs: baked }: { songs: SongIndexEntry[] }) {
             </ul>
           )}
 
+          {/*
+            * A shortcut back into whatever this reader was reading last, not a
+            * replacement for browsing — so it follows the songbooks rather than
+            * leading them, and says nothing when there is nothing to say yet (a
+            * fresh account, or one where nothing has been opened).
+            */}
+          {recentlyPlayed.length > 0 && (
+            <section className="mt-8">
+              <h2 className="section-title">Recently played</h2>
+              <ul className="row-list card mt-2">
+                {recentlyPlayed.map((song) => (
+                  <li key={song.slug}>
+                    <SongRow song={song} under={song.songbookName} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </div>

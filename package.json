@@ -14,12 +14,14 @@
     "icons": "tsx scripts/icons.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.6.1",
     "@serwist/next": "^9.5.12",
     "@vercel/analytics": "^2.0.1",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
     "next": "15.5.19",
     "next-auth": "^5.0.0-beta.32",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "19.1.0",

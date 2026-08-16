@@ -3,10 +3,11 @@
  * pages, which is why nothing here needs to be fast at runtime.
  */
 
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, isNotNull } from 'drizzle-orm'
 
 import { db } from '../db/client'
-import { songbooks, sections, songs } from '../db/schema'
+import { songbooks, sections, songs, userSongPrefs } from '../db/schema'
+import { toIndexRow, type SongIndexRow } from '../search-index'
 import type { Songbook, Section, Song, SongRepository } from './types'
 
 /**
@@ -130,4 +131,40 @@ export async function listSongsForAccount(accountOwnerEmail: string): Promise<So
     .orderBy(asc(sections.position), asc(songs.position), asc(songs.title))
 
   return rows.map((row) => rowToSong(row.song))
+}
+
+/** A song this reader opened, and which songbook it lives in — the home screen's own "where". */
+export interface RecentSong extends SongIndexRow {
+  songbookName: string
+}
+
+/**
+ * This reader's own last-opened songs in the current account, most recent first.
+ *
+ * Scoped by `userEmail` *and* `accountOwnerEmail` together, not `userEmail` alone: a
+ * global owner's `user_song_prefs` rows can belong to songs in any account they have
+ * ever switched into (`lastOpenedAt`'s own comment in `db/schema.ts`), and this list is
+ * "recently played here", not everywhere that reader has ever opened a song.
+ */
+export async function listRecentlyOpened(
+  accountOwnerEmail: string,
+  userEmail: string,
+  limit: number,
+): Promise<RecentSong[]> {
+  const rows = await db()
+    .select({ song: songs, songbookName: songbooks.name })
+    .from(userSongPrefs)
+    .innerJoin(songs, eq(userSongPrefs.songSlug, songs.slug))
+    .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+    .where(
+      and(
+        eq(userSongPrefs.userEmail, userEmail),
+        eq(songbooks.accountOwnerEmail, accountOwnerEmail),
+        isNotNull(userSongPrefs.lastOpenedAt),
+      ),
+    )
+    .orderBy(desc(userSongPrefs.lastOpenedAt))
+    .limit(limit)
+
+  return rows.map((row) => ({ ...toIndexRow(rowToSong(row.song)), songbookName: row.songbookName }))
 }
