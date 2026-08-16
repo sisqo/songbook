@@ -1,0 +1,147 @@
+import type { Metadata } from 'next'
+
+import { Footer } from '@/components/Footer'
+import { PrefsProvider } from '@/components/PrefsProvider'
+import { TopBar } from '@/components/TopBar'
+
+export const metadata: Metadata = { title: 'Help' }
+
+/**
+ * A plain guide to using the app, reachable from the menu on every screen.
+ *
+ * Static, like Export's own shell: nothing here depends on who is asking or what
+ * their repertoire holds, so there is nothing to wait for after mount. `.legal-content`
+ * is reused rather than duplicated — it is already exactly this, a set of rules for
+ * long-form headings and paragraphs, and nothing about them is specific to the four
+ * pages that happened to need it first.
+ */
+export default function HelpPage() {
+  return (
+    <PrefsProvider songSlug={null}>
+      <TopBar current="help" />
+
+      <main className="mx-auto max-w-3xl px-4 pb-12 pt-3">
+        <article className="legal-content">
+          <h1>Help</h1>
+          <p className="legal-updated">A short guide to the basics — start to finish takes about five minutes.</p>
+
+          <p>
+            <a href="#songbooks">1. Create your first songbook</a>
+            <br />
+            <a href="#add-songs">2. Add your songs</a>
+            <br />
+            <a href="#sections">3. Organize with sections</a>
+            <br />
+            <a href="#reading">4. Read and play</a>
+            <br />
+            <a href="#sing-together">5. Sing Together</a>
+            <br />
+            <a href="#export">6. Backup and export</a>
+            <br />
+            <a href="#offline">7. Offline and on your phone</a>
+            <br />
+            <a href="#account">8. Your account</a>
+          </p>
+
+          <h2 id="songbooks">1. Create your first songbook</h2>
+          <p>
+            A songbook is a folder for a set of songs — a repertoire, a setlist, whatever grouping
+            makes sense to you. From the home screen, tap <strong>New songbook</strong>, give it a
+            name, and it&apos;s ready — already holding one section for songs to go into.
+          </p>
+          <p>You can create as many songbooks as you like, and rename or reorder them at any time.</p>
+
+          <h2 id="add-songs">2. Add your songs</h2>
+          <p>Open a songbook and add songs one of two ways:</p>
+          <ul>
+            <li>
+              <strong>Paste text.</strong> The fastest way in. Paste lyrics with chords, and the app
+              figures out the format on its own — if it&apos;s already ChordPro (chords in{' '}
+              <code>[square brackets]</code>, right where they fall in the line) it&apos;s used as is;
+              otherwise, chords written above the lyrics are converted automatically. Pasting several
+              songs at once works too — separate each one with a line that just says{' '}
+              <code>---</code>. Nothing is saved until you&apos;ve reviewed it: one song shows a full
+              editable preview, several show a list where you can fix a wrong title or artist, exclude
+              one, or edit the words before saving.
+            </li>
+            <li>
+              <strong>Write one by hand.</strong> Use <strong>New song</strong> and type directly in
+              ChordPro — a chord name in square brackets right before the syllable it belongs to, for
+              example <code>Certe notti la [Am]macchina va [F]da sola</code>. A live preview next to
+              the box shows exactly how it will look while you type.
+            </li>
+          </ul>
+          <p>
+            Pasting or typing a song that&apos;s already in the songbook offers to replace it or add
+            it as a second copy, rather than silently overwriting anything.
+          </p>
+
+          <h2 id="sections">3. Organize with sections</h2>
+          <p>
+            Inside a songbook, songs are grouped into sections — a first set and an encore, a
+            rehearsal order, whatever divides your repertoire the way you think about it. Add a
+            section, rename it, and drag songs into the one they belong to. Songbooks, sections, and
+            the songs inside them can all be reordered by dragging.
+          </p>
+
+          <h2 id="reading">4. Read and play</h2>
+          <p>
+            Open any song to read it. The bar at the bottom is the one you&apos;ll reach for mid-song:
+            play/pause starts auto-scroll at a speed you set with the turtle-to-hare slider next to it.
+          </p>
+          <p>
+            Everything you&apos;d only change before playing, not during, lives behind the{' '}
+            <strong>Chords and text</strong> button:
+          </p>
+          <ul>
+            <li><strong>Key</strong> — move the song up or down a semitone at a time, or back to how it was written.</li>
+            <li>
+              <strong>Capo</strong> — move it fret by fret, or apply the suggested position, which finds
+              the fret that lets you play the most open chords for the current key.
+            </li>
+            <li><strong>Notation</strong> — chord names as Do-Re-Mi or as C-D-E, whichever you read faster.</li>
+            <li><strong>Show</strong> — chords as their name, or as a diagram of where to put your fingers.</li>
+            <li><strong>Size</strong> — how big the words are on screen.</li>
+          </ul>
+          <p>
+            Tap any chord on the sheet to see it up close — the shape for guitar or ukulele,
+            whichever you&apos;ve set as your instrument in Settings.
+          </p>
+
+          <h2 id="sing-together">5. Sing Together</h2>
+          <p>
+            Share a song live with people around you, on their own phones — no account needed on
+            their side. Open <strong>Sing together</strong> from the menu and start broadcasting: you
+            get a link and a QR code, either one gets someone in. Once they&apos;ve joined, press play
+            on whatever song you want everyone to see — it appears on every connected screen, in the
+            same key, live.
+          </p>
+
+          <h2 id="export">6. Backup and export</h2>
+          <p>
+            From <strong>Export</strong> in the menu: <strong>Backup</strong> downloads your entire
+            repertoire as a zip, a safety copy that&apos;s yours to keep. <strong>Organized
+            export</strong> downloads the same songs sorted into folders by songbook and section,
+            meant for reading or printing outside the app rather than bringing back in.
+          </p>
+
+          <h2 id="offline">7. Offline and on your phone</h2>
+          <p>
+            Once a song is saved, it stays available with no connection at all — open it on stage or
+            anywhere else with no signal, and it&apos;s there. No app store or install step either:
+            open the site on your phone once, and from then on it behaves like any other app on the
+            home screen.
+          </p>
+
+          <h2 id="account">8. Your account</h2>
+          <p>
+            Sign in with Google, or with an email and password. Whichever address you use, it has its
+            own songbooks and songs — separate from anyone else&apos;s, private by default.
+          </p>
+        </article>
+
+        <Footer />
+      </main>
+    </PrefsProvider>
+  )
+}

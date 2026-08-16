@@ -1763,9 +1763,11 @@
   }
 
   /*
-   * Body copy for the legal pages (privacy, terms, cookies, copyright) — semantic
-   * HTML written directly in each page, styled once here rather than as the same
-   * long chain of Tailwind utilities repeated across four nearly-identical documents.
+   * Body copy for long-form pages written as semantic HTML directly in the page —
+   * the four legal pages first (privacy, terms, cookies, copyright), and Help since
+   * (v3.5): the same shape of content, headings and paragraphs read top to bottom,
+   * styled once here rather than as the same long chain of Tailwind utilities
+   * repeated across every page that needs it.
    */
   .legal-content h1 {
     font-size: 1.5rem;
@@ -1784,6 +1786,9 @@
     font-size: 1.0625rem;
     font-weight: 600;
     color: var(--ink);
+    /* Room for the sticky top bar, so a tapped anchor link (Help's own index) does
+       not land its heading half-hidden underneath it. */
+    scroll-margin-top: 4.5rem;
   }
 
   .legal-content p {

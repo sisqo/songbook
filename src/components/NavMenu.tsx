@@ -14,6 +14,7 @@ import {
   IconChevronRight,
   IconDownload,
   IconExternal,
+  IconInfo,
   IconMenu,
   IconNote,
   IconSettings,
@@ -422,6 +423,11 @@ export function NavMenu({ current }: { current: Section }) {
                 <Link href="/" className={item('songs')} role="menuitem" onClick={close}>
                   <IconNote size={17} />
                   Home
+                </Link>
+
+                <Link href="/help" className={item('help')} role="menuitem" onClick={close}>
+                  <IconInfo size={17} />
+                  Help
                 </Link>
 
                 {/*
