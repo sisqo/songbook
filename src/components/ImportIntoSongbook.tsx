@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 import { ImportBatch } from '@/components/ImportBatch'
@@ -217,7 +218,16 @@ export function ImportIntoSongbook({
               If it has chords in square brackets it&apos;s already ChordPro; otherwise conversion
               from chords-above-lyrics is attempted. Multiple songs at once: separate them with a
               line of <code>---</code>, or paste a ChordPro export — its{' '}
-              <code>{'{title}'}</code> lines are enough.
+              <code>{'{title}'}</code> lines are enough.{' '}
+              <Link
+                href="/help/chordpro"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                Full formatting guide
+              </Link>
+              .
             </span>
 
             <textarea

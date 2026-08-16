@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 import { Footer } from '@/components/Footer'
 import { PrefsProvider } from '@/components/PrefsProvider'
@@ -74,6 +75,13 @@ export default function HelpPage() {
           <p>
             Pasting or typing a song that&apos;s already in the songbook offers to replace it or add
             it as a second copy, rather than silently overwriting anything.
+          </p>
+          <p>
+            <Link href="/help/chordpro" className="underline underline-offset-2">
+              The full ChordPro reference
+            </Link>{' '}
+            covers every directive Songbook reads and writes, for converting a whole collection at
+            once or handing to an AI doing the converting instead.
           </p>
 
           <h2 id="sections">3. Organize with sections</h2>

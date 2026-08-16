@@ -1890,6 +1890,26 @@
   }
 
   /*
+   * A worked example in a help page — the ChordPro guide's own song, or a snippet
+   * meant to be read verbatim rather than styled prose. Same monospace and recessed
+   * fill as `.sheet-tab`, on purpose: it is the same job, a block of text where every
+   * character matters, just outside a song rather than inside one.
+   */
+  .code-block {
+    display: block;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+    padding: 0.875rem 1rem;
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /*
    * An icon button in the header: a raised white square rather than a bare glyph.
    * The reading screen puts three of them in a row, and bare glyphs on a warm page
    * did not read as three separate targets.
