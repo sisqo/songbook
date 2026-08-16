@@ -72,7 +72,10 @@ export function ImportBatch({
   /** Where all of them go: chosen once, at the top of the screen. */
   songbookSlug: string
   songbookName: string
-  /** And into which section of it, chosen in the same breath. */
+  /**
+   * And into which section of it, chosen in the same breath — the fallback
+   * for a row that names none of its own; see `row.declaresSection` in `run`.
+   */
   sectionId: number | null
   sectionName: string | null
   online: boolean
@@ -107,6 +110,11 @@ export function ImportBatch({
       // `undefined` is what asks the server to stop at a twin instead of writing.
       const decision: Decision | undefined = policy === 'skip' ? undefined : policy
 
+      // A row's own `{division: ...}` wins over the section chosen above it,
+      // now that there is no explicit per-row pick for it to override — see
+      // `resolveSection`'s own comment on why an id always outranks a name.
+      const declaredSection = row.declaresSection?.trim() || null
+
       try {
         const result = await saveSong(
           {
@@ -114,7 +122,8 @@ export function ImportBatch({
             artist: row.artist,
             tags: row.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag !== ''),
             songbookSlug,
-            sectionId,
+            sectionId: declaredSection !== null ? null : sectionId,
+            sectionName: declaredSection,
             body: row.body,
           },
           decision,
@@ -157,7 +166,8 @@ export function ImportBatch({
           {songbookName}
           {sectionName !== null && ` · ${sectionName}`}
         </strong>
-        .
+        {' '}— except a song whose own text names a section, which is used instead (created
+        first, if this songbook doesn&apos;t have it yet).
       </p>
 
       <ol className="mt-4 grid gap-3">
@@ -302,12 +312,13 @@ function BatchRow({
 
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <span>{FORMAT_LABEL[row.format] ?? row.format}</span>
-        {/* Said, not obeyed: the destination above is the answer. */}
+        {/* Said, not obeyed: which songbook a row names is never honoured — see `resolveSection`'s own comment on why. */}
         {row.declares !== null && row.declares !== songbookName && (
           <span>the text says «{row.declares}»</span>
         )}
+        {/* Said, and obeyed: this row's own section wins over the one chosen above. */}
         {row.declaresSection !== null && row.declaresSection !== sectionName && (
-          <span>declared section «{row.declaresSection}»</span>
+          <span>will use its own section «{row.declaresSection}»</span>
         )}
         <Status outcome={row.outcome} include={row.include} />
       </p>

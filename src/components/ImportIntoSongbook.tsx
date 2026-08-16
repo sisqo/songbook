@@ -52,6 +52,21 @@ export function ImportIntoSongbook({
 
   /** The section chosen inside it, as the select holds it. */
   const [into, setInto] = useState('')
+  /**
+   * Whether the reader has actually touched the select above, rather than it
+   * still sitting at whatever it opened on.
+   *
+   * A single pasted song can name its own section with `{division: ...}` —
+   * see `single.declaresSection` below — and that name deserves the same
+   * standing an explicit `{division:}` gets in a multi-song paste (`ImportBatch`'s
+   * own comment on `resolveSection`): used, and created if this songbook
+   * doesn't have it, but only for as long as nothing else has been chosen.
+   * The moment the reader picks (or makes) a section themselves, that pick is
+   * a decision and always wins — never silently overridden by what the text
+   * says, which is the same guarantee `PLAN.md` documents for a re-imported
+   * export.
+   */
+  const [sectionTouched, setSectionTouched] = useState(false)
   const [namingSection, setNamingSection] = useState(false)
   const [newSection, setNewSection] = useState('')
 
@@ -92,6 +107,7 @@ export function ImportIntoSongbook({
     }
 
     setInto(String(result.id))
+    setSectionTouched(true)
     setNewSection('')
     setNamingSection(false)
   }
@@ -115,6 +131,10 @@ export function ImportIntoSongbook({
   }
 
   const single = prepared !== null && prepared.length === 1 ? prepared[0] : null
+
+  /** See `sectionTouched`'s own comment: the file's own section, only for as long as nothing else has been chosen. */
+  const declaredSection =
+    !sectionTouched && single !== null && single.declaresSection !== null ? single.declaresSection : null
 
   return (
     <div>
@@ -143,7 +163,10 @@ export function ImportIntoSongbook({
           <span className="field-label">1. Which section</span>
           <select
             value={chosenSection === undefined ? '' : String(chosenSection.id)}
-            onChange={(event) => setInto(event.target.value)}
+            onChange={(event) => {
+              setInto(event.target.value)
+              setSectionTouched(true)
+            }}
             className="form-field"
             disabled={divisions.length === 0}
           >
@@ -255,7 +278,11 @@ export function ImportIntoSongbook({
         <div className="card mt-3 p-4 sm:p-5">
           <p className="mb-4 text-xs text-muted">
             {FORMAT_LABEL[single.format] ?? single.format} · goes into {songbookName}
-            {chosenSection !== undefined && ` · ${chosenSection.name}`}
+            {declaredSection !== null ? (
+              <> · will use its own section «{declaredSection}»</>
+            ) : (
+              chosenSection !== undefined && ` · ${chosenSection.name}`
+            )}
             {single.declares !== null && single.declares !== songbookName && (
               <> · the text says «{single.declares}»</>
             )}
@@ -278,12 +305,15 @@ export function ImportIntoSongbook({
             sections={divisions}
             showSongbook={false}
             onSave={async (input, decision) => {
-              // The select above is the answer, even if it changed after the analysis.
+              // The select above is the answer, even if it changed after the
+              // analysis — unless the text named its own section and nothing
+              // has overridden that yet; see `declaredSection`.
               const result = await saveSong(
                 {
                   ...input,
                   songbookSlug,
-                  sectionId: chosenSection?.id ?? null,
+                  sectionId: declaredSection !== null ? null : (chosenSection?.id ?? null),
+                  sectionName: declaredSection,
                 },
                 decision,
               )

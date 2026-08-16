@@ -35,9 +35,13 @@ canzoniere e sezione, i primi due campi della schermata, e da lì si possono anc
 sul posto — poi incolli il testo. L'app riconosce se è già ChordPro o se sono accordi sopra
 il testo e converte, deduce titolo e artista, e mostra il risultato prima di salvare.
 
-La destinazione scelta **vince** su quella che dice il testo: se un brano porta un
-`{songbook: …}` o un `{division: …}` — succede reimportando un export — la riga lo
-segnala e lo ignora.
+Il canzoniere scelto **vince** sempre su quello che dice il testo: se un brano porta
+un `{songbook: …}` — succede reimportando un export — la riga lo segnala e lo ignora.
+La sezione invece no: un `{division: …}` nel testo viene creato (se questo canzoniere
+non ce l'ha ancora) e il brano ci finisce dentro, a meno che tu non abbia scelto o
+creato tu stesso una sezione — quella scelta, fatta a mano, vince sempre. Con più
+brani incollati insieme ognuno segue la propria `{division: …}`, e la sezione scelta
+in alto resta il destino solo di chi non ne dichiara una.
 
 ### Più brani in un colpo
 

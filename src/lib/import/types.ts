@@ -15,6 +15,14 @@ export interface SongInput {
    * `resolveSection` — rather than a song with no section at all.
    */
   sectionId: number | null
+  /**
+   * A section to find (or create, if this songbook has none by that name yet) when
+   * `sectionId` is null — a paste's own `{division: ...}`, honoured now that there is
+   * no explicit `sectionId` for it to silently override. Ignored whenever `sectionId`
+   * is given: an id is always a caller's own explicit choice, and that choice never
+   * loses to a name.
+   */
+  sectionName?: string | null
   body: string
 }
 

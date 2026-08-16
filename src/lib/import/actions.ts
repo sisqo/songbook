@@ -45,6 +45,48 @@ import type { Decision, DeleteResult, SaveFailure, SaveResult, SongInput } from 
  */
 
 /**
+ * Finds a section named `name` within `songbookSlug`, or creates it at the end.
+ *
+ * Used to honour a paste's own `{division: ...}` in `resolveSection` below: two
+ * songs from the same paste can both name a section that doesn't exist yet, so
+ * this re-reads after a losing insert rather than risk two sections of the
+ * same name racing each other into existence.
+ */
+async function findOrCreateSection(songbookSlug: string, name: string): Promise<number> {
+  const database = db()
+  const trimmed = name.trim()
+
+  const existing = await database
+    .select({ id: sections.id })
+    .from(sections)
+    .where(and(eq(sections.songbookSlug, songbookSlug), eq(sections.name, trimmed)))
+    .limit(1)
+
+  if (existing.length > 0) return existing[0].id
+
+  const last = await database
+    .select({ position: max(sections.position) })
+    .from(sections)
+    .where(eq(sections.songbookSlug, songbookSlug))
+
+  const inserted = await database
+    .insert(sections)
+    .values({ songbookSlug, name: trimmed, position: (last[0]?.position ?? 0) + 1 })
+    .onConflictDoNothing({ target: [sections.songbookSlug, sections.name] })
+    .returning({ id: sections.id })
+
+  if (inserted.length > 0) return inserted[0].id
+
+  const retry = await database
+    .select({ id: sections.id })
+    .from(sections)
+    .where(and(eq(sections.songbookSlug, songbookSlug), eq(sections.name, trimmed)))
+    .limit(1)
+
+  return retry[0].id
+}
+
+/**
  * A songbook and a section of it that certainly exist.
  *
  * Both columns are a foreign key — one composite, so they are checked *together* — and
@@ -55,9 +97,14 @@ import type { Decision, DeleteResult, SaveFailure, SaveResult, SongInput } from 
  * The section decides when it is a real one, because it carries its songbook with it
  * and it is the more specific of the two answers: the editor's two menus cannot
  * disagree, since choosing a songbook repopulates the sections, so a pair that does
- * disagree is a stale form rather than a decision. Failing that: the songbook asked
- * for, or the unfiled one, and its first section — created as «Brani» if it somehow has
- * none, which is the same section the migration and `createSongbook` make.
+ * disagree is a stale form rather than a decision. Failing that: `sectionName` — a
+ * paste's own `{division: ...}` — found or created within the songbook already settled
+ * on (never a different one: `{songbook: ...}` is answered by `songbookSlug` above, not
+ * by this function reaching for a different one); and only once neither an id nor a
+ * name has answered it, the songbook asked for, or the unfiled one, and its first
+ * section — created as «Brani» if it somehow has none, which is the same section the
+ * migration and `createSongbook` make. An explicit `sectionId` is always a caller's own
+ * decision and is tried first, ahead of `sectionName`, for exactly that reason.
  *
  * Everything here is scoped to `accountOwnerEmail` (v3.0), including the fallback: a
  * songbook slug named by a stale form that no longer belongs to this account is treated
@@ -71,6 +118,7 @@ async function resolveSection(
   accountOwnerEmail: string,
   songbookSlug: string,
   sectionId: number | null,
+  sectionName?: string | null,
 ): Promise<{ songbookSlug: string; sectionId: number }> {
   const database = db()
 
@@ -120,6 +168,11 @@ async function resolveSection(
         .insert(songbooks)
         .values({ slug, name: UNFILED.name, accountOwnerEmail, position: (last[0]?.position ?? 0) + 1 })
     }
+  }
+
+  const declared = sectionName?.trim()
+  if (declared) {
+    return { songbookSlug: slug, sectionId: await findOrCreateSection(slug, declared) }
   }
 
   const first = await database
@@ -239,7 +292,7 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       title,
       artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
-      ...(await resolveSection(accountOwnerEmail, input.songbookSlug, input.sectionId)),
+      ...(await resolveSection(accountOwnerEmail, input.songbookSlug, input.sectionId, input.sectionName)),
       body: input.body,
       /**
        * The database's clock, not this server's.

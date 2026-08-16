@@ -29,7 +29,11 @@ export interface PreparedSong {
    * silently overruling all of it would be a surprise the next morning.
    */
   declares: string | null
-  /** The section it claims, on exactly the same terms: said, not obeyed. */
+  /**
+   * The section it claims, when it claims one — obeyed, unlike `declares` above:
+   * see `resolveSection`'s own comment on why a section name can win over the
+   * chosen destination when a songbook name never does.
+   */
   declaresSection: string | null
 }
 

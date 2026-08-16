@@ -892,6 +892,18 @@ reimportare un export significa portarsi dietro la vecchia archiviazione e sovra
 silenzio sarebbe una sorpresa. Nel form del brano singolo il campo è sparito: due controlli
 per una decisione, senza sapere quale vince, è il problema di prima al contrario.
 
+Questo valeva anche per `{division: …}`, finché non si è rivelato il problema sbagliato da
+risolvere per la sezione: a differenza del canzoniere, che si sceglie una volta per tutta la
+pasta, incollare più brani insieme non offre alcun modo di scegliere una sezione diversa per
+ciascuno — quindi ignorare la dichiarazione di ognuno significava non poter mai ricostituire
+la sezione originale di un export a più brani, non solo nel caso raro del reimport. La
+sezione dichiarata nel testo ora vince, riga per riga, creando la sezione se il canzoniere
+non ce l'ha ancora; il campo scelto in alto resta il destino di chi non dichiara nulla, e
+una scelta fatta o creata a mano — sia nel form del brano singolo sia con «Nuova sezione» —
+vince comunque, sempre, sulla dichiarazione. Il `{songbook: …}` resta ignorato come prima:
+qui il problema che l'aveva reso tale — sovrascrivere in silenzio un canzoniere scelto
+apposta — c'è ancora, perché quello lo si sceglie una volta sola, non per ogni brano.
+
 L'elenco delle destinazioni arriva dal database e non dal build, per lo stesso motivo per cui
 ci arrivano le parole di un brano: un canzoniere creato un minuto prima esiste, e una
 schermata che non lo offre è una schermata vecchia. Crearne uno da qui lo rende subito la
