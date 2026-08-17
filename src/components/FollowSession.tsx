@@ -666,13 +666,16 @@ function FollowedSong({
   useEffect(() => {
     setCapo(DEFAULT_SONG_PREFS.capo)
     setScrollSpeed(DEFAULT_SONG_PREFS.scrollSpeed)
+    window.scrollTo(0, 0)
     /*
      * Tied to the slug alone, deliberately: `setCapo`/`setScrollSpeed` are new closures
      * every time this guest's prefs change — including from this very effect — so
      * putting them in the dependency array would run this again after every reset, not
      * just after a new song. `updateSong`'s own no-op check is what keeps that from
      * looping: once capo and speed are already at their defaults, calling this again
-     * changes nothing and asks for nothing further.
+     * changes nothing and asks for nothing further. `FollowedSong` never unmounts between
+     * songs — it swaps state in place instead of routing — so nothing else would ever
+     * scroll a follower back to the top when the broadcast moves on.
      */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.data.slug])
