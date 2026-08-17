@@ -527,11 +527,64 @@ function BlockRow({
 }
 
 /**
+ * A chord as shown in a row: a chip to tap open, or the field it opens into.
+ * Shared by every layout below — hung from a letter, loose on a wordless line,
+ * or trailing past the last one — since none of that changes what the chord
+ * itself looks like.
+ */
+function ChordChip({
+  chord,
+  editing,
+  onEdit,
+  onName,
+  onMove,
+  loose,
+}: {
+  chord: { index: number; name: string }
+  editing: number | null
+  onEdit: (chord: number | null) => void
+  onName: (chord: number, name: string) => void
+  onMove: (chord: number, delta: number) => void
+  loose: boolean
+}) {
+  if (editing === chord.index) {
+    return (
+      <ChordField
+        name={chord.name}
+        onDone={(name) => onName(chord.index, name)}
+        onMove={(delta) => onMove(chord.index, delta)}
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className={loose ? 'chord-chip is-loose' : 'chord-chip'}
+      /* The row below adds a chord; a chip opens the one already there. */
+      onClick={(event) => {
+        event.stopPropagation()
+        onEdit(chord.index)
+      }}
+      aria-label={`Chord ${chord.name || 'empty'}, edit`}
+    >
+      {chord.name || '—'}
+    </button>
+  )
+}
+
+/**
  * The chords of one line.
  *
  * The trick is the hidden copy of the words: the chords are pinned to zero-width
  * anchors sitting between the letters of that copy, so their position comes from
  * the same layout that positions the letters in the input below.
+ *
+ * A chord at or past `text.length` has no letter left to hang from — it plays
+ * after the last word, and there may be several, one after another. Those are
+ * laid out as their own row instead, the same `chord-loose` flex the wordless
+ * case below uses, because ChordPro itself only keeps their order, never how far
+ * past the end each one sits (see `ChordAt.at`) — ties can only ever mean "next".
  */
 function ChordRow({
   text,
@@ -554,50 +607,6 @@ function ChordRow({
     .map((chord, index) => ({ ...chord, index }))
     .sort((a, b) => a.at - b.at)
 
-  let cursor = 0
-  const pieces: React.ReactNode[] = []
-
-  ordered.forEach((chord, position) => {
-    const at = Math.max(0, Math.min(text.length, chord.at))
-    pieces.push(
-      <span aria-hidden key={`t${position}`}>
-        {text.slice(cursor, at)}
-      </span>,
-    )
-    cursor = at
-
-    pieces.push(
-      <span className="chord-anchor" key={`c${chord.index}`}>
-        {editing === chord.index ? (
-          <ChordField
-            name={chord.name}
-            onDone={(name) => onName(chord.index, name)}
-            onMove={(delta) => onMove(chord.index, delta)}
-          />
-        ) : (
-          <button
-            type="button"
-            className="chord-chip"
-            /* The row below adds a chord; a chip opens the one already there. */
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit(chord.index)
-            }}
-            aria-label={`Chord ${chord.name || 'empty'}, edit`}
-          >
-            {chord.name || '—'}
-          </button>
-        )}
-      </span>,
-    )
-  })
-
-  pieces.push(
-    <span aria-hidden key="tail">
-      {text.slice(cursor)}
-    </span>,
-  )
-
   /*
    * A line with no words: an intro, a solo, a turnaround.
    *
@@ -608,9 +617,10 @@ function ChordRow({
    *
    * The reader has no such trouble: there each chord sets the width of the word beneath
    * it. Here the words are a real input and the ghost above has to match it letter for
-   * letter, so widening the ghost is exactly what must not happen. (Two chords on one
-   * syllable of a line that *does* have words still overlap; the arrows separate them,
-   * and fixing that properly means measuring.)
+   * letter, so widening the ghost is exactly what must not happen. (Two chords tied to
+   * the *same* letter in the middle of a line still overlap this way; the arrows
+   * separate them, and fixing that properly means measuring. Only the tie at the very
+   * end has somewhere else to go — off the letters entirely, onto this same layout.)
    */
   if (text.trim() === '') {
     return (
@@ -620,39 +630,48 @@ function ChordRow({
         role="presentation"
       >
         <span className="chord-loose">
-          {ordered.map((chord) =>
-            editing === chord.index ? (
-              <ChordField
-                key={chord.index}
-                name={chord.name}
-                onDone={(name) => onName(chord.index, name)}
-                onMove={(delta) => onMove(chord.index, delta)}
-              />
-            ) : (
-              <button
-                key={chord.index}
-                type="button"
-                className="chord-chip is-loose"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onEdit(chord.index)
-                }}
-                aria-label={`Chord ${chord.name || 'empty'}, edit`}
-              >
-                {chord.name || '—'}
-              </button>
-            ),
-          )}
+          {ordered.map((chord) => (
+            <ChordChip key={chord.index} chord={chord} editing={editing} onEdit={onEdit} onName={onName} onMove={onMove} loose />
+          ))}
         </span>
       </div>
     )
   }
 
+  const anchored = ordered.filter((chord) => chord.at < text.length)
+  const trailing = ordered.filter((chord) => chord.at >= text.length)
+
+  let cursor = 0
+  const pieces: React.ReactNode[] = []
+
+  anchored.forEach((chord, position) => {
+    pieces.push(
+      <span aria-hidden key={`t${position}`}>
+        {text.slice(cursor, chord.at)}
+      </span>,
+    )
+    cursor = chord.at
+
+    pieces.push(
+      <span className="chord-anchor" key={`c${chord.index}`}>
+        <ChordChip chord={chord} editing={editing} onEdit={onEdit} onName={onName} onMove={onMove} loose={false} />
+      </span>,
+    )
+  })
+
+  pieces.push(
+    <span aria-hidden key="tail">
+      {text.slice(cursor)}
+    </span>,
+  )
+
   return (
     /*
      * Tapping the row puts a chord on the syllable under the finger. It is the
      * gesture the row is asking for, and the toolbar button is the same thing for
-     * whoever is on a keyboard.
+     * whoever is on a keyboard. Tapping past the last letter — on the ghost's own
+     * padding or on the trailing row itself — lands the same way `letterAt` always
+     * has, at `text.length`: another chord tied with whichever already play last.
      */
     <div
       className="chord-row"
@@ -663,6 +682,13 @@ function ChordRow({
       role="presentation"
     >
       <span className="chord-ghost">{pieces}</span>
+      {trailing.length > 0 && (
+        <span className="chord-loose chord-trailing">
+          {trailing.map((chord) => (
+            <ChordChip key={chord.index} chord={chord} editing={editing} onEdit={onEdit} onName={onName} onMove={onMove} loose />
+          ))}
+        </span>
+      )}
     </div>
   )
 }

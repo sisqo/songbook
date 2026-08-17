@@ -3273,6 +3273,15 @@
   }
 
   /*
+   * The same loose row, sat after the last letter instead of standing in for a
+   * whole line: one or more chords that play once the words are done. The gap
+   * before the first one keeps it from touching the last letter's own chip.
+   */
+  .chord-trailing {
+    margin-inline-start: 0.35em;
+  }
+
+  /*
    * The name, kept at the letter the chord sits on — floating over the row rather
    * than in its flow, with a `z-index` above every chip so a chord a few letters
    * away can never paint over it. Small on purpose: this still lives inside

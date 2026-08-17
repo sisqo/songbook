@@ -93,8 +93,20 @@ describe('moving a chord along its line', () => {
     assert.equal(result.source, '[la]castello')
   })
 
-  it('stops at the end of it', () => {
+  it('keeps writing the same source once it clears the end, since ChordPro cannot say how far past it a chord sits', () => {
     assert.equal(move('castell[la]o', 0, 5).source, 'castello[la]')
+  })
+
+  it('reorders two chords tied at the end, since a nudge past it is the only way to tell them apart', () => {
+    const result = move('castello[la][mi]', 0, 1)
+    assert.equal(result.source, 'castello[mi][la]')
+    assert.equal(result.chord, 1)
+  })
+
+  it('sends a chord past every other one still tied at the end in a single press', () => {
+    const result = move('castello[la][mi][re]', 0, 1)
+    assert.equal(result.source, 'castello[mi][re][la]')
+    assert.equal(result.chord, 2)
   })
 
   it('says where the chord went when it overtakes another', () => {

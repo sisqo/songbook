@@ -117,6 +117,12 @@ export function setChord(
  * caller was holding would quietly come to mean the other chord. The order is worked
  * out the same way writing and re-reading the line would — by position, ties in the
  * order they were already in.
+ *
+ * The letters run out at `text.length`, but the line does not: several chords
+ * that all play after the last word are ties at that same position (see
+ * `ChordAt.at`), and nudging one past `text.length` is how those get reordered —
+ * one press sends it past every chord still tied there, since there is no unit
+ * smaller than a letter to overtake them one at a time.
  */
 export function moveChord(
   document: SongDocument,
@@ -127,7 +133,7 @@ export function moveChord(
   const block = lyricsAt(document, index)
   if (block === null || block.chords[chord] === undefined) return { document, chord }
 
-  const at = Math.max(0, Math.min(block.text.length, block.chords[chord].at + delta))
+  const at = Math.max(0, block.chords[chord].at + delta)
   const chords = block.chords.map((entry, position) =>
     position === chord ? { ...entry, at } : entry,
   )

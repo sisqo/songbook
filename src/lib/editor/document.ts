@@ -20,7 +20,12 @@ export type SectionKind = 'verse' | 'chorus' | 'bridge'
 
 /** A chord and the position in the line's text it sits above. */
 export interface ChordAt {
-  /** Index into the block's `text`, from 0 to text.length. */
+  /**
+   * Index into the block's `text`, at least 0. A value at or past `text.length`
+   * means the chord plays after the last letter — ChordPro has no way to write
+   * *how far* past, only the order several such chords come in, so that is all
+   * this keeps meaning once it clears the end of the line.
+   */
   at: number
   /** Chord as written, e.g. `la` or `F#m`. */
   name: string
