@@ -63,10 +63,19 @@ export interface ParsedSong {
    * before the rename still restores where it belongs.
    */
   sectionName: string | null
+  /**
+   * Three free-form links, each its own slot rather than a joined list — see
+   * `songs.link1` in `db/schema.ts` for why a gap between them has to stay a gap.
+   * Written and read as `{link1: ...}`, `{link2: ...}`, `{link3: ...}`.
+   */
+  link1: string | null
+  link2: string | null
+  link3: string | null
   sections: Section[]
 }
 
-const DIRECTIVE = /^\{\s*([a-zA-Z_]+)\s*(?::\s*(.*?)\s*)?\}$/
+// Digits are allowed in the name so the three numbered link directives match too.
+const DIRECTIVE = /^\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*(.*?)\s*)?\}$/
 
 /** Directive aliases, mapped to the canonical name we act on. */
 const DIRECTIVE_ALIAS: Record<string, string> = {
@@ -81,6 +90,9 @@ const DIRECTIVE_ALIAS: Record<string, string> = {
   songbook: 'songbookName',
   division: 'sectionName',
   sezione: 'sectionName',
+  link1: 'link1',
+  link2: 'link2',
+  link3: 'link3',
   c: 'comment',
   comment: 'comment',
   soc: 'start_of_chorus',
@@ -104,6 +116,9 @@ export function parseChordPro(source: string): ParsedSong {
     tags: [],
     songbookName: null,
     sectionName: null,
+    link1: null,
+    link2: null,
+    link3: null,
     sections: [],
   }
 
@@ -158,6 +173,15 @@ export function parseChordPro(source: string): ParsedSong {
           break
         case 'sectionName':
           song.sectionName = value || null
+          break
+        case 'link1':
+          song.link1 = value || null
+          break
+        case 'link2':
+          song.link2 = value || null
+          break
+        case 'link3':
+          song.link3 = value || null
           break
         case 'comment':
           section ??= openSection(forcedKind ?? 'verse')

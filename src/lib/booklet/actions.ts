@@ -19,6 +19,9 @@ import { editableSongbook } from '@/lib/songbooks/access'
 export interface BookletSong {
   title: string
   artist: string | null
+  link1: string | null
+  link2: string | null
+  link3: string | null
   body: string
 }
 
@@ -52,6 +55,9 @@ export async function loadBooklet(songbookSlug: string): Promise<Booklet | null>
     .select({
       title: songs.title,
       artist: songs.artist,
+      link1: songs.link1,
+      link2: songs.link2,
+      link3: songs.link3,
       body: songs.body,
       sectionId: sections.id,
       sectionName: sections.name,
@@ -72,7 +78,14 @@ export async function loadBooklet(songbookSlug: string): Promise<Booklet | null>
       section = { name: row.sectionName, songs: [] }
       bySection.set(row.sectionId, section)
     }
-    section.songs.push({ title: row.title, artist: row.artist, body: row.body })
+    section.songs.push({
+      title: row.title,
+      artist: row.artist,
+      link1: row.link1,
+      link2: row.link2,
+      link3: row.link3,
+      body: row.body,
+    })
   }
 
   return { songbookName: songbookRow.name, sections: [...bySection.values()] }

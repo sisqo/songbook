@@ -84,6 +84,11 @@ export function ChordProGuide() {
             <strong><code>{'{tags: rock, live}'}</code></strong> — optional, comma-separated.
           </li>
           <li>
+            <strong><code>{'{link1: ...}'}</code></strong>, <code>{'{link2: ...}'}</code> and{' '}
+            <code>{'{link3: ...}'}</code> — optional, one URL each. Three fixed slots rather than
+            a list, so a link can sit in the second or third one with nothing in the first.
+          </li>
+          <li>
             <strong><code>{'{songbook: ...}'}</code></strong> and{' '}
             <strong><code>{'{division: ...}'}</code></strong> — where the song is filed on first
             import. Only read once: after the song exists, moving it is done from the app, and

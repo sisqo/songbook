@@ -62,7 +62,7 @@
  * songbook's own index rarely spans more than a page or two.
  */
 
-import { Document, Font, Page, Path, StyleSheet, Svg, Text, View, pdf } from '@react-pdf/renderer'
+import { Document, Font, Link, Page, Path, StyleSheet, Svg, Text, View, pdf } from '@react-pdf/renderer'
 import { PDFDocument } from 'pdf-lib'
 
 import type { Booklet, BookletSong } from './actions'
@@ -275,6 +275,17 @@ const styles = StyleSheet.create({
     fontSize: 11.25,
     color: MUTED,
     marginTop: 4.5,
+  },
+  songLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 10.5,
+  },
+  songLink: {
+    fontSize: 8.625,
+    color: ACCENT,
+    textDecoration: 'underline',
   },
   continuationHeader: {
     flexDirection: 'row',
@@ -502,6 +513,11 @@ function IndexPage({ songbookName, groups }: { songbookName: string; groups: Ind
   )
 }
 
+/** A song's three link slots, empty ones dropped, order kept. */
+function linksOf(song: BookletSong): string[] {
+  return [song.link1, song.link2, song.link3].filter((link) => link !== null)
+}
+
 /** One song's parsed body, ready to lay out — computed once and reused for every line. */
 function prepare(song: BookletSong, notation: Notation) {
   const parsed = parseChordPro(song.body)
@@ -655,6 +671,7 @@ function splitByRows(sections: Section[]): [Section[], Section[]] {
 function BookletSongPage({
   title,
   artist,
+  links,
   sectionName,
   sections,
   chordLabel,
@@ -663,6 +680,8 @@ function BookletSongPage({
 }: {
   title: string
   artist: string | null
+  /** The song's own links, in their fixed slots — empty ones already dropped. */
+  links: string[]
   /** The songbook section this song lives in — shown as a running header on every page. */
   sectionName: string
   sections: Section[]
@@ -679,6 +698,15 @@ function BookletSongPage({
           <Text style={styles.songHeaderLabel}>{sectionName}</Text>
           <Text style={styles.songTitle}>{title}</Text>
           {artist !== null && <Text style={styles.songArtist}>{artist}</Text>}
+          {links.length > 0 && (
+            <View style={styles.songLinks}>
+              {links.map((link) => (
+                <Link key={link} src={link} style={styles.songLink}>
+                  {link.replace(/^https?:\/\//, '')}
+                </Link>
+              ))}
+            </View>
+          )}
         </View>
       ) : (
         <View style={styles.continuationHeader}>
@@ -786,10 +814,13 @@ async function paginateSong(
 ): Promise<{ pages: Section[][]; chordLabel: (raw: string | null) => string | null; roomForChords: boolean }> {
   const { parsed, chordLabel, roomForChords } = prepare(song, notation)
 
+  const links = linksOf(song)
+
   const renderCandidate = (sections: Section[], isFirstPage: boolean) => (
     <BookletSongPage
       title={song.title}
       artist={song.artist}
+      links={links}
       sectionName={sectionName}
       sections={sections}
       chordLabel={chordLabel}
@@ -864,6 +895,7 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
             key={`${index}-${pageIndex}`}
             title={entry.song.title}
             artist={entry.song.artist}
+            links={linksOf(entry.song)}
             sectionName={entry.sectionName}
             sections={sections}
             chordLabel={songPagination[index].chordLabel}

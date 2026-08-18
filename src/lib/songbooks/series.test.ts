@@ -6,7 +6,19 @@ import type { Song } from '@/lib/data'
 import { seriesOf } from './series'
 
 function song(slug: string, songbookSlug: string): Song {
-  return { slug, title: slug, artist: null, tags: [], songbookSlug, sectionId: 1, body: '', updatedAt: null }
+  return {
+    slug,
+    title: slug,
+    artist: null,
+    tags: [],
+    link1: null,
+    link2: null,
+    link3: null,
+    songbookSlug,
+    sectionId: 1,
+    body: '',
+    updatedAt: null,
+  }
 }
 
 describe('seriesOf', () => {

@@ -19,6 +19,9 @@ export interface PreparedSong {
   artist: string
   /** Comma-separated, as the fields hold them. */
   tags: string
+  link1: string
+  link2: string
+  link3: string
   body: string
   format: InputFormat
   /**
@@ -47,6 +50,9 @@ export function prepareSongs(text: string): PreparedSong[] {
       title: found.title,
       artist: found.artist ?? '',
       tags: found.tags.join(', '),
+      link1: found.link1 ?? '',
+      link2: found.link2 ?? '',
+      link3: found.link3 ?? '',
       body: found.body,
       format: converted.format,
       declares: found.songbookName,

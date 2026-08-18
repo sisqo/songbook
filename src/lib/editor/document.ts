@@ -57,7 +57,10 @@ export interface SongDocument {
   eol: '\n' | '\r\n'
 }
 
-const DIRECTIVE = /^\{\s*([a-zA-Z_]+)\s*(?::\s*(.*?)\s*)?\}$/
+// Digits are allowed in the name so numbered directives like `{link1: ...}` still
+// parse as a directive rather than falling through to a lyrics line — see
+// `chordpro.ts`'s own copy of this regex.
+const DIRECTIVE = /^\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?::\s*(.*?)\s*)?\}$/
 
 const COMMENT_NAMES = new Set(['c', 'comment'])
 

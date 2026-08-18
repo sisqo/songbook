@@ -15,16 +15,16 @@ import { parseChordPro } from '../chordpro'
 
 /**
  * Directives that only ever repeat a column this row already has of its own —
- * title, artist, tags, the songbook and section a re-import declares, and a key
- * nothing has stored in years. `export.ts` writes every one of these fresh from the
- * row rather than trusting a copy left in the body, so a copy that survived import
- * has no job left: it cannot be shown (the reading layer never prints a directive it
- * recognises), it cannot be exported (the row wins), and the one place it does show
- * up is the visual editor, as a directive chip with nothing behind it to explain.
- * Stripped here for the same reason `export.ts` strips it there.
+ * title, artist, tags, the songbook and section a re-import declares, the three
+ * links, and a key nothing has stored in years. `export.ts` writes every one of
+ * these fresh from the row rather than trusting a copy left in the body, so a copy
+ * that survived import has no job left: it cannot be shown (the reading layer never
+ * prints a directive it recognises), it cannot be exported (the row wins), and the
+ * one place it does show up is the visual editor, as a directive chip with nothing
+ * behind it to explain. Stripped here for the same reason `export.ts` strips it there.
  */
 export const METADATA_DIRECTIVE =
-  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|division|sezione)\s*:[^}]*\}\s*$/i
+  /^\s*\{\s*(?:title|t|artist|st|subtitle|key|tags?|canzoniere|songbook|division|sezione|link[123])\s*:[^}]*\}\s*$/i
 
 export interface Deduced {
   title: string
@@ -32,6 +32,9 @@ export interface Deduced {
   tags: string[]
   songbookName: string | null
   sectionName: string | null
+  link1: string | null
+  link2: string | null
+  link3: string | null
   /** The body with any consumed heading lines removed. */
   body: string
 }
@@ -87,6 +90,9 @@ export function deduce(body: string): Deduced {
     tags: parsed.tags,
     songbookName: parsed.songbookName,
     sectionName: parsed.sectionName,
+    link1: parsed.link1,
+    link2: parsed.link2,
+    link3: parsed.link3,
     body: rest,
   }
 }

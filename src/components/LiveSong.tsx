@@ -14,7 +14,7 @@ import { ControlBar } from '@/components/ControlBar'
 import { usePrefs } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
-import { IconNote, IconPencil, IconPlus } from '@/components/icons'
+import { IconExternal, IconNote, IconPencil, IconPlus } from '@/components/icons'
 import { chordTokens } from '@/lib/chordpro'
 
 /**
@@ -40,6 +40,7 @@ export interface Place {
  */
 export function SongHeading({ place }: { place: Place | null }) {
   const { song, deleted } = useSong()
+  const links = [song.link1, song.link2, song.link3].filter((link) => link !== null)
 
   return (
     <header className="mb-4">
@@ -55,6 +56,24 @@ export function SongHeading({ place }: { place: Place | null }) {
           </span>
         )}
       </p>
+
+      {links.length > 0 && (
+        <p className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+          {links.map((link) => (
+            <a
+              key={link}
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-accent underline underline-offset-2"
+            >
+              {link.replace(/^https?:\/\//, '')}
+              <span className="sr-only">(opens in a new tab)</span>
+              <IconExternal size={12} />
+            </a>
+          ))}
+        </p>
+      )}
 
       <CapoNote />
       <SongNote />
