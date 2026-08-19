@@ -5,7 +5,7 @@ import { DM_Sans, Geist_Mono } from 'next/font/google'
 import { OfflineSync } from '@/components/OfflineSync'
 import { RoleProvider } from '@/components/RoleProvider'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
-import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
+import { LIGHT_ONLY_PATH, STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 
 import './globals.css'
 
@@ -67,11 +67,20 @@ export const metadata: Metadata = {
  * generated and served from a precache, so there is no server render that could
  * know the answer either — this script is the only place it can be applied in time.
  *
- * Twin of `applyThemeChoice` in lib/theme.ts, which does the same on a change and
+ * Twin of `showThemeChoice` in lib/theme.ts, which does the same on a change and
  * carries the explanation of why the attribute is removed rather than set to
- * "auto". The key and the id are imported so at least the strings cannot drift.
+ * "auto". The key, the id and the path are imported so at least the strings cannot
+ * drift.
+ *
+ * One screen is not the reader's to choose: `LIGHT_ONLY_PATH` is drawn light and is
+ * shown light, so its own branch never reads the stored choice — and never writes
+ * it either, which is why the page that follows it is still whatever the reader
+ * picked. Both spellings of the path are compared because a trailing slash is the
+ * same screen, and spelled out rather than trimmed with a regexp: `\/` inside a
+ * template literal is just `/`, and the script that reached the page would have
+ * carried a syntax error instead of a theme.
  */
-const themeScript = `try{var c=localStorage.getItem('${THEME_KEY}');if(c==='light'||c==='dark'){var r=document.documentElement;r.dataset.theme=c;var b=getComputedStyle(r).getPropertyValue('--bg').trim();if(b){var m=document.createElement('meta');m.id='${STATUS_BAR_ID}';m.name='theme-color';m.content=b;document.head.prepend(m)}}}catch(e){}`
+const themeScript = `try{var p=location.pathname;var c=p==='${LIGHT_ONLY_PATH}'||p==='${LIGHT_ONLY_PATH}/'?'light':localStorage.getItem('${THEME_KEY}');if(c==='light'||c==='dark'){var r=document.documentElement;r.dataset.theme=c;var b=getComputedStyle(r).getPropertyValue('--bg').trim();if(b){var m=document.createElement('meta');m.id='${STATUS_BAR_ID}';m.name='theme-color';m.content=b;document.head.prepend(m)}}}catch(e){}`
 
 export const viewport: Viewport = {
   // No maximumScale or user-scalable: pinch zoom is an accessibility escape

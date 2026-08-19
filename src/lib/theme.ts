@@ -16,6 +16,20 @@ export type ThemeChoice = 'auto' | 'light' | 'dark'
 
 export const THEME_KEY = 'songs:theme'
 
+/**
+ * The one screen that is drawn in a single theme.
+ *
+ * The landing page is one picture — the wash behind the hero, the white sign-in
+ * card, the fill under Sing Together — and it is drawn light, so a reader whose
+ * device is dark is shown it light anyway. Nothing else in the app is: past the
+ * sign-in the reader's own choice is the only one that decides.
+ *
+ * Named here rather than in the page, because three places have to agree on it:
+ * the inline script in layout.tsx that applies it before the first paint, and
+ * `LightThemeOnly`, which covers the navigations that script never sees.
+ */
+export const LIGHT_ONLY_PATH = '/login'
+
 export const THEME_LABEL: Record<ThemeChoice, string> = {
   auto: 'Auto',
   light: 'Light',
@@ -39,23 +53,35 @@ export function readThemeChoice(): ThemeChoice {
 }
 
 /**
- * Puts the choice on the page, and keeps it.
+ * Shows a theme, without remembering it.
  *
  * `auto` removes the attribute rather than setting it to "auto": absent is what
  * hands the decision back to the media query, so a system that turns dark at
  * sunset is followed with no listener of ours involved.
  *
- * The twin of the first half of this lives as an inline script in layout.tsx,
- * where it has to run before the first paint and so cannot come from the bundle.
- * Change one and read the other.
+ * The twin of this lives as an inline script in layout.tsx, where it has to run
+ * before the first paint and so cannot come from the bundle. Change one and read
+ * the other.
  */
-export function applyThemeChoice(choice: ThemeChoice): void {
+export function showThemeChoice(choice: ThemeChoice): void {
   const root = document.documentElement
 
   if (choice === 'auto') delete root.dataset.theme
   else root.dataset.theme = choice
 
   syncStatusBar(choice)
+}
+
+/**
+ * Puts the reader's choice on the page, and keeps it.
+ *
+ * Only what the reader asked for comes through here. Showing and remembering are
+ * two functions rather than one because `LIGHT_ONLY_PATH` is shown a theme nobody
+ * chose, and a screen that overwrote the choice on its way past would leave the
+ * rest of the app light for good.
+ */
+export function applyThemeChoice(choice: ThemeChoice): void {
+  showThemeChoice(choice)
 
   try {
     if (choice === 'auto') window.localStorage.removeItem(THEME_KEY)
