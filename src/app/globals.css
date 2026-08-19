@@ -1345,6 +1345,27 @@
     );
   }
 
+  /* ---- Landing column (/login only) ------------------------------------ */
+
+  /*
+   * One column for every block on the page, the hero included.
+   *
+   * The hero used to be 16rem wider than the sections under it, and the step at
+   * its bottom border read as a mistake rather than as emphasis. The number is the
+   * hero's own doing: the 372px sign-in card, the 3.25rem gutter beside it and the
+   * three pills, which stay on one line only while the column beside the card is
+   * about 43rem — so the sections widened to meet the hero rather than the hero
+   * narrowing to meet them. The page's side padding matches the hero's own for the
+   * same reason: equal caps still misalign if the gutters they sit in differ — and
+   * the design's 5rem gutter waits for the 1280px it is drawn at, because at 1024
+   * it would take the room the headline needs out of the column beside the card.
+   */
+  .landing-width {
+    width: 100%;
+    max-width: 70rem;
+    margin-inline: auto;
+  }
+
   /* ---- Landing hero (v3.4 redesign, /login only) ----------------------- */
 
   /*
@@ -1439,7 +1460,9 @@
 
   @media (min-width: 1024px) {
     .hero-badge {
-      width: auto;
+      /* Still `fit-content` from above: a grid item left to stretch would run the
+         pill the whole width of the column, and a pill as long as the headline
+         under it reads as a bar, not as a wordmark. */
       margin-inline: 0;
       gap: 1rem;
       padding: 0.625rem 1.75rem 0.625rem 0.75rem;

@@ -20,6 +20,15 @@ import './globals.css'
 const sans = DM_Sans({
   variable: '--font-sans',
   subsets: ['latin'],
+  /*
+   * The optical size has to be asked for by name, or the family arrives pinned at
+   * the size it is drawn for a paragraph. That is what the landing headline was
+   * being set in: at 62px the text cut runs 10% wider than the display cut and
+   * reads visibly loose between the letters, whatever `letter-spacing` says. With
+   * the axis shipped, `font-optical-sizing` (already the browser's default) tightens
+   * the fit as the size grows and leaves body copy where it always was.
+   */
+  axes: ['opsz'],
 })
 
 const mono = Geist_Mono({

@@ -292,17 +292,21 @@ export default async function LoginPage({ searchParams }: Props) {
   const success = message === null && reset !== undefined ? 'Password changed. Sign in with your new password.' : null
 
   return (
-    <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
+    <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:px-8 sm:py-16 lg:px-12 xl:px-20">
       {/*
-        * The hero, full-bleed: `-mx-5 -mt-10 sm:-mt-16` cancels `<main>`'s own padding
-        * so the wash and the grain reach the viewport edge, and the inner wrapper puts
-        * the gutter back for the badge, the headline, the card and the counters.
+        * The hero, full-bleed: `self-stretch` rather than `w-full`, because a width of
+        * 100% is measured inside `<main>`'s padding and a negative margin only shifts
+        * a box that definite — the band stopped a gutter short of both edges. Stretched,
+        * it is the padding box that the negative margins widen, at every breakpoint
+        * `<main>`'s own padding changes, and the wash and the grain reach the viewport
+        * edge. The inner wrapper then puts the gutter back for the badge, the headline,
+        * the card and the counters — at the width every block below it shares.
         */}
-      <section className="landing-hero -mx-5 -mt-10 w-full px-5 pb-10 pt-10 sm:-mt-16 sm:px-8 sm:pb-14 sm:pt-14 lg:px-20 lg:pb-16 lg:pt-16">
+      <section className="landing-hero -mx-5 -mt-10 self-stretch px-5 pb-10 pt-10 sm:-mx-8 sm:-mt-16 sm:px-8 sm:pb-14 sm:pt-14 lg:-mx-12 lg:px-12 lg:pb-16 lg:pt-16 xl:-mx-20 xl:px-20">
         <div className="landing-hero-decor" aria-hidden />
         <div className="landing-hero-grain" aria-hidden />
 
-        <div className="landing-hero-grid mx-auto w-full max-w-6xl">
+        <div className="landing-hero-grid landing-width">
           <span className="hero-badge">
             <span className="hero-badge-icon">
               <IconNote />
@@ -440,7 +444,7 @@ export default async function LoginPage({ searchParams }: Props) {
         * `.feature-spotlight`'s own comment in globals.css for why the fill is what
         * marks it out.
         */}
-      <section className="mt-11 w-full max-w-4xl lg:mt-14">
+      <section className="landing-width mt-11 lg:mt-14">
         <div className="feature-spotlight">
           <svg
             className="feature-spotlight-mark"
@@ -488,7 +492,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
       </section>
 
-      <section className="mt-11 w-full max-w-4xl lg:mt-16">
+      <section className="landing-width mt-11 lg:mt-16">
         <div className="text-center">
           <h2 className="landing-feature-title">Built for playing, not scrolling.</h2>
           <p className="mx-auto mt-2 max-w-[26rem] text-sm leading-[1.45] text-muted lg:mt-2.5 lg:max-w-[30rem] lg:text-[15px] lg:leading-[1.5]">
