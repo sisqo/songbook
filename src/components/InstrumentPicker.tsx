@@ -8,8 +8,8 @@ import { INSTRUMENTS, INSTRUMENT_LABEL } from '@/lib/music/shapes'
  *
  * It changes the shapes, not the chords: a C is a C either way, so nothing on the
  * sheet moves — what changes is the diagram you get when you tap one, and the strings
- * it is drawn on. That is also why this is not next to the notation in the reading
- * panel: it is answered once, for every song, like the theme.
+ * it is drawn on. That is also why this is not next to Key or Capo in the reading
+ * panel: it is answered once, for every song, like the notation and the theme.
  *
  * Unlike the theme it is a preference about the reader rather than about the screen,
  * so it goes to the database with the notation and the zoom and follows you to the

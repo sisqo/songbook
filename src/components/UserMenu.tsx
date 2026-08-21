@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { unstable_rethrow } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { InstrumentPicker } from '@/components/InstrumentPicker'
+import { NotationPicker } from '@/components/NotationPicker'
 import { useRole } from '@/components/RoleProvider'
-import { IconChevronLeft, IconKey, IconTrash } from '@/components/icons'
+import { ThemePicker } from '@/components/ThemePicker'
+import { IconChevronLeft, IconChevronRight, IconKey, IconSettings, IconTrash } from '@/components/icons'
 import { deleteMyAccount } from '@/lib/accounts/actions'
 import { SELF_DELETE_MESSAGE } from '@/lib/accounts/types'
 import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
@@ -13,11 +16,14 @@ import { PLAN_LABEL } from '@/lib/plans/types'
 
 /**
  * The reader's own identity, next to the hamburger (v3.3) — who is signed in, and
- * the two things that are about *being signed in* rather than about the app: change
- * password and sign out. Both used to live inside the hamburger (Password behind
- * Settings, Sign out at the very end); they moved here so the hamburger holds only
- * navigation, and this holds only the reader's own account, with nothing duplicated
- * between the two.
+ * everything that is about *being this particular reader* rather than about
+ * navigating the app: change password, sign out, and — since Settings moved here
+ * too — the reading and app preferences that used to sit behind the hamburger's own
+ * Settings screen. The hamburger (`NavMenu`) is left holding only navigation between
+ * sections of the app; this holds identity (email, plan, owner status), signing
+ * in/out, and now the reader's own preferences, with nothing duplicated between the
+ * two. Delete account nests one level under Settings rather than sitting beside the
+ * preference pickers: it is a consequence of leaving, not a preference to set.
  *
  * The avatar reads the email, not the Google profile, even though a Google sign-in
  * carries a name and a picture this app could ask for: a credentials account
@@ -37,8 +43,13 @@ import { PLAN_LABEL } from '@/lib/plans/types'
 export function UserMenu({ children }: { children: React.ReactNode }) {
   const { email, known, isGlobalOwner, plan } = useRole()
   const [open, setOpen] = useState(false)
-  /** A second screen inside the same panel, same pattern as Settings in `NavMenu`. */
-  const [view, setView] = useState<'main' | 'delete'>('main')
+  /**
+   * A second screen inside this same panel, the same pattern this file already used
+   * for "delete" and now also holds Settings — and Settings itself nests one further
+   * screen inside it (delete), since leaving is reached through preferences rather
+   * than sitting next to them.
+   */
+  const [view, setView] = useState<'main' | 'settings' | 'delete'>('main')
 
   const close = () => {
     setOpen(false)
@@ -50,7 +61,11 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (view !== 'main') setView('main')
+      // One level at a time — main → settings → delete is two steps deep now, and
+      // Escape should retrace it the same way the back-row buttons do, not jump
+      // straight to main from delete.
+      if (view === 'delete') setView('settings')
+      else if (view === 'settings') setView('main')
       else close()
     }
     window.addEventListener('keydown', onKey)
@@ -112,11 +127,53 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
 
                 <div className="menu-divider" />
 
+                <button
+                  type="button"
+                  className="menu-item w-full"
+                  role="menuitem"
+                  aria-label="Settings, opens the settings list"
+                  onClick={() => setView('settings')}
+                >
+                  <IconSettings size={17} />
+                  Settings
+                  <IconChevronRight size={15} className="ms-auto" />
+                </button>
+              </>
+            )}
+
+            {view === 'settings' && (
+              <>
+                <button
+                  type="button"
+                  className="menu-item w-full"
+                  role="menuitem"
+                  aria-label="Back to the menu"
+                  onClick={() => setView('main')}
+                >
+                  <IconChevronLeft size={17} />
+                  Settings
+                </button>
+
+                <div className="menu-divider" />
+
                 {/*
-                 * Last row, past the divider that already separates it from Sign out:
-                 * every reader has this over their own account, own-owner or not — see
-                 * `deleteMyAccount`'s own comment on why it is a different power from
-                 * the one `/accounts` gives a global owner over every account.
+                 * Grouped together because each of these is answered once for the whole
+                 * account rather than per song — instrument, notation and theme all read
+                 * the same way on every sheet until the reader changes them again, same
+                 * reasoning `InstrumentPicker` gives for itself.
+                 */}
+                <InstrumentPicker />
+                <ThemePicker />
+                <NotationPicker />
+
+                <div className="menu-divider" />
+
+                {/*
+                 * Past the divider that now separates it from the preference pickers
+                 * above rather than from Sign out: every reader has this over their own
+                 * account, own-owner or not — see `deleteMyAccount`'s own comment on why
+                 * it is a different power from the one `/accounts` gives a global owner
+                 * over every account.
                  */}
                 <button
                   type="button"
@@ -130,7 +187,7 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
               </>
             )}
 
-            {view === 'delete' && <DeleteMyAccountView email={email} onBack={() => setView('main')} />}
+            {view === 'delete' && <DeleteMyAccountView email={email} onBack={() => setView('settings')} />}
           </div>
         </>
       )}
@@ -173,7 +230,7 @@ function DeleteMyAccountView({ email, onBack }: { email: string; onBack: () => v
 
   return (
     <>
-      <button type="button" className="menu-item w-full" role="menuitem" aria-label="Back to the menu" onClick={onBack}>
+      <button type="button" className="menu-item w-full" role="menuitem" aria-label="Back to settings" onClick={onBack}>
         <IconChevronLeft size={17} />
         Delete account
       </button>

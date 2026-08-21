@@ -4,10 +4,8 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
-import { InstrumentPicker } from '@/components/InstrumentPicker'
 import { PlanUpgradeModal, type PlanNotice } from '@/components/PlanUpgradeModal'
 import { useRole } from '@/components/RoleProvider'
-import { ThemePicker } from '@/components/ThemePicker'
 import {
   IconBroadcast,
   IconCheck,
@@ -18,7 +16,6 @@ import {
   IconInfo,
   IconMenu,
   IconNote,
-  IconSettings,
   IconTuningFork,
   IconSwitchAccount,
 } from '@/components/icons'
@@ -75,23 +72,20 @@ const AUDIENCE_MS = 10_000
  * single grantable role (v3.1), every signed-in reader is already admin on their own
  * account.
  *
- * Settings is a second screen inside the same panel rather than a page of its own:
- * changing the theme or the instrument is something a reader does mid-song, and a
- * real navigation would cost them the page they were reading to get there and again
- * to get back. `view` resets to `main` on every close, so the panel always opens
- * where it left off closing — at the top, not wherever Settings happened to leave it.
- *
- * Sing Together is a second screen for the same reason, and lives beside Settings
- * rather than inside it: it is reached mid-song too, but what it does is about the
- * repertoire being read, not about this reader's own account, which is what the
- * comment on Settings' own row below says that group is for. Whether a broadcast is
+ * Sing Together is a second screen inside this same panel rather than a page of its
+ * own: it is reached mid-song, and a real navigation would cost the reader the page
+ * they were reading to get there and again to get back. What it does is about the
+ * repertoire being read — the songs this reader is about to sing from, sent to
+ * whoever opened the link — not about this reader's own account. `view` resets to
+ * `main` on every close, so the panel always opens where it left off closing — at
+ * the top, not wherever Sing Together happened to leave it. Whether a broadcast is
  * already running is asked once, on mount, and kept in this component rather than in
  * `view` — `view` is reset by every close, and a broadcast the reader already started
  * is exactly the thing that must not be forgotten the next time they open this panel.
  */
 export function NavMenu({ current }: { current: Section }) {
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<'main' | 'settings' | 'sing-together'>('main')
+  const [view, setView] = useState<'main' | 'sing-together'>('main')
   const { mayEdit, isGlobalOwner } = useRole()
 
   /*
@@ -331,43 +325,13 @@ export function NavMenu({ current }: { current: Section }) {
           <div className="menu-overlay" onClick={close} aria-hidden />
 
           <div className={view === 'sing-together' ? 'menu-panel is-wide' : 'menu-panel'} role="menu">
-            {view === 'settings' && (
-              <>
-                {/*
-                  * Its own row rather than a header: on a phone this is still a tap
-                  * target. The label reads "Settings" either way, so the accessible
-                  * name says what the tap actually does — a screen reader has no
-                  * chevron to tell this apart from the row that opens this view.
-                  */}
-                <button
-                  type="button"
-                  className="menu-item w-full"
-                  role="menuitem"
-                  aria-label="Back to the menu"
-                  onClick={() => setView('main')}
-                >
-                  <IconChevronLeft size={17} />
-                  Settings
-                </button>
-
-                <div className="menu-divider" />
-
-                {/*
-                  * Neither is a destination, so neither closes the menu: the reader is
-                  * looking at the thing they are changing, and the panel is part of it.
-                  */}
-                <InstrumentPicker />
-                <ThemePicker />
-              </>
-            )}
-
             {view === 'sing-together' && (
               <>
                 {/*
-                  * Same back-row pattern as Settings, word for word: the accessible name
-                  * says what the tap does rather than what the row is called, since a
-                  * screen reader has no chevron to tell this row apart from the one that
-                  * opened this view.
+                  * Its own row rather than a header: on a phone this is still a tap
+                  * target. The accessible name says what the tap does rather than what
+                  * the row is called, since a screen reader has no chevron to tell this
+                  * row apart from the one that opened this view.
                   */}
                 <button
                   type="button"
@@ -629,14 +593,13 @@ export function NavMenu({ current }: { current: Section }) {
                   * Unconditional, like Home: any signed-in reader may open this screen —
                   * whether starting a broadcast succeeds is a question `startBroadcast`
                   * answers on the server, not one this menu asks first.
-                  * It sits with Home and the tuner rather than behind the Settings
-                  * divider below, because Settings is framed by its own comment down there
-                  * as touching only this reader's own account, and this is very much about
-                  * the repertoire — the songs this reader is about to sing from, sent to
-                  * whoever opened the link. It still opens a second screen rather than
-                  * navigating away, for the same reason Settings does: this is reached
-                  * mid-song, and a real navigation would cost the reader the page they
-                  * were reading to get here.
+                  * It sits with Home and the tuner because it is about the repertoire
+                  * being read — the songs this reader is about to sing from, sent to
+                  * whoever opened the link — rather than about this reader's own account,
+                  * which now lives entirely in `UserMenu`, not here. It opens a second
+                  * screen rather than navigating away because it is reached mid-song, and
+                  * a real navigation would cost the reader the page they were reading to
+                  * get back to.
                   */}
                 <button
                   type="button"
@@ -647,27 +610,6 @@ export function NavMenu({ current }: { current: Section }) {
                 >
                   <IconBroadcast size={17} />
                   Sing together
-                  <IconChevronRight size={15} className="ms-auto" />
-                </button>
-
-                <div className="menu-divider" />
-
-                {/*
-                  * A second screen rather than a destination, so it does not close the
-                  * panel — the chevron says as much, the same way the tuner's arrow says
-                  * the opposite. Last row: nothing past it belongs to this menu any more —
-                  * change password and sign out both moved to `UserMenu` (v3.3), next to
-                  * this one rather than inside it.
-                  */}
-                <button
-                  type="button"
-                  className="menu-item w-full"
-                  role="menuitem"
-                  aria-label="Settings, opens the settings list"
-                  onClick={() => setView('settings')}
-                >
-                  <IconSettings size={17} />
-                  Settings
                   <IconChevronRight size={15} className="ms-auto" />
                 </button>
               </>

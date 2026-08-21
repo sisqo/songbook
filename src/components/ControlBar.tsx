@@ -23,10 +23,10 @@ import { useAutoScroll } from '@/lib/useAutoScroll'
  * the ones a hand reaches for with a guitar in the other, and the eight controls
  * that used to sit here wrapped onto a second line on every phone.
  *
- * Everything else — how far the song has been moved, the notation, the size of the
- * text — is set once before the song starts and lives in a panel behind the last
- * button. The cost is named and accepted: with the panel closed, the bar says nothing
- * about how the song has been moved. The sheet does, in the chords themselves.
+ * Everything else — how far the song has been moved, the size of the text — is set
+ * once before the song starts and lives in a panel behind the last button. The cost
+ * is named and accepted: with the panel closed, the bar says nothing about how the
+ * song has been moved. The sheet does, in the chords themselves.
  */
 export function ControlBar({
   songSlug,
@@ -69,7 +69,6 @@ export function ControlBar({
     song,
     pending,
     setZoomStep,
-    setNotation,
     setChordDisplay,
     setSemitones,
     setScrollSpeed,
@@ -129,12 +128,10 @@ export function ControlBar({
             semitonesLocked={semitonesLocked}
             capo={song.capo}
             suggestion={suggestion}
-            notation={global.notation}
             chordDisplay={global.chordDisplay}
             zoomStep={global.zoomStep}
             setSemitones={setSemitonesAndBroadcast}
             setCapo={setCapo}
-            setNotation={setNotation}
             setChordDisplay={setChordDisplay}
             setZoomStep={setZoomStep}
           />
@@ -223,11 +220,16 @@ function formatSemitones(semitones: number): string {
 }
 
 /**
- * What the song is read in, rather than how it is read: the key, the notation the
- * chords are named in, and how big the words are.
+ * What the song is read in, rather than how it is read: the key it has been moved
+ * to, whether a capo is doing part of that work, whether a chord shows as its name
+ * or its shape, and how big the words are.
  *
- * Grouped by what they act on — the chords, then the text — because "notation"
- * and "size" are both settings of the same sheet and nothing else on the
+ * Notation — the alphabet the chords are named in — used to be listed here too,
+ * between Capo and Show. It has moved to Settings, next to the instrument and the
+ * theme, where the other choices a reader carries across every song already live.
+ *
+ * Grouped by what they act on — the chords, then the text — because "chord
+ * display" and "size" are both settings of the same sheet and nothing else on the
  * screen says which part of it each one changes.
  */
 function ReadingPanel({
@@ -235,12 +237,10 @@ function ReadingPanel({
   semitonesLocked,
   capo,
   suggestion,
-  notation,
   chordDisplay,
   zoomStep,
   setSemitones,
   setCapo,
-  setNotation,
   setChordDisplay,
   setZoomStep,
 }: {
@@ -249,12 +249,10 @@ function ReadingPanel({
   semitonesLocked: boolean
   capo: number
   suggestion: CapoOption | null
-  notation: 'it' | 'int'
   chordDisplay: ChordDisplay
   zoomStep: number
   setSemitones: (value: number) => void
   setCapo: (value: number) => void
-  setNotation: (value: 'it' | 'int') => void
   setChordDisplay: (value: ChordDisplay) => void
   setZoomStep: (value: number) => void
 }) {
@@ -364,7 +362,7 @@ function ReadingPanel({
         * A sentence and a button rather than an automatic move: the capo is the one
         * thing here that changes what the hands do, and the reader is the one holding
         * them. It disappears as soon as it has nothing left to offer — but the slot
-        * around it does not, so stepping through capo positions never shifts Notation
+        * around it does not, so stepping through capo positions never shifts Show
         * and Text below; see `.capo-hint-slot`'s own comment in globals.css.
         */}
       <div className="capo-hint-slot">
@@ -380,31 +378,6 @@ function ReadingPanel({
             </button>
           </div>
         )}
-      </div>
-
-      <div className="control-row">
-        <span className="control-name">
-          <span className="control-name-label">Notation</span>
-        </span>
-
-        <span className="segment" role="group" aria-label="Chord notation">
-          <button
-            type="button"
-            className={notation === 'it' ? 'segment-button is-on' : 'segment-button'}
-            onClick={() => setNotation('it')}
-            aria-pressed={notation === 'it'}
-          >
-            Do
-          </button>
-          <button
-            type="button"
-            className={notation === 'int' ? 'segment-button is-on' : 'segment-button'}
-            onClick={() => setNotation('int')}
-            aria-pressed={notation === 'int'}
-          >
-            C
-          </button>
-        </span>
       </div>
 
       {/*

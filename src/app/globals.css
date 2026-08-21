@@ -3011,7 +3011,7 @@
   /*
    * Reserves the capo suggestion's own space in the panel whether or not there
    * currently is one. It is recomputed on every capo and key tap, so without a slot of
-   * its own the suggestion appearing and disappearing kept shifting the Notation and
+   * its own the suggestion appearing and disappearing kept shifting the Show and
    * Text rows below it up and down each time — the panel is bottom-anchored, so that
    * shift read as the whole thing lurching underfoot while a reader worked through
    * capo positions. The height matches `.control-hint`'s own padding plus a `.btn-sm`,
