@@ -5,6 +5,7 @@ import { useDeferredValue, useMemo, useState } from 'react'
 
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
+import { PlanUpgradeModal, type PlanNotice } from '@/components/PlanUpgradeModal'
 import { SongRow } from '@/components/SongRow'
 import {
   IconBooks,
@@ -21,6 +22,7 @@ import {
 import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
 import type { RecentSong } from '@/lib/data/db'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
+import { LIMIT_MESSAGE, type LimitReason } from '@/lib/plans/types'
 import { copySongbook } from '@/lib/songbooks/actions'
 import { countBySlug, songbooksOf, writeMessage, type WriteResult } from '@/lib/songbooks/types'
 import type { SongIndexEntry } from '@/lib/search-index'
@@ -67,6 +69,13 @@ export function HomeScreen({
    */
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * A refusal by the plan rather than by a permission gets its own dialog instead of the
+   * inline `error` notice above — see `PlanUpgradeModal`'s own comment on why. Membership in
+   * `LIMIT_MESSAGE` is what tells the two apart, both here and in `toggleCopy`'s handler
+   * below, so a fifth `LimitReason` lands here automatically rather than in the notice.
+   */
+  const [planNotice, setPlanNotice] = useState<PlanNotice | null>(null)
   const [newName, setNewName] = useState('')
   /** The create form is a reveal under the header's own "New songbook", not a
       fixture at the foot of the list — closed again once a songbook is made. */
@@ -113,12 +122,27 @@ export function HomeScreen({
     }
   }
 
-  const run = async (action: () => Promise<WriteResult>) => {
+  const run = async (
+    action: () => Promise<WriteResult>,
+    /** Called in place of the inline notice when the refusal turns out to be a plan one — the
+        one hook a caller has to also close whatever panel would otherwise sit under the dialog
+        with nothing left to try, like `state.create`'s own submit handler below does. */
+    onPlanLimited?: () => void,
+  ) => {
     setBusy(true)
     setError(null)
     try {
       const result = await action()
-      if (!result.ok) setError(writeMessage(result))
+      if (!result.ok) {
+        if (Object.hasOwn(LIMIT_MESSAGE, result.reason)) {
+          // Guarded by the membership check above: every key of `LIMIT_MESSAGE` is a
+          // `LimitReason`, which `Object.hasOwn` itself does not tell the compiler.
+          setPlanNotice({ reason: result.reason as LimitReason, limit: result.limit })
+          onPlanLimited?.()
+        } else {
+          setError(writeMessage(result))
+        }
+      }
       return result.ok
     } catch {
       setError(writeMessage({ reason: 'failed' }))
@@ -294,7 +318,7 @@ export function HomeScreen({
               className="panel mt-4 flex flex-wrap items-center gap-2 p-3.5"
               onSubmit={async (event) => {
                 event.preventDefault()
-                if (await run(() => state.create(newName))) {
+                if (await run(() => state.create(newName), () => setCreating(false))) {
                   setNewName('')
                   setCreating(false)
                 }
@@ -701,6 +725,14 @@ export function HomeScreen({
                                           'Copied. It will appear there after the next rebuild.',
                                         )
                                       } else {
+                                        /*
+                                         * Not the upgrade dialog, on purpose: a plan refusal here
+                                         * belongs to the *destination* account, not to this global
+                                         * owner, so "Upgrade to continue" and a link to /pricing
+                                         * would send the wrong person to buy the wrong thing. The
+                                         * inline message already names the right cap without
+                                         * implying it is this owner's to fix by paying.
+                                         */
                                         setCopyError(writeMessage(result))
                                       }
                                     } catch {
@@ -750,6 +782,10 @@ export function HomeScreen({
             </section>
           )}
         </>
+      )}
+
+      {planNotice !== null && (
+        <PlanUpgradeModal notice={planNotice} onClose={() => setPlanNotice(null)} />
       )}
     </div>
   )

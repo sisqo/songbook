@@ -25,6 +25,7 @@ import {
 import { LandingCounters } from '@/components/LandingCounters'
 import { LightThemeOnly } from '@/components/LightThemeOnly'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
+import { plansEnforced } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
 
 const TITLE = `${APP_NAME} — ${APP_PAYOFF}`
@@ -121,6 +122,21 @@ interface FaqGroup {
   items: FaqItem[]
 }
 
+/**
+ * The one hedge about whether the limits below are real, said once and read by the single FAQ
+ * answer that carries it ("Is Songbook free to use?") — see that answer's own comment on why
+ * it is not repeated five times. Reads `plansEnforced()` rather than assuming it is always
+ * off, and for the same reason /pricing's `NO_CHECKOUT` does: the two public pages must flip
+ * together the day this changes, never one of them left saying the limits aren't real.
+ */
+const PLAN_HOLD = plansEnforced()
+  ? 'They are not on sale yet, but the limits themselves are already live: your account is held to ' +
+    'what is listed above starting today. Already over one? Nothing of yours is deleted — you can ' +
+    'only delete until you are back under it, the same as if a paid plan lapses.'
+  : 'They are not on sale yet, and no account is being held to those limits until they open — if ' +
+    'you already have more than that, nothing changes for you today. If a paid plan lapses, nothing ' +
+    'is deleted.'
+
 const FAQ: FaqGroup[] = [
   {
     title: 'Bringing in your collection',
@@ -140,14 +156,11 @@ const FAQ: FaqGroup[] = [
       {
         q: 'Is there a limit to how many songs or songbooks I can create?',
         /*
-         * The counts are stated in the present tense and are, today, the future tense: with
-         * `SONGBOOK_PLANS` unset every account resolves to `UNGATED`, which caps nothing. The
-         * qualifier is not repeated in each of the five answers and features that name a plan —
-         * five copies of one caveat is a page that reads as a disclaimer — it is said once, in
-         * "Is Songbook free to use?", which is the answer every existing reader opens, and
-         * pointed to from here. What must never happen is the two public pages disagreeing:
-         * /pricing hedges in `NO_CHECKOUT`, so this page hedges too, and both stop on the same
-         * day. `plansEnforced` in `plans/resolve.ts` carries the note that says so.
+         * The counts are stated in the present tense on purpose: whether that is actually so is
+         * `PLAN_HOLD`'s question to answer, not this one's — the qualifier is not repeated in
+         * each of the five answers and features that name a plan, since five copies of one
+         * caveat is a page that reads as a disclaimer. It is said once, in "Is Songbook free to
+         * use?", which is the answer every existing reader opens, and pointed to from here.
          */
         a: `The free plan holds ${count(PLANS.free.songbooks, 'songbook')} and ${count(PLANS.free.songs, 'song')}. Standard holds ${count(PLANS.standard.songbooks, 'songbook')} and ${count(PLANS.standard.songs, 'song')}, counted across the whole account rather than per songbook; Plus and above have no limit on either. The pricing page lists all four side by side.`,
       },
@@ -250,7 +263,7 @@ const FAQ: FaqGroup[] = [
          * sentence — the footer still carries it on every page, and "would rather tip than
          * subscribe" is what it now means beside a price list.
          */
-        a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. They are not on sale yet, and no account is being held to those limits until they open — if you already have more than that, nothing changes for you today. If a paid plan lapses, nothing is deleted. And the Ko-fi badge down in the footer stays exactly where it is, for anyone who would rather tip than subscribe.`,
+        a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. ${PLAN_HOLD} And the Ko-fi badge down in the footer stays exactly where it is, for anyone who would rather tip than subscribe.`,
       },
       {
         q: 'Is my collection private, or can others see it?',

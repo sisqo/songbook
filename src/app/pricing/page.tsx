@@ -8,6 +8,7 @@ import type { PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
 import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
 import type { PaidPlan } from '@/lib/plans/prices'
+import { plansEnforced } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
 import type { BookletTier } from '@/lib/plans/types'
 
@@ -110,10 +111,19 @@ const LEDE =
  * check that they do", and every `paddleId` is still empty. It was also doing no work, since
  * the lede now says the tax is included and nothing is added at checkout, which is the only
  * thing a reader was reading "final" for.
+ *
+ * The second clause now reads `plansEnforced()` rather than assuming it is always off. This
+ * page is prerendered at build time (see `PricingPage`'s own comment below on why it must stay
+ * that way), so the sentence a visitor reads is baked in at the moment of that build — exactly
+ * the moment `SONGBOOK_PLANS` is actually on or off for the deployment being built. /login's
+ * `PLAN_HOLD` reads the same function, so the two public pages flip together the day this
+ * changes rather than one of them being left saying the limits aren't real.
  */
-const NO_CHECKOUT =
-  'The paid plans are not on sale yet: the checkout is not open, and no account is being held to the ' +
-  'limits below until it opens.'
+const NO_CHECKOUT = plansEnforced()
+  ? 'The paid plans are not on sale yet: the checkout is not open. The limits below, though, are ' +
+    'already in effect for every account.'
+  : 'The paid plans are not on sale yet: the checkout is not open, and no account is being held to the ' +
+    'limits below until it opens.'
 
 /*
  * «in the same key», and deliberately not «on the same line»: `pollBroadcast` carries the song
@@ -523,13 +533,10 @@ export default function PricingPage() {
         <PricingPlans columns={COLUMNS}>
           {/*
             * Server-rendered, and passed through the client island so it can sit where the
-            * reader meets it: under the toggle, above every column it is about. The whole of
-            * this page's honesty about there being no checkout is these two clauses, and the
-            * second of them — no account is held to the limits yet — is true only while
-            * `SONGBOOK_PLANS` is off. It comes out the day that flips, together with the
-            * matching qualifier on /login: `plansEnforced` in `plans/resolve.ts` carries a note
-            * naming both, because two public pages disagreeing about whether the limits are
-            * real is the one failure this pair of sentences exists to prevent.
+            * reader meets it: under the toggle, above every column it is about. `NO_CHECKOUT`
+            * itself now carries the flip on whether the limits are real — see its own comment
+            * above — so this stays exactly two clauses about there being no checkout, said
+            * honestly either way.
             */}
           <p className="notice notice-accent mt-5">{NO_CHECKOUT}</p>
         </PricingPlans>

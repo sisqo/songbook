@@ -558,6 +558,64 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ---- The plan-upgrade dialog ----------------------------------------- */
+
+  /* Same z-index as `.chord-overlay`: the two never show at once, and each is
+     meant to sit over everything on the screen it appears on. */
+  .upgrade-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .upgrade-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(10 11 14 / 45%);
+  }
+
+  .upgrade-card {
+    position: relative;
+    width: 100%;
+    max-width: 22rem;
+    padding: 1.5rem 1.5rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .upgrade-close {
+    position: absolute;
+    top: 0.35rem;
+    inset-inline-end: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    color: var(--faint);
+  }
+
+  @media (hover: hover) {
+    .upgrade-close:hover {
+      background: var(--surface-2);
+      color: var(--ink);
+    }
+  }
+
+  .upgrade-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
   /* ---- Buttons -------------------------------------------------------- */
 
   /*
