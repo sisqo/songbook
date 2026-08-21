@@ -22,6 +22,9 @@ import { rowToSong } from '@/lib/data/db'
 import { DEFAULT_SECTION, UNFILED, type Song } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { songbooks, sections, songs } from '@/lib/db/schema'
+import type { Entitlements } from '@/lib/plans/entitlements'
+import { entitlementsOf } from '@/lib/plans/resolve'
+import { limitFacts, type LimitFacts } from '@/lib/plans/types'
 import { revalidateSong } from '@/lib/revalidate'
 import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
@@ -112,14 +115,42 @@ async function findOrCreateSection(songbookSlug: string, name: string): Promise<
  * songbook. The Unfiled songbook itself is found **by name** within the account, not by
  * `UNFILED.slug` — that constant is one fixed slug, and slugs are unique across every
  * account (see `songbooks`' own comment), so a second account's Unfiled songbook needs a
- * slug of its own, minted by `uniqueSlug` exactly like the Example songbook's clone is.
+ * slug of its own, minted by `uniqueSlug` exactly like `copySongbook` mints one.
+ *
+ * Answers a result union rather than a pair, because one of the places it can land is a
+ * refusal: the Unfiled songbook it mints below is a **new songbook**, and on a plan with a
+ * songbook cap that is the write the cap is about. Gating only the outer `insert(songs)`
+ * would leave a free account able to mint unlimited songbooks through the import screen,
+ * one paste at a time, without ever pressing «new songbook». The reason returned is
+ * `refused.createSongbook` — the songbook cap, not the song cap, because the songbook is
+ * what actually blocked them and «your plan does not allow another song» would send them
+ * looking in the wrong place.
+ *
+ * Only that one branch is gated. Finding a songbook that already exists, and finding or
+ * creating a *section* inside it, stay open: the matrix has no section cap, and a frozen
+ * account never reaches this function at all — both callers refuse before they call it.
+ * What keeps the ungated section from leaking, since it is written outside any transaction
+ * and nothing rolls it back, is the *order* both callers now keep: the song cap is asked
+ * before this function is called, never after it (see `saveSong`'s twin block and
+ * `createSong`), so a save that will be refused never gets this far to mint one.
  */
 async function resolveSection(
   accountOwnerEmail: string,
+  entitlements: Entitlements,
   songbookSlug: string,
   sectionId: number | null,
   sectionName?: string | null,
-): Promise<{ songbookSlug: string; sectionId: number }> {
+): Promise<
+  | { ok: true; songbookSlug: string; sectionId: number }
+  /*
+   * The refusal carries `limit` for the same reason `SaveRefusal` does, and here it is not
+   * optional decoration: the cap this branch can hit is the *songbook* one, so the sentence
+   * a reader sees for a refused paste is «goes up to 1 songbook» — the number their song
+   * cap would have quoted is not the number that stopped them. Both callers must forward
+   * it; a caller that drops it turns a hundred-row paste back into the capless line.
+   */
+  | { ok: false; reason: SaveFailure; limit?: LimitFacts }
+> {
   const database = db()
 
   if (sectionId !== null) {
@@ -130,7 +161,7 @@ async function resolveSection(
       .where(and(eq(sections.id, sectionId), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
       .limit(1)
 
-    if (found.length > 0) return { songbookSlug: found[0].songbookSlug, sectionId: found[0].id }
+    if (found.length > 0) return { ok: true, songbookSlug: found[0].songbookSlug, sectionId: found[0].id }
   }
 
   const wanted = songbookSlug.trim()
@@ -156,6 +187,15 @@ async function resolveSection(
     if (unfiled.length > 0) {
       slug = unfiled[0].slug
     } else {
+      /*
+       * About to create a songbook. Refused *before* the insert rather than after: this
+       * function runs outside the transaction its callers open (it uses `db()`, not their
+       * `tx`), so nothing here would be rolled back by a refusal further down — an
+       * «Unfiled» songbook and its section would simply stay behind with no song in them.
+       */
+      const refused = entitlements.refused.createSongbook
+      if (refused !== null) return { ok: false, reason: refused, limit: limitFacts(entitlements.limits, refused) }
+
       const taken = (await database.select({ slug: songbooks.slug }).from(songbooks)).map((row) => row.slug)
       slug = uniqueSlug(UNFILED.name, taken)
 
@@ -172,7 +212,7 @@ async function resolveSection(
 
   const declared = sectionName?.trim()
   if (declared) {
-    return { songbookSlug: slug, sectionId: await findOrCreateSection(slug, declared) }
+    return { ok: true, songbookSlug: slug, sectionId: await findOrCreateSection(slug, declared) }
   }
 
   const first = await database
@@ -182,14 +222,14 @@ async function resolveSection(
     .orderBy(asc(sections.position))
     .limit(1)
 
-  if (first.length > 0) return { songbookSlug: slug, sectionId: first[0].id }
+  if (first.length > 0) return { ok: true, songbookSlug: slug, sectionId: first[0].id }
 
   const created = await database
     .insert(sections)
     .values({ songbookSlug: slug, name: DEFAULT_SECTION, position: 1 })
     .returning({ id: sections.id })
 
-  return { songbookSlug: slug, sectionId: created[0].id }
+  return { ok: true, songbookSlug: slug, sectionId: created[0].id }
 }
 
 function saved(song: Song): SaveResult {
@@ -256,11 +296,14 @@ function sameSong(title: string, artist: string | null) {
  */
 async function accountForSave(
   slug: string | undefined,
-): Promise<{ ok: true; accountOwnerEmail: string } | { ok: false; reason: SaveFailure }> {
+): Promise<
+  | { ok: true; accountOwnerEmail: string; entitlements: Entitlements }
+  | { ok: false; reason: SaveFailure }
+> {
   if (slug === undefined) {
     const editor = await asEditor()
     return editor.ok
-      ? { ok: true, accountOwnerEmail: editor.accountOwnerEmail }
+      ? { ok: true, accountOwnerEmail: editor.accountOwnerEmail, entitlements: editor.entitlements }
       : { ok: false, reason: editor.reason }
   }
 
@@ -271,7 +314,13 @@ async function accountForSave(
   if (editor === null || !canEdit(editor.role)) {
     return { ok: false, reason: 'not-found' }
   }
-  return { ok: true, accountOwnerEmail: owner }
+  /*
+   * Resolved by hand on this branch, because it never went through `permit`: an edit is
+   * authorized with `accessTo` + `canEdit` on the *song's* account, and that same account
+   * is whose plan governs — the rows about to be written are theirs. The creating branch
+   * above takes them off the guard, which already resolved them for the current account.
+   */
+  return { ok: true, accountOwnerEmail: owner, entitlements: await entitlementsOf(owner) }
 }
 
 export async function saveSong(input: SongInput, decision?: Decision): Promise<SaveResult> {
@@ -279,23 +328,137 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
 
   const target = await accountForSave(input.slug)
   if (!target.ok) return target
-  const { accountOwnerEmail } = target
+  const { accountOwnerEmail, entitlements } = target
+
+  /*
+   * The freeze, once, for every branch below — editing a song's words, replacing them, and
+   * adding a new one are all changes to the repertoire. Checked here rather than three
+   * times further down so that a frozen account never reaches `resolveSection`, which
+   * writes outside any transaction: no «Unfiled» songbook is minted for a save that was
+   * never going to be allowed. The cap on *adding* a song is a different question with a
+   * different answer and is asked later, once it is known that a row is really being added.
+   *
+   * That later question is the one that attaches a `limit` to its refusal; this one cannot.
+   * `frozen` is «over the caps, delete until it fits», with no one number to quote and no
+   * upgrade that would help — see `limitFacts`, which answers `undefined` for it on purpose.
+   */
+  if (entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: entitlements.refused.editRepertoire }
+  }
 
   const title = input.title.trim()
   if (title === '') return { ok: false, reason: 'invalid-title' }
   if (input.body.trim() === '') return { ok: false, reason: 'empty-body' }
 
+  /*
+   * Normalised once, up here, because two things read it now: the twin lookup below and the
+   * `values` it used to be written inside. Two copies of this expression would be two things
+   * to keep in step, and the day one drifted a song would either fail to find its own twin
+   * or find one it does not have — a duplicate prompt about nothing, or a silent second copy.
+   */
+  const artist = input.artist === null || input.artist.trim() === '' ? null : input.artist.trim()
+
   try {
     const database = db()
 
+    /*
+     * The twin and the song cap, both settled *before* `resolveSection` runs, and that order
+     * is the whole point of this block. `resolveSection` writes outside any transaction (it
+     * uses `db()`, not a `tx`): it can mint an «Unfiled» songbook, and it can create a
+     * section for a paste's own `{division: ...}`. Nothing further down rolls either of them
+     * back, so a save refused *after* it had run left rows behind — and while the songbook
+     * case is bounded by the songbook cap itself, sections have no cap at all, so a paste of
+     * a hundred songs each declaring a different division into an account at its song cap
+     * used to create a hundred empty sections and save not one song.
+     *
+     * Asked only on the creating branch, and only once the twin is known, which is what the
+     * old order was protecting and this one keeps: an account sitting exactly on its cap is
+     * full, not frozen, and replacing a song it already has takes nothing more from the plan
+     * — refusing that with «your plan does not allow another song» would be false and would
+     * send somebody shopping over a save that costs nothing. Editing a known song
+     * (`input.slug` given) never adds a row, so it neither looks for a twin nor pays for the
+     * question; the freeze, which does govern it, was checked above for every branch.
+     *
+     * One visible consequence of the twin lookup moving first: the duplicate prompt now
+     * arrives ahead of a songbook-cap refusal, where before the refusal came first. That is
+     * the better of the two orders — the prompt asks a question whose answer may well be
+     * «replace», and no cap refuses a replacement.
+     */
+    const twin =
+      input.slug === undefined
+        ? await database
+            .select({
+              slug: songs.slug,
+              title: songs.title,
+              artist: songs.artist,
+              sectionId: songs.sectionId,
+            })
+            .from(songs)
+            .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+            // Scoped to this account: the same title and artist landing twice in two
+            // different accounts is a coincidence, not a duplicate to warn anyone about.
+            .where(and(sameSong(title, artist), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
+            .limit(1)
+        : []
+
+    if (twin.length > 0 && decision === undefined) {
+      return { ok: false, reason: 'duplicate', existing: twin[0] }
+    }
+
+    /*
+     * Only a save that will really write a *new* row is asked about the song cap: no twin
+     * to replace, or a twin the caller has chosen to keep by answering «add».
+     *
+     * Read-then-write, across two transactions, and therefore raceable — said here because
+     * it is a real gap rather than an oversight. The count behind this refusal was taken in
+     * the guard (`accountForSave` → `entitlementsOf`), the insert happens in its own
+     * transaction further down, and nothing re-reads in between: N concurrent saves all see
+     * the same count and all insert, so twenty parallel POSTs can leave a free account
+     * holding forty-nine songs on a cap of thirty. The sequential loop in `ImportBatch` is
+     * client-side and defeats nothing. Not patched, and it is worth knowing why before
+     * somebody tries: re-counting inside the insert transaction fixes nothing on its own,
+     * since under READ COMMITTED neither writer sees the other's uncommitted row, so the
+     * only real fix is a `SELECT ... FOR UPDATE` on this account's `accounts` row held
+     * across check-and-insert — and that takes `accounts` before `songbooks`/`songs`, the
+     * opposite of the order `removeAccountAndContent` takes, which holds locks on songs and
+     * songbooks and only then deletes the `accounts` row: a deadlock cycle (40P01, surfacing
+     * as «save failed») bought in exchange. The bound
+     * meanwhile: the rows persist and stay readable, the account reports frozen until a
+     * deletion brings it back under the cap, and that is the same state a downgrade
+     * produces with the same way out of it. The other half of the reason is structural —
+     * counts are fetched in the guard precisely so no write can hold permission without
+     * also holding the limits, and locking would move them back into each write path.
+     */
+    const creating = input.slug === undefined && (twin.length === 0 || decision === 'add')
+    if (creating && entitlements.refused.createSong !== null) {
+      const refused = entitlements.refused.createSong
+      return { ok: false, reason: refused, limit: limitFacts(entitlements.limits, refused) }
+    }
+
+    /*
+     * Hoisted out of the `values` literal it used to be spread into: it can refuse now, and
+     * a refusal cannot be spread into an object being handed to drizzle.
+     */
+    const placed = await resolveSection(
+      accountOwnerEmail,
+      entitlements,
+      input.songbookSlug,
+      input.sectionId,
+      input.sectionName,
+    )
+    // `limit` forwarded, not dropped: this is the songbook cap a paste with no songbook to
+    // land in hits, and it is the most-seen numbered refusal in the app.
+    if (!placed.ok) return { ok: false, reason: placed.reason, limit: placed.limit }
+
     const values = {
       title,
-      artist: input.artist === null || input.artist.trim() === '' ? null : input.artist.trim(),
+      artist,
       tags: input.tags.map((tag) => tag.trim()).filter((tag) => tag !== ''),
       link1: input.link1 === null || input.link1.trim() === '' ? null : input.link1.trim(),
       link2: input.link2 === null || input.link2.trim() === '' ? null : input.link2.trim(),
       link3: input.link3 === null || input.link3.trim() === '' ? null : input.link3.trim(),
-      ...(await resolveSection(accountOwnerEmail, input.songbookSlug, input.sectionId, input.sectionName)),
+      songbookSlug: placed.songbookSlug,
+      sectionId: placed.sectionId,
       body: input.body,
       /**
        * The database's clock, not this server's.
@@ -342,24 +505,6 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       return saved(rowToSong(updated[0]))
     }
 
-    const twin = await database
-      .select({
-        slug: songs.slug,
-        title: songs.title,
-        artist: songs.artist,
-        sectionId: songs.sectionId,
-      })
-      .from(songs)
-      .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
-      // Scoped to this account: the same title and artist landing twice in two
-      // different accounts is a coincidence, not a duplicate to warn anyone about.
-      .where(and(sameSong(title, values.artist), eq(songbooks.accountOwnerEmail, accountOwnerEmail)))
-      .limit(1)
-
-    if (twin.length > 0 && decision === undefined) {
-      return { ok: false, reason: 'duplicate', existing: twin[0] }
-    }
-
     if (twin.length > 0 && decision === 'replace') {
       const updated = await database.transaction(async (tx) => {
         /*
@@ -382,6 +527,11 @@ export async function saveSong(input: SongInput, decision?: Decision): Promise<S
       return saved(rowToSong(updated[0]))
     }
 
+    /*
+     * From here on a *new* row is written. `creating` is already true on every path that
+     * reaches this line, and the song cap it stands for was asked above — before
+     * `resolveSection` could write anything for a save that was never going to be allowed.
+     */
     const taken = (await database.select({ slug: songs.slug }).from(songs)).map((row) => row.slug)
     const slug = uniqueSlug(title, taken)
 
@@ -426,13 +576,28 @@ export async function createSong(
 
   const target = await accountForSave(undefined)
   if (!target.ok) return target
-  const { accountOwnerEmail } = target
+  const { accountOwnerEmail, entitlements } = target
+
+  /*
+   * Unlike `saveSong`, this one only ever creates, so the cap is asked straight away —
+   * before `resolveSection` can mint an «Unfiled» songbook for a song that will not be
+   * written. `refused.createSong` already answers 'frozen' when the account is over its
+   * caps, so there is nothing else to ask.
+   */
+  const refused = entitlements.refused.createSong
+  if (refused !== null) {
+    return { ok: false, reason: refused, limit: limitFacts(entitlements.limits, refused) }
+  }
 
   const trimmed = title.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-title' }
 
   try {
     const database = db()
+
+    const placed = await resolveSection(accountOwnerEmail, entitlements, songbookSlug, sectionId)
+    // Same forwarding as in `saveSong`, and for the same reason.
+    if (!placed.ok) return { ok: false, reason: placed.reason, limit: placed.limit }
 
     const values = {
       title: trimmed,
@@ -441,7 +606,8 @@ export async function createSong(
       link1: null,
       link2: null,
       link3: null,
-      ...(await resolveSection(accountOwnerEmail, songbookSlug, sectionId)),
+      songbookSlug: placed.songbookSlug,
+      sectionId: placed.sectionId,
       body: '',
       updatedAt: sql`now()`,
     }
@@ -464,6 +630,11 @@ export async function createSong(
   }
 }
 
+/**
+ * Deliberately ungated by the plan, and it must stay that way: an account over its caps is
+ * frozen to deletions precisely so that this is the way out of the freeze. Refusing a
+ * deletion would leave a downgraded reader with no move that fits again.
+ */
 export async function deleteSong(slug: string): Promise<DeleteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
 

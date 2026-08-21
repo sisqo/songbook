@@ -28,6 +28,8 @@ import { auth } from '@/auth'
 import { authConfig } from '@/auth.config'
 import { currentAccountFor, readAccountCookie } from '@/lib/accounts/current'
 import { normalizeEmail } from '@/lib/allowlist'
+import { entitlementsOf } from '@/lib/plans/resolve'
+import type { Entitlements } from '@/lib/plans/entitlements'
 import { type Role, canEdit, roleOf } from '@/lib/roles'
 
 export interface CurrentUser {
@@ -79,9 +81,22 @@ export async function currentUser(): Promise<CurrentUser | null> {
  * `not-allowed` is "this is not yours to change", which is not. Collapsing them would
  * have someone with no access to this account sent round a login loop for a button that
  * will never work for them.
+ *
+ * The success branch carries the account's **entitlements** along with the role, and that
+ * is deliberate rather than convenient: a write that had permission but never looked at
+ * the plan is the failure this shape rules out, the same way one union with two reasons
+ * rules out "refused, and nobody knows why". `permit` is the only place they are resolved
+ * — never `currentUser`, which every preference write and every read path calls, and all
+ * of which stay open regardless of plan.
+ *
+ * They are resolved for `accountOwnerEmail`, **the account being written**, never for the
+ * caller's own address: a global owner working inside somebody else's account is writing
+ * that customer's rows, so it is that customer's plan that governs. And they never leave
+ * the server — an action returns the `LimitReason` string, never this object, which holds
+ * `Date`s and plan internals that have no business crossing to the client.
  */
 export type Permission =
-  | { ok: true; email: string; accountOwnerEmail: string; role: Role }
+  | { ok: true; email: string; accountOwnerEmail: string; role: Role; entitlements: Entitlements }
   | { ok: false; reason: 'no-session' | 'not-allowed' }
 
 async function permit(allows: (role: Role) => boolean): Promise<Permission> {
@@ -89,7 +104,13 @@ async function permit(allows: (role: Role) => boolean): Promise<Permission> {
   if (user === null) return { ok: false, reason: 'no-session' }
   if (!allows(user.role)) return { ok: false, reason: 'not-allowed' }
 
-  return { ok: true, email: user.email, accountOwnerEmail: user.accountOwnerEmail, role: user.role }
+  return {
+    ok: true,
+    email: user.email,
+    accountOwnerEmail: user.accountOwnerEmail,
+    role: user.role,
+    entitlements: await entitlementsOf(user.accountOwnerEmail),
+  }
 }
 
 /**
@@ -131,7 +152,13 @@ async function permitOn(accountOwnerEmail: string, allows: (role: Role) => boole
   const user = await accessTo(accountOwnerEmail)
   if (user === null || !allows(user.role)) return { ok: false, reason: 'not-allowed' }
 
-  return { ok: true, email: user.email, accountOwnerEmail: user.accountOwnerEmail, role: user.role }
+  return {
+    ok: true,
+    email: user.email,
+    accountOwnerEmail: user.accountOwnerEmail,
+    role: user.role,
+    entitlements: await entitlementsOf(user.accountOwnerEmail),
+  }
 }
 
 /** Permission to change the current account's repertoire: songs, songbooks, order, publishing. */

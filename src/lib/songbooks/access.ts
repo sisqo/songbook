@@ -14,16 +14,30 @@ import { accessTo } from '@/lib/auth/session'
 import { songbookAccountOf } from '@/lib/data/access'
 import { db } from '@/lib/db/client'
 import { sections } from '@/lib/db/schema'
+import type { Entitlements } from '@/lib/plans/entitlements'
+import { entitlementsOf } from '@/lib/plans/resolve'
 import { canEdit } from '@/lib/roles'
 
 import type { WriteFailure } from './types'
 
+/**
+ * Both success branches carry the owning account's **entitlements**, for the reason
+ * `Permission` gives (`auth/session.ts`): a caller holding one of these has already been
+ * told what the plan allows, so a write cannot have asked whether it *may* without also
+ * having been told how much. They are the *songbook's* account's entitlements, never the
+ * caller's — a global owner editing a customer's songbook is bound by that customer's plan.
+ *
+ * Several callers deliberately ignore the field, and that is not an oversight: every
+ * deletion (`removeSongbook`, `purgeSongbook`, `removeSection`, `purgeSection`) stays open
+ * under the freeze, because the freeze exists to be escaped by deleting and those are the
+ * escape. Each of them says so at its own call site.
+ */
 type EditableSongbook =
-  | { ok: true; accountOwnerEmail: string }
+  | { ok: true; accountOwnerEmail: string; entitlements: Entitlements }
   | { ok: false; reason: WriteFailure }
 
 type EditableSection =
-  | { ok: true; accountOwnerEmail: string; songbookSlug: string }
+  | { ok: true; accountOwnerEmail: string; songbookSlug: string; entitlements: Entitlements }
   | { ok: false; reason: WriteFailure }
 
 export async function editableSongbook(slug: string): Promise<EditableSongbook> {
@@ -34,7 +48,9 @@ export async function editableSongbook(slug: string): Promise<EditableSongbook> 
   if (editor === null) return { ok: false, reason: 'not-found' }
   if (!canEdit(editor.role)) return { ok: false, reason: 'not-allowed' }
 
-  return { ok: true, accountOwnerEmail: owner }
+  // After the access checks, never before: an address with no business here must learn
+  // nothing about this account, and the plan lookup is two queries nobody owes a stranger.
+  return { ok: true, accountOwnerEmail: owner, entitlements: await entitlementsOf(owner) }
 }
 
 /** Same question, starting from a section's id: resolved to its songbook first. */
@@ -50,5 +66,12 @@ export async function editableSection(id: number): Promise<EditableSection> {
   const target = await editableSongbook(rows[0].songbookSlug)
   if (!target.ok) return target
 
-  return { ok: true, accountOwnerEmail: target.accountOwnerEmail, songbookSlug: rows[0].songbookSlug }
+  return {
+    ok: true,
+    accountOwnerEmail: target.accountOwnerEmail,
+    songbookSlug: rows[0].songbookSlug,
+    // Passed straight through rather than resolved again: the section's account is the
+    // songbook's account, so a second lookup could only ever agree at twice the cost.
+    entitlements: target.entitlements,
+  }
 }

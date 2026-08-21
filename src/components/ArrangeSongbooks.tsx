@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { IconGrip } from '@/components/icons'
 import { type Band, bandAt, moveItem, sameMembers } from '@/lib/songbooks/order'
-import { WRITE_MESSAGE } from '@/lib/songbooks/types'
+import { writeMessage } from '@/lib/songbooks/types'
 
 interface Row {
   slug: string
@@ -69,11 +69,11 @@ export function ArrangeSongbooks({
       try {
         const result = await state.arrangeSongbooks(next.map((row) => row.slug))
         if (!result.ok) {
-          setError(WRITE_MESSAGE[result.reason])
+          setError(writeMessage(result))
           setLayout(server)
         }
       } catch {
-        setError(WRITE_MESSAGE.failed)
+        setError(writeMessage({ reason: 'failed' }))
         setLayout(server)
       }
     })

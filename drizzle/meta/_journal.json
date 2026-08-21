@@ -169,6 +169,20 @@
       "when": 1787002122987,
       "tag": "0023_gray_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787254883117,
+      "tag": "0024_plans_and_paddle",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787265419944,
+      "tag": "0025_sing_along_devices",
+      "breakpoints": true
     }
   ]
 }

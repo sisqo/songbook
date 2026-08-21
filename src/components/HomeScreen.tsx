@@ -22,7 +22,7 @@ import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
 import type { RecentSong } from '@/lib/data/db'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
 import { copySongbook } from '@/lib/songbooks/actions'
-import { WRITE_MESSAGE, countBySlug, songbooksOf, type WriteResult } from '@/lib/songbooks/types'
+import { countBySlug, songbooksOf, writeMessage, type WriteResult } from '@/lib/songbooks/types'
 import type { SongIndexEntry } from '@/lib/search-index'
 
 import { ArrangeSongbooks } from './ArrangeSongbooks'
@@ -118,10 +118,10 @@ export function HomeScreen({
     setError(null)
     try {
       const result = await action()
-      if (!result.ok) setError(WRITE_MESSAGE[result.reason])
+      if (!result.ok) setError(writeMessage(result))
       return result.ok
     } catch {
-      setError(WRITE_MESSAGE.failed)
+      setError(writeMessage({ reason: 'failed' }))
       return false
     } finally {
       setBusy(false)
@@ -701,10 +701,10 @@ export function HomeScreen({
                                           'Copied. It will appear there after the next rebuild.',
                                         )
                                       } else {
-                                        setCopyError(WRITE_MESSAGE[result.reason])
+                                        setCopyError(writeMessage(result))
                                       }
                                     } catch {
-                                      setCopyError(WRITE_MESSAGE.failed)
+                                      setCopyError(writeMessage({ reason: 'failed' }))
                                     } finally {
                                       setCopyBusy(false)
                                     }

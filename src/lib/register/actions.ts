@@ -3,9 +3,9 @@
 /**
  * Registering with email and password (v3.2, PLAN.md point 3) — in two steps, not one:
  * this only ever writes `pendingRegistrations`, never `accounts` or `credentials`. The
- * real account, and the Example songbook cloned into it, are born later, when the link in
- * the verification email is followed — same principle as the Example songbook itself:
- * nothing exists until there is a real reason for it.
+ * real account is born later, when the link in the verification email is followed — and
+ * it is born empty, with no songbook of any kind in it (see `provisionAccount`): nothing
+ * exists until there is a real reason for it.
  *
  * Reads its fields straight off a raw `FormData`, the same style the inline form actions
  * in `login/page.tsx` already use, rather than typed parameters like `createAccount`'s:

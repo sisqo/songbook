@@ -1701,6 +1701,240 @@
     }
   }
 
+  /* ---- Pricing (/pricing) --------------------------------------------- */
+
+  /*
+   * The four columns. Two across on a tablet rather than four, and one on a phone:
+   * four price cards side by side on a 390px screen would each be 85px wide, which is
+   * narrower than the amounts written in them.
+   *
+   * A grid of its own rather than `.feature-grid`, whose three columns are the wrong
+   * count and whose cards deliberately lose their border and fill above 1024px — that
+   * dissolve reads as "a handful of things this app does" for a feature tour, and as a
+   * lost column boundary for a price list, where every reader is comparing four things
+   * that must stay four things.
+   */
+  .plan-columns {
+    display: grid;
+    gap: 0.875rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .plan-columns {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .plan-columns {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /*
+   * A column, and every one of the four is the same column: no `.card-lead`, no accent
+   * border, no "most popular" ribbon. The page's job is to let somebody choose, and a
+   * raised column is a push — a deliberate departure from the convention every other
+   * pricing page follows, and not something to "fix" later.
+   *
+   * `flex-direction: column` exists for one line: `.plan-action` is pushed to the
+   * bottom by `margin-top: auto`, so the four action slots line up across a row whose
+   * cards hold sentences of different lengths. Without it the slot floats up under the
+   * shortest one and reads as part of the sentence above it.
+   */
+  .plan-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+  }
+
+  .plan-name {
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  /* The number is the message on this page, so it is the largest thing in the card. */
+  .plan-price {
+    margin-top: 0.5rem;
+    color: var(--ink);
+    font-size: 1.375rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /*
+   * The line under the amount, and it is never empty: the yearly state says "Billed once
+   * a year." where the monthly state says what twelve of them come to. Both states fill
+   * the slot, so nothing below it moves when the toggle is tapped — a column that jumped
+   * would make the reader re-find the number they were reading.
+   */
+  .plan-price-note {
+    margin-top: 0.25rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .plan-audience {
+    margin-top: 0.875rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  /*
+   * Where a buy button would be, holding words instead. There is no checkout yet, and a
+   * disabled button reports a failure the reader caused, where a line of text reports a
+   * state of the world. `.btn:disabled` already exists and would have cost no CSS at all,
+   * which is exactly why this needs saying: the reason there is no button here is not that
+   * the disabled style was missing.
+   */
+  /*
+   * --muted, not --faint, and this is the one slot on the page where that is not a
+   * matter of taste: --faint's own note in the token block says it measures under
+   * 4.5:1 against every surface and is reserved for decorative glyphs and disabled
+   * controls, never for real text. At 0.75rem this is real text — «Not on sale yet»,
+   * «Included with any account» — and it is the sentence that keeps a page of prices
+   * honest, so it is the last thing on the page that may be hard to read. It stays
+   * smaller and lighter in weight than the audience line above it, which is what
+   * makes it read as a state rather than as part of the pitch; the contrast does
+   * that work without dropping below AA.
+   */
+  .plan-action {
+    margin-top: auto;
+    padding-top: 1rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /*
+   * The comparison table scrolls sideways inside this box rather than shrinking to fit:
+   * four value columns plus a row-header column that carries a sentence cannot be made to
+   * fit a phone, and the alternative — repeating every row inside each of the four cards
+   * on a small screen — says every consequence four times and quadruples the markup.
+   */
+  .plan-table-scroll {
+    overflow-x: auto;
+    /* A little air under the last row, so the scrollbar a desktop browser draws inside this
+     * box does not sit on the table's own bottom rule. */
+    padding-bottom: 0.25rem;
+  }
+
+  /*
+   * Not `.legal-content table`: those rules are scoped to that prose container and are
+   * drawn as a bordered grid, which is right for a short definition table inside a legal
+   * document and wrong for eleven rows a reader scans down. Here the rows are separated by
+   * a single line and nothing else, so the eye follows one row across four columns.
+   *
+   * `min-width` is what makes the scroll happen at all: without it the table would squeeze
+   * the row-header column until its sentence became a column of single words.
+   */
+  .plan-table {
+    width: 100%;
+    min-width: 56rem;
+    border-collapse: collapse;
+    /*
+     * Fixed, so the four value columns are equally wide whatever they happen to contain.
+     * Content-driven widths made the table lie about itself: one long cell — "With a «Printed
+     * with Songbook» line" — took a third of the table and left Free's column of single digits
+     * two centimetres wide, which reads as four unequal plans rather than four columns being
+     * compared. With `fixed`, the row-header column takes the width named below and the
+     * remaining space is split equally between the columns that name no width of their own.
+     */
+    table-layout: fixed;
+    font-size: 0.8125rem;
+  }
+
+  .plan-table th,
+  .plan-table td {
+    padding: 0.75rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  .plan-table thead th {
+    color: var(--muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /*
+   * The row header stays put while the four value columns scroll under it, because every
+   * consequence sentence on this page lives in this column and a cell of "1" or "Included"
+   * says nothing once the label has scrolled away.
+   *
+   * `background` and `z-index` are both load-bearing and both easy to leave out: a sticky
+   * cell with no fill is transparent, so the scrolling cells slide visibly underneath it,
+   * and without the stacking order the borders of those cells are painted on top of it. The
+   * fill is `--bg` because this table sits directly on the page rather than inside a card —
+   * put it in a `.card` and this has to become `--surface` or the seam shows.
+   */
+  .plan-table th[scope='row'],
+  .plan-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    /* `width` and not `min-width`: under `table-layout: fixed` the first row's widths are the
+     * whole layout, and a minimum on a fixed column is a rule with nothing to negotiate.
+     *
+     * 13rem on a phone and 20rem from a tablet up, which is the one measurement on this page
+     * that had to be taken at a real width: at 20rem this column alone is 320px of a 390px
+     * screen, leaving a sliver of the Free column beside it and a table that looks stuck. The
+     * consequence of the narrower value is that the two-line row header wraps to four or five
+     * lines there — which is the right trade, because the sentence is still readable and the
+     * numbers it is about are now beside it. */
+    width: 13rem;
+    background: var(--bg);
+    /* The seam. Without it the sticky column and the cell scrolling under it are one surface,
+     * and a reader cannot tell that anything is being held in place. Drawn as a shadow rather
+     * than a border-right, which `border-collapse` would share with the neighbouring cell and
+     * scroll away with it. */
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  @media (min-width: 640px) {
+    .plan-table th[scope='row'],
+    .plan-table thead th:first-child {
+      width: 20rem;
+    }
+  }
+
+  .plan-row-label {
+    display: block;
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  /*
+   * The sentence under the label: what living without this row is actually like. It is here
+   * rather than repeated in the three cells that withhold the thing, which is the whole
+   * layout decision of this table — a clause in every cell would be the same sentence said
+   * three times, and would widen a table that already scrolls.
+   */
+  .plan-row-note {
+    display: block;
+    margin-top: 0.25rem;
+    max-width: 22rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  /* A row this plan simply has no part of. The dash is a glyph; the word is in `.sr-only`. */
+  .plan-cell-none {
+    color: var(--faint);
+  }
+
   /* ---- Top bar -------------------------------------------------------- */
 
   /*

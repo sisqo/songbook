@@ -85,11 +85,12 @@ export async function verifyEmail(email: string, token: string): Promise<void> {
   /*
    * Sequential, not nested in the transaction above — same single-connection reason.
    * Deliberately not preceded by an `accounts` insert of its own: this transaction never
-   * wrote one, so `provisionAccount` finds none, creates it, and clones the Example
-   * songbook into it — `existing.length > 0` inside `provisionAccount` is what would have
-   * skipped the clone entirely, had an `accounts` row already been sitting there. This is
-   * "identical to every other admission path" (PLAN.md's own words for this step) for
-   * exactly that reason: nobody else pre-creates the row it is there to create.
+   * wrote one, so `provisionAccount` finds none and creates it — and its `existing.length
+   * > 0` check, which is what makes it a no-op for an address that already has an account,
+   * would have swallowed this admission whole had a row been sitting there. That is also
+   * the boolean the welcome email below is gated on. This is "identical to every other
+   * admission path" (PLAN.md's own words for this step) for exactly that reason: nobody
+   * else pre-creates the row it is there to create.
    */
   const created = await provisionAccount(normalized)
 

@@ -2,11 +2,23 @@ import NextAuth from 'next-auth'
 import { NextResponse } from 'next/server'
 
 import { authConfig } from '@/auth.config'
+import { DEVICE_COOKIE } from '@/lib/singAlong/devices'
 
 const { auth } = NextAuth(authConfig)
 
 /** Marks a response as belonging to nobody; the service worker refuses to cache it. */
 const ANONYMOUS_HEADER = 'x-songs-anonymous'
+
+/**
+ * How long a follower's device id lives in their browser. A year, like `songbook-account`'s.
+ *
+ * Long deliberately, and the short alternative is the bug: the id is what a broadcast counts
+ * its devices by, so an expiry that lands *during* a performance would make every follower
+ * take the join path at once, each while its own row is still fresh, and the cap would refuse
+ * the entire audience for two minutes. There is nothing to gain from a shorter life either —
+ * the value authorises nothing and names nothing but a browser.
+ */
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
 
 /**
  * Paths that must stay reachable without a session.
@@ -54,9 +66,21 @@ export default auth((request) => {
    * protection authority — has a session to check in the first place, and unlike
    * the email-loop pages above, that stays true forever, not just until they finish
    * registering.
+   *
+   * `/pricing` is here for exactly that permanent reason: somebody deciding whether to
+   * pay for this app is by definition not signed in to it yet. The header matters as much
+   * as the reachability, and the fact that it is *conditional* on `request.auth` is what
+   * makes the offline behaviour differ by audience — deliberately, so do not "simplify" this
+   * to the unconditional shape `/follow` uses below. An anonymous visitor's copy is refused
+   * by every one of the service worker's page caches and is therefore never stored, so that
+   * reader always sees live prices; a signed-in reader's copy may sit in the html/rsc caches
+   * for up to a day, which is the residual staleness this accepts. A price is a fact with a
+   * date on it — see the note about `precache-routes.ts` in `app/pricing/page.tsx` — so the
+   * audience the page is written for is the one that must never see a cached one.
    */
   if (
     pathname === '/login' ||
+    pathname === '/pricing' ||
     pathname === '/register' ||
     pathname === '/verify' ||
     pathname === '/forgot-password' ||
@@ -78,10 +102,74 @@ export default auth((request) => {
    * Always marked anonymous, signed in or not — the page it shows depends on the
    * token in the URL, never on whoever happens to be looking at it, so it must never
    * be cached as if it belonged to a particular reader.
+   *
+   * It is also where a follower's device id is minted (v3.3), because a plan caps how many
+   * devices may follow one broadcast and something has to tell them apart. Here, rather than
+   * in the poll action, for one reason that is not about tidiness: minting is separate from
+   * creating the row, so two tabs opened in the same instant with no cookie yet both mint,
+   * the last `Set-Cookie` wins, and the losing id — having no row anywhere — simply never
+   * existed. Both tabs then poll with the same jar value and share one row, which is what
+   * makes "a reload or a second tab is one device" literally true rather than nearly true. A
+   * cookie and not `localStorage`, because the counting happens server-side and the server
+   * has to be able to read it. `FollowPage`'s render could not set it in any case: Next.js
+   * allows a cookie write only from a server action, a route handler or middleware.
+   *
+   * `crypto.getRandomValues` — Web Crypto, never `node:crypto`'s `randomBytes`: this runs on
+   * the edge runtime, a mistake this codebase has already made once and left a scar for (see
+   * `accounts/current.ts`' header). No database call either, ever: middleware runs on every
+   * matched request, and the row this id will one day own is created by the first poll.
+   *
+   * The `ANONYMOUS_HEADER` above is load-bearing for the minting, not merely for privacy: it
+   * is what keeps this navigation out of the service worker's cache, which is what guarantees
+   * the request reaches the server at all. Remove it and a returning follower could be served
+   * a cached page, never be issued an id, and go uncounted.
+   *
+   * Minted on the **navigation only**, and the reason is the non-obvious half: this middleware
+   * also runs on the guest's poll. A Server Action POSTs to the page's own URL, so every
+   * four-second `pollBroadcast` is a POST to `/follow/<token>` and matches this branch too —
+   * and Next.js does not merely put a `Set-Cookie` on that response, it copies the value onto
+   * the *request* (`x-middleware-set-cookie`) so that `cookies()` in the action reads it. Mint
+   * there and a browser that stores no cookie is handed a brand-new identity on every poll:
+   * a fresh row every four seconds, each one counting the last as a rival, burning a
+   * `standard` leader's single slot within seconds and recording a peak of one phone as a
+   * hundred devices. Gated on the method, so `pollBroadcast`'s «no cookie at all counts
+   * nothing and writes nothing» branch is reachable, which is the decided behaviour for a
+   * browser that will not keep the id.
    */
   if (/^\/follow\/[^/]+$/.test(pathname)) {
     const response = NextResponse.next()
     response.headers.set(ANONYMOUS_HEADER, '1')
+
+    /*
+     * `request.method === 'GET'` rather than a `Sec-Fetch-Mode: navigate` test, which is the
+     * sharper thing to ask and the wrong one to depend on: Server Actions are always POST, so
+     * GET already excludes every poll, while `Sec-Fetch-*` is missing on older Safari — and
+     * there the sharper test would silently never issue an id, leaving every iPhone follower
+     * uncounted. A prefetch or RSC GET of a follow link would mint, and that is harmless: it
+     * is the same browser, it stores the same cookie, and minting creates no row.
+     */
+    if (request.method === 'GET' && request.cookies.get(DEVICE_COOKIE) === undefined) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16))
+      /*
+       * Sixteen bytes where `freshToken` uses twenty-four, because this authorises nothing:
+       * the URL's token is what grants the read, and guessing somebody else's device id buys a
+       * shared slot, not access to anything.
+       */
+      const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+
+      response.cookies.set(DEVICE_COOKIE, id, {
+        httpOnly: true,
+        /* The link is opened from WhatsApp or a QR code — a cross-site top-level navigation —
+         * and every other cookie in this repo is lax for the same reason. */
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        /* The identity belongs to the browser, not to the link: the same browser may follow a
+         * different leader tomorrow, and a narrower path buys nothing for an opaque value. */
+        path: '/',
+        maxAge: ONE_YEAR_SECONDS,
+      })
+    }
+
     return response
   }
 

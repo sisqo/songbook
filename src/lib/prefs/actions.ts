@@ -11,6 +11,8 @@ import { and, eq } from 'drizzle-orm'
 import { currentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db/client'
 import { userPrefs, userSongPrefs } from '@/lib/db/schema'
+import type { Instrument } from '@/lib/music/shapes'
+import { entitlementsOf } from '@/lib/plans/resolve'
 
 import {
   type GlobalPrefs,
@@ -30,8 +32,17 @@ import {
  * alike: with nobody signed in or no database configured there is nothing to
  * sync to, so the write is finished and the queue must drop it. Only `failed` is
  * worth retrying.
+ *
+ * `not-in-plan` is the third of those "finished, nothing to retry" answers, and it is its
+ * own value rather than `saved` or `failed` for the same reason the other two are apart:
+ * the row *was* written, but not with the instrument that was asked for, and a queue that
+ * read that as `failed` would resend the same refused value every fifteen seconds for as
+ * long as the app stayed open. Nothing renders it yet — the reading panel's instrument
+ * picker is client-side and hiding it is a later step — so today its only job is to be
+ * distinguishable in that flush and to stop this returning `saved` about a preference it
+ * did not save.
  */
-export type SaveResult = 'saved' | 'no-destination' | 'failed'
+export type SaveResult = 'saved' | 'no-destination' | 'not-in-plan' | 'failed'
 
 /**
  * Preferences belong to an address, so `currentUser` is asked for the address rather than
@@ -93,14 +104,41 @@ export async function loadPrefs(songSlug: string | null): Promise<LoadedPrefs> {
   return { global, song }
 }
 
+/**
+ * The one server-side control point for the ukulele, which is otherwise a soft gate: the
+ * chord diagrams are drawn in the browser from a table that ships with the app, so nothing
+ * can stop a determined reader seeing ukulele shapes. What *can* be refused is storing the
+ * choice, which is what makes it stick across devices and sessions — so that is what is
+ * refused, on a plan whose matrix says no ukulele.
+ *
+ * Refused narrowly, and the narrowness is the decision. The instrument shares one row with
+ * the zoom, the notation and the chord display, and this function's result goes to the
+ * offline queue rather than to a screen: returning early would throw away a font-size
+ * change the reader made in the same breath, with no way to tell them why. So the row is
+ * written with the instrument the plan allows, and the answer says the instrument did not
+ * take. The reader's own screen keeps showing what they picked until the page is reloaded —
+ * the client-side half of this gate is a later step, deliberately not invented here.
+ *
+ * The plan is resolved **only** when a non-guitar instrument is actually asked for. This
+ * runs on every zoom step and every notation press, and those must not each pay for two
+ * count queries to answer a question they never raise.
+ */
 export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
-  const email = (await currentUser())?.email ?? null
-  if (email === null) return 'no-destination'
+  const user = await currentUser()
+  if (user === null) return 'no-destination'
+  const email = user.email
+
+  const asked = readInstrument(prefs.instrument)
+  let instrument: Instrument = asked
+  if (asked !== 'guitar') {
+    const entitlements = await entitlementsOf(user.accountOwnerEmail)
+    if (entitlements.refused.ukulele !== null) instrument = 'guitar'
+  }
 
   const values = {
     zoomStep: clampZoom(prefs.zoomStep),
     notation: prefs.notation === 'int' ? 'int' : 'it',
-    instrument: readInstrument(prefs.instrument),
+    instrument,
     chordDisplay: readChordDisplay(prefs.chordDisplay),
   }
 
@@ -112,7 +150,7 @@ export async function saveGlobalPrefs(prefs: GlobalPrefs): Promise<SaveResult> {
         target: userPrefs.userEmail,
         set: { ...values, updatedAt: new Date() },
       })
-    return 'saved'
+    return instrument === asked ? 'saved' : 'not-in-plan'
   } catch (error) {
     console.error('saveGlobalPrefs failed', error)
     return 'failed'

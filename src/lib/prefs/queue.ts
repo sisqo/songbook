@@ -97,10 +97,11 @@ export function createPrefsQueue(options: { debounceMs?: number; retryMs?: numbe
         }
 
         /**
-         * Both 'saved' and 'no-destination' clear the entry. Without the second
-         * case the queue would never empty when there is nobody signed in or no
-         * database configured — and the indicator that exists to promise
-         * "nothing is lost in silence" would sit there lying.
+         * Everything but 'failed' clears the entry — 'saved', 'no-destination' and
+         * 'not-in-plan' alike. Without that, the queue would never empty when there is
+         * nobody signed in, no database configured, or a preference the plan will not
+         * store — and the indicator that exists to promise "nothing is lost in silence"
+         * would sit there lying. Only 'failed' is a write that might yet succeed.
          */
         if (pending.get(key) === entry) {
           pending.delete(key)

@@ -23,12 +23,18 @@ import { eq } from 'drizzle-orm'
 
 import { normalizeEmail } from '@/lib/allowlist'
 import { db, hasDatabase } from '@/lib/db/client'
-import { accounts, sections, songbooks, songs } from '@/lib/db/schema'
-import { uniqueSlug } from '@/lib/slug'
+import { accounts } from '@/lib/db/schema'
 
 /**
- * Creates the account if it does not exist yet, cloning the one songbook flagged
- * `isExampleTemplate` — its sections and songs along with it — into it.
+ * Creates the account if it does not exist yet — one row, and nothing in it.
+ *
+ * It used to clone the songbook flagged `isExampleTemplate`, its sections and its songs,
+ * into every new account. That is gone deliberately: a new account starts **empty**. The
+ * clone spent the account's first songbook — and, on a plan with a songbook cap, its only
+ * one — on content nobody asked for, and it made every first impression a tidying job.
+ * The template row itself, the `isExampleTemplate` column and the partial unique index
+ * that keeps it singular all stay: `copySongbook` still copies a songbook into another
+ * account on demand, which is what that row is for now.
  *
  * Silent no-op with no database, same as `recordSignIn`: local work from `content/` has
  * no accounts table to write. Failures are logged, not thrown — a sign-in must still
@@ -51,86 +57,6 @@ export async function provisionAccount(email: string): Promise<boolean> {
       if (existing.length > 0) return false
 
       await tx.insert(accounts).values({ ownerEmail })
-
-      const template = await tx
-        .select()
-        .from(songbooks)
-        .where(eq(songbooks.isExampleTemplate, true))
-        .limit(1)
-      // No Example songbook flagged yet: the account still exists, just empty. Not an
-      // error — see PLAN.md's own open question about writing this songbook's content.
-      if (template.length === 0) return true
-      const source = template[0]
-
-      /*
-       * Slugs stay globally unique (`songbooks`/`songs`' own comments explain why:
-       * `/songs/[slug]` and `/songbooks/[slug]` are generated once, at build time, with
-       * no account to disambiguate by). Every account cloning the same Example songbook
-       * would otherwise all reach for the same slug; `uniqueSlug` is the same tool
-       * `createSongbook` already uses when a *name* collides, reused here for a slug that
-       * does.
-       */
-      const takenSongbookSlugs = (await tx.select({ slug: songbooks.slug }).from(songbooks)).map(
-        (row) => row.slug,
-      )
-      const clonedSongbookSlug = uniqueSlug(source.slug, takenSongbookSlugs)
-
-      await tx.insert(songbooks).values({
-        accountOwnerEmail: ownerEmail,
-        slug: clonedSongbookSlug,
-        name: source.name,
-        isExampleTemplate: false,
-        // The account's first songbook — nothing else of theirs exists yet to come after.
-        position: 1,
-      })
-
-      const sourceSections = await tx
-        .select()
-        .from(sections)
-        .where(eq(sections.songbookSlug, source.slug))
-
-      // Old section id → new section id, since a section's id is a surrogate that a
-      // clone cannot and should not reuse (`sections.id` is shared across every account).
-      const sectionIdMap = new Map<number, number>()
-      for (const section of sourceSections) {
-        const [cloned] = await tx
-          .insert(sections)
-          .values({
-            songbookSlug: clonedSongbookSlug,
-            name: section.name,
-            position: section.position,
-          })
-          .returning({ id: sections.id })
-        sectionIdMap.set(section.id, cloned.id)
-      }
-
-      const sourceSongs = await tx.select().from(songs).where(eq(songs.songbookSlug, source.slug))
-      const takenSongSlugs = new Set((await tx.select({ slug: songs.slug }).from(songs)).map((row) => row.slug))
-
-      for (const song of sourceSongs) {
-        const newSectionId = sectionIdMap.get(song.sectionId)
-        // Would mean a song pointed at a section outside its own songbook, which the
-        // composite foreign key on `songs` already makes impossible.
-        if (newSectionId === undefined) continue
-
-        const clonedSlug = uniqueSlug(song.slug, takenSongSlugs)
-        takenSongSlugs.add(clonedSlug)
-
-        await tx.insert(songs).values({
-          slug: clonedSlug,
-          title: song.title,
-          artist: song.artist,
-          tags: song.tags,
-          link1: song.link1,
-          link2: song.link2,
-          link3: song.link3,
-          body: song.body,
-          songbookSlug: clonedSongbookSlug,
-          sectionId: newSectionId,
-          position: song.position,
-        })
-      }
-
       return true
     })
   } catch (error) {

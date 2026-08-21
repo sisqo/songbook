@@ -20,13 +20,13 @@ import {
   IconTrash,
 } from '@/components/icons'
 import { createSong } from '@/lib/import/actions'
-import { SAVE_MESSAGE } from '@/lib/import/types'
+import { saveMessage } from '@/lib/import/types'
 import { loadSongIndex } from '@/lib/library/actions'
 import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
 import type { SongIndexRow } from '@/lib/search-index'
 import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/folds'
-import { WRITE_MESSAGE, type WriteResult } from '@/lib/songbooks/types'
+import { writeMessage, type WriteResult } from '@/lib/songbooks/types'
 
 /**
  * The songs of one songbook, under the section each belongs to.
@@ -104,10 +104,10 @@ export function SongbookSongs({
     setError(null)
     try {
       const result = await action()
-      if (!result.ok) setError(WRITE_MESSAGE[result.reason])
+      if (!result.ok) setError(writeMessage(result))
       return result.ok
     } catch {
-      setError(WRITE_MESSAGE.failed)
+      setError(writeMessage({ reason: 'failed' }))
       return false
     } finally {
       setBusy(false)
@@ -356,12 +356,12 @@ export function SongbookSongs({
                     newSectionId === '' ? null : Number(newSectionId),
                   )
                   if (!result.ok) {
-                    setCreateError(SAVE_MESSAGE[result.reason])
+                    setCreateError(saveMessage(result))
                     return
                   }
                   router.push(`/songs/${result.song.slug}/edit`)
                 } catch {
-                  setCreateError(SAVE_MESSAGE.failed)
+                  setCreateError(saveMessage({ reason: 'failed' }))
                 } finally {
                   setCreatingBusy(false)
                 }

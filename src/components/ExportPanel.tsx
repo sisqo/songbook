@@ -121,17 +121,28 @@ export function ExportPanel() {
     setBusy(true)
     setNotice(null)
     try {
-      const booklet = await loadBooklet(bookletSlug)
-      if (booklet === null) {
-        setNotice('Export failed: the server did not respond, or your role does not allow it.')
+      const result = await loadBooklet(bookletSlug)
+      if (!result.ok) {
+        /*
+         * Two different sentences, because they have two different remedies: a plan
+         * without the booklet will answer the same way however many times the button is
+         * pressed, so «the server did not respond» would be an invitation to keep trying.
+         * No link is offered with it — there is nowhere in the app to send anybody yet.
+         */
+        setNotice(
+          result.reason === 'not-found'
+            ? 'Export failed: the server did not respond, or your role does not allow it.'
+            : 'The printable booklet is not part of your plan.',
+        )
         return
       }
+      const { booklet, brandLine } = result
       if (booklet.sections.every((section) => section.songs.length === 0)) {
         setNotice('Nothing to export: this songbook has no songs yet.')
         return
       }
 
-      const blob = await bookletToBlob(booklet, global.notation)
+      const blob = await bookletToBlob(booklet, global.notation, brandLine)
       downloadBlob(blob, `${booklet.songbookName}.pdf`)
       setNotice(`Downloaded "${booklet.songbookName}" as a printable booklet.`)
     } catch {

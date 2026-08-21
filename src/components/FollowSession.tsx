@@ -23,6 +23,30 @@ import { pollBroadcast } from '@/lib/singAlong/session'
 const POLL_MS = 4000
 
 /**
+ * How often, and how many times, a device that was turned away keeps asking for a place.
+ *
+ * The arithmetic is the whole argument. A slot is held for a while after its last heartbeat,
+ * so the commonest reason to be refused — a tab closed a minute ago that has not lapsed yet —
+ * resolves on its own within a couple of minutes, and asking every 30 s catches the freed
+ * place several times inside that window, well within one song. Leaving the four-second loop
+ * running would ask seven or eight times as often for the same answer, paid for by a device
+ * that is not following anything; stopping dead instead is the opposite failure, stranding
+ * somebody whose place frees up ninety seconds later.
+ *
+ * Ten attempts is five minutes: longer than a leader takes to notice that a friend cannot get
+ * in, short enough that a phone left face-down on a table stops asking somebody else's
+ * database for a place nobody is waiting for. After that the screen asks nothing at all until
+ * `Try again` is pressed.
+ *
+ * Note what this deliberately is *not*: the staleness window itself. The client is never told
+ * that number — see the `'full'` branch below — because a client that knew it could be tempted
+ * to schedule around it. This constant was chosen *against* it, which is a comment, not a
+ * value shared between the two sides.
+ */
+const FULL_POLL_MS = 30_000
+const FULL_ATTEMPTS = 10
+
+/**
  * One songbook's songs, plus which of its sections this guest has opened.
  *
  * Bundled together rather than two separate pieces of state so that opening a
@@ -48,7 +72,14 @@ interface OpenSongbook {
  */
 type ShownSong = { data: Song; following: false } | { data: Song; following: true; semitones: number }
 
-type Screen = 'loading' | 'ended' | 'songbooks' | 'songbook' | 'song'
+/**
+ * `'full'` is an end state like `'ended'`, not an error: the broadcast is fine and this
+ * device simply has no place on it. The render below is an if/else chain rather than an
+ * exhaustive switch, so a missing branch here compiles perfectly well and falls through to
+ * the songbook list with nothing in it — which is why `'full'` has its own branch beside
+ * `'ended'` and not further down.
+ */
+type Screen = 'loading' | 'ended' | 'full' | 'songbooks' | 'songbook' | 'song'
 
 /**
  * Whether the broadcast is currently allowed to move this guest around.
@@ -96,6 +127,18 @@ function isSectionOpen(songbook: OpenSongbook, sectionId: number): boolean {
  *    expired, was replaced by a fresh one, or never was one. Every guest action reports
  *    this the same way (`null`), so this screen reacts to it the same way everywhere:
  *    stop, and say so plainly.
+ * 4. **Full** — the broadcast is live and this device has no place on it: as many devices
+ *    as it can carry are already following. Not an error and not an eviction — nothing in
+ *    this feature ever takes a place away from a device that holds one, so the only two
+ *    ways to see this screen are never having had a place and having let one go quiet.
+ *    It waits a while for one to free up, then stops asking and offers to try again — except
+ *    when the server says the broadcast can admit nobody at all, where waiting cannot work
+ *    and is not offered. See `fullState`.
+ *
+ * The order the loop below does things in is part of 4: the poll comes *first*, and the
+ * songbook list is only read once a poll has answered `ok`. A device that is being turned
+ * away must not get a flash of a repertoire it is not being let into, and it should cost one
+ * request rather than four.
  *
  * What ties 1 and 2 together is a poll every few seconds, compared against *what is
  * currently on screen* rather than against whatever the previous poll said — see the
@@ -120,6 +163,25 @@ export function FollowSession({ token }: { token: string }) {
   const [followState, setFollowState] = useState<FollowState>('following')
   const [live, setLive] = useState<LiveNow | null>(null)
   const [liveMeta, setLiveMeta] = useState<{ title: string; artist: string | null } | null>(null)
+
+  /*
+   * Two pieces rather than three `'full' | 'full-stopped' | 'full-closed'` screens: `screen`
+   * says what is on the screen and `fullState` says why it is still there — the same split
+   * `ShownSong` already makes between what is showing and why.
+   *
+   * `'waiting'` is still asking and expects a place to appear; `'stopped'` has spent its
+   * attempts; `'closed'` is the server saying this broadcast cannot admit *anybody*, so
+   * waiting is not a thing that can work and the copy must not pretend otherwise. The third
+   * one is a state, not a screen, precisely because the two people reading them are in the
+   * same position — outside a live broadcast, with nothing to do but ask the person who
+   * shared the link — and only the sentence differs.
+   *
+   * `rejoin` is a nonce whose only job is to be in the poll effect's dependency array:
+   * bumping it tears the loop down and starts a fresh one, which resets its attempt counter
+   * for free rather than by hand.
+   */
+  const [fullState, setFullState] = useState<'waiting' | 'stopped' | 'closed'>('waiting')
+  const [rejoin, setRejoin] = useState(0)
 
   /**
    * Every song this guest has ever loaded, by slug — filled in wherever `guestLoadSong`
@@ -251,27 +313,39 @@ export function FollowSession({ token }: { token: string }) {
       }
     }
 
+    /*
+     * One loop, and the only caller of `pollBroadcast` anywhere: the poll is what admits this
+     * device, keeps its place and reports what is playing, all in the one request the guest
+     * was already making every few seconds. There is deliberately no separate "join" call to
+     * make first — the poll has to be able to answer `full` regardless, for the phone that
+     * held a place, locked its screen long enough to lose it, and wakes up to a broadcast
+     * that has filled up since. Two calls that can both refuse a device is two calls that
+     * can disagree about whether it is in.
+     *
+     * The songbook list is read *inside* the loop, once, after the first `ok` — see the
+     * component's own doc comment for why admission comes first. `admitted` is loop-local
+     * like `cancelled`, so a manual `Try again` re-reads the list: that is one extra request
+     * for a list which may be minutes stale by then, and it must not be "fixed" by hoisting
+     * the flag into a ref, which would leave a readmitted guest reading a list from before
+     * they were turned away.
+     */
     async function run(): Promise<void> {
-      let list: GuestSongbook[]
-      try {
-        const result = await guestListSongbooks(token)
-        if (cancelled) return
-
-        if (result === null) {
-          setScreen('ended')
-          return
-        }
-        list = result
-      } catch {
-        // A dropped request is not the same answer as an expired token — it is not an
-        // answer at all. Nothing else in this app retries a failed read on its own, so
-        // this does not either: it leaves the loading state up rather than telling a
-        // guest with a flaky connection that the link is over.
-        return
-      }
-
-      setSongbooks(list)
-      setScreen('songbooks')
+      let admitted = false
+      /*
+       * Loop-local for exactly the reason `cancelled` is, and the mistake to avoid is the
+       * same one: a ref would survive StrictMode's mount/unmount/mount and carry the first
+       * run's attempt count into the second, so a device would give up after fewer tries
+       * than the constant says — in development only, which is the worst place to learn it.
+       *
+       * Not reset when a poll succeeds, which is a choice and not an oversight: this counts
+       * the slow retries one mount is willing to pay for, not the ones per refusal. A device
+       * that got in, went quiet long enough to lose its place and was then turned away has
+       * whatever budget it had not already spent — and the alternative, resetting on every
+       * success, lets a device that flaps in and out retry for as long as the tab is open,
+       * which is the unbounded cost the whole `'full'` branch exists to avoid. `Try again`
+       * is the deliberate way to buy five more minutes, and it is a person pressing it.
+       */
+      let fullAttempts = 0
 
       // Polling starts right away, not after the first four-second wait: a broadcast
       // that already had a song going before this link was opened should not leave its
@@ -281,15 +355,75 @@ export function FollowSession({ token }: { token: string }) {
         try {
           poll = await pollBroadcast(token)
         } catch {
-          // Same reasoning as above: try again next tick rather than call it expired.
+          // A dropped request is not the same answer as a refusal or an expired token — it
+          // is not an answer at all. Only an explicit `{ ok: false }` with a reason moves
+          // this screen anywhere; a throw leaves it exactly where it is and tries again next
+          // tick, rather than telling a guest with a flaky connection that the link is over.
           await sleep(POLL_MS)
           continue
         }
         if (cancelled) return
 
         if (!poll.ok) {
-          setScreen('ended')
-          return
+          if (poll.reason === 'expired') {
+            setScreen('ended')
+            return
+          }
+
+          /*
+           * Refused. The four-second loop stops here — that is what bounds a device with no
+           * place to the cost of one slow retry rather than a join attempt every four
+           * seconds forever, and it stops a refused device racing guests who are actually
+           * waiting for the next place to free up. `song` and `followState` are left
+           * untouched on purpose: when a retry does succeed, `reconcile` compares the live
+           * song against what is on *screen*, reads this screen as showing nothing, and
+           * therefore follows the broadcast properly with no readmission path of its own.
+           */
+          setScreen('full')
+
+          /*
+           * `closed` stops even the slow retries, because the server has said this broadcast
+           * admits nobody at all rather than nobody *more*: ten more asks over five minutes
+           * would each get the same answer, and the screen would spend that time promising a
+           * place that cannot appear. The `Try again` button is still there — a person
+           * pressing it is a person who has just talked to whoever shared the link, and
+           * something may genuinely have changed.
+           */
+          if (poll.reason === 'closed') {
+            setFullState('closed')
+            return
+          }
+
+          fullAttempts += 1
+          if (fullAttempts >= FULL_ATTEMPTS) {
+            setFullState('stopped')
+            return
+          }
+          await sleep(FULL_POLL_MS)
+          continue
+        }
+
+        if (!admitted) {
+          let list
+          try {
+            list = await guestListSongbooks(token)
+          } catch {
+            // Same rule as the poll's own catch: not an answer, so not a verdict. Try again
+            // on the next tick, and in the meantime this guest keeps looking at `Loading…`
+            // rather than at a link declared over.
+            await sleep(POLL_MS)
+            continue
+          }
+          if (cancelled) return
+
+          if (list === null) {
+            setScreen('ended')
+            return
+          }
+
+          setSongbooks(list)
+          setScreen('songbooks')
+          admitted = true
         }
 
         await reconcile(poll.songSlug, poll.semitones)
@@ -304,7 +438,11 @@ export function FollowSession({ token }: { token: string }) {
     return () => {
       cancelled = true
     }
-  }, [token])
+    /*
+     * `rejoin` is here so that `Try again` restarts this whole effect: a fresh loop, a fresh
+     * `fullAttempts`, and one more poll straight away rather than after another 30 s wait.
+     */
+  }, [token, rejoin])
 
   /*
    * `pollBroadcast` only ever answers with a slug and a key, never a title — so
@@ -440,6 +578,74 @@ export function FollowSession({ token }: { token: string }) {
       <p className="mt-8 text-center text-sm text-muted">
         This link has ended. Ask whoever shared it for a new one.
       </p>
+    )
+  } else if (screen === 'full') {
+    /*
+     * Not a word about plans, prices, tiers or upgrades, and that is a decision rather than
+     * brevity: this guest has no account, no plan and no way to act on somebody else's
+     * billing, and naming the leader's plan to a stranger tells a friend what their friend
+     * pays for. «Only so many devices can follow this broadcast at once» is true, is the
+     * whole of what they can do anything about, and works for both people who reach this
+     * screen — the one who never got in, and the one whose place went quiet while their
+     * phone was locked. That second case is why it must not say «you could not join», and
+     * why nothing here says «you were disconnected»: nobody is ever evicted.
+     *
+     * It also must not coach the way around itself. No «try a private window», no «use
+     * another browser», no «clear your cookies» — a deterrent that ships with its own bypass
+     * in the copy is not a deterrent, and the identity behind this refusal is exactly that:
+     * a cookie, deterring casual link-forwarding, not stopping anybody who is trying.
+     *
+     * And nothing offers to browse the repertoire while waiting, tempting as it is: the
+     * token is still a perfectly good read credential, so only this screen's own ordering
+     * keeps a refused device off the shelf. Offering it would make the refusal ambiguous —
+     * «am I in or not?» — and spend three reads on a device that is explicitly not
+     * following.
+     *
+     * No `role="alert"` and no icon, matching `'ended'`: a full broadcast is the plan
+     * working, not a fault, so it must not interrupt a screen reader, and `IconBroadcast`
+     * here would decorate the refusal with the mark this app uses for the one thing this
+     * device is not part of.
+     *
+     * `'closed'` gets its own two sentences and this is the point of the state existing: the
+     * waiting copy promises that a place frees up, and there are broadcasts for which that is
+     * provably false — one whose plan has lapsed under it keeps playing, deliberately, with a
+     * cap that now admits nobody, and no device closing its link changes that. So the promise
+     * is dropped rather than reworded, «full» is not claimed of a broadcast that may be empty,
+     * and the one true instruction is kept. Still not a word about plans: the reason this
+     * device cannot get in is somebody else's billing, which is exactly what the person who
+     * shared the link can be asked about and this screen cannot.
+     *
+     * «a couple of minutes after another device closes the link», not «as soon as»: a place is
+     * held for a while past its last heartbeat so that a phone whose screen locked for one
+     * song keeps it, which means a closed tab frees nothing immediately. The number itself
+     * stays off the client — see `FULL_POLL_MS` — but the shape of it has to be in the
+     * sentence, or a guest watching nothing happen for two minutes concludes this is broken.
+     */
+    content = (
+      <div className="mt-8 text-center">
+        <p className="text-sm">
+          {fullState === 'closed' ? "This broadcast isn't taking followers." : 'This broadcast is full.'}
+        </p>
+        <p className="mx-auto mt-2 max-w-xs text-sm leading-[1.45] text-muted">
+          {fullState === 'waiting' &&
+            'Only so many devices can follow this broadcast at once. Leave this open for a few minutes — a place frees up a couple of minutes after another device closes the link.'}
+          {fullState === 'stopped' && 'Still full. Ask whoever shared the link, then try again.'}
+          {fullState === 'closed' &&
+            'It cannot take another device at the moment, so waiting will not help. Ask whoever shared the link.'}
+        </p>
+        {fullState !== 'waiting' && (
+          <button
+            type="button"
+            className="btn btn-sm mt-4"
+            onClick={() => {
+              setFullState('waiting')
+              setRejoin((value) => value + 1)
+            }}
+          >
+            Try again
+          </button>
+        )}
+      </div>
     )
   } else {
     /*

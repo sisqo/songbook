@@ -1,4 +1,5 @@
 import type { Song } from '@/lib/data/types'
+import { LIMIT_MESSAGE, limitSentence, type LimitFacts, type LimitReason } from '@/lib/plans/types'
 
 export interface SongInput {
   /** Present when editing an existing song, absent when importing a new one. */
@@ -43,6 +44,12 @@ export type SaveFailure =
   | 'invalid-title'
   | 'empty-body'
   | 'not-found'
+  /**
+   * Refused by the plan: the song cap is reached, the songbook a paste would have to mint
+   * would be one too many, or the repertoire is frozen over its caps. `LimitReason` rather
+   * than strings of its own, so this side and `WriteFailure` refuse in the same words.
+   */
+  | LimitReason
   | 'failed'
 
 /**
@@ -59,14 +66,39 @@ export type SaveResult =
   | { ok: true; song: Song }
   /** Same title and artist already exist; the caller must decide what to do. */
   | { ok: false; reason: 'duplicate'; existing: DuplicateOf }
-  | { ok: false; reason: SaveFailure }
+  | SaveRefusal
 
-export type DeleteResult = { ok: true; slug: string } | { ok: false; reason: SaveFailure }
+/**
+ * Every other refusal, with the cap it hit when there is one to name.
+ *
+ * `limit` is an optional field here and a keyed variant above, and the asymmetry is the
+ * point rather than an inconsistency: `duplicate` is a *single* reason whose extra fact is
+ * mandatory, so a variant makes the compiler hand `existing` to whoever narrows to it —
+ * which is how `ImportBatch` reads `result.existing.title` with no check at all. The count
+ * caps are two reasons among eleven, arriving un-narrowed off `entitlements.refused.…`, and
+ * the fact is optional because a refusal built before this field existed is still a valid
+ * refusal. Keying them too would have made every `return { ok: false, reason: refused }` in
+ * `import/actions.ts` prove which reason it holds before it could name it.
+ */
+export interface SaveRefusal {
+  ok: false
+  reason: SaveFailure
+  limit?: LimitFacts
+}
+
+export type DeleteResult = { ok: true; slug: string } | SaveRefusal
 
 /** What to do when a save hits a song with the same title and artist. */
 export type Decision = 'replace' | 'add'
 
+/**
+ * The capless wording. Exported for the same one reason `WRITE_MESSAGE` is — `ImportBatch`
+ * separates a refused row from a failed one by membership in `LIMIT_MESSAGE` — while
+ * `saveMessage` is what every screen calls.
+ */
 export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
+  // Spread, not retyped — see `WRITE_MESSAGE`, which spreads the same object.
+  ...LIMIT_MESSAGE,
   'no-session': 'Session expired. Reload the page and sign in again.',
   'not-allowed': 'Your role does not allow editing the repertoire.',
   'no-database': 'No database configured: cannot save.',
@@ -75,4 +107,22 @@ export const SAVE_MESSAGE: Record<SaveFailure | 'duplicate', string> = {
   'not-found': 'This song no longer exists.',
   duplicate: 'A song with this title and artist already exists.',
   failed: 'Save failed. Please try again.',
+}
+
+/**
+ * What to show for a refused save — `writeMessage`'s twin, deliberately not one shared
+ * function over both unions.
+ *
+ * The two message maps are keyed by two different failure unions, and a single generic
+ * helper would have had to take the map as a parameter: every call site would then be
+ * choosing which map to use, which is exactly the choice that has been getting made
+ * differently in different files. Two names, each importable from the module whose result it
+ * words, leaves nothing to choose.
+ *
+ * `'duplicate'` is in the parameter type because it is in `SAVE_MESSAGE`: the editor and the
+ * import screen both hand a whole narrowed result here, duplicate branch included, and a
+ * signature that excluded it would have sent those sites back to indexing the map.
+ */
+export function saveMessage(failure: { reason: SaveFailure | 'duplicate'; limit?: LimitFacts }): string {
+  return failure.limit === undefined ? SAVE_MESSAGE[failure.reason] : limitSentence(failure.limit)
 }

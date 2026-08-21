@@ -22,8 +22,10 @@ import {
   IconSwitchAccount,
 } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
+import { audienceIsFull, audienceSentence } from '@/lib/plans/types'
 import {
   type BroadcastState,
+  broadcastAudience,
   getMyBroadcast,
   startBroadcast,
   stopBroadcast,
@@ -46,6 +48,17 @@ function followUrl(token: string): string {
 
 /** The tuner, which is a separate app on its own domain. */
 const TUNER_URL = 'https://guitar.sisqo.dev'
+
+/**
+ * How often the follower count is re-read while the Sing Together panel is actually open.
+ *
+ * At module scope rather than inside the component so it stays out of the effect's
+ * dependency array — the same reason `POLL_MS` sits at the top of `FollowSession`. Ten
+ * seconds is chosen for a leader who is reading this line for a few seconds while handing a
+ * phone round, not for a background watcher: the effect does not run at all with the panel
+ * shut, which is nearly always.
+ */
+const AUDIENCE_MS = 10_000
 
 /**
  * The header's sections, behind one button.
@@ -103,6 +116,21 @@ export function NavMenu({ current }: { current: Section }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  /*
+   * How many devices are following right now, and how many this plan allows — the answer to
+   * the question a leader who has just handed the link round actually has. `null` covers
+   * three states on purpose and renders nothing in all of them: nothing live to count, a
+   * read that failed, and the moment before the first read comes back. An unknown count must
+   * not become «— of 3» or «0 of 3»: zero is a claim, a dash is a glyph that looks like a
+   * fault, and a wrong number sends a leader debugging a broadcast that is working, while a
+   * missing line costs them nothing. `error` in this panel stays for a failed Start or Stop,
+   * which are things the leader pressed.
+   *
+   * A third, independent piece of state, deliberately not folded into `broadcast` or
+   * `askFailed`: those two exist to keep «nothing is running» and «I could not find out»
+   * apart, and a count that came back empty is neither of them.
+   */
+  const [audience, setAudience] = useState<{ following: number; devices: number } | null>(null)
 
   const checkBroadcast = () => {
     setAskFailed(false)
@@ -149,6 +177,53 @@ export function NavMenu({ current }: { current: Section }) {
     }
   }, [token])
 
+  /*
+   * The follower count, read only while this panel is on the Sing Together view and there is
+   * a broadcast to count. Not folded into `getMyBroadcast`, whose one call happens on mount
+   * of every page in the app: that would put a count and a plan read behind every navigation
+   * to render a string visible only inside one closed panel. `view === 'sing-together'`
+   * already implies the panel is open — closing it and the menu button both reset `view` to
+   * `main`, and Escape steps back there first — so `open` would be a second condition saying
+   * the same thing, with a second chance to disagree.
+   *
+   * Cleared on cleanup rather than left showing its last value, and that is the deliberate
+   * part: reopening the panel shows nothing for a moment and then the number, because a
+   * leader reads this line precisely to know what is true *now*, and a stale count is worse
+   * than a missing one.
+   *
+   * `token` is in the dependency array for one reason and it is not the obvious one: it gates
+   * the read on there being *something* live to count, so a reader who has never started a
+   * broadcast never asks. It does not aim the count at this link — `broadcastAudience` takes
+   * no token and resolves this reader's currently-live row server-side, so the number is
+   * always about whatever they have running now, which need not be the link on screen if
+   * another tab restarted it. That is the better of the two behaviours (the count is never
+   * about a dead link) but it is not what keying on `token` achieves, and it is worth saying
+   * so before somebody reads a guarantee into the deps that is not there.
+   */
+  useEffect(() => {
+    if (view !== 'sing-together' || token === undefined) {
+      setAudience(null)
+      return
+    }
+
+    let cancelled = false
+    const read = () => {
+      void broadcastAudience()
+        .then((answer) => {
+          if (!cancelled) setAudience(answer)
+        })
+        .catch(() => {
+          if (!cancelled) setAudience(null)
+        })
+    }
+    read()
+    const timer = setInterval(read, AUDIENCE_MS)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [view, token])
+
   const close = () => {
     setOpen(false)
     setView('main')
@@ -172,6 +247,23 @@ export function NavMenu({ current }: { current: Section }) {
     try {
       const result = await startBroadcast()
       if (result.ok) setBroadcast({ token: result.token, songSlug: null, semitones: 0 })
+      /*
+       * Told apart from every other failure on purpose: «try again» is advice, and it is
+       * false advice here — a plan that does not include leading will not start one on the
+       * second press either. The sentence names the feature rather than showing
+       * `LIMIT_MESSAGE`'s generic line, and promises nothing about where to change it:
+       * there is no pricing screen to send anybody to yet.
+       */
+      else if (result.reason === 'plan-required') setError('Sing Together is not part of your plan.')
+      /*
+       * The other reason worth telling apart, now that there is a reason at all to tell
+       * apart: an expired session is fixed by reloading and signing in again, and pressing
+       * a button that cannot work is not how anybody discovers that. The wording is
+       * `WRITE_MESSAGE`'s for the same condition, copied rather than imported — this action
+       * has no message map to index, and two different sentences for one failure is a
+       * difference the reader would have to explain to themselves.
+       */
+      else if (result.reason === 'no-session') setError('Session expired. Reload the page and sign in again.')
       else setError("Couldn't start. Try again.")
     } catch {
       setError("Couldn't start. Try again.")
@@ -366,6 +458,49 @@ export function NavMenu({ current }: { current: Section }) {
                                 {copied ? <IconCheck size={14} /> : null}
                                 {copied ? 'Copied' : 'Copy link'}
                               </button>
+
+                              {/*
+                                * Who is actually there. Directly under the button and in the
+                                * same muted xs as the link line above it, so the link, the
+                                * count and the way to copy read as one block rather than as
+                                * a status widget bolted on: without it, a friend who cannot
+                                * get in and the leader are both looking at what appears to
+                                * be a fault.
+                                *
+                                * Never `notice-error` and never coloured. A full broadcast
+                                * is the plan working, and painting it red tells a leader to
+                                * go looking for a bug. The second sentence appears only when
+                                * the cap is real and reached, and it names the mechanism
+                                * rather than a purchase — «that's all this plan follows»
+                                * invites an action that does not exist yet, since there is
+                                * no pricing screen to send anybody to, so it reads as a dead
+                                * end dressed as an upsell. It is also deliberately the same
+                                * fact in the same words the refused guest's own screen uses,
+                                * so the two people are reading one explanation instead of
+                                * two.
+                                *
+                                * The condition is `audienceIsFull` and not a comparison
+                                * written here, because it is not the obvious one: a cap of 0
+                                * or a count that has passed the cap — both of which a plan
+                                * lapsing under a live broadcast produces, since the
+                                * broadcast is deliberately never interrupted — are states
+                                * where no place will ever free up, and this hint would be a
+                                * promise the app cannot keep. `plans/types.ts` owns that
+                                * judgement next to the sentence it has to agree with.
+                                *
+                                * «a couple of minutes after», not «as soon as»: a slot is
+                                * held for a while past the last heartbeat, so that a phone
+                                * whose screen locked for one song keeps its place. Saying
+                                * «as soon as» would send a leader watching a number that is
+                                * about to be right and looks stuck.
+                                */}
+                              {audience !== null && (
+                                <p className="text-center text-xs text-muted">
+                                  {audienceSentence(audience.following, audience.devices)}
+                                  {audienceIsFull(audience.following, audience.devices) &&
+                                    ' A place frees up a couple of minutes after one of them closes the link.'}
+                                </p>
+                              )}
                             </>
                           )}
                         </div>

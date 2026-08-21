@@ -27,6 +27,8 @@ import { listSectionsForAccount, listSongbooksForAccount } from '@/lib/data/db'
 import { DEFAULT_SECTION } from '@/lib/data/types'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts, songbooks, sections, songs } from '@/lib/db/schema'
+import { entitlementsOf } from '@/lib/plans/resolve'
+import { limitFacts } from '@/lib/plans/types'
 import { revalidateSongbook } from '@/lib/revalidate'
 import { canEdit } from '@/lib/roles'
 import { uniqueSlug } from '@/lib/slug'
@@ -80,6 +82,35 @@ export async function createSongbook(name: string): Promise<CreateResult> {
   const editor = await asEditor()
   if (!editor.ok) return { ok: false, reason: editor.reason }
 
+  /*
+   * Before the transaction opens, not inside it: a refusal after the insert would have
+   * minted a slug — the one thing about a songbook that never changes again — and left the
+   * `sections` row below it to be rolled back. The reason is read off the guard rather
+   * than derived here, so this cannot tell an account that is already over its cap to buy
+   * more when the answer is to delete: `refused.createSongbook` already says which.
+   *
+   * Read-then-write, across two transactions, and therefore raceable — stated here because
+   * it is a real gap and not an oversight. The count behind this refusal was taken in the
+   * guard (`asEditor` → `entitlementsOf`), the insert happens in the transaction below, and
+   * nothing re-reads in between: N concurrent calls all see the same count and all insert,
+   * so a free account can end up holding two songbooks. Not patched, for two reasons that
+   * are worth knowing before somebody tries. Re-counting inside the transaction fixes
+   * nothing on its own — under READ COMMITTED neither writer sees the other's uncommitted
+   * row — so the only real fix is a `SELECT ... FOR UPDATE` on this account's `accounts` row
+   * held across check-and-insert; and that lock takes `accounts` *before* `songbooks` and
+   * `songs`, while `removeAccountAndContent` holds locks on those two and only then deletes
+   * the `accounts` row — the opposite order, so the lock buys a deadlock cycle (40P01,
+   * surfacing as «save failed») in exchange. The bound in the meantime: the overshoot is small, the rows stay readable and playable,
+   * and the account reports frozen until a deletion brings it back under the cap — the same
+   * state a downgrade produces, with the same way out. The other half of the reason is
+   * structural: counts are fetched in the guard so that no write can hold permission
+   * without also holding the limits, and locking would move them back into each write path.
+   */
+  const refused = editor.entitlements.refused.createSongbook
+  if (refused !== null) {
+    return { ok: false, reason: refused, limit: limitFacts(editor.entitlements.limits, refused) }
+  }
+
   const trimmed = name.trim()
   if (trimmed === '') return { ok: false, reason: 'invalid-name' }
 
@@ -129,6 +160,21 @@ export async function renameSongbook(slug: string, name: string): Promise<WriteR
   const target = await editableSongbook(slug)
   if (!target.ok) return target
 
+  /*
+   * A rename is a change to the repertoire, so it is closed while the account is frozen —
+   * the freeze is «only deletions until it fits again», not «only deletions of songs».
+   *
+   * No `limit` here, and none at any other `editRepertoire` gate in this file or in
+   * `sections/actions.ts`: this gate can only ever answer `frozen`, and being frozen is
+   * being over *the caps* — possibly both at once — with a deletion as the remedy. There is
+   * no single number that would help, and quoting one would read as «buy more», which is
+   * the one thing that does not unfreeze an account. Same for `plan-required`, which counts
+   * nothing at all. See `limitFacts`, which returns `undefined` for exactly these two.
+   */
+  if (target.entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: target.entitlements.refused.editRepertoire }
+  }
+
   try {
     const updated = await db()
       .update(songbooks)
@@ -156,6 +202,11 @@ export async function arrangeSongbooks(slugs: string[]): Promise<WriteResult> {
   if (!hasDatabase) return { ok: false, reason: 'no-database' }
   const editor = await asEditor()
   if (!editor.ok) return { ok: false, reason: editor.reason }
+
+  // Reordering is one of the changes the freeze closes, by the brief's own list.
+  if (editor.entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: editor.entitlements.refused.editRepertoire }
+  }
 
   try {
     return await db().transaction(async (tx) => {
@@ -199,6 +250,18 @@ export async function moveSong(songSlug: string, sectionId: number): Promise<Wri
   const editor = await accessTo(songOwner)
   if (editor === null || !canEdit(editor.role)) {
     return { ok: false, reason: 'not-found' }
+  }
+
+  /*
+   * Resolved by hand, because this path never goes through `permit` or `editableSongbook`:
+   * it authorizes with `accessTo` + `canEdit` inline, so 'the guards carry entitlements'
+   * does not reach it. For the **song's** account, like the access check right above —
+   * these rows belong to whoever owns the song, not to whoever is moving it. Moving a song
+   * is reordering, which the freeze closes.
+   */
+  const entitlements = await entitlementsOf(songOwner)
+  if (entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: entitlements.refused.editRepertoire }
   }
 
   try {
@@ -263,6 +326,14 @@ export async function removeSongbook(
 
   const target = await editableSongbook(slug)
   if (!target.ok) return target
+
+  /*
+   * No entitlement check, deliberately, even though `target` now carries one: this is a
+   * deletion, and a frozen account's way back under its caps is exactly this. It updates
+   * songs on the way out — sections change songbook, songs change section — so a freeze
+   * implemented as "no writes but DELETE" would close the tidiest route out of the freeze.
+   * The rule is about how much the repertoire holds, and this strictly shrinks it.
+   */
 
   try {
     const database = db()
@@ -402,6 +473,9 @@ export async function purgeSongbook(slug: string): Promise<WriteResult> {
   const target = await editableSongbook(slug)
   if (!target.ok) return target
 
+  // Ungated on purpose, like `removeSongbook` above: a deletion is what unfreezes an
+  // account, so it can never be the thing the freeze refuses.
+
   try {
     const result = await db().transaction(async (tx) => {
       const deletedSongs = await tx
@@ -443,10 +517,26 @@ export async function purgeSongbook(slug: string): Promise<WriteResult> {
  * reach across two accounts at once.
  *
  * Slugs stay globally unique, songbook and song alike (see `songbooks`' and `songs`' own
- * comments in `db/schema.ts` on why `/songs/[slug]` and `/songbooks/[slug]` need that),
- * so the clone itself is the same one `provisionAccount` already does for a brand-new
- * account's Example songbook: `uniqueSlug` at both levels, and an old-section-id →
- * new-section-id map, since a section's id is a surrogate a copy cannot reuse.
+ * comments in `db/schema.ts` on why `/songs/[slug]` and `/songbooks/[slug]` need that), so
+ * the copy mints its own: `uniqueSlug` at both levels, and an old-section-id →
+ * new-section-id map, since a section's id is a surrogate a copy cannot reuse. This is the
+ * clone `provisionAccount` used to do for every new account's Example songbook, and since
+ * that is gone (v3.3, accounts start empty) it is the only copy of a songbook left in the
+ * app — which is what the `isExampleTemplate` row is now kept for.
+ *
+ * Gated by the **destination's** plan, not the caller's, like every other write into an
+ * account: a global owner gets the plan of the account they are operating in, because the
+ * rows are that customer's. Half of that question is answerable and half is not, and the
+ * two are treated differently on purpose. Answerable: whether the destination may hold one
+ * more songbook at all — `refused.createSongbook` is exactly "frozen, or already at the
+ * songbook cap", and it is the same check `createSongbook` makes above; `refused.createSong`
+ * likewise refuses a copy into an account with no room for even one more song. Unanswerable:
+ * whether the *M* songs being copied fit, since `Entitlements` answers "one more" and never
+ * "M more" — so a copy into an account with room for one song and forty arriving still
+ * overshoots, and that account then freezes to deletions until it fits again, like any other
+ * overage. What the check buys is that the overshoot can no longer start from an account
+ * that was already full or already frozen, which is the case where the owner's helpful
+ * gesture was the whole cause of the freeze.
  */
 export async function copySongbook(
   sourceSlug: string,
@@ -460,6 +550,24 @@ export async function copySongbook(
   }
 
   const target = normalizeEmail(targetAccountOwnerEmail)
+
+  /*
+   * Resolved before the transaction opens — before, and not merely for tidiness: the pool is
+   * `max: 1` (`db/client.ts`), so a `db()` query issued from inside a transaction callback
+   * queues for the one connection that transaction is holding and hangs forever rather than
+   * failing. `entitlementsOf` queries, so it cannot be moved inside.
+   *
+   * The cost of asking here rather than after the destination row is confirmed below: a
+   * mistyped address logs «entitlementsOf found no account row» and falls open, an instant
+   * before the transaction answers `not-found` about that same address — and a target that
+   * is the songbook's own account can now be told about its caps before it is told
+   * `same-account`. A stray log line about an account nobody has, and a slightly less
+   * precise message on two impossible-to-reach-by-accident inputs, are the cheaper side of
+   * that trade: the other one hangs the request.
+   */
+  const entitlements = await entitlementsOf(target)
+  const refused = entitlements.refused.createSongbook ?? entitlements.refused.createSong
+  if (refused !== null) return { ok: false, reason: refused, limit: limitFacts(entitlements.limits, refused) }
 
   try {
     return await db().transaction(async (tx) => {

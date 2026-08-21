@@ -24,7 +24,8 @@ import {
   rowsOf,
   sameMembers,
 } from '@/lib/songbooks/order'
-import { WRITE_MESSAGE, type WriteFailure } from '@/lib/songbooks/types'
+import { writeMessage, type WriteFailure } from '@/lib/songbooks/types'
+import type { LimitFacts } from '@/lib/plans/types'
 import type { SongIndexRow } from '@/lib/search-index'
 
 /** One key per drawn row, so a ref survives the rows moving under it. */
@@ -169,25 +170,37 @@ export function ArrangeSongbook({
           return
         }
 
-        setError(WRITE_MESSAGE[result.reason])
+        setError(writeMessage(result))
         // Back to the layout the database is known to hold.
         setLayout(server)
       } catch {
-        setError(WRITE_MESSAGE.failed)
+        setError(writeMessage({ reason: 'failed' }))
         setLayout(server)
       }
     })
   }
 
-  const run = async (action: () => Promise<{ ok: boolean; reason?: WriteFailure }>) => {
+  /*
+   * The one site that cannot hand its result straight to `writeMessage`: `action` is typed
+   * structurally so that any section write can be passed to it, which leaves `reason`
+   * optional — and testing `result.reason !== undefined` narrows that expression without
+   * narrowing the object it came from, so the object itself is not assignable. `limit` is
+   * carried in the structural type and forwarded by hand so that a wrapper this generic
+   * cannot be the thing that loses one — today every action passed here is gated only by
+   * `editRepertoire` and can answer nothing but `frozen`, which has no cap to lose, so the
+   * forwarding is for the section cap that does not exist yet rather than for a live case.
+   */
+  const run = async (action: () => Promise<{ ok: boolean; reason?: WriteFailure; limit?: LimitFacts }>) => {
     setBusy(true)
     setError(null)
     try {
       const result = await action()
-      if (!result.ok && result.reason !== undefined) setError(WRITE_MESSAGE[result.reason])
+      if (!result.ok && result.reason !== undefined) {
+        setError(writeMessage({ reason: result.reason, limit: result.limit }))
+      }
       return result.ok
     } catch {
-      setError(WRITE_MESSAGE.failed)
+      setError(writeMessage({ reason: 'failed' }))
       return false
     } finally {
       setBusy(false)

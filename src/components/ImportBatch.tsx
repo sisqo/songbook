@@ -5,7 +5,8 @@ import { useState } from 'react'
 import { IconCheck, IconClose, IconInfo, IconPlus } from '@/components/icons'
 import { saveSong } from '@/lib/import/actions'
 import type { PreparedSong } from '@/lib/import/prepare'
-import { SAVE_MESSAGE, type Decision } from '@/lib/import/types'
+import { saveMessage, type Decision } from '@/lib/import/types'
+import { LIMIT_MESSAGE } from '@/lib/plans/types'
 
 const FORMAT_LABEL: Record<string, string> = {
   chordpro: 'already ChordPro',
@@ -27,6 +28,13 @@ type Outcome =
   | { state: 'saving' }
   | { state: 'saved' }
   | { state: 'skipped'; existing: string }
+  /**
+   * Refused by the plan — a cap, or a frozen repertoire. Its own state rather than a
+   * `failed` with a different message, because the difference is whether pressing Retry
+   * can do anything: it cannot, and a row left in `attempts` would put that button back in
+   * front of somebody and count them into "Retry with 4 songs".
+   */
+  | { state: 'refused'; message: string }
   | { state: 'failed'; message: string }
 
 interface Row extends PreparedSong {
@@ -42,7 +50,8 @@ interface Row extends PreparedSong {
  * time. Rows past this line also stop taking edits: the song exists now, and the
  * editor is where it changes.
  */
-const settled = (row: Row) => row.outcome.state === 'saved' || row.outcome.state === 'skipped'
+const settled = (row: Row) =>
+  row.outcome.state === 'saved' || row.outcome.state === 'skipped' || row.outcome.state === 'refused'
 
 /**
  * Several songs from one paste, shown before any of them is saved.
@@ -138,11 +147,27 @@ export function ImportBatch({
           patch(row.id, {
             outcome: { state: 'skipped', existing: result.existing.title },
           })
+        } else if (Object.hasOwn(LIMIT_MESSAGE, result.reason)) {
+          /*
+           * Membership in `LIMIT_MESSAGE` rather than a hand-written list of reasons: a
+           * fifth `LimitReason` added later is refused here automatically, where a pair of
+           * string comparisons would quietly start calling it a failure and re-offering
+           * Retry. Each row is its own `saveSong` call from this browser — the server never
+           * sees a batch — so one refusal does not stop the rest of the paste.
+           *
+           * `LIMIT_MESSAGE` is still the membership test even though the *message* now comes
+           * from `saveMessage`: the map is the list of plan reasons, and what separates a
+           * refused row from a failed one is which kind of reason arrived, not what it ends
+           * up saying. `saveMessage` prints the cap when the refusal carries one, so the
+           * rows of a paste that ran into the song limit all read «This plan goes up to 30
+           * songs in all.» instead of thirty copies of a sentence with no number in it.
+           */
+          patch(row.id, { outcome: { state: 'refused', message: saveMessage(result) } })
         } else {
-          patch(row.id, { outcome: { state: 'failed', message: SAVE_MESSAGE[result.reason] } })
+          patch(row.id, { outcome: { state: 'failed', message: saveMessage(result) } })
         }
       } catch {
-        patch(row.id, { outcome: { state: 'failed', message: SAVE_MESSAGE.failed } })
+        patch(row.id, { outcome: { state: 'failed', message: saveMessage({ reason: 'failed' }) } })
       }
     }
 
@@ -237,6 +262,7 @@ export function ImportBatch({
           <span className="text-sm text-muted" role="status">
             {counted('saved')} saved
             {counted('skipped') > 0 && `, ${counted('skipped')} already present`}
+            {counted('refused') > 0 && `, ${counted('refused')} not allowed by your plan`}
             {counted('failed') > 0 && `, ${counted('failed')} failed`}.
           </span>
         )}
@@ -360,6 +386,8 @@ function Status({ outcome, include }: { outcome: Outcome; include: boolean }) {
       )
     case 'skipped':
       return <span>already in the archive as «{outcome.existing}»</span>
+    case 'refused':
+      return <span className="text-danger">{outcome.message}</span>
     case 'failed':
       return <span className="text-danger">{outcome.message}</span>
   }

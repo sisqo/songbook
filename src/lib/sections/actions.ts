@@ -42,7 +42,14 @@ function isDuplicate(error: unknown): boolean {
   return false
 }
 
-/** A new section at the end of its songbook. */
+/**
+ * A new section at the end of its songbook.
+ *
+ * Refused while the account is frozen and never for a cap, because the plan matrix has no
+ * section cap at all — sections are the free structure inside a songbook, and nothing in
+ * the decided table counts them. A later reader must not add one here on the assumption
+ * that it was forgotten.
+ */
 export async function createSection(
   songbookSlug: string,
   name: string,
@@ -54,6 +61,10 @@ export async function createSection(
 
   const target = await editableSongbook(songbookSlug)
   if (!target.ok) return target
+
+  if (target.entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: target.entitlements.refused.editRepertoire }
+  }
 
   try {
     return await db().transaction(async (tx) => {
@@ -93,6 +104,12 @@ export async function renameSection(id: number, name: string): Promise<WriteResu
   const target = await editableSection(id)
   if (!target.ok) return target
 
+  // Renaming is a change to the repertoire's shape, so the freeze closes it — same as
+  // renaming a songbook next door.
+  if (target.entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: target.entitlements.refused.editRepertoire }
+  }
+
   try {
     const updated = await db()
       .update(sections)
@@ -127,6 +144,12 @@ export async function removeSection(id: number, moveTo: number | null): Promise<
   const target = await editableSection(id)
   if (!target.ok) return target
   const songbookSlug = target.songbookSlug
+
+  /*
+   * Ungated on purpose: a deletion is how a frozen account gets back under its caps, so
+   * the freeze can never be what refuses one. This one moves songs on the way out, which
+   * is why it has to be said rather than left to be inferred from "it only deletes".
+   */
 
   try {
     return await db().transaction(async (tx) => {
@@ -200,6 +223,8 @@ export async function purgeSection(id: number): Promise<WriteResult> {
   if (!target.ok) return target
   const songbookSlug = target.songbookSlug
 
+  // Ungated, like `removeSection` above and for the same reason.
+
   try {
     const deletedSlugs = await db().transaction(async (tx) => {
       const deleted = await tx
@@ -267,6 +292,12 @@ export async function arrangeSongbook(
 
   const target = await editableSongbook(songbookSlug)
   if (!target.ok) return target
+
+  // Arranging writes no new row and deletes none, but it is still a change to the
+  // repertoire — the order songs are played in — which is on the freeze's own list.
+  if (target.entitlements.refused.editRepertoire !== null) {
+    return { ok: false, reason: target.entitlements.refused.editRepertoire }
+  }
 
   try {
     return await db().transaction(async (tx) => {

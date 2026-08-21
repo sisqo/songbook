@@ -7,7 +7,7 @@ import { ImportBatch } from '@/components/ImportBatch'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { SongForm } from '@/components/SongForm'
 import { IconInfo, IconOffline, IconPlus } from '@/components/icons'
-import { WRITE_MESSAGE } from '@/lib/songbooks/types'
+import { writeMessage } from '@/lib/songbooks/types'
 import { saveSong } from '@/lib/import/actions'
 import { type PreparedSong, prepareSongs } from '@/lib/import/prepare'
 
@@ -102,7 +102,7 @@ export function ImportIntoSongbook({
     const result = await addSection(songbookSlug, newSection)
 
     if (!result.ok) {
-      setError(WRITE_MESSAGE[result.reason])
+      setError(writeMessage(result))
       return
     }
 

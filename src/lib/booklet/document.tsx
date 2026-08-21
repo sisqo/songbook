@@ -382,11 +382,22 @@ const styles = StyleSheet.create({
   },
 })
 
-/** The brand mark and "Printed with Songbook · …" line, on every page. */
-function Footer({ bordered = true }: { bordered?: boolean }) {
+/**
+ * The page number, and — on the plans whose booklet carries it — the "Printed with
+ * Songbook · …" line. `brandLine` is decided on the server and travels on `loadBooklet`'s
+ * result: the PDF is rendered here in the browser, so re-deriving it here would be both a
+ * second round trip and a soft gate anybody could flip in devtools.
+ *
+ * The `Text` element is rendered either way and only its *content* goes empty, which is
+ * deliberate and load-bearing. Page numbers come from measuring renders (`countPages`,
+ * `sectionsPerPage`), so a footer that changed height between the measured document and
+ * the printed one would shift every song's page number in the index — silently, with
+ * nothing for the compiler to catch and no test in this repo able to see it.
+ */
+function Footer({ brandLine, bordered = true }: { brandLine: boolean; bordered?: boolean }) {
   return (
     <View style={[styles.footer, bordered ? styles.footerBordered : undefined]} fixed>
-      <Text style={styles.footerText}>Printed with Songbook · {SITE_URL}</Text>
+      <Text style={styles.footerText}>{brandLine ? `Printed with Songbook · ${SITE_URL}` : ''}</Text>
       <Text
         style={styles.footerText}
         render={({ pageNumber }) => (pageNumber === 1 ? '' : String(pageNumber))}
@@ -395,7 +406,7 @@ function Footer({ bordered = true }: { bordered?: boolean }) {
   )
 }
 
-function CoverPage({ booklet }: { booklet: Booklet }) {
+function CoverPage({ booklet, brandLine }: { booklet: Booklet; brandLine: boolean }) {
   const songCount = booklet.sections.reduce((sum, section) => sum + section.songs.length, 0)
   const sectionNames = booklet.sections.map((section) => section.name)
 
@@ -426,7 +437,7 @@ function CoverPage({ booklet }: { booklet: Booklet }) {
 
       <View style={{ flex: 1 }} />
 
-      <Footer bordered={false} />
+      <Footer brandLine={brandLine} bordered={false} />
     </Page>
   )
 }
@@ -489,7 +500,15 @@ function IndexColumn({ groups }: { groups: IndexGroup[] }) {
   )
 }
 
-function IndexPage({ songbookName, groups }: { songbookName: string; groups: IndexGroup[] }) {
+function IndexPage({
+  songbookName,
+  groups,
+  brandLine,
+}: {
+  songbookName: string
+  groups: IndexGroup[]
+  brandLine: boolean
+}) {
   const [left, right] = splitGroupsIntoColumns(groups)
 
   return (
@@ -508,7 +527,7 @@ function IndexPage({ songbookName, groups }: { songbookName: string; groups: Ind
         </View>
       </View>
 
-      <Footer />
+      <Footer brandLine={brandLine} />
     </Page>
   )
 }
@@ -677,6 +696,7 @@ function BookletSongPage({
   chordLabel,
   roomForChords,
   isFirstPage,
+  brandLine,
 }: {
   title: string
   artist: string | null
@@ -688,6 +708,7 @@ function BookletSongPage({
   chordLabel: (raw: string | null) => string | null
   roomForChords: boolean
   isFirstPage: boolean
+  brandLine: boolean
 }) {
   const [left, right] = splitByRows(sections)
 
@@ -732,7 +753,7 @@ function BookletSongPage({
         </View>
       )}
 
-      <Footer />
+      <Footer brandLine={brandLine} />
     </Page>
   )
 }
@@ -811,6 +832,7 @@ async function paginateSong(
   song: BookletSong,
   sectionName: string,
   notation: Notation,
+  brandLine: boolean,
 ): Promise<{ pages: Section[][]; chordLabel: (raw: string | null) => string | null; roomForChords: boolean }> {
   const { parsed, chordLabel, roomForChords } = prepare(song, notation)
 
@@ -826,6 +848,7 @@ async function paginateSong(
       chordLabel={chordLabel}
       roomForChords={roomForChords}
       isFirstPage={isFirstPage}
+      brandLine={brandLine}
     />
   )
 
@@ -844,14 +867,14 @@ async function paginateSong(
 }
 
 /** Renders the booklet to a downloadable blob — the one thing the export panel needs. */
-export async function bookletToBlob(booklet: Booklet, notation: Notation): Promise<Blob> {
+export async function bookletToBlob(booklet: Booklet, notation: Notation, brandLine: boolean): Promise<Blob> {
   const entries = flatten(booklet)
 
   // Every song starts a fresh page and shares no flow with its neighbours, so
   // how it paginates depends only on its own words — safe to do in parallel,
   // before any page number exists.
   const songPagination = await Promise.all(
-    entries.map((entry) => paginateSong(entry.song, entry.sectionName, notation)),
+    entries.map((entry) => paginateSong(entry.song, entry.sectionName, notation, brandLine)),
   )
 
   // The index's own length turns on how many songs and sections there are,
@@ -863,7 +886,7 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
     entries: section.songs.map((song) => ({ title: song.title, page: null })),
   }))
   const indexPageCount = await countPages(
-    <IndexPage songbookName={booklet.songbookName} groups={measureGroups} />,
+    <IndexPage songbookName={booklet.songbookName} groups={measureGroups} brandLine={brandLine} />,
   )
 
   // Page 1 is the cover, the index follows it, and every song starts right
@@ -887,8 +910,8 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
 
   const document = (
     <Document title={booklet.songbookName}>
-      <CoverPage booklet={booklet} />
-      <IndexPage songbookName={booklet.songbookName} groups={indexGroups} />
+      <CoverPage booklet={booklet} brandLine={brandLine} />
+      <IndexPage songbookName={booklet.songbookName} groups={indexGroups} brandLine={brandLine} />
       {entries.map((entry, index) =>
         songPagination[index].pages.map((sections, pageIndex) => (
           <BookletSongPage
@@ -901,6 +924,7 @@ export async function bookletToBlob(booklet: Booklet, notation: Notation): Promi
             chordLabel={songPagination[index].chordLabel}
             roomForChords={songPagination[index].roomForChords}
             isFirstPage={pageIndex === 0}
+            brandLine={brandLine}
           />
         )),
       )}

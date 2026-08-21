@@ -25,10 +25,35 @@ import {
 import { LandingCounters } from '@/components/LandingCounters'
 import { LightThemeOnly } from '@/components/LightThemeOnly'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
+import { PLANS } from '@/lib/plans/types'
 
 const TITLE = `${APP_NAME} — ${APP_PAYOFF}`
+/*
+ * Read four times over — `metadata.description`, the OpenGraph and Twitter blocks, and the
+ * hero's own lede — so it has to work as a spoken sentence and as a search snippet at once.
+ *
+ * "Completely free." was true of this app for its whole life and stopped being true the day
+ * the plans landed (see `lib/plans/types.ts`), so it had to go: /pricing lists four plans and
+ * a page that promises the opposite of the price list is worse than either page alone. "Free
+ * to start" was the obvious replacement and is rejected — it reads as a trial, and the free
+ * plan is not one: it has no end date, which is the first thing /pricing says.
+ */
 const DESCRIPTION =
-  'Play and sing with your own chords and lyrics — import, edit, export freely. Key, capo, auto-scroll, synced everywhere. Completely free.'
+  'Play and sing with your own chords and lyrics — import, edit, export freely. Key, capo, auto-scroll, synced everywhere. Free to use, with paid plans for bigger repertoires.'
+
+/**
+ * «1 songbook», «300 songs» — every count below is read from `PLANS` rather than typed, so a
+ * cap that changes changes this page too, and the plural agrees with whatever it changed to.
+ * The alternative is the one this page has just been repaired for: numbers in prose that were
+ * true when they were written.
+ */
+function count(value: number | null, unit: string): string {
+  /* `null` is genuinely unlimited in `PlanLimits`, never a large number, so it is a word here
+   * rather than a digit — and taking the null case rather than asserting it away is what keeps
+   * this sentence true if a cap is ever lifted rather than raised. */
+  if (value === null) return `unlimited ${unit}s`
+  return `${value} ${unit}${value === 1 ? '' : 's'}`
+}
 
 /** The three short facts in the hero's pill row — glanceable before anyone reads a word. */
 interface HeroPill {
@@ -114,7 +139,17 @@ const FAQ: FaqGroup[] = [
       },
       {
         q: 'Is there a limit to how many songs or songbooks I can create?',
-        a: "No limit at all. Create as many songs and songbooks as your repertoire needs, whether that's a handful of favorites or hundreds of songs.",
+        /*
+         * The counts are stated in the present tense and are, today, the future tense: with
+         * `SONGBOOK_PLANS` unset every account resolves to `UNGATED`, which caps nothing. The
+         * qualifier is not repeated in each of the five answers and features that name a plan —
+         * five copies of one caveat is a page that reads as a disclaimer — it is said once, in
+         * "Is Songbook free to use?", which is the answer every existing reader opens, and
+         * pointed to from here. What must never happen is the two public pages disagreeing:
+         * /pricing hedges in `NO_CHECKOUT`, so this page hedges too, and both stop on the same
+         * day. `plansEnforced` in `plans/resolve.ts` carries the note that says so.
+         */
+        a: `The free plan holds ${count(PLANS.free.songbooks, 'songbook')} and ${count(PLANS.free.songs, 'song')}. Standard holds ${count(PLANS.standard.songbooks, 'songbook')} and ${count(PLANS.standard.songs, 'song')}, counted across the whole account rather than per songbook; Plus and above have no limit on either. The pricing page lists all four side by side.`,
       },
     ],
   },
@@ -127,7 +162,16 @@ const FAQ: FaqGroup[] = [
       },
       {
         q: 'Does it show chord shapes for both guitar and ukulele?',
-        a: 'Yes. Tap any chord in a song and see exactly where to place your fingers, for either guitar or ukulele.',
+        /*
+         * "Guitar on every plan, ukulele on the paid ones" claimed a harder gate than exists, and
+         * the correction matters because it points the wrong way: the shapes are drawn in the
+         * browser from a table that ships with the app, so `saveGlobalPrefs` — the one control
+         * point — can only refuse to *store* the choice, and says so in its own comment. A free
+         * reader who taps Ukulele sees ukulele shapes; what they lose is that the setting sticks
+         * after a reload and on their other devices. /pricing's chord-shapes row now words it the
+         * same way, which is the point: two pages describing one gate must describe the same gate.
+         */
+        a: 'Yes — tap any chord in a song and see exactly where to place your fingers, guitar or ukulele. The paid plans remember which of the two you picked, so it stays chosen after a reload and on your other devices.',
       },
     ],
   },
@@ -153,7 +197,12 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'How many people can join a Sing Together session?',
-        a: "As many as you like. Everyone who has the link can join and follow along, whether it's two friends or a whole room.",
+        /*
+         * "As many as you like" was false on every plan, premium included: `PLANS.premium.devices`
+         * is 100, a real technical ceiling. The leader's own device is deliberately not counted —
+         * see `PlanLimits.devices` — which is what makes standard's 1 a duo rather than a solo.
+         */
+        a: `That depends on the plan of whoever is leading: Standard adds ${count(PLANS.standard.devices, 'other device')}, Plus ${PLANS.plus.devices}, Premium and Lifetime ${PLANS.premium.devices}. The device you play from is never counted, so Standard is you and one other screen. Anyone can follow with no account at all — the limit is on how many follow at once, never on who.`,
       },
       {
         q: 'Does everyone need an account to join a session?',
@@ -196,7 +245,12 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'Is Songbook free to use?',
-        a: "Yes, Songbook is completely free to use, with no hidden costs. If it's earned a spot in your gig bag, the Ko-fi badge down in the footer is the closest thing this app has to a tip jar — entirely optional, always appreciated.",
+        /*
+         * It must not open with "Yes": a bare yes is now half true. The Ko-fi badge keeps its
+         * sentence — the footer still carries it on every page, and "would rather tip than
+         * subscribe" is what it now means beside a price list.
+         */
+        a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. They are not on sale yet, and no account is being held to those limits until they open — if you already have more than that, nothing changes for you today. If a paid plan lapses, nothing is deleted. And the Ko-fi badge down in the footer stays exactly where it is, for anyone who would rather tip than subscribe.`,
       },
       {
         q: 'Is my collection private, or can others see it?',
@@ -223,13 +277,20 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <IconBooks size={20} />,
-    title: 'As many songbooks as you want',
-    text: "Create them freely, split each one into sections. Always the song you're after — never an endless list.",
+    /* "As many songbooks as you want" and "create them freely" are flatly false on the free
+     * plan, which holds exactly one. The new title says what a songbook is *for* instead of how
+     * many there may be, which is the part that does not depend on a plan. */
+    title: 'A songbook for every set',
+    text: "Keep sets, bands and occasions apart, each one split into its own sections — always the song you're after, never an endless list. How many songbooks you can keep depends on your plan.",
   },
   {
     icon: <IconBroadcast size={20} />,
     title: 'Sing together',
-    text: "Share a link. Every device follows the same song, line by line, chord by chord — whether you're playing or just singing along, near or far. Needs a connection, not a setup.",
+    /* "line by line, chord by chord" was carried over from the old wording and is not what the
+     * protocol does: `pollBroadcast` sends the song and the transposition, and a follower's
+     * viewport is reset to the top on a song change and never touched again. "In the same key" is
+     * exactly what it does send. /pricing's guest-link band says it the same way. */
+    text: 'Share a link. Every device follows the same song, in the same key — near or far, with nothing to install and no account for anyone following. Starting a session is part of the paid plans once they open; following one never is.',
   },
   {
     icon: <IconTuningFork size={20} />,
@@ -239,7 +300,9 @@ const FEATURES: Feature[] = [
   {
     icon: <IconChordShape size={20} />,
     title: 'Every chord, one tap away',
-    text: 'Stuck on a chord? Tap it and see the shape — guitar or ukulele, ready to play.',
+    /* What is gated is storing the instrument, not drawing it — see the FAQ answer above and
+     * `saveGlobalPrefs`, which writes the row back with `guitar` and returns `not-in-plan`. */
+    text: 'Stuck on a chord? Tap it and see the shape — guitar or ukulele, ready to play. The paid plans remember which one you picked.',
   },
   {
     icon: <IconSliders size={20} />,
@@ -249,7 +312,13 @@ const FEATURES: Feature[] = [
   {
     icon: <IconPrint size={20} />,
     title: 'Print a real booklet',
-    text: 'Turn any songbook into a typeset PDF — chords above the words, one song a page, a cover and an index — ready to print and hand out.',
+    /* "Part of the paid plans" full stop was the only sentence in this list that told a reader
+     * they *cannot* do something the deployed build lets them do: `loadBooklet` reads
+     * `refused.booklet`, which is `null` in `UNGATED`, so a free account prints a booklet today.
+     * The other plan claims on this page understate what an account may do, which is the safe
+     * direction; this one denied it outright, and a reader who believes it never opens the export
+     * panel. "Once the paid plans open" is true now and true then. */
+    text: 'Turn any songbook into a typeset PDF — chords above the words, one song a page, a cover and an index — ready to print and hand out. Part of the paid plans once they open.',
   },
   {
     icon: <IconUsers size={20} />,
@@ -549,6 +618,21 @@ export default async function LoginPage({ searchParams }: Props) {
           ))}
         </div>
       </section>
+
+      {/*
+        * The only way to /pricing from outside the app, and it has to be here rather than
+        * inside one of the three answers that name the pricing page in words: `FaqItem.a` is
+        * typed `string` and rendered as `{item.a}`, so an answer cannot hold a link without
+        * widening that type and touching all eighteen of them. Quiet on purpose — this is the
+        * page every existing reader signs in on every day, and it is not a sales pitch.
+        */}
+      <p className="mt-9 text-center text-sm text-muted lg:mt-12">
+        Every plan side by side, on the{' '}
+        <Link href="/pricing" className="text-accent hover:underline">
+          pricing page
+        </Link>
+        .
+      </p>
 
       <Footer />
     </main>

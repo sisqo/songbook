@@ -7,7 +7,7 @@ import { SongSheet } from '@/components/SongSheet'
 import { IconTrash } from '@/components/icons'
 import { parseChordPro } from '@/lib/chordpro'
 import type { Songbook, Section } from '@/lib/data/types'
-import { SAVE_MESSAGE, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
+import { saveMessage, type Decision, type DuplicateOf, type SaveResult, type SongInput } from '@/lib/import/types'
 
 export interface FormValues extends SongFieldValues {
   body: string
@@ -80,9 +80,9 @@ export function SongForm({
         setDuplicate(result.existing)
         return
       }
-      setError(SAVE_MESSAGE[result.reason])
+      setError(saveMessage(result))
     } catch {
-      setError(SAVE_MESSAGE.failed)
+      setError(saveMessage({ reason: 'failed' }))
     } finally {
       setBusy(false)
     }

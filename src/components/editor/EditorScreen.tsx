@@ -32,7 +32,7 @@ import type { Song } from '@/lib/data/types'
 import { type SongDocument, fromSource, readLyricLine, toSource } from '@/lib/editor/document'
 import { addChord, insertTab, removeLine, toggleComment, toggleSection } from '@/lib/editor/edits'
 import { deleteSong, saveSong } from '@/lib/import/actions'
-import { SAVE_MESSAGE } from '@/lib/import/types'
+import { saveMessage } from '@/lib/import/types'
 import { dropEdit, writeEdit } from '@/lib/library/store'
 
 type Mode = 'graphic' | 'source' | 'preview'
@@ -233,7 +233,7 @@ export function EditorScreen({ song }: { song: Song }) {
       })
 
       if (!result.ok) {
-        setError(SAVE_MESSAGE[result.reason])
+        setError(saveMessage(result))
         return
       }
 
@@ -243,7 +243,7 @@ export function EditorScreen({ song }: { song: Song }) {
       setNotice('Saved. It shows right away in the song; publish it to have it offline too.')
       await refreshSongbooks()
     } catch {
-      setError(SAVE_MESSAGE.failed)
+      setError(saveMessage({ reason: 'failed' }))
     } finally {
       setBusy(false)
     }
@@ -255,7 +255,7 @@ export function EditorScreen({ song }: { song: Song }) {
     setBusy(false)
 
     if (!result.ok) {
-      setError(SAVE_MESSAGE[result.reason])
+      setError(saveMessage(result))
       return
     }
 
