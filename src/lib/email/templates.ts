@@ -9,14 +9,17 @@
  * with them, and there is no dark mode to switch between in an inbox anyway.
  */
 
-import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
+import { APP_NAME, APP_PAYOFF, SITE_URL } from '@/lib/brand'
 
 /*
- * No brand mark here: the app's is `<IconNote />` in a squircle (`.brand-mark`,
- * `.hero-mark-fill`), an SVG that mail clients render inconsistently at best. Rather
- * than invent a letter-based stand-in that does not exist anywhere else in the app, the
- * wordmark carries the header alone.
+ * The header is a hosted PNG lockup, not `<IconNote />`: that's an inline SVG, which mail
+ * clients render inconsistently at best, so the app's own brand mark never appears here.
+ * A plain `<img>` pointed at a real URL is the one thing every client — including images
+ * blocked by default — handles the same way, the latter falling back to `alt`.
  */
+const LOGO_URL = `https://${SITE_URL}/email/logo.png`
+const LOGO_WIDTH = 160
+const LOGO_HEIGHT = 24
 
 const BG = '#f6f5f2'
 const SURFACE = '#ffffff'
@@ -42,7 +45,7 @@ export interface EmailTemplate {
 function layout(bodyHtml: string): string {
   return `<div style="background:${BG};padding:32px 16px;font-family:${FONT};">
   <div style="max-width:480px;margin:0 auto;background:${SURFACE};border:1px solid ${LINE};border-radius:20px;padding:36px 32px;">
-    <p style="margin:0 0 28px;font-size:16px;font-weight:600;color:${INK};letter-spacing:-0.02em;">${APP_NAME}</p>
+    <img src="${LOGO_URL}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="${APP_NAME}" style="display:block;border:0;margin:0 0 28px;" />
     ${bodyHtml}
   </div>
   <p style="max-width:480px;margin:20px auto 0;padding:0 4px;color:${MUTED};font-size:12px;line-height:1.5;text-align:center;">

@@ -195,12 +195,17 @@ che il database ha adesso, e senza rete non potrebbe comunque salvare. Quindi of
 non si apre — mentre i brani si leggono. Se la rete cade mentre stai scrivendo, il
 salvataggio lo dice e il testo resta sullo schermo.
 
-## Icone
+## Icone e brand mark
 
-`npm run icons` rigenera favicon, icone PWA e icona iOS da `scripts/icons.ts`; gli
-output sono committati, quindi il build normale non le tocca. Il disegno è due accordi
-sopra le righe di un testo, nei colori del tema scuro — e alle misure piccole diventa
-una composizione più semplice invece di rimpicciolirsi in una macchia.
+Favicon, icone PWA/Apple touch e immagine OpenGraph (`public/`, `src/app/favicon.ico`)
+vengono da un pacchetto di asset disegnati (nota su libro aperto, tile marrone/arancio —
+`#97490F`/`#F1B369`, gli stessi valori di `--accent` chiaro/scuro in `globals.css`), non
+più generati da uno script: quello che c'era (`scripts/icons.ts`, un placeholder disegnato
+a mano) è stato rimosso il 2026-08-21 quando sono arrivati gli asset reali. Il glifo
+inline usato ovunque nell'app (`IconNote` in `src/components/icons.tsx`, e il badge del
+booklet PDF in `src/lib/booklet/document.tsx`) è lo stesso tracciato vettoriale, così
+eredita `--accent`/`--on-accent` invece di portarsi un colore fisso. Per rigenerare o
+ridimensionare qualcosa serve il sorgente vettoriale originale, non questo repo.
 
 ## Canzonieri
 

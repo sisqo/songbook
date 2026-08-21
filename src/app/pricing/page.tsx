@@ -67,15 +67,26 @@ const DESCRIPTION =
  * `openGraph.title` and `twitter.title` still spell the app name out, and that is not a
  * duplication to tidy away: Next applies the title template to `title` alone, never to
  * either of these, so a bare 'Pricing' here would be exactly the meaningless card the
- * template is what saves us from. No OG image: there is no `metadataBase` in this repo, so
- * a relative image URL would resolve against localhost in development and warn at build —
- * /login, whose block this copies, has none either.
+ * template is what saves us from. `images` is repeated too, for the same reason: the root
+ * layout's own `openGraph.images` does not carry over once a page declares its own
+ * `openGraph` object — Next replaces the block wholesale rather than merging into it.
  */
 export const metadata: Metadata = {
   title: 'Pricing',
   description: DESCRIPTION,
-  openGraph: { title: SHARE_TITLE, description: DESCRIPTION, locale: 'en_US', type: 'website' },
-  twitter: { card: 'summary', title: SHARE_TITLE, description: DESCRIPTION },
+  openGraph: {
+    title: SHARE_TITLE,
+    description: DESCRIPTION,
+    locale: 'en_US',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SHARE_TITLE,
+    description: DESCRIPTION,
+    images: ['/og-image.png'],
+  },
 }
 
 /*

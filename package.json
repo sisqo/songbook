@@ -10,8 +10,7 @@
     "test": "tsx --test $(find src scripts -name '*.test.ts' 2>/dev/null)",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts",
-    "icons": "tsx scripts/icons.ts"
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.1",

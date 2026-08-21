@@ -154,8 +154,8 @@ surface ladder, not from gradients, glow, or noise.
 A warm, restrained palette: one reserved accent, everything else a step on a paper-to-ink neutral ramp that inverts (not flips) between light and dark.
 
 ### Primary
-- **Chord Terracotta** (`#97490f`, light theme): the chord color, first and only. Marks every chord name and shape on the sheet; a diluted 35% mix marks the chorus rule; a soft 10%-strength tint (`#f4e7d9`) backs badges, active nav states, and capo notices.
-- **Chord Amber** (`#f0b268`, dark theme): the same job in the dark palette — warmer and lighter than the light theme's terracotta so it still reads against near-black, with its own soft tint (`#2a2118`).
+- **Chord Terracotta** (`#97490f`, light theme): the chord color, first and only. Marks every chord name and shape on the sheet; a diluted 35% mix marks the chorus rule; a soft 10%-strength tint (`#f4e7d9`) backs badges, active nav states, and capo notices. Also the brand mark's tile color (Brown, in the logo asset drop's own naming) — the app's accent and Strumfolio's logo are one and the same color, not a coincidence to reconcile.
+- **Chord Amber** (`#f0b268`, dark theme): the same job in the dark palette — warmer and lighter than the light theme's terracotta so it still reads against near-black, with its own soft tint (`#2a2118`). Same note as above: the logo's dark-background tile (Orange, `#f1b369`) is a hair off this value, close enough that the brand mark (`IconNote`) inherits `--accent` directly rather than carrying its own fixed color.
 
 ### Neutral
 - **Paper** (`#f6f5f2` bg / `#ffffff` surface / `#edebe5` raised / `#f1efe9` nested, light): the four-step surface ladder — page, card, recessed control, and nested-card-on-white — that everything else in the app sits on.

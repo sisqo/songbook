@@ -11,3 +11,6 @@
 export const APP_NAME = 'Strumfolio'
 
 export const APP_PAYOFF = 'Your favorite songs, ready to play'
+
+/** Bare domain, no protocol — matches how `booklet/document.tsx` and emails print it. */
+export const SITE_URL = 'strumfolio.com'

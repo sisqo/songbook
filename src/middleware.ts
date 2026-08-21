@@ -35,7 +35,15 @@ function isPublicAsset(pathname: string): boolean {
     pathname.startsWith('/swe-worker-') ||
     pathname === '/manifest.webmanifest' ||
     pathname === '/apple-touch-icon.png' ||
-    pathname.startsWith('/icon-')
+    pathname === '/favicon.svg' ||
+    pathname === '/og-image.png' ||
+    pathname.startsWith('/icon-') ||
+    /*
+     * Fetched by whoever opens the email, or by a link-preview bot reading OpenGraph
+     * tags — neither carries this app's session cookie, ever. Without this, both
+     * would silently get the `/login` redirect back instead of the image.
+     */
+    pathname.startsWith('/email/')
   )
 }
 

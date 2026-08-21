@@ -560,20 +560,27 @@ export function IconPublish(props: IconProps) {
   )
 }
 
-/** The brand mark: a quarter note, drawn rather than set in a font. */
+/**
+ * The brand mark: Strumfolio's actual note glyph, traced from the vector logo
+ * (`svg/note.svg` in the brand asset drop) rather than a generic icon-set note.
+ * The viewBox keeps the glyph's real proportions (taller than wide); the default
+ * `preserveAspectRatio` centers it inside the `size`×`size` box every caller
+ * already assumes, so nothing at any call site has to change for the shape to
+ * no longer be square.
+ */
 export function IconNote({ size = 16, className }: IconProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 134 202"
       fill="none"
       className={className}
       aria-hidden
       focusable="false"
     >
       <path
-        d="M10 17.5a3 3 0 1 1-3-3c.6 0 1.15.17 1.6.47V4.8l7.4-1.8v3.1L10.9 7.6v9.9z"
+        d="M21.1 200.5C-3.3 193.6 -7.0 168.3 13.5 149.1C26.8 136.7 47.6 130.8 61.0 135.5C63.3 136.3 65.5 137.0 65.9 137.0C66.2 137.0 66.5 106.3 66.6 68.7L66.7 0.5L73.5 0.5L80.3 0.5L81.9 6.5C85.5 19.3 93.4 30.6 108.2 43.8C132.7 65.7 138.9 84.7 129.5 109.6C125.9 119.3 118.2 130.0 115.0 130.0C113.6 130.0 113.7 128.9 116.2 121.8C122.8 102.1 117.9 81.8 103.2 69.0C98.7 65.0 89.1 59.8 83.8 58.5L81.0 57.8L81.0 109.8C81.0 168.2 80.9 168.8 73.5 179.5C62.7 195.3 37.9 205.2 21.1 200.5Z"
         fill="currentColor"
       />
     </svg>
