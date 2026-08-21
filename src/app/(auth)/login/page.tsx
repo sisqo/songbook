@@ -23,7 +23,6 @@ import {
   IconUsers,
 } from '@/components/icons'
 import { LandingCounters } from '@/components/LandingCounters'
-import { LightThemeOnly } from '@/components/LightThemeOnly'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
 import { plansEnforced } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
@@ -376,8 +375,6 @@ export default async function LoginPage({ searchParams }: Props) {
 
   return (
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:px-8 sm:py-16 lg:px-12 xl:px-20">
-      <LightThemeOnly />
-
       {/*
         * The hero, full-bleed: `self-stretch` rather than `w-full`, because a width of
         * 100% is measured inside `<main>`'s padding and a negative margin only shifts
