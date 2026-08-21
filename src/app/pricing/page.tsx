@@ -8,7 +8,7 @@ import type { ComparisonRow, PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
 import { euro, LIFETIME, PRICES } from '@/lib/plans/prices'
 import type { PaidPlan } from '@/lib/plans/prices'
-import { mockCheckoutEnabled, plansEnforced } from '@/lib/plans/resolve'
+import { mockCheckoutEnabled } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
 import type { BookletTier } from '@/lib/plans/types'
 
@@ -96,23 +96,21 @@ const HERO_SUBTITLE =
  * their bank may convert or add a fee. Left as a known omission rather than invented text the
  * mock does not show.
  *
- * Two clauses, and it used to be three: «the prices on this page are final» is gone. Nothing
- * in this repository can make that promise — `prices.ts` says in its own header that its table
- * and Paddle's catalogue "are two things that must agree, and nothing in this repository can
- * check that they do", and every `paddleId` is still empty.
+ * The other clause this page used to carry — «the prices on this page are final» — is gone too.
+ * Nothing in this repository can make that promise — `prices.ts` says in its own header that its
+ * table and Paddle's catalogue "are two things that must agree, and nothing in this repository
+ * can check that they do", and every `paddleId` is still empty.
  *
- * The second clause now reads `plansEnforced()` rather than assuming it is always off. This
- * page is prerendered at build time (see `PricingPage`'s own comment below on why it must stay
- * that way), so the sentence a visitor reads is baked in at the moment of that build — exactly
- * the moment `SONGBOOK_PLANS` is actually on or off for the deployment being built. /login's
- * `PLAN_HOLD` reads the same function, so the two public pages flip together the day this
- * changes rather than one of them being left saying the limits aren't real.
+ * There used to be a third clause here as well, hedging on whether the checkout was even open —
+ * `NO_CHECKOUT`, read out loud above the cards regardless of `CHECKOUT_LIVE`. The design has no
+ * such notice anywhere, on any build: it shows "Choose Standard"/"Choose Plus"/"Choose Premium"
+ * directly, the same as this page now does once `CHECKOUT_LIVE` is true. Keeping the sentence
+ * unconditionally was worse than a missed line in a mock — with the mock checkout switched on in
+ * production, the page was both offering a real "Choose Standard" button *and* telling the same
+ * reader in the paragraph above it that "the checkout is not open". Removed rather than made
+ * conditional on `CHECKOUT_LIVE`, because a notice that only exists to disappear the moment
+ * checkout opens is exactly the sentence the design never had to begin with.
  */
-const NO_CHECKOUT = plansEnforced()
-  ? 'The paid plans are not on sale yet: the checkout is not open. The limits below, though, are ' +
-    'already in effect for every account.'
-  : 'The paid plans are not on sale yet: the checkout is not open, and no account is being held to the ' +
-    'limits below until it opens.'
 
 /*
  * The v3.4 redesign's own line for the lifetime block, replacing `LIFETIME_WHAT` and
@@ -219,16 +217,18 @@ const COLUMNS: PlanColumn[] = [
     paid: false,
   },
   /*
-   * Not «with your name» — the phrase the mock uses for premium's booklet — because that
-   * claims a feature `bookletCell`'s own comment says does not exist yet: premium's `custom`
-   * tier behaves exactly like plus' `plain` today, credit line dropped and nothing more
-   * personalised than that. «No credit line», Plus' own phrase, is the sentence that stays
-   * true; what actually sets Premium apart in this card is the device count, not the booklet.
+   * The mock's own three-clause rhythm, comma-joined exactly like Plus' card above — but not
+   * its exact words. «With your name» is the phrase the mock uses for premium's booklet, and
+   * it claims a feature `bookletCell`'s own comment says does not exist yet: premium's
+   * `custom` tier behaves exactly like plus' `plain` today, credit line dropped and nothing
+   * more personalised than that. «No credit line», Plus' own phrase, is the sentence that
+   * stays true. The device count that actually sets Premium apart from Plus is not named in
+   * either card — the mock does not name it here either — and is left to the table below.
    */
   paidColumn(
     'Premium',
     'premium',
-    'The whole room follows — unlimited devices, unlimited songs, printed booklet with no credit line.',
+    'The whole room follows, unlimited songs, printed booklet with no credit line.',
   ),
 ]
 
@@ -386,7 +386,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: '«Sing Together» devices',
-    note: 'Maximum number of devices following a session.',
+    note: 'Maximum number of devices following a «Sing Together» session.',
     cells: [
       deviceCell(PLANS.free.devices),
       deviceCell(PLANS.standard.devices),
@@ -404,13 +404,12 @@ const ROWS: ComparisonRow[] = [
   {
     label: 'Feature requests',
     /*
-     * Matches the design's own cells rather than what the site's support inbox actually does
+     * The design's own note, word for word — not what the site's support inbox actually does
      * today (anybody may write in, on any plan). The v3.4 redesign's own call, confirmed
-     * rather than assumed: only Premium gets a row here, so the note says that rather than
-     * softening it into "everyone can write in, Premium is just prioritised" the way the
-     * earlier wording did.
+     * rather than assumed: only Premium gets a row here, and the note names the plan's own
+     * benefit rather than the other three's absence, matching the design's phrasing exactly.
      */
-    note: 'Premium only — requests go straight to the top of the list.',
+    note: 'You can request new features from the dev team with top prioritization.',
     cells: [null, null, null, 'Yes'],
   },
 ]
@@ -424,12 +423,12 @@ const ROWS: ComparisonRow[] = [
  * only as long as nothing here awaits `searchParams`, calls `cookies()`, `headers()` or
  * `auth()`, and nothing here calls any of the database-touching exports of
  * `@/lib/plans/resolve` — `entitlementsOf`, `deviceCapOf`, `effectivePlanOf` — or anything
- * under `@/lib/data`. `plansEnforced` and `mockCheckoutEnabled`, both imported here, are the
- * two exceptions and not a loophole in that rule: each is a bare, synchronous
- * `process.env` read with no query behind it, so calling either at render time is exactly as
- * static-safe as reading `@/lib/plans/prices`, just resolved at *build* time instead of never
- * — which is the entire point of `NO_CHECKOUT` and `CHECKOUT_LIVE` existing at all: a flag
- * flipped in Vercel takes effect on the next build's copy of this page, not before. `@/lib/plans/types` and
+ * under `@/lib/data`. `mockCheckoutEnabled`, imported here, is the one exception and not a
+ * loophole in that rule: it is a bare, synchronous `process.env` read with no query behind
+ * it, so calling it at render time is exactly as static-safe as reading `@/lib/plans/prices`,
+ * just resolved at *build* time instead of never — which is the entire point of
+ * `CHECKOUT_LIVE` existing at all: a flag flipped in Vercel takes effect on the next build's
+ * copy of this page, not before. `@/lib/plans/types` and
  * `@/lib/plans/prices` are both pure and safe. There is no `export const dynamic` here
  * because nothing in this repository uses `force-static` — the four legal pages prerender
  * under this same root layout with no such declaration — and a comment is what a later
@@ -479,16 +478,7 @@ export default function PricingPage() {
       </div>
 
       <section className="mt-8">
-        <PricingPlans columns={COLUMNS} rows={ROWS} tableTitle="What changes between plans">
-          {/*
-            * Server-rendered, and passed through the client island so it can sit where the
-            * reader meets it: under the toggle, above every column it is about. `NO_CHECKOUT`
-            * itself now carries the flip on whether the limits are real — see its own comment
-            * above — so this stays exactly two clauses about there being no checkout, said
-            * honestly either way.
-            */}
-          <p className="notice notice-accent mt-5">{NO_CHECKOUT}</p>
-        </PricingPlans>
+        <PricingPlans columns={COLUMNS} rows={ROWS} tableTitle="What changes between plans" />
       </section>
 
       {/*

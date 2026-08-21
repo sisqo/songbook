@@ -257,12 +257,8 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'Is Songbook free to use?',
-        /*
-         * It must not open with "Yes": a bare yes is now half true. The Ko-fi badge keeps its
-         * sentence — the footer still carries it on every page, and "would rather tip than
-         * subscribe" is what it now means beside a price list.
-         */
-        a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. ${PLAN_HOLD} And the Ko-fi badge down in the footer stays exactly where it is, for anyone who would rather tip than subscribe.`,
+        /* It must not open with "Yes": a bare yes is now half true — see `PLAN_HOLD`. */
+        a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. ${PLAN_HOLD}`,
       },
       {
         q: 'Is my collection private, or can others see it?',

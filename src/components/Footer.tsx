@@ -2,30 +2,16 @@ import Link from 'next/link'
 
 /**
  * The credit line at the foot of every internal page, styled after the one in
- * `easy-guitar-tuner` — same "by SisQo · commit hash" shape, plus a Ko-fi badge that
- * one does not have yet.
+ * `easy-guitar-tuner` — same "by SisQo · commit hash" shape. The Ko-fi badge that
+ * used to sit above it is gone site-wide: no design this app has shipped has ever
+ * shown one, and it was never asked for.
  *
  * A plain server component: nothing here is interactive, so nothing needs to ship to
- * the client beyond the badge image itself.
+ * the client.
  */
 export function Footer() {
   return (
     <footer className="app-footer">
-      <a
-        href="https://ko-fi.com/sisqo"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="app-footer-kofi"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- badge served from ko-fi's own CDN, nothing next/image could optimize */}
-        <img
-          src="https://storage.ko-fi.com/cdn/kofi5.png?v=3"
-          width={143}
-          height={36}
-          alt="Buy Me a Coffee at ko-fi.com"
-        />
-      </a>
-
       <p className="app-footer-credit">
         by{' '}
         <a href="https://www.sisqo.dev" target="_blank" rel="noopener noreferrer">

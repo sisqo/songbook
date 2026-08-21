@@ -62,9 +62,8 @@ export interface PlanColumn {
    * the only thing this component has to check.
    *
    * When it is absent on a paid column, the card simply ends after `audience` with no
-   * button at all — the state that used to be a line of text here ("Not on sale yet") moved
-   * to the one notice above the whole grid (`pricing/page.tsx`'s `NO_CHECKOUT`), said once
-   * for all three paid columns rather than repeated on each.
+   * button at all — the design has no notice anywhere for "not on sale yet" and neither
+   * does this component; the absence of a button is the whole of what is said.
    */
   checkoutPlan?: string
 }
@@ -126,22 +125,12 @@ export function PricingPlans({
   columns,
   rows,
   tableTitle,
-  children,
 }: {
   columns: PlanColumn[]
   /** The comparison table's own rows, rendered below the cards. */
   rows: ComparisonRow[]
   /** The table's own heading — plain text, not a slot, since it is never anything but one line. */
   tableTitle: string
-  /**
-   * Rendered between the toggle and the columns, which is the one slot on this page that a
-   * server-rendered block cannot reach on its own: the no-checkout notice belongs directly
-   * under the control and above every column it is about, and both of those are in here.
-   * Passing it in as a child keeps the words in the page — where every other sentence of
-   * this page's copy is — and keeps them out of the browser bundle, since a server component
-   * handed to a client component arrives already rendered.
-   */
-  children?: React.ReactNode
 }) {
   const [period, setPeriod] = useState<BillingPeriod>('month')
 
@@ -164,8 +153,6 @@ export function PricingPlans({
           </button>
         ))}
       </div>
-
-      {children}
 
       <div className="plan-columns mt-6">
         {columns.map((column) => {

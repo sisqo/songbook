@@ -2324,8 +2324,8 @@
   }
 
   /*
-   * The credit line at the foot of an internal page: a Ko-fi badge above a muted
-   * "by SisQo · commit" line, the same shape as easy-guitar-tuner's own footer.
+   * The credit line at the foot of an internal page: a muted "by SisQo · commit"
+   * line, the same shape as easy-guitar-tuner's own footer.
    */
   .app-footer {
     display: flex;
@@ -2336,26 +2336,6 @@
     padding-block: 1.5rem;
     border-top: 1px solid var(--edge);
     text-align: center;
-  }
-
-  .app-footer-kofi {
-    display: inline-flex;
-    opacity: 0.8;
-    transition: opacity 0.15s ease;
-  }
-
-  /*
-   * The badge PNG is 580×146 natively. Tailwind's own preflight sets `img { height:
-   * auto }` in its base layer, which otherwise wins over the plain HTML `height`
-   * attribute — that attribute is a presentational hint, weaker than any rule in an
-   * actual stylesheet layer — and the badge rendered at full native size instead of
-   * the 36px it was meant to.
-   */
-  .app-footer-kofi img {
-    display: block;
-    height: 2.25rem;
-    width: auto;
-    border-radius: var(--r-xs);
   }
 
   .app-footer-credit {
@@ -2387,10 +2367,6 @@
   }
 
   @media (hover: hover) {
-    .app-footer-kofi:hover {
-      opacity: 1;
-    }
-
     .app-footer-credit a:hover {
       color: var(--ink);
     }

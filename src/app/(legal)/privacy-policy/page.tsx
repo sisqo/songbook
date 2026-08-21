@@ -77,10 +77,7 @@ export default function PrivacyPolicyPage() {
         needed to run the session — see section 6 for how long that data lasts.
       </p>
       <p>
-        We do not collect payment information, as Songbook is free to use. A donation link (Ko-fi)
-        appears in the footer of every page; if you choose to use it, that happens entirely on
-        Ko-fi&apos;s own site, under its own privacy policy — we don&apos;t receive or process anything
-        from it. For details on cookies and local storage, see our{' '}
+        For details on cookies and local storage, see our{' '}
         <Link href="/cookie-policy">Cookie Policy</Link>.
       </p>
 
