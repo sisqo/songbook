@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
@@ -26,6 +27,12 @@ export type Section = 'songs' | 'songbooks' | 'export' | 'password' | 'accounts'
  * The active section arrives as a prop rather than from `usePathname`, so the
  * server renders it: these pages are statically generated and precached, and
  * nothing here should be able to change that.
+ *
+ * `ThemeToggle` sits between the steps and `UserMenu` rather than inside either
+ * menu, the one control on this bar that is not about navigating or about who is
+ * signed in — and the same component `PublicHeader` renders on every screen this
+ * bar does not reach, so a reader who signs in mid-visit meets the identical
+ * switch rather than a second one that happens to look the same.
  */
 export function TopBar({
   current,
@@ -68,6 +75,7 @@ export function TopBar({
           </div>
         )}
 
+        <ThemeToggle />
         <UserMenu>
           <SignOutButton />
         </UserMenu>

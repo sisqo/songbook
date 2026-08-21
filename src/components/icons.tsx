@@ -409,6 +409,35 @@ export function IconReceipt(props: IconProps) {
   )
 }
 
+/** Light: a sun, circle and rays. */
+export function IconSun(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2.5M12 19.5V22M4 12H1.5M22.5 12H20M5.6 5.6 3.9 3.9M20.1 20.1l-1.7-1.7M18.4 5.6l1.7-1.7M3.9 20.1l1.7-1.7" />
+    </Icon>
+  )
+}
+
+/** Dark: a crescent moon. */
+export function IconMoon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </Icon>
+  )
+}
+
+/** Auto: a circle half-filled, following the system rather than choosing for it. */
+export function IconThemeAuto(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none" />
+    </Icon>
+  )
+}
+
 export function IconCheck(props: IconProps) {
   return (
     <Icon {...props}>

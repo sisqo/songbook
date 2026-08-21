@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { Footer } from '@/components/Footer'
-import { IconBroadcast, IconChevronLeft } from '@/components/icons'
+import { IconBroadcast } from '@/components/icons'
 import { PricingPlans } from '@/components/PricingPlans'
 import type { PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
@@ -527,26 +527,12 @@ const ROWS: ComparisonRow[] = [
  * failure and the same one `/edit` already chooses in `sw.ts`: better a page that refuses to
  * open than one that opens with last month's prices.
  *
- * The reader's own theme, like the legal pages: `/pricing` is not in `LIGHT_ONLY_PATH` and
- * must not be added to it. That constant is compared by string equality inside layout.tsx's
- * inline pre-paint script, so making it a set is a three-file change with a pre-paint script
- * in it — for a comparison table that reads correctly in both themes anyway. A visitor who
- * arrives from /login's forced light theme may land here in dark, which is expected: every
- * class used here is drawn in tokens.
+ * The reader's own theme, like every other page now — a comparison table that reads
+ * correctly in both themes anyway, drawn entirely in tokens.
  */
 export default function PricingPage() {
   return (
     <main className="mx-auto w-full max-w-[70rem] px-5 pb-16 pt-8 sm:px-8 sm:pt-12">
-      {/*
-        * Home, not /login: middleware sends a visitor with no session on to /login and a
-        * signed-in reader to their own songs, so one link is right for both — the same one
-        * the legal pages use, in the same shape.
-        */}
-      <Link href="/" className="inline-flex items-center gap-1 text-sm text-muted hover:underline">
-        <IconChevronLeft size={15} />
-        {APP_NAME}
-      </Link>
-
       <h1 className="screen-title mt-6">What Songbook costs</h1>
 
       <p className="mt-3 max-w-[42rem] text-sm leading-[1.6] text-muted">{LEDE}</p>

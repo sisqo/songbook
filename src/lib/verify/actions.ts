@@ -6,7 +6,7 @@
  * trigger on its own. Corporate email scanners routinely "click" every link in a message
  * before a person ever sees it, to check where it goes; if that GET consumed the token,
  * the scanner would burn it and the real click would land on an error. So the page
- * (`app/verify/page.tsx`) only ever reads — see `verify/check.ts` — and this, a real
+ * (`app/(auth)/verify/page.tsx`) only ever reads — see `verify/check.ts` — and this, a real
  * POST behind an explicit "Verify my email" button, is the only thing that writes.
  */
 

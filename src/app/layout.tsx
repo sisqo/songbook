@@ -5,7 +5,7 @@ import { DM_Sans, Geist_Mono } from 'next/font/google'
 import { OfflineSync } from '@/components/OfflineSync'
 import { RoleProvider } from '@/components/RoleProvider'
 import { APP_NAME, APP_PAYOFF } from '@/lib/brand'
-import { LIGHT_ONLY_PATH, STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
+import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 
 import './globals.css'
 
@@ -69,18 +69,15 @@ export const metadata: Metadata = {
  *
  * Twin of `showThemeChoice` in lib/theme.ts, which does the same on a change and
  * carries the explanation of why the attribute is removed rather than set to
- * "auto". The key, the id and the path are imported so at least the strings cannot
+ * "auto". The key and the id are imported so at least those two strings cannot
  * drift.
  *
- * One screen is not the reader's to choose: `LIGHT_ONLY_PATH` is drawn light and is
- * shown light, so its own branch never reads the stored choice — and never writes
- * it either, which is why the page that follows it is still whatever the reader
- * picked. Both spellings of the path are compared because a trailing slash is the
- * same screen, and spelled out rather than trimmed with a regexp: `\/` inside a
- * template literal is just `/`, and the script that reached the page would have
- * carried a syntax error instead of a theme.
+ * Every screen follows the reader's own stored choice now, `/login` included:
+ * see `PLAN.md`/git history for the version that forced it light regardless — that
+ * was a stand-in for a switch this page had no way to reach, and it stopped being
+ * necessary the day `ThemeToggle` gave every screen one.
  */
-const themeScript = `try{var p=location.pathname;var c=p==='${LIGHT_ONLY_PATH}'||p==='${LIGHT_ONLY_PATH}/'?'light':localStorage.getItem('${THEME_KEY}');if(c==='light'||c==='dark'){var r=document.documentElement;r.dataset.theme=c;var b=getComputedStyle(r).getPropertyValue('--bg').trim();if(b){var m=document.createElement('meta');m.id='${STATUS_BAR_ID}';m.name='theme-color';m.content=b;document.head.prepend(m)}}}catch(e){}`
+const themeScript = `try{var c=localStorage.getItem('${THEME_KEY}');if(c==='light'||c==='dark'){var r=document.documentElement;r.dataset.theme=c;var b=getComputedStyle(r).getPropertyValue('--bg').trim();if(b){var m=document.createElement('meta');m.id='${STATUS_BAR_ID}';m.name='theme-color';m.content=b;document.head.prepend(m)}}}catch(e){}`
 
 export const viewport: Viewport = {
   // No maximumScale or user-scalable: pinch zoom is an accessibility escape

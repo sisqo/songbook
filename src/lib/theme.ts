@@ -16,20 +16,6 @@ export type ThemeChoice = 'auto' | 'light' | 'dark'
 
 export const THEME_KEY = 'songs:theme'
 
-/**
- * The one screen that is drawn in a single theme.
- *
- * The landing page is one picture — the wash behind the hero, the white sign-in
- * card, the fill under Sing Together — and it is drawn light, so a reader whose
- * device is dark is shown it light anyway. Nothing else in the app is: past the
- * sign-in the reader's own choice is the only one that decides.
- *
- * Named here rather than in the page, because three places have to agree on it:
- * the inline script in layout.tsx that applies it before the first paint, and
- * `LightThemeOnly`, which covers the navigations that script never sees.
- */
-export const LIGHT_ONLY_PATH = '/login'
-
 export const THEME_LABEL: Record<ThemeChoice, string> = {
   auto: 'Auto',
   light: 'Light',
@@ -75,10 +61,11 @@ export function showThemeChoice(choice: ThemeChoice): void {
 /**
  * Puts the reader's choice on the page, and keeps it.
  *
- * Only what the reader asked for comes through here. Showing and remembering are
- * two functions rather than one because `LIGHT_ONLY_PATH` is shown a theme nobody
- * chose, and a screen that overwrote the choice on its way past would leave the
- * rest of the app light for good.
+ * `showThemeChoice` plus a write to storage, kept as two functions rather than
+ * inlined into one: `showThemeChoice` already has its own reason to exist on its
+ * own — the inline pre-paint script in layout.tsx is its twin, and a twin cannot
+ * share a body with the half that touches `localStorage`. Called by the two
+ * controls a reader actually has, `ThemePicker` and `ThemeToggle`.
  */
 export function applyThemeChoice(choice: ThemeChoice): void {
   showThemeChoice(choice)
