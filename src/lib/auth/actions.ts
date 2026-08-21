@@ -21,16 +21,25 @@ import { hashPassword, isPasswordAcceptable, verifyPassword } from '@/lib/auth/p
 import { currentUser } from '@/lib/auth/session'
 import type { PasswordResult } from '@/lib/auth/types'
 import { hasDatabase } from '@/lib/db/client'
+import { effectivePlanOf } from '@/lib/plans/resolve'
+import type { Plan } from '@/lib/plans/types'
 import type { Role } from '@/lib/roles'
 
 /**
- * The signed-in reader's address and role, or null when there is nobody or nobody
- * allowed — one `currentUser()` call for both, for `RoleProvider`, which needs the
+ * The signed-in reader's address, role and plan, or null when there is nobody or nobody
+ * allowed — one `currentUser()` call for all three, for `RoleProvider`, which needs the
  * address too now (v3.3, the user menu) and would otherwise ask twice on every page.
+ *
+ * `plan` is resolved for `accountOwnerEmail`, not for `email` itself, for the reason
+ * `permit`/`permitOn` already read that column instead of the caller's own: a global owner
+ * looking at an account they switched into sees *that* account's plan on their own menu,
+ * because that is whose limits apply to what they are about to do next.
  */
-export async function loadIdentity(): Promise<{ email: string; role: Role } | null> {
+export async function loadIdentity(): Promise<{ email: string; role: Role; plan: Plan | null } | null> {
   const user = await currentUser()
-  return user === null ? null : { email: user.email, role: user.role }
+  if (user === null) return null
+
+  return { email: user.email, role: user.role, plan: await effectivePlanOf(user.accountOwnerEmail) }
 }
 
 /**

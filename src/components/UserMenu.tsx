@@ -9,6 +9,7 @@ import { IconChevronLeft, IconKey, IconTrash } from '@/components/icons'
 import { deleteMyAccount } from '@/lib/accounts/actions'
 import { SELF_DELETE_MESSAGE } from '@/lib/accounts/types'
 import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
+import { PLAN_LABEL } from '@/lib/plans/types'
 
 /**
  * The reader's own identity, next to the hamburger (v3.3) — who is signed in, and
@@ -34,7 +35,7 @@ import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
  * take it this way before sign-out moved here (see its own history).
  */
 export function UserMenu({ children }: { children: React.ReactNode }) {
-  const { email, known, isGlobalOwner } = useRole()
+  const { email, known, isGlobalOwner, plan } = useRole()
   const [open, setOpen] = useState(false)
   /** A second screen inside the same panel, same pattern as Settings in `NavMenu`. */
   const [view, setView] = useState<'main' | 'delete'>('main')
@@ -89,6 +90,13 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                   </span>
                   <div className="user-menu-identity">
                     <span className="user-menu-email">{email}</span>
+                    {/*
+                      * `plan` is null while unknown and null forever with the plans switched
+                      * off (see `RoleContextValue`'s own comment) — both read the same as
+                      * "nothing to say here", same as the Owner badge beside it being absent
+                      * for anybody who isn't one.
+                      */}
+                    {plan !== null && <span className="badge mt-1">{PLAN_LABEL[plan]}</span>}
                     {isGlobalOwner && <span className="badge mt-1">Owner</span>}
                   </div>
                 </div>

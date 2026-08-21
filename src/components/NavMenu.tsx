@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
 import { InstrumentPicker } from '@/components/InstrumentPicker'
+import { PlanUpgradeModal, type PlanNotice } from '@/components/PlanUpgradeModal'
 import { useRole } from '@/components/RoleProvider'
 import { ThemePicker } from '@/components/ThemePicker'
 import {
@@ -116,6 +117,9 @@ export function NavMenu({ current }: { current: Section }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  /** A refusal by the plan gets the same dialog `HomeScreen` opens for its own — see
+      `PlanUpgradeModal`'s own comment on why — instead of the inline `error` above. */
+  const [planNotice, setPlanNotice] = useState<PlanNotice | null>(null)
   /*
    * How many devices are following right now, and how many this plan allows — the answer to
    * the question a leader who has just handed the link round actually has. `null` covers
@@ -250,11 +254,17 @@ export function NavMenu({ current }: { current: Section }) {
       /*
        * Told apart from every other failure on purpose: «try again» is advice, and it is
        * false advice here — a plan that does not include leading will not start one on the
-       * second press either. The sentence names the feature rather than showing
-       * `LIMIT_MESSAGE`'s generic line, and promises nothing about where to change it:
-       * there is no pricing screen to send anybody to yet.
+       * second press either. `PlanUpgradeModal` names the feature and offers a way to
+       * `/pricing`, so pressing this button now points somewhere, unlike when this comment
+       * was first written. `close()` alongside it, not just `setPlanNotice`: the dialog's
+       * own "See plans" link navigates to `/pricing`, and this menu lives in the root layout
+       * across that navigation — left `open`, it would still be showing this same panel,
+       * Start button and all, on the page the reader lands on.
        */
-      else if (result.reason === 'plan-required') setError('Sing Together is not part of your plan.')
+      else if (result.reason === 'plan-required') {
+        setPlanNotice({ reason: 'plan-required', feature: 'Sing Together' })
+        close()
+      }
       /*
        * The other reason worth telling apart, now that there is a reason at all to tell
        * apart: an expired session is fixed by reloading and signing in again, and pressing
@@ -664,6 +674,10 @@ export function NavMenu({ current }: { current: Section }) {
             )}
           </div>
         </>
+      )}
+
+      {planNotice !== null && (
+        <PlanUpgradeModal notice={planNotice} onClose={() => setPlanNotice(null)} />
       )}
     </div>
   )

@@ -44,6 +44,22 @@ export function readPlan(value: unknown): Plan {
 }
 
 /**
+ * The name a reader recognizes, for the one place today that names a plan back to the
+ * person on it rather than to an operator: the account menu's own plan line. `/pricing`
+ * spells the same five names out as literals in its own column data instead of reading
+ * this — its copy already has to hand-place each name beside its own price and features,
+ * so a shared map would buy it nothing there — but anywhere the app names a plan on its own,
+ * with no copy around it, this is the one spelling.
+ */
+export const PLAN_LABEL: Record<Plan, string> = {
+  free: 'Free',
+  standard: 'Standard',
+  plus: 'Plus',
+  premium: 'Premium',
+  lifetime: 'Lifetime',
+}
+
+/**
  * Where a subscription stands with the payment processor, written by the (future) Paddle
  * webhook and by nothing else. `grace` still gets the plan's entitlements: a failing card
  * is not a lapsed customer.

@@ -43,6 +43,25 @@ export type PaidPlan = Extract<Plan, 'standard' | 'plus' | 'premium'>
 
 export const PAID_PLANS = ['standard', 'plus', 'premium'] as const satisfies readonly PaidPlan[]
 
+/**
+ * The plans the mock checkout (`lib/plans/checkout.ts`, `/checkout`) can sell: the three
+ * recurring ones, plus the one-time Lifetime. Pure vocabulary, here rather than in
+ * `checkout.ts` itself, because that file carries `'use server'`, and a Next.js Server
+ * Actions module may only export async functions — a plain constant or a synchronous type
+ * guard sitting beside them fails the build, not just a lint rule. This is also, independent
+ * of that constraint, where it belongs: `checkout.ts` decides what a purchase *does*, and
+ * this is only the closed list of what may be named as one, the same kind of fact `PaidPlan`
+ * and `PAID_PLANS` already are.
+ */
+export const CHECKOUT_PLANS = [...PAID_PLANS, 'lifetime'] as const satisfies readonly Plan[]
+
+export type CheckoutPlan = (typeof CHECKOUT_PLANS)[number]
+
+/** Whether a route param or a form value is one of the plans this mock actually sells. */
+export function isCheckoutPlan(value: string): value is CheckoutPlan {
+  return (CHECKOUT_PLANS as readonly string[]).includes(value)
+}
+
 /** How a plan is billed. `year` is the default the pricing page opens on — see `PricingPlans`. */
 export type BillingPeriod = 'year' | 'month'
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 
 import { ArrangeSongbook } from '@/components/ArrangeSongbook'
 import { ImportIntoSongbook } from '@/components/ImportIntoSongbook'
+import { PlanUpgradeModal, type PlanNotice } from '@/components/PlanUpgradeModal'
 import { useSongbooks } from '@/components/SongbookProvider'
 import { useRole } from '@/components/RoleProvider'
 import { SongRow } from '@/components/SongRow'
@@ -20,10 +21,11 @@ import {
   IconTrash,
 } from '@/components/icons'
 import { createSong } from '@/lib/import/actions'
-import { saveMessage } from '@/lib/import/types'
+import { saveMessage, type SaveRefusal } from '@/lib/import/types'
 import { loadSongIndex } from '@/lib/library/actions'
 import { applyOrder } from '@/lib/songbooks/order'
 import { useLiveRows } from '@/lib/library/useLiveSongs'
+import { LIMIT_MESSAGE, type LimitReason } from '@/lib/plans/types'
 import type { SongIndexRow } from '@/lib/search-index'
 import { type Folds, readFolds, songFromHash, writeFolds } from '@/lib/sections/folds'
 import { writeMessage, type WriteResult } from '@/lib/songbooks/types'
@@ -78,6 +80,9 @@ export function SongbookSongs({
   const [newSectionId, setNewSectionId] = useState('')
   const [creatingBusy, setCreatingBusy] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  /** A refusal by the plan gets the same dialog `HomeScreen` opens for its own — see
+      `PlanUpgradeModal`'s own comment on why — instead of the inline `createError` above. */
+  const [planNotice, setPlanNotice] = useState<PlanNotice | null>(null)
 
   const [folds, setFolds] = useState<Folds>({})
   /** The song a link asked for, if one did. The *song*, not its section: see below. */
@@ -356,7 +361,20 @@ export function SongbookSongs({
                     newSectionId === '' ? null : Number(newSectionId),
                   )
                   if (!result.ok) {
-                    setCreateError(saveMessage(result))
+                    if (Object.hasOwn(LIMIT_MESSAGE, result.reason)) {
+                      /*
+                       * Guarded by the membership check above: `duplicate` is not a key of
+                       * `LIMIT_MESSAGE` (`createSong` never returns it anyway — see its own
+                       * comment on why), so `result` here is always the `SaveRefusal` branch
+                       * of the union. `Object.hasOwn` does not tell the compiler that, hence
+                       * the cast, same reasoning as `HomeScreen`'s own `run`.
+                       */
+                      const refusal = result as SaveRefusal
+                      setCreating(false)
+                      setPlanNotice({ reason: refusal.reason as LimitReason, limit: refusal.limit })
+                    } else {
+                      setCreateError(saveMessage(result))
+                    }
                     return
                   }
                   router.push(`/songs/${result.song.slug}/edit`)
@@ -684,6 +702,10 @@ export function SongbookSongs({
             })}
           </ul>
         </>
+      )}
+
+      {planNotice !== null && (
+        <PlanUpgradeModal notice={planNotice} onClose={() => setPlanNotice(null)} />
       )}
     </>
   )

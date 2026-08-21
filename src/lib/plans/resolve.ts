@@ -62,6 +62,26 @@ export function plansEnforced(): boolean {
 }
 
 /**
+ * Whether the mock checkout (`lib/plans/checkout.ts`, `/checkout`) is live — a stand-in for
+ * Paddle that writes real `plan`/`planStatus`/`planExpiresAt` rows so the entitlement gates,
+ * the account menu's plan badge and the freeze path can all be exercised for real before
+ * there is an actual payment processor behind any of it. Same shape as `plansEnforced` and
+ * for the same reason: a function here, reading the one env var, keeps every caller —
+ * `/pricing`'s buy buttons and `/checkout` itself — agreeing about what "on" means, rather
+ * than two `process.env` reads that could drift apart over a typo in one of them.
+ *
+ * **This is not a security boundary.** While it answers true, any signed-in reader can give
+ * their own account any plan for nothing, because there is nothing behind this to actually
+ * charge — see `mockPurchase`'s own comment. It exists to be switched on for a short test
+ * window and back off, the same way `SONGBOOK_FORCE_PLAN` is a deliberately risky local-only
+ * escape hatch rather than a feature meant to run indefinitely, and it is deleted outright,
+ * flag and route both, the day a real checkout replaces it.
+ */
+export function mockCheckoutEnabled(): boolean {
+  return process.env.SONGBOOK_MOCK_CHECKOUT === 'on'
+}
+
+/**
  * Only warned about once per process, not once per request: a forced plan has to be
  * impossible to mistake for a real one in a log, and a line on every write would bury the
  * log it is trying to annotate.
@@ -286,6 +306,39 @@ export async function deviceCapOf(accountOwnerEmail: string): Promise<{ max: num
   } catch (error) {
     console.error('deviceCapOf failed', error)
     return UNENFORCED_CAP
+  }
+}
+
+/**
+ * Which plan is in effect for this account right now, or null when there is nothing to
+ * report — enforcement off, no database, or an unreadable row, the same fail-open direction
+ * `entitlementsOf` and `deviceCapOf` both take. `null` deliberately means the same thing here
+ * that it means on `Entitlements.state`: nobody has a plan to report, not "free".
+ *
+ * A third, even lighter entry point beside those two: the account menu's own plan line asks
+ * only "what is it called", never a cap or a count, so it costs the one read `deviceCapOf`
+ * does rather than the three `entitlementsOf` pays for counts this has no use for.
+ */
+export async function effectivePlanOf(accountOwnerEmail: string): Promise<Plan | null> {
+  if (!plansEnforced()) return null
+  if (!hasDatabase) return null
+
+  try {
+    const forced = forcedPlan()
+    const stored: StoredPlan | null =
+      forced === null
+        ? await storedPlanOf(accountOwnerEmail)
+        : { plan: forced, expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null }
+
+    if (stored === null) {
+      console.error(`effectivePlanOf found no account row for ${accountOwnerEmail}`)
+      return null
+    }
+
+    return planStateFor(stored, new Date()).effectivePlan
+  } catch (error) {
+    console.error('effectivePlanOf failed', error)
+    return null
   }
 }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 import type { BillingPeriod } from '@/lib/plans/prices'
@@ -24,6 +25,16 @@ export interface PlanColumn {
   audience: string
   /** What stands where a buy button would: a state of the world, never a disabled control. */
   action: string
+  /**
+   * The route slug for the mock checkout (`lib/plans/checkout.ts`'s `CheckoutPlan`), or
+   * absent when there is nothing to buy yet. A bare string rather than that type imported
+   * here: this file's own header explains why it must never import `@/lib/plans/types`, and
+   * `checkout.ts` sits downstream of that module, so pulling in its type would reopen the
+   * exact bundle-size door this file exists to keep shut. The page decides whether this is
+   * set at all — see `mockCheckoutEnabled()` in `pricing/page.tsx` — so its mere presence is
+   * the only thing this component has to check.
+   */
+  checkoutPlan?: string
 }
 
 const PERIODS: { value: BillingPeriod; label: string }[] = [
@@ -110,6 +121,14 @@ export function PricingPlans({
             <p className="plan-price-note">{column.price[period].note}</p>
             <p className="plan-audience">{column.audience}</p>
             <p className="plan-action">{column.action}</p>
+            {column.checkoutPlan !== undefined && (
+              <Link
+                href={`/checkout/${column.checkoutPlan}?cycle=${period}`}
+                className="btn btn-primary btn-sm mt-2 w-full"
+              >
+                Choose {column.name}
+              </Link>
+            )}
           </article>
         ))}
       </div>

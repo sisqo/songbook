@@ -10,6 +10,15 @@ import { LIMIT_MESSAGE, limitSentence, type LimitFacts, type LimitReason } from 
 export interface PlanNotice {
   reason: LimitReason
   limit?: LimitFacts
+  /**
+   * Named only when there is one feature to blame for a `plan-required` refusal with no cap
+   * to quote — Sing Together, the printable booklet — so the dialog can say what was refused
+   * rather than fall back to `LIMIT_MESSAGE`'s vaguest line, "This is not included in your
+   * plan." Left unset for a count refusal, where `limit` already names the cap, and for
+   * `frozen`, which is over more than one cap at once and would misname the problem by
+   * blaming a single feature.
+   */
+  feature?: string
 }
 
 /**
@@ -32,7 +41,12 @@ export function PlanUpgradeModal({ notice, onClose }: { notice: PlanNotice; onCl
   }, [onClose])
 
   const canUpgrade = notice.reason !== 'frozen'
-  const message = notice.limit !== undefined ? limitSentence(notice.limit) : LIMIT_MESSAGE[notice.reason]
+  const message =
+    notice.limit !== undefined
+      ? limitSentence(notice.limit)
+      : notice.feature !== undefined
+        ? `${notice.feature} is not included in your plan.`
+        : LIMIT_MESSAGE[notice.reason]
 
   return (
     <div className="upgrade-overlay" role="dialog" aria-modal="true" aria-label="Plan limit">

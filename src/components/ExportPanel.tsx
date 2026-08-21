@@ -3,6 +3,7 @@
 import { zipSync, strToU8 } from 'fflate'
 import { useEffect, useState } from 'react'
 
+import { PlanUpgradeModal, type PlanNotice } from '@/components/PlanUpgradeModal'
 import { usePrefs } from '@/components/PrefsProvider'
 import { IconChevronDown, IconDownload, IconInfo, IconPrint } from '@/components/icons'
 import { loadBooklet } from '@/lib/booklet/actions'
@@ -43,6 +44,9 @@ export function ExportPanel() {
   const { global } = usePrefs()
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  /** A refusal by the plan gets the same dialog `HomeScreen` opens for its own — see
+      `PlanUpgradeModal`'s own comment on why — instead of the inline `notice` above. */
+  const [planNotice, setPlanNotice] = useState<PlanNotice | null>(null)
 
   /*
    * Fetched once, on mount, rather than threaded in as a prop: this panel is
@@ -124,16 +128,16 @@ export function ExportPanel() {
       const result = await loadBooklet(bookletSlug)
       if (!result.ok) {
         /*
-         * Two different sentences, because they have two different remedies: a plan
-         * without the booklet will answer the same way however many times the button is
-         * pressed, so «the server did not respond» would be an invitation to keep trying.
-         * No link is offered with it — there is nowhere in the app to send anybody yet.
+         * Two different refusals, because they have two different remedies: a plan without
+         * the booklet will answer the same way however many times the button is pressed, so
+         * «the server did not respond» would be an invitation to keep trying — that one gets
+         * `PlanUpgradeModal` and a way to `/pricing` instead of the inline notice below.
          */
-        setNotice(
-          result.reason === 'not-found'
-            ? 'Export failed: the server did not respond, or your role does not allow it.'
-            : 'The printable booklet is not part of your plan.',
-        )
+        if (result.reason === 'plan-required') {
+          setPlanNotice({ reason: 'plan-required', feature: 'The printable booklet' })
+        } else {
+          setNotice('Export failed: the server did not respond, or your role does not allow it.')
+        }
         return
       }
       const { booklet, brandLine } = result
@@ -260,6 +264,10 @@ export function ExportPanel() {
           </button>
         </div>
       </div>
+
+      {planNotice !== null && (
+        <PlanUpgradeModal notice={planNotice} onClose={() => setPlanNotice(null)} />
+      )}
     </section>
   )
 }

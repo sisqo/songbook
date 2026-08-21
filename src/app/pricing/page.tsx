@@ -8,7 +8,7 @@ import type { PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
 import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
 import type { PaidPlan } from '@/lib/plans/prices'
-import { plansEnforced } from '@/lib/plans/resolve'
+import { mockCheckoutEnabled, plansEnforced } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
 import type { BookletTier } from '@/lib/plans/types'
 
@@ -208,6 +208,21 @@ const FOOTNOTE =
   `Plus up — it means there is no limit in the software at all, rather than a ceiling nobody expects ` +
   `to reach.`
 
+/**
+ * Read once and reused by every column and by the Lifetime block below, rather than called
+ * separately in each: it is a build-time env read (see its own comment in `resolve.ts`), so
+ * every call in one build agrees regardless, but one name for "is the mock live" is one fewer
+ * thing to keep saying the same way.
+ */
+const CHECKOUT_LIVE = mockCheckoutEnabled()
+
+/*
+ * Shown in place of `NOT_ON_SALE` whenever the mock checkout is live: it is not a real sale,
+ * and this line is what keeps the page honest about that the moment a real "Choose" button
+ * appears beside it — see `PricingPlans`' own `checkoutPlan` field for the button itself.
+ */
+const TEST_CHECKOUT_OPEN = 'Test checkout — no real payment is taken.'
+
 /** A paid column, worded once for the three that differ only in their amounts and their audience. */
 function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn {
   const { year, month } = PRICES[plan]
@@ -243,7 +258,8 @@ function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn 
       },
     },
     audience,
-    action: NOT_ON_SALE,
+    action: CHECKOUT_LIVE ? TEST_CHECKOUT_OPEN : NOT_ON_SALE,
+    checkoutPlan: CHECKOUT_LIVE ? plan : undefined,
   }
 }
 
@@ -474,8 +490,14 @@ const ROWS: ComparisonRow[] = [
  *
  * **This page must stay statically generated.** That is not enforced by anything: it holds
  * only as long as nothing here awaits `searchParams`, calls `cookies()`, `headers()` or
- * `auth()`, and nothing imports `@/lib/plans/resolve` (which reads the database and
- * `process.env.SONGBOOK_PLANS`) or anything under `@/lib/data`. `@/lib/plans/types` and
+ * `auth()`, and nothing here calls any of the database-touching exports of
+ * `@/lib/plans/resolve` — `entitlementsOf`, `deviceCapOf`, `effectivePlanOf` — or anything
+ * under `@/lib/data`. `plansEnforced` and `mockCheckoutEnabled`, both imported here, are the
+ * two exceptions and not a loophole in that rule: each is a bare, synchronous
+ * `process.env` read with no query behind it, so calling either at render time is exactly as
+ * static-safe as reading `@/lib/plans/prices`, just resolved at *build* time instead of never
+ * — which is the entire point of `NO_CHECKOUT` and `CHECKOUT_LIVE` existing at all: a flag
+ * flipped in Vercel takes effect on the next build's copy of this page, not before. `@/lib/plans/types` and
  * `@/lib/plans/prices` are both pure and safe. There is no `export const dynamic` here
  * because nothing in this repository uses `force-static` — the four legal pages prerender
  * under this same root layout with no such declaration — and a comment is what a later
@@ -667,7 +689,12 @@ export default function PricingPage() {
               */}
             <p className="mt-2.5 max-w-[42rem] text-sm leading-[1.6] text-muted">{REFUND}</p>
 
-            <p className="plan-action">{NOT_ON_SALE}</p>
+            <p className="plan-action">{CHECKOUT_LIVE ? TEST_CHECKOUT_OPEN : NOT_ON_SALE}</p>
+            {CHECKOUT_LIVE && (
+              <Link href="/checkout/lifetime" className="btn btn-primary btn-sm mt-2">
+                Choose Lifetime
+              </Link>
+            )}
           </div>
         </section>
       )}

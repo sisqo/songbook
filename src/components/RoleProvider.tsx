@@ -4,6 +4,7 @@ import { type ReactNode, createContext, useContext, useEffect, useMemo, useState
 
 import { mayShowAccountSwitcher } from '@/lib/accounts/read'
 import { loadIdentity } from '@/lib/auth/actions'
+import type { Plan } from '@/lib/plans/types'
 import { type Role, canEdit } from '@/lib/roles'
 
 interface RoleContextValue {
@@ -19,6 +20,21 @@ interface RoleContextValue {
    * question, different reader).
    */
   isGlobalOwner: boolean
+  /**
+   * The plan in effect for the account this reader is looking at — null while unknown,
+   * and null forever when `SONGBOOK_PLANS` is off, since `effectivePlanOf` answers the
+   * same way `Entitlements.state` does: nothing is being enforced, so there is no plan
+   * to report. `UserMenu` is the one reader of this today.
+   *
+   * Unlike `email` and `role`, this can genuinely change while the tab stays open — a
+   * grant applied from `/accounts`, a subscription expiring at midnight — and there is
+   * no push channel that tells this component so. It is refreshed on the same schedule
+   * as everything else here (mount, and again on the `online` event), no more and no
+   * less, so a reader gifted a plan mid-session sees the old badge until the next one.
+   * Deliberately not a reason to poll: see this file's own comment on why nothing here
+   * is cached defensively.
+   */
+  plan: Plan | null
 }
 
 const RoleContext = createContext<RoleContextValue>({
@@ -27,6 +43,7 @@ const RoleContext = createContext<RoleContextValue>({
   known: false,
   mayEdit: false,
   isGlobalOwner: false,
+  plan: null,
 })
 
 /**
@@ -56,6 +73,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(null)
   const [known, setKnown] = useState(false)
   const [switcher, setSwitcher] = useState(false)
+  const [plan, setPlan] = useState<Plan | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -67,6 +85,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           setEmail(identity?.email ?? null)
           setRole(identity?.role ?? null)
           setSwitcher(showSwitcher)
+          setPlan(identity?.plan ?? null)
           setKnown(true)
         }
       } catch {
@@ -99,8 +118,9 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       known,
       mayEdit: known && canEdit(role),
       isGlobalOwner: known && switcher,
+      plan,
     }),
-    [email, role, known, switcher],
+    [email, role, known, switcher, plan],
   )
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>
