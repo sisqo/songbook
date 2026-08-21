@@ -76,7 +76,7 @@ import { C_MAJOR } from '../music/notes'
 // should wrap at word boundaries, never split one open.
 Font.registerHyphenationCallback((word) => [word])
 
-const SITE_URL = 'strumfolio.sisqo.dev'
+const SITE_URL = 'strumfolio.com'
 const BRAND_ICON_PATH = 'M10 17.5a3 3 0 1 1-3-3c.6 0 1.15.17 1.6.47V4.8l7.4-1.8v3.1L10.9 7.6v9.9z'
 
 const INK = '#16181d'

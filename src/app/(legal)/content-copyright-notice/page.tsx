@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Content & Copyright Notice' }
 
-const CONTACT = 'info@songbook.sisqo.dev'
+const CONTACT = 'info@strumfolio.com'
 
 export default function ContentCopyrightNoticePage() {
   return (
@@ -12,7 +12,7 @@ export default function ContentCopyrightNoticePage() {
       <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
-        Strumfolio (strumfolio.sisqo.dev) is a free, non-commercial project — a tool for managing your own
+        Strumfolio (strumfolio.com) is a free, non-commercial project — a tool for managing your own
         personal song collection. This notice clarifies how content and copyright work within the
         Service.
       </p>

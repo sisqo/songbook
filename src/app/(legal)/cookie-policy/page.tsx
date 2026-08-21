@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = { title: 'Cookie Policy' }
 
-const CONTACT = 'info@songbook.sisqo.dev'
+const CONTACT = 'info@strumfolio.com'
 
 export default function CookiePolicyPage() {
   return (

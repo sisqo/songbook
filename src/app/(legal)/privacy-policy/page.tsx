@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Privacy Policy' }
 
-const CONTACT = 'info@songbook.sisqo.dev'
+const CONTACT = 'info@strumfolio.com'
 
 export default function PrivacyPolicyPage() {
   return (
@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
 
       <h2>1. Who we are</h2>
       <p>
-        Strumfolio (strumfolio.sisqo.dev) is a personal, non-commercial project, free to use, run by an
+        Strumfolio (strumfolio.com) is a personal, non-commercial project, free to use, run by an
         individual developer, with no company or commercial entity behind it. That individual is the
         data controller for the personal data described in this policy, and can be reached at the
         contact address below. If you need the controller&apos;s full identity — for example to

@@ -12,7 +12,7 @@ Il nome mostrato è cambiato in v2.4; repo e dominio sono seguiti in v3.3. La ta
 `songs` nel database resta `songs` di proposito — è un brano, non un progetto — vedi la
 nota in testa a [PLAN.md](PLAN.md).
 
-- Produzione: https://strumfolio.sisqo.dev
+- Produzione: https://strumfolio.com
 - Repo: https://github.com/sisqo/songbook
 - Progetto e decisioni: [PLAN.md](PLAN.md)
 
@@ -565,11 +565,11 @@ Due dettagli che costano tempo se non si sanno:
 | `AUTH_SECRET` | Firma delle sessioni |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Client OAuth Google |
 | `ALLOWED_EMAILS` | I **proprietari globali**: sempre ammessi e con pieno controllo su ogni account, separati da virgola, non rimovibili né retrocedibili dall'app. Vuota: nessun proprietario globale, ma la registrazione (v3.2) resta aperta a chiunque per il proprio account |
-| `AUTH_URL` | Su Vercel: `https://strumfolio.sisqo.dev`, così il callback OAuth combacia |
+| `AUTH_URL` | Non impostata in produzione (dal 2026-08-21): NextAuth v5 deriva l'origine dall'host della richiesta (`trustHost`, automatico su Vercel), così `strumfolio.com` e qualunque altro dominio collegato funzionano ciascuno per conto proprio. Serve solo se un giorno l'host della richiesta non fosse più affidabile (es. dietro un proxy che lo riscrive) |
 | `DATABASE_URL` | Postgres. Assente: si legge da `content/` |
 | `DEPLOY_HOOK_URL` | Deploy hook Vercel, usato dal pulsante Pubblica |
 | `RESEND_API_KEY` | Invio reale delle email di registrazione (v3.2). Assente: le email vengono solo loggate in console, link incluso |
-| `RESEND_FROM` | Indirizzo mittente, es. `Strumfolio <no-reply@sisqo.dev>`. Deve essere su un dominio verificato su Resend — attenzione ai sottodomini: verificare `sisqo.dev` non copre `strumfolio.sisqo.dev`, DKIM/SPF non sono ereditati. Assente: usa il default nel codice |
+| `RESEND_FROM` | Indirizzo mittente, es. `Strumfolio <no-reply@strumfolio.com>`. Il dominio deve essere verificato su Resend — dal 2026-08-21 `strumfolio.com` lo è, ma la verifica (DKIM/SPF) vive sul sottodominio dedicato `send.strumfolio.com` che Resend stesso richiede, non sulla root: non toccare quei record DNS pensando siano ridondanti. Assente: usa il default nel codice |
 | `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile, il CAPTCHA su registrazione e recupero password (v3.2). La seconda dev'essere `NEXT_PUBLIC_` perché Next.js la esponga al client. Assenti: nessun CAPTCHA, verifica lato server sempre superata |
 
 Per le password non serve nessuna variabile: stanno nella tabella `credentials`, e la firma

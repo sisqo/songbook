@@ -17,7 +17,7 @@ import { Resend } from 'resend'
  * exactly one of these per installation and it costs nothing for local dev or the
  * current deployment to leave unset.
  */
-const FROM_ADDRESS = process.env.RESEND_FROM ?? 'Strumfolio <no-reply@sisqo.dev>'
+const FROM_ADDRESS = process.env.RESEND_FROM ?? 'Strumfolio <no-reply@strumfolio.com>'
 
 export interface EmailMessage {
   to: string
