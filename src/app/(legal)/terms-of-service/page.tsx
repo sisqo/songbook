@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Strumfolio (&ldquo;the
         Service&rdquo;), a personal, non-commercial project provided free of charge at
-        songbook.sisqo.dev by an individual developer (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By
+        strumfolio.sisqo.dev by an individual developer (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By
         accessing or using Strumfolio, including by joining a Sing Together session through a shared
         link, you agree to these Terms.
       </p>
