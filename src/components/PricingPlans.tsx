@@ -5,12 +5,20 @@ import { useState } from 'react'
 
 import type { BillingPeriod } from '@/lib/plans/prices'
 
-/** One line of a column's price slot: the amount, and the sentence under it. */
+/**
+ * A column's price slot: the number, and the small suffix beside it — never a whole worded
+ * sentence, and that is a deliberate narrowing rather than the shape this used to be. The
+ * v3.4 design draws «€2.49» and «/mo» as two different sizes in the same line, which a single
+ * pre-worded string («€2.49 per month») could not do; and it draws no third line under either
+ * — the renewal disclosure that line used to carry («Billed once a year, and renews each year
+ * until you cancel.») has no home in this design at all, on any column, so it is gone rather
+ * than kept and left unrendered.
+ */
 export interface ColumnPrice {
-  /** «€19 per year», «€2.49 per month», «€0» — the whole amount, already worded. */
+  /** «€19», «€2.49», «€0» — the number alone, with no unit attached. */
   amount: string
-  /** «Billed once a year.», «€29.88 over a year.», «No card.» */
-  note: string
+  /** «/yr», «/mo», or `''` for Free, which has nothing to bill and so nothing to suffix. */
+  suffix: string
 }
 
 export interface PlanColumn {
@@ -30,6 +38,14 @@ export interface PlanColumn {
    * that only lets somebody choose still benefits from naming the one most people pick.
    */
   featured?: boolean
+  /**
+   * The middle tier's own faint tint (`.is-paid`) — true for Standard and Premium, false for
+   * Free (nothing bought) and unset for Plus, which gets `.is-featured` instead and must
+   * never carry both classes at once. A separate field from `featured` rather than inferred
+   * from "not free and not featured", because that inference is exactly the kind of thing a
+   * fifth plan could get quietly wrong.
+   */
+  paid?: boolean
   /**
    * A plain, always-on action — `Start free`, pointed wherever registering happens. Free is
    * not something `checkout.ts` sells, so it has no `checkoutPlan` and needs this instead;
@@ -53,6 +69,15 @@ export interface PlanColumn {
   checkoutPlan?: string
 }
 
+/** One row of the comparison table below the cards. */
+export interface ComparisonRow {
+  label: string
+  /** One small sentence saying what living without this row is like. */
+  note: string
+  /** Free, Standard, Plus, Premium — in `columns` order. `null` is "no part of this plan". */
+  cells: (string | null)[]
+}
+
 const PERIODS: { value: BillingPeriod; label: string }[] = [
   { value: 'month', label: 'Monthly' },
   { value: 'year', label: 'Yearly' },
@@ -61,22 +86,24 @@ const PERIODS: { value: BillingPeriod; label: string }[] = [
 /**
  * The four price columns and the one control on the page that has state.
  *
- * The only client component /pricing loads, and deliberately the smallest thing that could
- * hold the toggle: the headline, the lede, the notice, the comparison table, the lifetime
- * block and the closing block are all server-rendered by the page itself. The page stays
- * statically prerendered either way — a client child is rendered into the HTML with
- * `'month'` already chosen and merely hydrates — so what this boundary costs is one small
- * bundle, and what it buys is a toggle whose selected state a screen reader can actually
- * read.
+ * The only client component /pricing loads, and now holds the comparison table as well as
+ * the cards (v3.4) — the design repeats each plan's price in the table's own header, and
+ * that only reads correctly if it moves with the same toggle the cards already answer to.
+ * The headline, the lede, the notice, the lifetime block and the closing block stay
+ * server-rendered by the page itself; only the parts that actually say a price crossed the
+ * boundary. The page stays statically prerendered either way — a client child is rendered
+ * into the HTML with `'month'` already chosen and merely hydrates — so what this boundary
+ * costs is one small bundle, and what it buys is a toggle whose selected state a screen
+ * reader can actually read, now reaching the table too.
  *
- * The words arrive as props and are not written here, `PlanColumn` by `PlanColumn`. Two
- * reasons, and the second is the one that would be missed: the page owns its own copy, so a
- * reader looking for a sentence on /pricing finds every sentence in one file; and this file
- * must never import `@/lib/plans/types`, because importing `PLANS` into a client component
- * ships that whole module to the browser — `LIMIT_MESSAGE`, `limitSentence`,
- * `capWorthNaming` and every paragraph of commentary with them. The numbers are read from
- * `PLANS` on the server and arrive here as strings that have already been made into
- * sentences. `BillingPeriod` is a type import, which erases.
+ * The words arrive as props and are not written here, `PlanColumn` by `PlanColumn`,
+ * `ComparisonRow` by `ComparisonRow`. Two reasons, and the second is the one that would be
+ * missed: the page owns its own copy, so a reader looking for a sentence on /pricing finds
+ * every sentence in one file; and this file must never import `@/lib/plans/types`, because
+ * importing `PLANS` into a client component ships that whole module to the browser —
+ * `LIMIT_MESSAGE`, `limitSentence`, `capWorthNaming` and every paragraph of commentary with
+ * them. The numbers are read from `PLANS` on the server and arrive here as strings that have
+ * already been made into sentences. `BillingPeriod` is a type import, which erases.
  *
  * Rejected: a CSS-only toggle — two radios and `:has()`, which needs no JavaScript at all
  * and is what the `<details>` FAQ on /login argues for in a comparable spot. It would put
@@ -97,9 +124,15 @@ const PERIODS: { value: BillingPeriod; label: string }[] = [
  */
 export function PricingPlans({
   columns,
+  rows,
+  tableTitle,
   children,
 }: {
   columns: PlanColumn[]
+  /** The comparison table's own rows, rendered below the cards. */
+  rows: ComparisonRow[]
+  /** The table's own heading — plain text, not a slot, since it is never anything but one line. */
+  tableTitle: string
   /**
    * Rendered between the toggle and the columns, which is the one slot on this page that a
    * server-rendered block cannot reach on its own: the no-checkout notice belongs directly
@@ -135,35 +168,119 @@ export function PricingPlans({
       {children}
 
       <div className="plan-columns mt-6">
-        {columns.map((column) => (
-          <article
-            key={column.name}
-            className={column.featured ? 'card plan-card is-featured' : 'card plan-card'}
-          >
-            {column.featured && <span className="plan-badge">Most popular</span>}
+        {columns.map((column) => {
+          const cardClass = column.featured
+            ? 'card plan-card is-featured'
+            : column.paid
+              ? 'card plan-card is-paid'
+              : 'card plan-card'
 
-            <h3 className="plan-name">{column.name}</h3>
-            <p className="plan-price">{column.price[period].amount}</p>
-            <p className="plan-price-note">{column.price[period].note}</p>
-            <p className="plan-audience">{column.audience}</p>
+          return (
+            <article key={column.name} className={cardClass}>
+              {column.featured && <span className="plan-badge">Most popular</span>}
 
-            {column.checkoutPlan !== undefined && (
-              <Link
-                href={`/checkout/${column.checkoutPlan}?cycle=${period}`}
-                className="btn btn-primary btn-sm plan-cta w-full"
-              >
-                Choose {column.name}
-              </Link>
-            )}
+              <h3 className="plan-name">{column.name}</h3>
+              <p className="plan-price">
+                {column.price[period].amount}
+                {column.price[period].suffix !== '' && (
+                  <span className="plan-price-period">{column.price[period].suffix}</span>
+                )}
+              </p>
+              <p className="plan-audience">{column.audience}</p>
 
-            {column.cta !== undefined && (
-              <Link href={column.cta.href} className="btn btn-sm plan-cta w-full">
-                {column.cta.label}
-              </Link>
-            )}
-          </article>
-        ))}
+              {column.checkoutPlan !== undefined && (
+                <Link
+                  href={`/checkout/${column.checkoutPlan}?cycle=${period}`}
+                  className="btn btn-primary btn-sm plan-cta w-full"
+                >
+                  Choose {column.name}
+                </Link>
+              )}
+
+              {column.cta !== undefined && (
+                <Link href={column.cta.href} className="btn btn-sm plan-cta w-full">
+                  {column.cta.label}
+                </Link>
+              )}
+            </article>
+          )
+        })}
       </div>
+
+      <section className="mt-16">
+        <h2 className="landing-feature-title">{tableTitle}</h2>
+
+        <div className="plan-table-frame mt-5">
+          <div className="plan-table-scroll">
+            <table className="plan-table">
+              <caption className="sr-only">The four plans compared, feature by feature.</caption>
+
+              <thead>
+                <tr>
+                  {/* The row-header column has no heading of its own to give. */}
+                  <th scope="col">
+                    <span className="sr-only">Feature</span>
+                  </th>
+                  {columns.map((column) => (
+                    <th
+                      key={column.name}
+                      scope="col"
+                      className={column.featured ? 'plan-table-featured' : undefined}
+                    >
+                      <span className="plan-table-name">{column.name}</span>
+                      <span className="plan-table-price">
+                        {column.price[period].amount}
+                        {column.price[period].suffix}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">
+                      <span className="plan-row-label">{row.label}</span>
+                      <span className="plan-row-note">{row.note}</span>
+                    </th>
+
+                    {row.cells.map((cell, index) => {
+                      const featured = columns[index].featured
+                      const cellClass =
+                        cell === null
+                          ? featured
+                            ? 'plan-cell-none plan-table-featured'
+                            : 'plan-cell-none'
+                          : featured
+                            ? 'plan-table-featured'
+                            : undefined
+
+                      return (
+                        <td key={columns[index].name} className={cellClass}>
+                          {cell === null ? (
+                            <>
+                              {/*
+                                * A dash is a glyph, not a word: read aloud it is either silence
+                                * or "em dash", and neither says what the cell means. The word
+                                * goes to a screen reader, the glyph to the eye.
+                                */}
+                              <span aria-hidden>—</span>
+                              <span className="sr-only">Not included</span>
+                            </>
+                          ) : (
+                            cell
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

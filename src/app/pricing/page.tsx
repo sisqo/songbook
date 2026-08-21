@@ -4,23 +4,15 @@ import Link from 'next/link'
 import { Footer } from '@/components/Footer'
 import { IconCheck } from '@/components/icons'
 import { PricingPlans } from '@/components/PricingPlans'
-import type { PlanColumn } from '@/components/PricingPlans'
+import type { ComparisonRow, PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
-import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
+import { euro, LIFETIME, PRICES } from '@/lib/plans/prices'
 import type { PaidPlan } from '@/lib/plans/prices'
 import { mockCheckoutEnabled, plansEnforced } from '@/lib/plans/resolve'
 import { PLANS } from '@/lib/plans/types'
 import type { BookletTier } from '@/lib/plans/types'
 
 const SHARE_TITLE = `${APP_NAME} — Plans and pricing`
-
-/*
- * The one address on this page, spelled once. Same shape — a file-local `CONTACT` — as all
- * four legal pages, rather than a shared constant in `lib/brand`: those four have lived with
- * their own copies since they were written, and a fifth copy is a smaller change than moving
- * five call sites for a string that has never changed.
- */
-const CONTACT = 'info@songbook.sisqo.dev'
 
 /*
  * Whether the lifetime offer is still in the catalogue — the comparison `LIFETIME.closesOn`
@@ -97,33 +89,17 @@ const HERO_SUBTITLE =
   'even offline, and on every screen in the room.'
 
 /*
- * The three facts `LEDE` used to open the page with, kept but demoted: a tax claim and a
- * currency disclaimer are terms, not a pitch, and belong beside the prices they qualify
- * rather than in the first sentence a visitor reads. Two sentences rather than three — «There
- * is no free trial» folds into the second, since the free plan already earns that fact by
- * having no end date rather than needing a separate claim about trials.
+ * The three facts `LEDE` used to say — tax included, a currency-conversion disclaimer, no free
+ * trial — are gone from this page entirely (v3.4), matching the design exactly rather than
+ * keeping a demoted paragraph the design does not have. The gap this leaves, worth naming
+ * because it is not stated anywhere else on the site either: nothing currently tells a reader
+ * their bank may convert or add a fee. Left as a known omission rather than invented text the
+ * mock does not show.
  *
- * Tax-inclusive is a claim this page can make. Currency-invariant is not, and the rejected
- * wording — «the number you see is the number you pay, wherever you are» — asserted the
- * second while only the first was decided. A card issued in sterling or in francs is
- * converted by the reader's own bank, at a rate this page never sees and often with a
- * non-sterling fee on top, so for that reader the number here is demonstrably not the number
- * they pay. Naming the bank's cut costs one clause and keeps the sentence true in every
- * country the page is readable in; the alternative is a price claim that omits a charge we
- * know the reader will incur, which is the definition of a misleading one.
- */
-const BILLING_NOTE =
-  'Every price on this page is in euro, tax included: nothing is added at checkout. If your card ' +
-  'is not in euro, your bank converts at its own rate. There is no free trial — the free plan has ' +
-  'no end date, and you can stay on it for as long as you like.'
-
-/*
  * Two clauses, and it used to be three: «the prices on this page are final» is gone. Nothing
  * in this repository can make that promise — `prices.ts` says in its own header that its table
  * and Paddle's catalogue "are two things that must agree, and nothing in this repository can
- * check that they do", and every `paddleId` is still empty. It was also doing no work, since
- * `BILLING_NOTE` already says the tax is included and nothing is added at checkout, which is
- * the only thing a reader was reading "final" for.
+ * check that they do", and every `paddleId` is still empty.
  *
  * The second clause now reads `plansEnforced()` rather than assuming it is always off. This
  * page is prerendered at build time (see `PricingPage`'s own comment below on why it must stay
@@ -159,15 +135,10 @@ const LIFETIME_PILL = `Price valid until ${LIFETIME.closesOnLabel}`
  * with only this shorter reassurance is a deliberate trade of that explanatory prose for the
  * lighter page the redesign asks for, made once and knowingly rather than lost by accident.
  */
-const TRUST_NOTE =
-  'Nothing you put in here is ever deleted. If a subscription ends, your songs stay readable, ' +
-  'printable and exportable.'
+/** The lead sentence, bold in the design — see the JSX below for the plain rest of it. */
+const TRUST_NOTE_LEAD = 'Nothing you put in here is ever deleted'
 
-const FOOTNOTE =
-  `Premium's ${PLANS.premium.devices} is a real technical ceiling rather than a figure of speech, ` +
-  `which is why it is written as a number. Where this page says unlimited — songbooks and songs from ` +
-  `Plus up — it means there is no limit in the software at all, rather than a ceiling nobody expects ` +
-  `to reach.`
+const TRUST_NOTE_REST = 'If a subscription ends, your songs stay readable, printable and exportable.'
 
 /**
  * Read once and reused by every column and by the Lifetime block below, rather than called
@@ -183,36 +154,21 @@ function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn 
 
   return {
     name,
+    /*
+     * Just the number and a small suffix, the design's own shape — see `ColumnPrice`'s own
+     * comment in `PricingPlans.tsx` for what this replaced: a worded sentence per period,
+     * plus a second line under it disclosing the renewal, on every paid column. Neither the
+     * "per year"/"per month" wording nor the renewal disclosure has a home in this design,
+     * on any column, so both are gone rather than kept unrendered.
+     */
     price: {
-      /*
-       * Both notes carry the renewal, and neither may stop carrying it. «Billed once a year.»
-       * alone was the whole of this page's billing disclosure, and it reads — correctly, on its
-       * own words — as buying one year of Songbook: the reader is told when the card is charged
-       * and never that it is charged again. On the monthly side it was worse, because the note
-       * was a comparison rather than a billing sentence, so tapping Monthly removed the word
-       * "billed" from the page altogether. How long the contract runs, that it renews by
-       * itself, and how to stop it are the three facts a subscription has to state before it
-       * takes money — and these two notes are now the only place any of the three is stated at
-       * all, since v3.4 folded the fuller "If a plan ends" section into `TRUST_NOTE`, which
-       * says none of them.
-       */
-      year: {
-        amount: `${euro(year.amount)} per year`,
-        note: 'Billed once a year, and renews each year until you cancel.',
-      },
-      /*
-       * The annualized total stays, one number, rather than a sentence about savings: the reader
-       * compares it against the yearly amount unaided, and no line has to editorialize about
-       * which of the two is the better deal. It now follows the renewal rather than standing in
-       * for it — a total over a year says what twelve payments come to, not that there will be
-       * twelve of them.
-       */
-      month: {
-        amount: `${euro(month.amount)} per month`,
-        note: `Renews every month until you cancel — ${yearlyTotalOfMonthly(month.amount)} over a year.`,
-      },
+      year: { amount: euro(year.amount), suffix: '/yr' },
+      month: { amount: euro(month.amount), suffix: '/mo' },
     },
     audience,
+    /* Standard and Premium both buy something — the faint tint `.is-paid` draws for both,
+       never for Free (nothing bought) or Plus (its own `.is-featured` instead). */
+    paid: true,
     checkoutPlan: CHECKOUT_LIVE ? plan : undefined,
   }
 }
@@ -220,14 +176,11 @@ function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn 
 const COLUMNS: PlanColumn[] = [
   {
     name: 'Free',
-    /*
-     * Both states are the same two lines, so the free column does not move under a toggle
-     * that has nothing to say about it. "No card." rather than a blank slot: the absence of
-     * a payment detail is the fact somebody on this column is looking for.
-     */
+    /* Both states are the same, so the free column does not move under a toggle that has
+       nothing to say about it — no suffix either, the same reason. */
     price: {
-      year: { amount: euro('0'), note: 'No card.' },
-      month: { amount: euro('0'), note: 'No card.' },
+      year: { amount: euro('0'), suffix: '' },
+      month: { amount: euro('0'), suffix: '' },
     },
     /*
      * Not «to find out whether this is your app», which framed the free plan as an evaluation
@@ -261,6 +214,9 @@ const COLUMNS: PlanColumn[] = [
      * on the same row would each cancel the other's claim to be the one to pick.
      */
     featured: true,
+    /* Overrides `paidColumn`'s own `paid: true` — Plus gets `.is-featured` instead, and a
+       card must never carry both tints. */
+    paid: false,
   },
   /*
    * Not «with your name» — the phrase the mock uses for premium's booklet — because that
@@ -275,14 +231,6 @@ const COLUMNS: PlanColumn[] = [
     'The whole room follows — unlimited devices, unlimited songs, printed booklet with no credit line.',
   ),
 ]
-
-interface ComparisonRow {
-  label: string
-  /** One small sentence saying what living without this row is like. See the table's comment. */
-  note: string
-  /** Free, Standard, Plus, Premium — in `COLUMNS` order. `null` is "no part of this plan". */
-  cells: (string | null)[]
-}
 
 const INCLUDED = 'Included'
 
@@ -321,6 +269,10 @@ function bookletCell(tier: BookletTier): string | null {
  * Never "0", for the reason `capWorthNaming` exists in `types.ts`: "0 of 0" reads as a fault in
  * the software, and so does a 0 in a table. Free cannot lead a session at all, so this row is
  * simply not part of that plan.
+ *
+ * Premium's own cell is written by hand in `ROWS` rather than through this function — see the
+ * row itself for why "Unlimited" is the v3.4 redesign's deliberate call there, over the "100"
+ * this function would otherwise print.
  */
 function deviceCell(devices: number): string | null {
   return devices === 0 ? null : String(devices)
@@ -348,7 +300,7 @@ function deviceCell(devices: number): string | null {
 const ROWS: ComparisonRow[] = [
   {
     label: 'Songbooks',
-    note: 'The most songbooks one account may hold.',
+    note: 'Maximum number of songbooks.',
     cells: [
       capCell(PLANS.free.songbooks),
       capCell(PLANS.standard.songbooks),
@@ -358,7 +310,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Songs',
-    note: 'The most songs across the whole account, not per songbook.',
+    note: 'Maximum number of songs.',
     cells: [
       capCell(PLANS.free.songs),
       capCell(PLANS.standard.songs),
@@ -376,9 +328,7 @@ const ROWS: ComparisonRow[] = [
    */
   {
     label: 'Reading, offline & sync',
-    note:
-      'Transpose, capo conversion, auto-scroll, and export as ChordPro — offline, and on every ' +
-      'plan including the free one.',
+    note: 'Offline, transpose, capo chord conversion, auto-scroll.',
     cells: [INCLUDED, INCLUDED, INCLUDED, INCLUDED],
   },
   {
@@ -396,7 +346,7 @@ const ROWS: ComparisonRow[] = [
      * reload, and across their other devices. That is true today and stays true the day the
      * client-side half of the gate lands.
      */
-    note: 'Tap any chord for the fingering, on every plan. From Standard up, the choice sticks across reloads and other devices.',
+    note: 'Tap any chord to see the fingering. From Standard up, the choice is remembered across devices.',
     /*
      * All four cells name both instruments, and the free cell used to say just «Guitar» — which
      * was the same false gate the old note claimed, in the one place a reader comparing columns
@@ -411,7 +361,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Printed booklet',
-    note: 'A PDF ready to print: a cover, an index, one song a page.',
+    note: 'A PDF ready to print: cover, index, one song a page.',
     cells: [
       bookletCell(PLANS.free.booklet),
       bookletCell(PLANS.standard.booklet),
@@ -420,37 +370,48 @@ const ROWS: ComparisonRow[] = [
     ],
   },
   {
-    label: 'Starting a Sing Together session',
+    label: '«Sing Together» session',
     /*
-     * "Following one never does, on any plan" is the whole of `GUEST_LINK`'s own claim, kept
-     * here in one clause now that the feature-spotlight band that used to say it at length is
-     * gone (v3.4) — a guest reads the same song, in the same key, on their own phone, with no
-     * account and nothing installed, on every plan on this page. Leading is the part a plan
-     * decides.
+     * The design's own note names the guest's experience, not the cells' own subject (who may
+     * lead) — the same gap the mock itself leaves between this row's note and its cells. Kept
+     * rather than replaced with a note that explains the cells better, matching the design as
+     * given: a guest reads the same song, in the same key, on their own phone, on every plan.
+     * `GUEST_LINK`'s fuller version of this same claim lived in the feature-spotlight band
+     * this row's note now stands in for (v3.4 removed the band).
      */
-    note: 'Leading needs a paid plan. Following one never does, on any plan, with no account and nothing installed.',
+    note: 'Everyone on their own screen, on your line, in your key.',
     cells: (['free', 'standard', 'plus', 'premium'] as const).map((plan) =>
       PLANS[plan].mayLead ? INCLUDED : null,
     ),
   },
   {
-    label: 'Other devices following at once',
-    note: 'The device you play from is never one of them — Standard is a duo, Plus a quartet.',
+    label: '«Sing Together» devices',
+    note: 'Maximum number of devices following a session.',
     cells: [
       deviceCell(PLANS.free.devices),
       deviceCell(PLANS.standard.devices),
       deviceCell(PLANS.plus.devices),
-      deviceCell(PLANS.premium.devices),
+      /*
+       * "Unlimited", the v3.4 design's own call, over the honest "100" `deviceCell` would
+       * otherwise print (`PLANS.premium.devices` really is 100, not null — see its own comment
+       * in `types.ts` on why that stays a real number for the *gate*). This is a labelling
+       * choice on this one table cell, not a change to what `admits` actually enforces in
+       * `singAlong/devices.ts`: a 101st guest is still refused, this cell just no longer says so.
+       */
+      'Unlimited',
     ],
   },
   {
     label: 'Feature requests',
-    note: `Anybody can write to ${CONTACT}, on any plan — Premium's are read first.`,
     /*
-     * "Read first" says what happens, and deliberately not how fast: a response time on a static
-     * page is a promise made on one developer's behalf, and this page must not grow into an SLA.
+     * Matches the design's own cells rather than what the site's support inbox actually does
+     * today (anybody may write in, on any plan). The v3.4 redesign's own call, confirmed
+     * rather than assumed: only Premium gets a row here, so the note says that rather than
+     * softening it into "everyone can write in, Premium is just prioritised" the way the
+     * earlier wording did.
      */
-    cells: ['By email', 'By email', 'By email', 'Read first'],
+    note: 'Premium only — requests go straight to the top of the list.',
+    cells: [null, null, null, 'Yes'],
   },
 ]
 
@@ -506,14 +467,19 @@ export default function PricingPage() {
     <main className="mx-auto w-full max-w-[70rem] px-5 pb-16 pt-8 sm:px-8 sm:pt-12">
       <div className="text-center">
         <span className="pricing-eyebrow">Pricing</span>
-        <h1 className="screen-title mt-5">What Songbook costs</h1>
+        {/*
+          * `.landing-title`, not `.screen-title` — the design's own 48px, matching /login's own
+          * hero rather than the smaller size every other internal screen's H1 uses. This is the
+          * one other page that opens with a title page rather than a place to read from.
+          */}
+        <h1 className="landing-title mt-5">What Songbook costs</h1>
         <p className="mx-auto mt-4 max-w-[38rem] text-[1.03125rem] leading-[1.6] text-muted">
           {HERO_SUBTITLE}
         </p>
       </div>
 
       <section className="mt-8">
-        <PricingPlans columns={COLUMNS}>
+        <PricingPlans columns={COLUMNS} rows={ROWS} tableTitle="What changes between plans">
           {/*
             * Server-rendered, and passed through the client island so it can sit where the
             * reader meets it: under the toggle, above every column it is about. `NO_CHECKOUT`
@@ -526,76 +492,12 @@ export default function PricingPage() {
       </section>
 
       {/*
-        * The tax/currency/no-trial disclosure `LEDE` used to open the page with, demoted here
-        * rather than dropped — see `BILLING_NOTE`'s own comment. Under the grid rather than
-        * above it: these are terms that qualify the prices just shown, not a claim to open on.
-        */}
-      <p className="mx-auto mt-6 max-w-[42rem] text-center text-xs leading-[1.6] text-muted">
-        {BILLING_NOTE}
-      </p>
-
-      <section className="mt-12">
-        <h2 className="landing-feature-title">What each plan includes</h2>
-
-        <div className="plan-table-scroll mt-5">
-          <table className="plan-table">
-            <caption className="sr-only">The four plans compared, feature by feature.</caption>
-
-            <thead>
-              <tr>
-                {/* The row-header column has no heading of its own to give. */}
-                <th scope="col">
-                  <span className="sr-only">Feature</span>
-                </th>
-                {COLUMNS.map((column) => (
-                  <th key={column.name} scope="col">
-                    {column.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {ROWS.map((row) => (
-                <tr key={row.label}>
-                  <th scope="row">
-                    <span className="plan-row-label">{row.label}</span>
-                    <span className="plan-row-note">{row.note}</span>
-                  </th>
-
-                  {row.cells.map((cell, index) => (
-                    <td key={COLUMNS[index].name} className={cell === null ? 'plan-cell-none' : undefined}>
-                      {cell === null ? (
-                        <>
-                          {/*
-                            * A dash is a glyph, not a word: read aloud it is either silence or
-                            * "em dash", and neither says what the cell means. The word goes to
-                            * a screen reader, the glyph to the eye.
-                            */}
-                          <span aria-hidden>—</span>
-                          <span className="sr-only">Not included</span>
-                        </>
-                      ) : (
-                        cell
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="mt-4 max-w-[42rem] text-xs leading-[1.6] text-muted">{FOOTNOTE}</p>
-      </section>
-
-      {/*
         * Rendered only while the offer is open — see `LIFETIME_OPEN`. The block states its own
         * closing date, so left ungated it would spend 2027 advertising a price at a price list's
         * full volume and explaining, in the same breath, that the price is gone.
         */}
       {LIFETIME_OPEN && (
-        <section className="mt-12">
+        <section className="mt-16">
           <div className="lifetime-panel">
             {/*
               * Text on the left, the price on the right — the v3.4 redesign's own layout,
@@ -603,7 +505,7 @@ export default function PricingPage() {
               * `sm:flex-row` so the price block's own right edge lines up with its button
               * underneath it rather than with the panel's own padding.
               */}
-            <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
               <div className="max-w-[32rem]">
                 <span className="lifetime-eyebrow">Pay once</span>
                 <h2 className="lifetime-title">Lifetime</h2>
@@ -629,17 +531,19 @@ export default function PricingPage() {
       )}
 
       {/*
-        * Replaces the whole of "If a plan ends" — see `TRUST_NOTE`'s own comment on what that
+        * Replaces the whole of "If a plan ends" — see `TRUST_NOTE_LEAD`'s own comment on what that
         * traded away. The checkmark-in-a-circle is the smaller sibling of `.hero-badge-icon`'s
         * own on /login, reused here rather than drawn again for the same reason `IconCheck`
         * already exists: one glyph for "this is settled" everywhere it appears.
         */}
-      <section className="mt-8">
+      <section className="mt-6">
         <div className="card trust-note">
           <span className="trust-note-icon">
             <IconCheck size={18} />
           </span>
-          <p className="text-sm leading-[1.5] text-ink">{TRUST_NOTE}</p>
+          <p className="text-sm leading-[1.5] text-ink">
+            <strong>{TRUST_NOTE_LEAD}</strong>. {TRUST_NOTE_REST}
+          </p>
         </div>
       </section>
 
@@ -648,7 +552,7 @@ export default function PricingPage() {
         * columns with no button in any of them is what keeps the page honest while it cannot
         * sell; a single link at the foot is what keeps it useful to somebody who has decided.
         */}
-      <p className="mt-12 text-center text-sm text-muted">
+      <p className="mt-14 text-center text-sm text-muted">
         New here?{' '}
         <Link href="/register" className="text-accent hover:underline">
           Create an account

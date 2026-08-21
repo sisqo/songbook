@@ -1774,7 +1774,7 @@
    */
   .plan-columns {
     display: grid;
-    gap: 0.875rem;
+    gap: 1rem;
     grid-template-columns: 1fr;
   }
 
@@ -1784,9 +1784,24 @@
     }
   }
 
+  /*
+   * The design's own four-column split, 1fr 1fr 1.16fr 1fr rather than an even quarter each:
+   * `Plus`, the third column, is the one carrying the extra padding and the badge above its
+   * own top edge, and an equal share would have squeezed its price and audience line tighter
+   * than its neighbours' for no reason a reader could see. Fixed to the third column by
+   * position, not by a selector keyed on `.is-featured` — `COLUMNS` in `pricing/page.tsx`
+   * never reorders the four plans, so "third" and "the featured one" are the same column by
+   * construction, and a position-based rule needs no update if that ever changed silently.
+   *
+   * `align-items: end` is the other half of the same design choice: the featured card is
+   * taller (`.plan-card.is-featured`'s own padding), and rather than stretching the other
+   * three to match it, every card's own bottom edge lines up and Plus is simply the one that
+   * rises above the row.
+   */
   @media (min-width: 1024px) {
     .plan-columns {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr 1.16fr 1fr;
+      align-items: end;
     }
   }
 
@@ -1798,16 +1813,40 @@
    *
    * `position: relative` is for `.plan-badge`, which anchors to this card and not to the
    * grid — a ribbon positioned against `.plan-columns` would drift the moment a column
-   * before it changed height.
+   * before it changed height. `gap` rather than a `margin-top` on each child: the design's
+   * own recipe, and it is what lets `.is-featured` below carry a slightly larger gap of its
+   * own with no override needed on every child individually.
    */
   .plan-card {
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 1.25rem;
+    gap: 0.75rem;
+    padding: 1.5rem 1.25rem;
+    border-radius: 1.25rem;
+  }
+
+  /*
+   * The middle tier: Standard and Premium both buy something, and both get the same faint
+   * warm tint Free's plain white card does not — the visual step between "not bought" and
+   * "bought" that used to not exist at all. Plus stands apart from this tier too, in
+   * `.is-featured` below, which this selector must lose to on specificity order alone if a
+   * plan were ever both — it never is, by construction, so the order here is not load-bearing
+   * today, only kept because losing it would be the one silent way this could regress.
+   */
+  .plan-card.is-paid {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--edge));
+  }
+
+  .plan-card.is-paid .plan-name {
+    color: color-mix(in srgb, var(--accent) 85%, black);
   }
 
   .plan-card.is-featured {
+    gap: 0.875rem;
+    padding: 2rem 1.5rem 1.625rem;
+    border-radius: 1.5rem;
     border-color: transparent;
     background: color-mix(in srgb, var(--accent) 78%, black);
     box-shadow: 0 1.5rem 3rem -1.25rem color-mix(in srgb, var(--accent) 55%, transparent);
@@ -1821,7 +1860,7 @@
   .plan-badge {
     position: absolute;
     top: -0.8125rem;
-    left: 1.25rem;
+    left: 1.5rem;
     display: inline-flex;
     align-items: center;
     height: 1.625rem;
@@ -1835,10 +1874,11 @@
     text-transform: uppercase;
   }
 
+  /* The design's own 24px, not a caption — the plan's own name is read before its price. */
   .plan-name {
-    color: var(--ink);
-    font-size: 0.9375rem;
-    font-weight: 600;
+    color: var(--muted);
+    font-size: 1.5rem;
+    font-weight: 500;
   }
 
   .plan-card.is-featured .plan-name {
@@ -1847,38 +1887,35 @@
 
   /* The number is the message on this page, so it is the largest thing in the card. */
   .plan-price {
-    margin-top: 0.5rem;
     color: var(--ink);
-    font-size: 1.375rem;
+    font-size: 1.75rem;
     font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
 
+  /* The featured card's own price reads larger than its three neighbours' — the one number
+     on the page this deliberately unequal grid exists to make the largest. */
   .plan-card.is-featured .plan-price {
     color: var(--on-accent);
+    font-size: 2.125rem;
   }
 
-  /*
-   * The line under the amount, and it is never empty: the yearly state says "Billed once
-   * a year." where the monthly state says what twelve of them come to. Both states fill
-   * the slot, so nothing below it moves when the toggle is tapped — a column that jumped
-   * would make the reader re-find the number they were reading.
-   */
-  .plan-price-note {
-    margin-top: 0.25rem;
+  /* «/mo», «/yr» — part of the price's own sentence, never its own line. */
+  .plan-price-period {
+    font-size: 0.875rem;
+    font-weight: 400;
     color: var(--muted);
-    font-size: 0.75rem;
   }
 
-  .plan-card.is-featured .plan-price-note {
+  .plan-card.is-featured .plan-price-period {
     color: color-mix(in srgb, var(--on-accent) 68%, transparent);
   }
 
   .plan-audience {
-    margin-top: 0.875rem;
+    flex: 1;
     color: var(--muted);
-    font-size: 0.8125rem;
+    font-size: 0.84375rem;
     line-height: 1.5;
   }
 
@@ -1887,26 +1924,35 @@
   }
 
   /*
-   * The button, when a card has one, pushed to the card's own bottom edge — so the buttons
-   * line up across a row whose cards hold sentences of different lengths, the same job
-   * `.plan-action`'s state text used to do by always being the thing every card ended with.
-   * A class on the button itself rather than a `:last-child` rule: a paid column with no
-   * `checkoutPlan` yet has no button at all, and `.plan-audience` ending the card there
-   * should keep its ordinary small margin and simply leave the rest of the card's height
-   * empty, not be yanked to the floor because it happened to be last.
+   * The button, when a card has one, pushed to the card's own bottom edge by `.plan-audience`
+   * being the flexible `flex: 1` item above it rather than by a margin on the button itself —
+   * the design's own shape, and what makes a card with no button (a paid column with no
+   * `checkoutPlan` yet) simply end after the audience line instead of leaving a gap where a
+   * margin-driven push would have yanked something to the floor.
    */
   .plan-cta {
-    margin-top: auto;
+    height: 2.75rem;
+    font-weight: 600;
+  }
+
+  /* Free's own button: an outline with nothing behind it, never `.btn`'s usual raised fill —
+     the one card on the page that is not selling anything. */
+  .plan-cta:not(.btn-primary) {
+    height: 2.5rem;
+    background: transparent;
+    box-shadow: none;
   }
 
   /*
    * The featured card's own button reads backwards from `.btn-primary` everywhere else:
    * light on a card that is already the darkest thing in the grid, the same inversion
-   * `.feature-spotlight`'s own children take against its solid `--accent` fill.
+   * `.feature-spotlight`'s own children take against its solid `--accent` fill. Bolder too —
+   * 700 rather than 600 — the one button on the page meant to look like the obvious tap.
    */
-  .plan-card.is-featured .btn-primary {
+  .plan-card.is-featured .plan-cta {
     background: var(--on-accent);
     color: color-mix(in srgb, var(--accent) 85%, black);
+    font-weight: 700;
   }
 
   /*
@@ -1915,6 +1961,20 @@
    * fit a phone, and the alternative — repeating every row inside each of the four cards
    * on a small screen — says every consequence four times and quadruples the markup.
    */
+  /*
+   * The design's own rounded, bordered frame around the whole table — new in v3.4, where the
+   * table used to sit directly on the page with nothing but its own row lines. `overflow:
+   * hidden` is what clips the table's own square corners to this frame's rounded ones; it
+   * cannot also be what scrolls the table sideways, which is why that job stays on
+   * `.plan-table-scroll`, nested one level in rather than folded into this rule.
+   */
+  .plan-table-frame {
+    border-radius: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    overflow: hidden;
+  }
+
   .plan-table-scroll {
     overflow-x: auto;
     /* A little air under the last row, so the scrollbar a desktop browser draws inside this
@@ -1944,12 +2004,12 @@
      * remaining space is split equally between the columns that name no width of their own.
      */
     table-layout: fixed;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
   }
 
   .plan-table th,
   .plan-table td {
-    padding: 0.75rem 0.75rem;
+    padding: 0.9375rem 0.875rem;
     text-align: left;
     vertical-align: top;
     border-bottom: 1px solid var(--line);
@@ -1957,12 +2017,58 @@
     font-weight: 400;
   }
 
+  .plan-table thead tr {
+    border-bottom: 1px solid var(--edge);
+  }
+
+  /*
+   * The header cell used to hold only the plan's name, uppercase and small like every other
+   * table header on the web; the design's own header holds the name at reading size and the
+   * price beneath it, which is `.plan-table-name`/`.plan-table-price` below rather than a
+   * bare text node, so the two can be sized apart from each other.
+   */
   .plan-table thead th {
-    color: var(--muted);
-    font-size: 0.6875rem;
+    padding-top: 1.125rem;
+    padding-bottom: 1.125rem;
+  }
+
+  .plan-table-name {
+    display: block;
+    color: var(--ink);
+    font-size: 1.0625rem;
     font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  }
+
+  .plan-table-price {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--muted);
+    font-size: 0.78125rem;
+    font-weight: 400;
+  }
+
+  /*
+   * The featured column's own tint, carried down every row of the body as well as the
+   * header — `.plan-table-name`'s colour included, so the one column the cards raise above
+   * the rest reads as raised here too. A class on the `<th>`/`<td>` itself, set from
+   * `column.featured` at the same index the cell already reads its value from, rather than
+   * an nth-child selector: the design fixes this to the third column by *position*, and this
+   * does it by *identity*, which stays right if the four plans were ever reordered.
+   */
+  .plan-table-featured {
+    background: var(--accent-soft);
+  }
+
+  .plan-table-featured .plan-table-name {
+    color: color-mix(in srgb, var(--accent) 85%, black);
+  }
+
+  .plan-table-featured .plan-table-price {
+    color: color-mix(in srgb, var(--accent) 70%, var(--muted));
+  }
+
+  .plan-table tbody .plan-table-featured {
+    font-weight: 500;
   }
 
   /*
@@ -1973,8 +2079,8 @@
    * `background` and `z-index` are both load-bearing and both easy to leave out: a sticky
    * cell with no fill is transparent, so the scrolling cells slide visibly underneath it,
    * and without the stacking order the borders of those cells are painted on top of it. The
-   * fill is `--bg` because this table sits directly on the page rather than inside a card —
-   * put it in a `.card` and this has to become `--surface` or the seam shows.
+   * fill is `--surface`, not `--bg`: this table sits inside `.plan-table-frame` now (v3.4),
+   * where it used to sit directly on the page — the seam would show against `--bg` here.
    */
   .plan-table th[scope='row'],
   .plan-table thead th:first-child {
@@ -1991,7 +2097,7 @@
      * lines there — which is the right trade, because the sentence is still readable and the
      * numbers it is about are now beside it. */
     width: 13rem;
-    background: var(--bg);
+    background: var(--surface);
     /* The seam. Without it the sticky column and the cell scrolling under it are one surface,
      * and a reader cannot tell that anything is being held in place. Drawn as a shadow rather
      * than a border-right, which `border-collapse` would share with the neighbouring cell and
@@ -2062,7 +2168,7 @@
   .lifetime-panel {
     position: relative;
     padding: 2rem 1.5rem;
-    border-radius: var(--r-2xl);
+    border-radius: 1.5rem;
     background: color-mix(in srgb, var(--accent) 55%, black);
     color: var(--on-accent);
     overflow: hidden;
@@ -2088,7 +2194,7 @@
   .lifetime-title {
     margin-top: 0.625rem;
     color: var(--on-accent);
-    font-size: 1.625rem;
+    font-size: 1.875rem;
     font-weight: 500;
     letter-spacing: -0.02em;
   }
@@ -2105,7 +2211,7 @@
      eye reads "was, now" in that order regardless of which number is visually larger. */
   .lifetime-original {
     color: color-mix(in srgb, var(--on-accent) 62%, transparent);
-    font-size: 1.375rem;
+    font-size: 1.625rem;
     font-weight: 500;
     text-decoration: line-through;
   }
@@ -2113,7 +2219,7 @@
   .lifetime-price {
     margin-top: 0.125rem;
     color: var(--on-accent);
-    font-size: 2.75rem;
+    font-size: 3.25rem;
     font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1.1;
