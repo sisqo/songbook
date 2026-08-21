@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 export const metadata: Metadata = { title: 'Terms of Service' }
 
@@ -8,14 +9,15 @@ export default function TermsOfServicePage() {
   return (
     <>
       <h1>Terms of Service</h1>
-      <p className="legal-updated">Last updated: 16 August 2026</p>
+      <p className="legal-updated">Last updated: 21 August 2026</p>
 
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Strumfolio (&ldquo;the
-        Service&rdquo;), a personal, non-commercial project provided free of charge at
-        strumfolio.com by an individual developer (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By
-        accessing or using Strumfolio, including by joining a Sing Together session through a shared
-        link, you agree to these Terms.
+        Service&rdquo;), run at strumfolio.com by an individual developer rather than a company
+        (&ldquo;we&rdquo;, &ldquo;us&rdquo;). Strumfolio offers a free plan with no end date, and paid
+        plans with additional limits and features — see our <Link href="/pricing">Pricing</Link> page
+        for what each plan includes and costs. By accessing or using Strumfolio, including by joining a
+        Sing Together session through a shared link, you agree to these Terms.
       </p>
 
       <h2>1. The Service</h2>

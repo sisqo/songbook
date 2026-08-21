@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <>
       <h1>Privacy Policy</h1>
-      <p className="legal-updated">Last updated: 16 August 2026</p>
+      <p className="legal-updated">Last updated: 21 August 2026</p>
 
       <p>
         This Privacy Policy explains how Strumfolio (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses, and
@@ -18,8 +18,9 @@ export default function PrivacyPolicyPage() {
 
       <h2>1. Who we are</h2>
       <p>
-        Strumfolio (strumfolio.com) is a personal, non-commercial project, free to use, run by an
-        individual developer, with no company or commercial entity behind it. That individual is the
+        Strumfolio (strumfolio.com) is run by an individual developer, with no company or commercial
+        entity behind it, offering a free plan and paid plans — see our{' '}
+        <Link href="/pricing">Pricing</Link> page for details. That individual is the
         data controller for the personal data described in this policy, and can be reached at the
         contact address below. If you need the controller&apos;s full identity — for example to
         exercise your rights or to file a complaint — write to that address and we will provide it
@@ -48,6 +49,12 @@ export default function PrivacyPolicyPage() {
           never receive your Google password.
         </li>
       </ul>
+      <p>
+        <strong>Plan and billing status.</strong> Which plan your account is on, including any paid
+        plan, its renewal or expiry date, and any upgrade, downgrade or cancellation you have already
+        scheduled. Strumfolio does not currently collect or transmit any payment card details — see our{' '}
+        <Link href="/pricing">Pricing</Link> page for the plans on offer.
+      </p>
       <p>
         <strong>Preferences.</strong> Basic display and app settings you choose, stored on your device
         or with your account so that the app behaves the way you left it.

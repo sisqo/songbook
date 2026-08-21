@@ -9,12 +9,13 @@ export default function ContentCopyrightNoticePage() {
   return (
     <>
       <h1>Content &amp; Copyright Notice</h1>
-      <p className="legal-updated">Last updated: 16 August 2026</p>
+      <p className="legal-updated">Last updated: 21 August 2026</p>
 
       <p>
-        Strumfolio (strumfolio.com) is a free, non-commercial project — a tool for managing your own
-        personal song collection. This notice clarifies how content and copyright work within the
-        Service.
+        Strumfolio (strumfolio.com) is a tool for managing your own personal song collection, run by an
+        individual developer rather than a company, with a free plan and paid plans. This notice
+        clarifies how content and copyright work within the Service, regardless of which plan an
+        account is on.
       </p>
 
       <h2>1. No built-in song library</h2>
