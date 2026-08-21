@@ -1,6 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans, Geist_Mono } from 'next/font/google'
+import { Geist_Mono, Outfit } from 'next/font/google'
 
 import { OfflineSync } from '@/components/OfflineSync'
 import { RoleProvider } from '@/components/RoleProvider'
@@ -10,25 +10,19 @@ import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 import './globals.css'
 
 /*
- * DM Sans reads the app, Geist Mono reads the ChordPro.
+ * Outfit reads the app, Geist Mono reads the ChordPro.
  *
  * The variables are named for the job rather than the typeface, because the sheet
  * and the editor both depend on the app font being one thing: the editor positions
  * chords by measuring a hidden copy of the words, so the copy and the input have to
  * be set in the same family, and a name like `--font-sans` is the thing they share.
+ *
+ * No `axes` option here, unlike the DM Sans this replaced: Outfit's variable font
+ * ships weight only, with no optical-size axis to ask for by name.
  */
-const sans = DM_Sans({
+const sans = Outfit({
   variable: '--font-sans',
   subsets: ['latin'],
-  /*
-   * The optical size has to be asked for by name, or the family arrives pinned at
-   * the size it is drawn for a paragraph. That is what the landing headline was
-   * being set in: at 62px the text cut runs 10% wider than the display cut and
-   * reads visibly loose between the letters, whatever `letter-spacing` says. With
-   * the axis shipped, `font-optical-sizing` (already the browser's default) tightens
-   * the fit as the size grows and leaves body copy where it always was.
-   */
-  axes: ['opsz'],
 })
 
 const mono = Geist_Mono({

@@ -296,9 +296,8 @@
     color: var(--accent);
     font-family: inherit;
     /*
-     * Smaller and lighter than the words, and lighter than it used to be: DM Sans
-     * sets a 600 at this size heavier than Geist did, and a chord that competes
-     * with the syllable under it is a chord you read instead of singing.
+     * Smaller and lighter than the words: a chord that competes with the
+     * syllable under it is a chord you read instead of singing.
      */
     font-size: 0.7em;
     font-weight: 500;

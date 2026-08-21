@@ -32,35 +32,35 @@ colors:
   success-night-soft: "#17281c"
 typography:
   screen-title:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 500
     lineHeight: 1.1
     letterSpacing: "-0.03em"
   section-title:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "1.1875rem"
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: "-0.02em"
   hero-title:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "clamp(2.5rem, 5vw, 3.875rem)"
     fontWeight: 500
     lineHeight: 1
     letterSpacing: "-0.04em"
   body:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 500
     letterSpacing: "0.08em"
   chord:
-    fontFamily: "DM Sans, system-ui, sans-serif"
+    fontFamily: "Outfit, system-ui, sans-serif"
     fontSize: "0.7em"
     fontWeight: 500
     lineHeight: 1.4
@@ -170,10 +170,10 @@ A warm, restrained palette: one reserved accent, everything else a step on a pap
 
 ## 3. Typography
 
-**Display / Body Font:** DM Sans (with `system-ui, sans-serif` fallback)
+**Display / Body Font:** Outfit (with `system-ui, sans-serif` fallback)
 **Label/Mono Font:** Geist Mono (chords' tab blocks and monospaced values only)
 
-**Character:** A single warm geometric-humanist sans carries every weight of voice in the app, from a hero headline to a field label — restrained rather than a display/body pairing, so nothing in the interface competes for attention with the song itself. Geist Mono appears only where alignment is literal (tablature), never as a stylistic accent.
+**Character:** A single geometric sans carries every weight of voice in the app, from a hero headline to a field label — restrained rather than a display/body pairing, so nothing in the interface competes for attention with the song itself. Geist Mono appears only where alignment is literal (tablature), never as a stylistic accent.
 
 ### Hierarchy
 - **Hero** (500, `clamp(2.5rem, 5vw, 3.875rem)`, line-height 1, letter-spacing -0.04em): the one headline on the public page — the payoff, not the app name.
@@ -184,7 +184,7 @@ A warm, restrained palette: one reserved accent, everything else a step on a pap
 - **Chord** (500, 0.7em relative to its lyric line, letter-spacing 0): deliberately smaller and lighter than the lyric underneath it — a chord you read instead of sing is a chord sized wrong.
 
 ### Named Rules
-**The One Voice Rule.** DM Sans, in weight 400 or 500, for everything except tablature. No second display font, no bold (600+) outside chord names and a handful of emphatic labels.
+**The One Voice Rule.** Outfit, in weight 400 or 500, for everything except tablature. No second display font, no bold (600+) outside chord names and a handful of emphatic labels.
 
 ## 4. Elevation
 
@@ -245,4 +245,4 @@ A single floating pill-shaped dock (`--r-2xl`, `--shadow-float`) pinned above th
 - **Don't** use a side-stripe (`border-left`/`border-right` > 1px) as a decorative colored accent anywhere outside the sheet's own chorus/bridge indent, which is the one place this app uses it and does so as a diluted accent tint, not a flat color bar.
 - **Don't** give a disabled primary button a faded/opacity treatment — drop the fill to the flat disabled state instead.
 - **Don't** let a translucent or blurred surface sit over the song sheet — the top bar tried this and it let lyrics show through; use a solid page-colored background instead.
-- **Don't** introduce a second display font or a bold weight above 600 outside chord names — DM Sans at 400/500 carries the whole system.
+- **Don't** introduce a second display font or a bold weight above 600 outside chord names — Outfit at 400/500 carries the whole system.

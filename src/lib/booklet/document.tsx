@@ -23,7 +23,7 @@
  * (warm off-black ink, terracotta accent, a ladder of greys for rules and
  * captions) is its own, separate from the screen theme in `DESIGN.md`.
  *
- * Helvetica and Courier, not DM Sans and Geist Mono: the app's own fonts are
+ * Helvetica and Courier, not Outfit and Geist Mono: the app's own fonts are
  * `next/font/google` files this page has no path to at the moment a booklet is
  * generated, and fetching them from a CDN on demand would make "download a
  * booklet" the one feature in the app that stops working offline — the thing
