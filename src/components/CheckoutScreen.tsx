@@ -7,15 +7,17 @@ import { IconInfo } from '@/components/icons'
 import { loadCheckoutStatus, mockPurchase, type MockSubscriptionState } from '@/lib/plans/checkout'
 import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
 import type { BillingPeriod, CheckoutPlan, PaidPlan } from '@/lib/plans/prices'
+import { ACCEPTED_TEST_CARD, isAcceptedTestCard } from '@/lib/plans/testCard'
 import { PLAN_LABEL } from '@/lib/plans/types'
 
 /**
- * Fake, and never read past this component: a real card was never going to reach this
- * database, and `mockPurchase` takes no card fields at all — these exist only so trying the
- * flow feels like a checkout rather than a bare button, and they are prefilled with the usual
- * test-suite numbers so trying it needs no typing.
+ * Fake, and never sent anywhere past this component: a real card was never going to reach
+ * this database, and `mockPurchase` takes no card fields at all. What the number typed here
+ * decides is read entirely in `buy`, below, before `mockPurchase` is ever called — see
+ * `isAcceptedTestCard`'s own comment. Prefilled with the number that succeeds, so trying the
+ * flow needs no typing; typing over it is how a tester tries the decline path instead.
  */
-const FAKE_CARD = { name: '', number: '4242 4242 4242 4242', expiry: '12 / 30', cvc: '123' }
+const FAKE_CARD = { name: '', number: ACCEPTED_TEST_CARD, expiry: '12 / 30', cvc: '123' }
 
 type Status =
   | { state: 'loading' }
@@ -75,6 +77,11 @@ export function CheckoutScreen({
     setBusy(true)
     setError(null)
     setDone(null)
+    if (!isAcceptedTestCard(card.number)) {
+      setError('Card declined. Try 4111 1111 1111 1111.')
+      setBusy(false)
+      return
+    }
     try {
       const result = await mockPurchase(plan, cycle)
       if (!result.ok) {
@@ -164,9 +171,9 @@ export function CheckoutScreen({
             )}
 
             {/*
-              * Decorative only — see this file's own comment on `FAKE_CARD`. Kept as real
-              * controlled inputs rather than static text so the flow feels like a checkout,
-              * not to collect anything: `buy` above never reads `card` at all.
+              * Real controlled inputs rather than static text, so the flow feels like a
+              * checkout — but only `number` is ever read, by `buy` above, and only to decide
+              * accept or decline. Name, expiry and CVC stay decorative, the same as before.
               */}
             <div className="mt-4 grid gap-2.5">
               <label className="flex flex-col gap-1">
