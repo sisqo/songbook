@@ -14,15 +14,23 @@ import { APP_NAME } from '@/lib/brand'
  * every page needs regardless of who is reading it, which is why it is the one thing this
  * header exists to hold.
  *
+ * `width` sets `--top-bar-width`, the same variable `.top-bar-inner` reads for `TopBar`'s own
+ * `max-w-3xl`/48rem default. Every page this renders on is a different shape from every other
+ * — a 70rem landing page, a 42rem legal document, a 24rem sign-in card — and a header with one
+ * borrowed width would line its brand mark and its theme switch up with nothing on most of
+ * them. There is no default here, on purpose: every call site names the width it actually
+ * uses, so a page added later without one is a build-time prop error rather than a header
+ * that quietly stops matching what it sits on.
+ *
  * The brand mark is the way back to `/` — for the legal pages this replaces the bespoke
  * «← Songbook» link `(legal)/layout.tsx` used to draw inline, and for `/pricing` the inline
  * one that sat above its own heading; a second way home directly under this bar would only
  * repeat what the header already says.
  */
-export function PublicHeader() {
+export function PublicHeader({ width }: { width: string }) {
   return (
     <header className="top-bar">
-      <div className="top-bar-inner">
+      <div className="top-bar-inner" style={{ '--top-bar-width': width } as React.CSSProperties}>
         <Link href="/" className="brand" aria-label={`${APP_NAME}, home`}>
           <span className="brand-mark">
             <IconNote size={15} />

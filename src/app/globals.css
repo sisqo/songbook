@@ -2016,11 +2016,18 @@
     background: var(--bg);
   }
 
+  /*
+   * `--top-bar-width` rather than a bare `48rem`: `TopBar` never sets it, so every screen it
+   * draws keeps today's width — the same `max-w-3xl` every internal page's own `<main>` uses
+   * — while `PublicHeader` sets it per page (`login`'s 70rem, the legal pages' 42rem, the
+   * narrow auth forms' 24rem...) so the bar above a page lines up with that page's own left
+   * and right edges instead of one width borrowed from a screen shaped nothing like it.
+   */
   .top-bar-inner {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    max-width: 48rem;
+    max-width: var(--top-bar-width, 48rem);
     margin-inline: auto;
     padding: 0.75rem 1rem;
   }

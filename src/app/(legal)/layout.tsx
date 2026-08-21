@@ -15,7 +15,8 @@ import { PublicHeader } from '@/components/PublicHeader'
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader />
+      {/* 42rem, matching this shell's own `<main className="... max-w-2xl ...">` below. */}
+      <PublicHeader width="42rem" />
 
       <main className="mx-auto max-w-2xl px-5 pb-16 pt-8 sm:pt-12">
         <article className="legal-content mt-6">{children}</article>

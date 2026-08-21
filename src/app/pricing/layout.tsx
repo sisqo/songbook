@@ -9,7 +9,8 @@ import { PublicHeader } from '@/components/PublicHeader'
 export default function PricingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader />
+      {/* 70rem, matching this page's own `<main className="... max-w-[70rem] ...">`. */}
+      <PublicHeader width="70rem" />
       {children}
     </>
   )

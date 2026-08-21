@@ -1,20 +1,16 @@
 import { PublicHeader } from '@/components/PublicHeader'
 
 /**
- * The shell shared by every sign-in-adjacent page — login, register, forgot/reset password,
- * email verification — the same reasoning `(legal)/layout.tsx` already applies to its own
- * four pages, and a route group rather than a fifth hand-written `<PublicHeader />` (this
- * group's route segment is invisible in the URL, so `/login` still means `/login`).
- *
- * `PublicHeader` and nothing else: each page below still draws its own hero mark, card and
- * `Footer`, exactly as it did before this group existed. This adds only the bar above them —
- * the brand mark as the way home, and the one control every page needs regardless of who is
- * reading it, the theme switch — where previously there was none.
+ * The shell shared by the four narrow sign-in-adjacent pages — register, forgot/reset
+ * password, email verification — each a single `max-w-sm` card and nothing wider, which is
+ * why they share one layout and one width where `/login` (the full landing page, 70rem) does
+ * not: see that page's own `layout.tsx` for why it moved out of this group. 24rem, matching
+ * the card every one of these four pages centers on its own.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader />
+      <PublicHeader width="24rem" />
       {children}
     </>
   )
