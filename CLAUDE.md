@@ -69,12 +69,12 @@ way or be ready to `rm -rf .next` and restart it afterward (`nohup npm run dev >
 disown`). This machine tends to accumulate orphaned `next dev` processes across sessions;
 clean up your own before leaving.
 
-## Domain, email and CAPTCHA: four independent places, four different access methods
+## Domain, email and CAPTCHA: five independent places, five different access methods
 
 The production domain moved twice on 2026-08-21 (`songbook.sisqo.dev` →
 `strumfolio.sisqo.dev` → `strumfolio.com`, the last one a real purchased domain on the
-Vercel registrar). Each move touches four separate systems, each configured a different
-way — a future domain change needs all four again, not just the DNS/Vercel part:
+Vercel registrar). Each move touches five separate systems, each configured a different
+way — a future domain change needs all five again, not just the DNS/Vercel part:
 
 - **Vercel** (project domains + DNS zone) — fully API/CLI-automatable: `vercel dns add`,
   and `POST`/`DELETE` on `/v9/projects/<id>/domains` for attaching/detaching a hostname to
@@ -99,6 +99,16 @@ way — a future domain change needs all four again, not just the DNS/Vercel par
   from DNS or Vercel. The site key itself does not change when the domain does; only the
   allowlist does. No Cloudflare API credential is available in this repo — this one is a
   manual dashboard step every time, with no way for an agent to verify or automate it.
+- **Gmail "Invia messaggi come" (reply-as `info@<domain>`)** — separate from ImprovMX's
+  inbound forwarding: to let the human actually *reply* from Gmail so it shows as
+  `info@<domain>` (not the personal Gmail address), Gmail is configured with a custom SMTP
+  relay via Resend (`smtp.resend.com:587`, user `resend`, password a dedicated Resend API
+  key with `permission: sending_access` scoped to that domain's `domain_id` — deliberately
+  not the app's own `RESEND_API_KEY`, so rotating one never breaks the other). Not ImprovMX's
+  own SMTP, which is a paid add-on; ImprovMX's free tier only forwards inbound. This only
+  works because the domain is already Resend-verified for sending (see above) — no new DNS.
+  The credential lives in Gmail's own account settings, not in this repo or any env var, so
+  it has to be redone by hand on every domain move, same as Turnstile's allowlist.
 
 `AUTH_URL` is deliberately **not set** in Production (removed 2026-08-21, was pinned to
 the old domain and caused cross-domain login redirects). NextAuth v5 derives the origin
