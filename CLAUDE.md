@@ -69,6 +69,44 @@ way or be ready to `rm -rf .next` and restart it afterward (`nohup npm run dev >
 disown`). This machine tends to accumulate orphaned `next dev` processes across sessions;
 clean up your own before leaving.
 
+## Domain, email and CAPTCHA: four independent places, four different access methods
+
+The production domain moved twice on 2026-08-21 (`songbook.sisqo.dev` →
+`strumfolio.sisqo.dev` → `strumfolio.com`, the last one a real purchased domain on the
+Vercel registrar). Each move touches four separate systems, each configured a different
+way — a future domain change needs all four again, not just the DNS/Vercel part:
+
+- **Vercel** (project domains + DNS zone) — fully API/CLI-automatable: `vercel dns add`,
+  and `POST`/`DELETE` on `/v9/projects/<id>/domains` for attaching/detaching a hostname to
+  the project. `strumfolio.com`'s zone lives on Vercel's own nameservers, so this repo's
+  agent can add DNS records for it directly, the same as for a `sisqo.dev` subdomain.
+- **Resend** (`RESEND_FROM`'s sending domain) — automatable with `RESEND_API_KEY` from
+  `.env.local`. Its DKIM/SPF verification lives on a **dedicated `send.<domain>`
+  subdomain that Resend itself requires** (e.g. `send.strumfolio.com`), never the apex —
+  so it coexists with ImprovMX's own apex-level MX/TXT below without conflict. Don't
+  "simplify" either set of records thinking they're redundant with the other; they answer
+  different questions (who may send as this domain, vs. where mail sent *to* this domain
+  goes).
+- **ImprovMX** (inbox forwarding for `info@<domain>`, the four legal pages' `CONTACT`) —
+  DNS-only from here: adding the MX/TXT records makes the domain *routable* to ImprovMX,
+  but the actual "forward to my real inbox" rule lives in ImprovMX's own dashboard, behind
+  no credential available in this repo or to any agent. Confirm the alias is live with a
+  real test send (`POST /emails` on the Resend API, `from` the verified domain, then check
+  `last_event` on the returned id) rather than assuming DNS alone is enough.
+- **Cloudflare Turnstile** (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, the CAPTCHA on registration
+  and password recovery) — a per-widget **hostname allowlist** set in the Cloudflare
+  dashboard (Turnstile → the widget → Settings → Hostname Management), entirely separate
+  from DNS or Vercel. The site key itself does not change when the domain does; only the
+  allowlist does. No Cloudflare API credential is available in this repo — this one is a
+  manual dashboard step every time, with no way for an agent to verify or automate it.
+
+`AUTH_URL` is deliberately **not set** in Production (removed 2026-08-21, was pinned to
+the old domain and caused cross-domain login redirects). NextAuth v5 derives the origin
+from the request's `Host` header instead (`trustHost`, automatic on Vercel), which is what
+lets every domain attached to the project work correctly on its own — re-adding it would
+undo that and should only happen if the request host ever stops being trustworthy (e.g.
+behind a proxy that rewrites it).
+
 ## Plans, entitlements and the mock checkout (`src/lib/plans/`)
 
 - `types.ts` — `Plan`, `PLANS` (the limits table), `PLAN_RANK` (generosity order, not price).
