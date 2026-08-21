@@ -15,7 +15,6 @@ import {
   IconImport,
   IconLeads,
   IconLink,
-  IconNote,
   IconOnStage,
   IconPrint,
   IconSliders,
@@ -391,11 +390,12 @@ export default async function LoginPage({ searchParams }: Props) {
         <div className="landing-hero-grain" aria-hidden />
 
         <div className="landing-hero-grid landing-width">
+          {/* Both render; CSS shows one — see the same comment in TopBar.tsx. */}
           <span className="hero-badge">
-            <span className="hero-badge-icon">
-              <IconNote />
-            </span>
-            {APP_NAME}
+            {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+            <img src="/lockup-horizontal-black.svg" alt={APP_NAME} className="lockup-light" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+            <img src="/lockup-horizontal-white.svg" alt={APP_NAME} className="lockup-dark" />
           </span>
 
           {/*

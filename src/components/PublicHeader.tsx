@@ -1,14 +1,13 @@
 import Link from 'next/link'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
 /**
  * The header on every page that is not `TopBar`'s to draw: login, register, the password
  * recovery pair, email verification, pricing, and the four legal pages — everywhere a reader
  * may be signed out, or never signs in at all. Same bar, same brand mark, as `TopBar`'s own
- * (`.top-bar`/`.top-bar-inner`/`.brand`/`.brand-mark`, reused rather than redrawn), so the one
+ * (`.top-bar`/`.top-bar-inner`/`.brand`, reused rather than redrawn), so the one
  * thing that changes between "inside" and "outside" the app is what sits on the right of it:
  * a menu built for a signed-in reader there, only the theme switch here — the one control
  * every page needs regardless of who is reading it, which is why it is the one thing this
@@ -31,11 +30,12 @@ export function PublicHeader({ width }: { width: string }) {
   return (
     <header className="top-bar">
       <div className="top-bar-inner" style={{ '--top-bar-width': width } as React.CSSProperties}>
+        {/* Both render; CSS shows one — see the same comment in TopBar.tsx. */}
         <Link href="/" className="brand" aria-label={`${APP_NAME}, home`}>
-          <span className="brand-mark">
-            <IconNote size={15} />
-          </span>
-          <span>{APP_NAME}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+          <img src="/lockup-horizontal-black.svg" alt="" className="lockup-light" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+          <img src="/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
         </Link>
 
         <span className="flex-1" />

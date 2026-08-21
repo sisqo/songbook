@@ -202,10 +202,20 @@ vengono da un pacchetto di asset disegnati (nota su libro aperto, tile marrone/a
 `#97490F`/`#F1B369`, gli stessi valori di `--accent` chiaro/scuro in `globals.css`), non
 più generati da uno script: quello che c'era (`scripts/icons.ts`, un placeholder disegnato
 a mano) è stato rimosso il 2026-08-21 quando sono arrivati gli asset reali. Il glifo
-inline usato ovunque nell'app (`IconNote` in `src/components/icons.tsx`, e il badge del
-booklet PDF in `src/lib/booklet/document.tsx`) è lo stesso tracciato vettoriale, così
-eredita `--accent`/`--on-accent` invece di portarsi un colore fisso. Per rigenerare o
-ridimensionare qualcosa serve il sorgente vettoriale originale, non questo repo.
+inline usato da sé solo (senza wordmark) — `IconNote` in `src/components/icons.tsx`, il
+badge del booklet PDF in `src/lib/booklet/document.tsx`, il cerchio icona-soltanto delle
+pagine di autenticazione — è lo stesso tracciato vettoriale, così eredita
+`--accent`/`--on-accent` invece di portarsi un colore fisso.
+
+Dove serve il logo per intero (header dell'app, badge sull'hero di `/login`, firma delle
+email), il file è il lockup orizzontale disegnato (`public/lockup-horizontal-black.svg` /
+`-white.svg`, icona+wordmark in un'unica immagine) invece di icona+testo composti dal vivo:
+entrambe le varianti sono nel markup, e CSS ne mostra una sola in base al tema
+(`img.lockup-light`/`.lockup-dark` in `globals.css`, stesso doppio blocco chiaro/scuro dei
+token colore — una pagina precachata e statica non può sapere a tempo di render quale
+tema sta guardando il lettore). Nell'email invece è un solo file (`public/email/logo.png`)
+perché lì non c'è alcun tema da seguire. Per rigenerare o ridimensionare qualcosa serve il
+sorgente vettoriale originale, non questo repo.
 
 ## Canzonieri
 

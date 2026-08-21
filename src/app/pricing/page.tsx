@@ -533,8 +533,8 @@ export default function PricingPage() {
 
       {/*
         * Replaces the whole of "If a plan ends" — see `TRUST_NOTE_LEAD`'s own comment on what that
-        * traded away. The checkmark-in-a-circle is the smaller sibling of `.hero-badge-icon`'s
-        * own on /login, reused here rather than drawn again for the same reason `IconCheck`
+        * traded away. The checkmark-in-a-circle is the smaller sibling of `.hero-mark-fill`'s
+        * own on the auth pages, reused here rather than drawn again for the same reason `IconCheck`
         * already exists: one glyph for "this is settled" everywhere it appears.
         */}
       <section className="mt-6">

@@ -37,6 +37,8 @@ function isPublicAsset(pathname: string): boolean {
     pathname === '/apple-touch-icon.png' ||
     pathname === '/favicon.svg' ||
     pathname === '/og-image.png' ||
+    pathname === '/lockup-horizontal-black.svg' ||
+    pathname === '/lockup-horizontal-white.svg' ||
     pathname.startsWith('/icon-') ||
     /*
      * Fetched by whoever opens the email, or by a link-preview bot reading OpenGraph

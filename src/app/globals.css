@@ -840,12 +840,15 @@
   /* ---- Login ---------------------------------------------------------- */
 
   /*
-   * The mark on the public page: two circles, not the squircle `.brand-mark` draws
-   * in the header. A ring around the fill is what makes a solid colour read as a
-   * badge — worth noticing — rather than a tile that happens to be round. Sized by
-   * hand at the same breakpoint as `.landing-title`, for the same reason that one
-   * is: a Tailwind size utility stacked on a custom class is a coin flip over which
-   * one the cascade actually keeps.
+   * The mark on the register/verify/password pages: two circles, icon only — unlike
+   * `.brand`'s full horizontal lockup in the header, or `.hero-badge`'s own copy of
+   * it on /login, this one pairs with `.landing-title` printing the wordmark
+   * separately underneath, so only the icon half of the lockup belongs here. A ring
+   * around the fill is what makes a solid colour read as a badge — worth noticing —
+   * rather than a tile that happens to be round. Sized by hand at the same
+   * breakpoint as `.landing-title`, for the same reason that one is: a Tailwind size
+   * utility stacked on a custom class is a coin flip over which one the cascade
+   * actually keeps.
    */
   .hero-mark {
     display: inline-flex;
@@ -1504,15 +1507,11 @@
     align-items: center;
     width: fit-content;
     margin-inline: auto;
-    gap: 0.8125rem;
-    padding: 0.5rem 1.375rem 0.5rem 0.625rem;
+    padding: 0.625rem 1.25rem;
     border-radius: var(--r-pill);
     background: var(--surface);
     border: 1px solid var(--line);
     box-shadow: var(--shadow-1);
-    font-size: 1.1875rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
   }
 
   @media (min-width: 1024px) {
@@ -1521,38 +1520,20 @@
          pill the whole width of the column, and a pill as long as the headline
          under it reads as a bar, not as a wordmark. */
       margin-inline: 0;
-      gap: 1rem;
-      padding: 0.625rem 1.75rem 0.625rem 0.75rem;
-      font-size: 1.375rem;
+      padding: 0.75rem 1.625rem;
     }
   }
 
-  .hero-badge-icon {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 2.375rem;
-    height: 2.375rem;
-    border-radius: 50%;
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-
-  .hero-badge-icon svg {
-    width: 21px;
-    height: 21px;
+  /* The horizontal lockup, bigger here than `.brand`'s: light/dark pair with
+     `.brand img` in the top-bar rule above. */
+  .hero-badge img {
+    height: 1.75rem;
+    width: auto;
   }
 
   @media (min-width: 1024px) {
-    .hero-badge-icon {
-      width: 2.75rem;
-      height: 2.75rem;
-    }
-
-    .hero-badge-icon svg {
-      width: 24px;
-      height: 24px;
+    .hero-badge img {
+      height: 2.125rem;
     }
   }
 
@@ -2240,7 +2221,7 @@
   }
 
   /* The trust note under the lifetime block — a checkmark in a circle, the smaller sibling
-     of `.hero-badge-icon`'s own, and a plain sentence beside it rather than a card's worth
+     of `.hero-mark-fill`'s own, and a plain sentence beside it rather than a card's worth
      of prose: this page already spent that explanation in "If a plan ends" above it. */
   .trust-note {
     display: flex;
@@ -2303,23 +2284,43 @@
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.5625rem;
     /* Never squeezed by what sits next to it: that is the point of keeping it. */
     flex: none;
-    font-size: 1.0625rem;
-    font-weight: 500;
-    letter-spacing: -0.02em;
   }
 
-  .brand-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.875rem;
-    height: 1.875rem;
-    border-radius: var(--r-xs);
-    background: var(--accent);
-    color: var(--on-accent);
+  /* The horizontal lockup (icon + wordmark, one image): see the light/dark pair below. */
+  .brand img {
+    height: 1.375rem;
+    width: auto;
+  }
+
+  /*
+   * Both lockups render; CSS picks one. Static markup can't ask which theme is
+   * showing — `.brand`/`.hero-badge` are on statically generated, precached pages —
+   * so the swap has to happen the same way the color tokens above do: a rule for
+   * "system says dark, and the reader hasn't overridden it light", and a twin for
+   * "the reader chose dark outright". Keep this in step with those two blocks.
+   */
+  img.lockup-dark {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) img.lockup-light {
+      display: none;
+    }
+
+    :root:not([data-theme='light']) img.lockup-dark {
+      display: block;
+    }
+  }
+
+  :root[data-theme='dark'] img.lockup-light {
+    display: none;
+  }
+
+  :root[data-theme='dark'] img.lockup-dark {
+    display: block;
   }
 
   /*

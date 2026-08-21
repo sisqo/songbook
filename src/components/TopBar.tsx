@@ -4,7 +4,7 @@ import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
-import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
+import { IconChevronLeft, IconChevronRight } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
 export type Section = 'songs' | 'songbooks' | 'export' | 'password' | 'accounts' | 'help' | 'checkout' | 'billing'
@@ -48,11 +48,17 @@ export function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-inner">
+        {/*
+          * Both render; CSS shows one (`.lockup-light`/`.lockup-dark`, globals.css) —
+          * a static, precached page can't know the reader's theme, so a plain `<img>`
+          * pair is what `next/image` would gain nothing over: no responsive source set
+          * to pick between, no format to convert, an SVG already as small as it gets.
+          */}
         <Link href="/" className="brand" aria-label={`${APP_NAME}, all songs`}>
-          <span className="brand-mark">
-            <IconNote size={15} />
-          </span>
-          <span>{APP_NAME}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see comment above */}
+          <img src="/lockup-horizontal-black.svg" alt="" className="lockup-light" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see comment above */}
+          <img src="/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
         </Link>
 
         {back !== undefined && (
