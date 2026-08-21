@@ -12,14 +12,14 @@ export default function ContentCopyrightNoticePage() {
       <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
-        Songbook (songbook.sisqo.dev) is a free, non-commercial project — a tool for managing your own
+        Strumfolio (strumfolio.sisqo.dev) is a free, non-commercial project — a tool for managing your own
         personal song collection. This notice clarifies how content and copyright work within the
         Service.
       </p>
 
       <h2>1. No built-in song library</h2>
       <p>
-        <strong>Songbook does not contain any song lyrics or chord charts of its own.</strong> There
+        <strong>Strumfolio does not contain any song lyrics or chord charts of its own.</strong> There
         is no catalog, library, or pre-loaded content of any kind — the Service ships empty. Every
         song that appears in your collection is content that you have personally typed in or imported
         from a file on your own device.
@@ -32,7 +32,7 @@ export default function ContentCopyrightNoticePage() {
       <h2>2. Your responsibility</h2>
       <p>
         You are solely responsible for ensuring that any lyrics, chords, or other material you import
-        into Songbook:
+        into Strumfolio:
       </p>
       <ul>
         <li>is your own original work, or</li>
@@ -40,7 +40,7 @@ export default function ContentCopyrightNoticePage() {
         <li>you otherwise hold the rights, license, or permission necessary to store and use it.</li>
       </ul>
       <p>
-        Songbook does not review, verify, index, or endorse the content you import, and does not make
+        Strumfolio does not review, verify, index, or endorse the content you import, and does not make
         any user&apos;s content publicly searchable or browsable by other users.
       </p>
 
@@ -53,23 +53,23 @@ export default function ContentCopyrightNoticePage() {
       </p>
       <p>
         This is not a publishing or distribution feature. It does not grant any rights over the
-        underlying copyrighted work to Songbook or to session participants, and participants should
+        underlying copyrighted work to Strumfolio or to session participants, and participants should
         not record or redistribute what is shown to them.
       </p>
       <p>
         Exporting works the same way. The backup and the printable booklet let you download or print
-        your collection for yourself — Songbook does not review what comes out of either, and using it
+        your collection for yourself — Strumfolio does not review what comes out of either, and using it
         beyond personal, informal use is your responsibility, not something the Service authorizes.
       </p>
 
       <h2>4. Copyright concerns</h2>
       <p>
-        If you believe that content stored by a user of Songbook infringes your copyright, contact us
+        If you believe that content stored by a user of Strumfolio infringes your copyright, contact us
         at <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with details of the content, the work you claim
         is infringed, and your contact information.
       </p>
       <p>
-        Content on Songbook lives inside private, individual accounts that we do not routinely access
+        Content on Strumfolio lives inside private, individual accounts that we do not routinely access
         or review — see our <Link href="/privacy-policy">Privacy Policy</Link>. Because of that, we
         cannot verify the substance of a claim ourselves. What we do instead: within a few business
         days, we forward a complete notice to the account holder and ask them to remove the content or

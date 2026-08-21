@@ -8,6 +8,6 @@
  * short beats instead of one clause — so it keeps its own wording instead of
  * borrowing this one.
  */
-export const APP_NAME = 'Songbook'
+export const APP_NAME = 'Strumfolio'
 
 export const APP_PAYOFF = 'Your favorite songs, ready to play'

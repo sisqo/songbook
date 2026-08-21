@@ -11,7 +11,7 @@ export default function CookiePolicyPage() {
       <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
-        This Cookie Policy explains how Songbook uses cookies and similar technologies when you use
+        This Cookie Policy explains how Strumfolio uses cookies and similar technologies when you use
         the Service.
       </p>
 
@@ -32,7 +32,7 @@ export default function CookiePolicyPage() {
         <strong>Google sign-in cookies — only if you choose that method.</strong> Signing in with an
         email and password sets none of these. If you choose to sign in with Google instead, Google
         sets its own cookies on your device as part of that sign-in flow, before you ever reach
-        Songbook. Those cookies are set and controlled by Google under its own cookie and privacy
+        Strumfolio. Those cookies are set and controlled by Google under its own cookie and privacy
         policies, not by us.
       </p>
       <p>
@@ -44,7 +44,7 @@ export default function CookiePolicyPage() {
         purpose, no consent banner is required for it.
       </p>
       <p>
-        <strong>No advertising or third-party tracking.</strong> Songbook does not use cookies for
+        <strong>No advertising or third-party tracking.</strong> Strumfolio does not use cookies for
         advertising, profiling, or third-party tracking of any kind, and does not share data with
         advertising networks.
       </p>
@@ -57,7 +57,7 @@ export default function CookiePolicyPage() {
       </p>
       <p>
         You can also manage or delete cookies through your browser settings. Note that disabling
-        essential cookies may prevent Songbook from working correctly, including keeping you signed
+        essential cookies may prevent Strumfolio from working correctly, including keeping you signed
         in.
       </p>
 

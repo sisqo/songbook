@@ -1,5 +1,5 @@
 ---
-name: Songbook
+name: Strumfolio
 description: A private, warm reading app for a musician's own lyrics and chords
 colors:
   chord-terracotta: "#97490f"
@@ -119,13 +119,13 @@ components:
     padding: "0.25rem 0.625rem"
 ---
 
-# Design System: Songbook
+# Design System: Strumfolio
 
 ## 1. Overview
 
 **Creative North Star: "The Warm Stage Sheet"**
 
-Songbook reads like a sheet of paper laid on top of an app: warm, matte, unhurried,
+Strumfolio reads like a sheet of paper laid on top of an app: warm, matte, unhurried,
 inset from the edges of the screen so the song itself — not the chrome around it — is
 the thing the eye lands on. Nothing here is decorative by default; every token exists
 because a specific reading condition demanded it. Light and dark are each their own
@@ -241,7 +241,7 @@ A single floating pill-shaped dock (`--r-2xl`, `--shadow-float`) pinned above th
 
 ### Don't:
 - **Don't** build anything resembling the ad-heavy, cluttered chord/tab site aesthetic (Ultimate Guitar and similar) — no ad slots, no popups, no competing calls to action around the reading surface.
-- **Don't** default to a generic flat-dark developer-tool look (near-black surface, single neon accent) — Songbook's dark theme is warm and hand-tuned, not a formulaic inversion.
+- **Don't** default to a generic flat-dark developer-tool look (near-black surface, single neon accent) — Strumfolio's dark theme is warm and hand-tuned, not a formulaic inversion.
 - **Don't** use a side-stripe (`border-left`/`border-right` > 1px) as a decorative colored accent anywhere outside the sheet's own chorus/bridge indent, which is the one place this app uses it and does so as a diluted accent tint, not a flat color bar.
 - **Don't** give a disabled primary button a faded/opacity treatment — drop the fill to the flat disabled state instead.
 - **Don't** let a translucent or blurred surface sit over the song sheet — the top bar tried this and it let lyrics show through; use a solid page-colored background instead.

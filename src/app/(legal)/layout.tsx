@@ -9,7 +9,7 @@ import { PublicHeader } from '@/components/PublicHeader'
  * to register, a store reviewer, a data protection authority — so the only navigation
  * is `PublicHeader`'s own brand mark, the way back to the one page that is reachable
  * the same way, plus the one control every page needs regardless of who is reading it:
- * the theme switch. It replaces the bespoke «← Songbook» link this shell used to draw
+ * the theme switch. It replaces the bespoke «← Strumfolio» link this shell used to draw
  * for itself, which said the same thing in a second way.
  */
 export default function LegalLayout({ children }: { children: React.ReactNode }) {

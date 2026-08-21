@@ -11,21 +11,21 @@ export default function TermsOfServicePage() {
       <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
-        These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Songbook (&ldquo;the
+        These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Strumfolio (&ldquo;the
         Service&rdquo;), a personal, non-commercial project provided free of charge at
         songbook.sisqo.dev by an individual developer (&ldquo;we&rdquo;, &ldquo;us&rdquo;). By
-        accessing or using Songbook, including by joining a Sing Together session through a shared
+        accessing or using Strumfolio, including by joining a Sing Together session through a shared
         link, you agree to these Terms.
       </p>
 
       <h2>1. The Service</h2>
       <p>
-        Songbook lets you import, organize, edit and export your own song lyrics and chords, and
+        Strumfolio lets you import, organize, edit and export your own song lyrics and chords, and
         offers features such as key/capo transposition and Sing Together, a feature that syncs a song
         across multiple devices in real time.
       </p>
       <p>
-        <strong>Songbook does not provide, host, or include any pre-existing song lyrics or chord
+        <strong>Strumfolio does not provide, host, or include any pre-existing song lyrics or chord
         charts.</strong> There is no built-in catalog or library of any kind, and the Service does not
         search, fetch, or download content from third-party websites on your behalf. Every song in
         your collection is content that you personally type in or import from a file on your own
@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
       </p>
       <p>
         You may use the Service only if you are legally able to enter into these Terms under the law
-        of your country. If you are a minor, you may use Songbook only with the permission and
+        of your country. If you are a minor, you may use Strumfolio only with the permission and
         involvement of a parent or guardian, who accepts these Terms on your behalf.
       </p>
       <p>
@@ -52,11 +52,11 @@ export default function TermsOfServicePage() {
       <h2>3. Your content</h2>
       <p>
         You retain full ownership of the songs, lyrics, chords and other content you import into
-        Songbook (&ldquo;Your Content&rdquo;). We do not claim any ownership of it. You grant us only
+        Strumfolio (&ldquo;Your Content&rdquo;). We do not claim any ownership of it. You grant us only
         the limited technical permission to store, process and display Your Content as needed to
         operate the Service for you and for the participants you invite to a Sing Together session.
       </p>
-      <p>By using Songbook, you confirm that:</p>
+      <p>By using Strumfolio, you confirm that:</p>
       <ul>
         <li>
           you have the right to import, store and use Your Content (for example, because it is your
@@ -65,7 +65,7 @@ export default function TermsOfServicePage() {
         <li>Your Content does not infringe the intellectual property rights of any third party.</li>
       </ul>
       <p>
-        Songbook is a tool for managing your own content — we do not license, provide, or claim any
+        Strumfolio is a tool for managing your own content — we do not license, provide, or claim any
         rights over song lyrics or chord charts, and none are included with the Service. You are
         solely responsible for the legality of the content you import and use.
       </p>
@@ -86,15 +86,15 @@ export default function TermsOfServicePage() {
 
       <h2>5. Exporting and printing</h2>
       <p>
-        Songbook lets you export Your Content as a backup, or as a typeset PDF booklet meant to be
+        Strumfolio lets you export Your Content as a backup, or as a typeset PDF booklet meant to be
         printed. Once downloaded, a file is outside the Service and entirely in your own hands. You are
         responsible for having the right to print, copy, or hand out Your Content in that form, the
-        same as for anything you import or display within the app — Songbook does not review, endorse,
+        same as for anything you import or display within the app — Strumfolio does not review, endorse,
         or track what happens to an exported file once it has left the Service.
       </p>
 
       <h2>6. Acceptable use</h2>
-      <p>You agree not to use Songbook to:</p>
+      <p>You agree not to use Strumfolio to:</p>
       <ul>
         <li>upload or share content that is illegal, infringes third-party rights, or that you do not have the right to use;</li>
         <li>attempt to disrupt, reverse-engineer, or gain unauthorized access to the Service;</li>
@@ -104,7 +104,7 @@ export default function TermsOfServicePage() {
 
       <h2>7. Availability and no warranty</h2>
       <p>
-        Songbook is provided &ldquo;as is&rdquo; and free of charge, with no warranty of any kind,
+        Strumfolio is provided &ldquo;as is&rdquo; and free of charge, with no warranty of any kind,
         express or implied. While we aim to keep the Service available and reliable, we do not
         guarantee uninterrupted or error-free operation, and we are not liable for temporary
         unavailability of the Service. We may modify, suspend or discontinue the Service, in whole or
@@ -113,15 +113,15 @@ export default function TermsOfServicePage() {
       </p>
       <p>
         <strong>Keep your own backups.</strong> The export feature lets you download your collection
-        at any time, and you should use it regularly rather than relying on Songbook as your only
+        at any time, and you should use it regularly rather than relying on Strumfolio as your only
         copy.
       </p>
 
       <h2>8. Limitation of liability</h2>
       <p>
-        Songbook is provided free of charge, on a non-commercial basis, and is maintained by a single
+        Strumfolio is provided free of charge, on a non-commercial basis, and is maintained by a single
         individual rather than by a company. To the extent permitted by law, we are not liable for any
-        indirect, incidental, or consequential damages arising from your use of Songbook, including
+        indirect, incidental, or consequential damages arising from your use of Strumfolio, including
         loss of data or of content you have imported.
       </p>
       <p>
@@ -133,7 +133,7 @@ export default function TermsOfServicePage() {
       <h2>9. Termination</h2>
       <p>
         We may suspend or terminate access to the Service for accounts that violate these Terms. You
-        may stop using Songbook at any time and delete your account, together with all of Your
+        may stop using Strumfolio at any time and delete your account, together with all of Your
         Content, directly from within the app. Deletion is immediate on the live service; see the
         Privacy Policy for how residual copies in backups and logs are handled.
       </p>
@@ -141,7 +141,7 @@ export default function TermsOfServicePage() {
       <h2>10. Changes to these Terms</h2>
       <p>
         We may update these Terms from time to time. If we make significant changes, we will notify
-        you through the app or by email. Continued use of Songbook after changes take effect
+        you through the app or by email. Continued use of Strumfolio after changes take effect
         constitutes acceptance of the new Terms.
       </p>
 

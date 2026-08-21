@@ -1,11 +1,13 @@
-# Songbook — Piano di implementazione
+# Strumfolio — Piano di implementazione
 
 > Il progetto si chiamava **songs** fino alla v2.4, quando è cambiato solo il nome
 > mostrato. Repo (`sisqo/songbook`) e dominio (`songbook.sisqo.dev`) sono stati spostati
-> in seguito, per allinearli. Resta ferma solo la tabella `songs` nel database: è il nome
-> di un brano, non del progetto — lo schema ha già una `songbooks` distinta per i
-> contenitori — quindi il resto di questo piano la nomina ancora quando parla di quella,
-> di proposito.
+> in seguito, per allinearli. Il 21 agosto 2026 il nome mostrato è cambiato di nuovo, in
+> **Strumfolio**, con repo (`sisqo/strumfolio`), dominio (`strumfolio.sisqo.dev`) e
+> progetto Vercel rinominati in blocco stavolta. Resta ferma in entrambi i casi la
+> tabella `songs` nel database: è il nome di un brano, non del progetto — lo schema ha
+> già una `songbooks` distinta per i contenitori — quindi il resto di questo piano la
+> nomina ancora quando parla di quella, di proposito.
 
 > **Stato:** v1, **v1.1 — canzonieri**, **v1.2 — import e modifica** e **v1.3 — le
 > modifiche si vedono subito** sono consegnate e in produzione su

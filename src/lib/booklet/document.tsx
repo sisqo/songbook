@@ -76,7 +76,7 @@ import { C_MAJOR } from '../music/notes'
 // should wrap at word boundaries, never split one open.
 Font.registerHyphenationCallback((word) => [word])
 
-const SITE_URL = 'songbook.sisqo.dev'
+const SITE_URL = 'strumfolio.sisqo.dev'
 const BRAND_ICON_PATH = 'M10 17.5a3 3 0 1 1-3-3c.6 0 1.15.17 1.6.47V4.8l7.4-1.8v3.1L10.9 7.6v9.9z'
 
 const INK = '#16181d'
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
 
 /**
  * The page number, and — on the plans whose booklet carries it — the "Printed with
- * Songbook · …" line. `brandLine` is decided on the server and travels on `loadBooklet`'s
+ * Strumfolio · …" line. `brandLine` is decided on the server and travels on `loadBooklet`'s
  * result: the PDF is rendered here in the browser, so re-deriving it here would be both a
  * second round trip and a soft gate anybody could flip in devtools.
  *
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
 function Footer({ brandLine, bordered = true }: { brandLine: boolean; bordered?: boolean }) {
   return (
     <View style={[styles.footer, bordered ? styles.footerBordered : undefined]} fixed>
-      <Text style={styles.footerText}>{brandLine ? `Printed with Songbook · ${SITE_URL}` : ''}</Text>
+      <Text style={styles.footerText}>{brandLine ? `Printed with Strumfolio · ${SITE_URL}` : ''}</Text>
       <Text
         style={styles.footerText}
         render={({ pageNumber }) => (pageNumber === 1 ? '' : String(pageNumber))}
@@ -418,7 +418,7 @@ function CoverPage({ booklet, brandLine }: { booklet: Booklet; brandLine: boolea
             <Path d={BRAND_ICON_PATH} fill={BADGE_TEXT} />
           </Svg>
         </View>
-        <Text style={styles.badgeLabel}>Songbook</Text>
+        <Text style={styles.badgeLabel}>Strumfolio</Text>
       </View>
 
       <View style={{ flex: 1 }} />

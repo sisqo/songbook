@@ -585,7 +585,7 @@ describe('the off switch', () => {
 
   /*
    * The whole claim the switch makes: absent SONGBOOK_PLANS, behaviour is what it is today —
-   * and today every booklet carries the «Printed with Songbook» line. This assertion is the
+   * and today every booklet carries the «Printed with Strumfolio» line. This assertion is the
    * switch's only test coverage, because the half that reads the environment is async and
    * queries the database, and this repo has no infrastructure for testing that.
    */

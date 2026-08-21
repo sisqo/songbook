@@ -59,7 +59,7 @@ const NOTHING_PENDING = { pendingPlan: null, pendingCycle: null } as const
  * **Two sentences on two public pages come out the day this is switched on**, and neither is
  * reachable from here by any compiler: `NO_CHECKOUT` in `app/pricing/page.tsx` («no account is
  * being held to the limits below until it opens») and the matching qualifier in /login's "Is
- * Songbook free to use?" answer. Both say that the limits listed beside them are not being
+ * Strumfolio free to use?" answer. Both say that the limits listed beside them are not being
  * enforced, which is true only while this returns false. They are named together because the
  * failure to avoid is not a stale sentence but a disagreement: /pricing hedging while /login
  * states the caps as facts leaves a reader with five songbooks unable to tell which of the two

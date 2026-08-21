@@ -122,7 +122,7 @@ describe('the booklet the pricing page can honestly describe', () => {
     const premium = subscribed('premium')
 
     assert.equal(bookletBrandLine(plus), bookletBrandLine(premium))
-    assert.equal(bookletBrandLine(premium), false, 'neither prints the «Printed with Songbook» line')
+    assert.equal(bookletBrandLine(premium), false, 'neither prints the «Printed with Strumfolio» line')
     assert.equal(plus.refused.booklet, premium.refused.booklet)
     assert.equal(premium.refused.booklet, null, 'both include the booklet')
   })

@@ -97,7 +97,7 @@ export function readPlanStatus(value: unknown): PlanStatus {
 /**
  * How much of the printable booklet a plan includes.
  *
- * `no` is the whole feature withheld; `branded` prints the «Printed with Songbook» line
+ * `no` is the whole feature withheld; `branded` prints the «Printed with Strumfolio» line
  * that every booklet carries today; `plain` prints without it. `custom` is premium's value
  * and today behaves exactly like `plain` — the customizable booklet is a later step, so
  * nothing may gate on `custom` yet. The only question any caller asks of this field in

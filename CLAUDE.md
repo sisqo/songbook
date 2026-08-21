@@ -7,10 +7,10 @@ too and are not repeated below.
 
 ## What this is
 
-Songbook — a private, invite-only PWA for reading a musician's own lyrics/chords on stage:
+Strumfolio — a private, invite-only PWA for reading a musician's own lyrics/chords on stage:
 zoom, auto-scroll, transposition, capo, offline. Next.js 15 App Router, React 19, TypeScript,
 Tailwind v3, Postgres on Neon via Drizzle ORM, NextAuth v5, Serwist for the service worker.
-Deployed on Vercel (`sisqo` account), production at https://songbook.sisqo.dev. Full product
+Deployed on Vercel (`sisqo` account), production at https://strumfolio.sisqo.dev. Full product
 framing lives in `PRODUCT.md`, the visual language in `DESIGN.md`, and the running log of
 decisions in `PLAN.md` / `PLAN-pagamenti.md` (payments/billing).
 

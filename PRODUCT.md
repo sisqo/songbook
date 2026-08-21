@@ -38,7 +38,7 @@ marketing flourish.
 Ad-heavy, cluttered chord/tab sites (Ultimate Guitar and similar) — anything that trades
 distraction-free reading for ad slots, popups, or a busy page. Also avoid generic
 dark-developer-tool aesthetics (flat near-black surfaces with a single neon accent) —
-Songbook's dark theme is warm and hand-tuned, not a default inversion.
+Strumfolio's dark theme is warm and hand-tuned, not a default inversion.
 
 ## Design Principles
 

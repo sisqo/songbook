@@ -12,13 +12,13 @@ export default function PrivacyPolicyPage() {
       <p className="legal-updated">Last updated: 16 August 2026</p>
 
       <p>
-        This Privacy Policy explains how Songbook (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses, and
+        This Privacy Policy explains how Strumfolio (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses, and
         protects your personal data when you use this service.
       </p>
 
       <h2>1. Who we are</h2>
       <p>
-        Songbook (songbook.sisqo.dev) is a personal, non-commercial project, free to use, run by an
+        Strumfolio (strumfolio.sisqo.dev) is a personal, non-commercial project, free to use, run by an
         individual developer, with no company or commercial entity behind it. That individual is the
         data controller for the personal data described in this policy, and can be reached at the
         contact address below. If you need the controller&apos;s full identity — for example to
@@ -54,7 +54,7 @@ export default function PrivacyPolicyPage() {
       </p>
       <p>
         <strong>Content you create.</strong> The songs, lyrics, chords, songbooks and sections you
-        personally import or create. Songbook does not host or provide any pre-existing lyrics,
+        personally import or create. Strumfolio does not host or provide any pre-existing lyrics,
         chords, or song library — all content in your collection comes from you, entered manually or
         imported from files on your own device.
       </p>
@@ -125,7 +125,7 @@ export default function PrivacyPolicyPage() {
 
       <p>
         <strong>Is providing this data required?</strong> Providing an email address is necessary to
-        create an account and use Songbook: without it we cannot provide the Service, and no account
+        create an account and use Strumfolio: without it we cannot provide the Service, and no account
         can be created. Everything else — the songs you add, the preferences you set — is entirely up
         to you.
       </p>
@@ -136,7 +136,7 @@ export default function PrivacyPolicyPage() {
 
       <h2>4. Who processes data on our behalf</h2>
       <p>
-        Songbook is a small project built on a limited number of technical providers. The following
+        Strumfolio is a small project built on a limited number of technical providers. The following
         act as our data processors under a data processing agreement:
       </p>
       <ul>
@@ -208,7 +208,7 @@ export default function PrivacyPolicyPage() {
         and freedoms. To object, write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
       </p>
       <p>
-        Songbook lets you <strong>export your full collection and delete your account directly from
+        Strumfolio lets you <strong>export your full collection and delete your account directly from
         within the app</strong>, at any time and without having to ask us. For anything else, or if a
         self-service option is not working, contact us at <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
         We aim to respond within 30 days.
@@ -224,8 +224,8 @@ export default function PrivacyPolicyPage() {
 
       <h2>9. Children</h2>
       <p>
-        Songbook is a general-purpose tool and is not directed at children. If you are a minor under
-        the law of your country, you should use Songbook only with the involvement and permission of a
+        Strumfolio is a general-purpose tool and is not directed at children. If you are a minor under
+        the law of your country, you should use Strumfolio only with the involvement and permission of a
         parent or guardian. If we become aware that we hold data relating to a child in a way that is
         not permitted under applicable law, we will delete it.
       </p>

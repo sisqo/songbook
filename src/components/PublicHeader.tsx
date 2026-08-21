@@ -23,7 +23,7 @@ import { APP_NAME } from '@/lib/brand'
  * that quietly stops matching what it sits on.
  *
  * The brand mark is the way back to `/` — for the legal pages this replaces the bespoke
- * «← Songbook» link `(legal)/layout.tsx` used to draw inline, and for `/pricing` the inline
+ * «← Strumfolio» link `(legal)/layout.tsx` used to draw inline, and for `/pricing` the inline
  * one that sat above its own heading; a second way home directly under this bar would only
  * repeat what the header already says.
  */

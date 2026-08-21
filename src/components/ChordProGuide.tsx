@@ -51,7 +51,7 @@ export function ChordProGuide() {
       <article className="legal-content" ref={articleRef}>
         <h1>ChordPro format</h1>
         <p className="legal-updated">
-          Every directive Songbook reads and writes, and the two edge cases worth knowing about.
+          Every directive Strumfolio reads and writes, and the two edge cases worth knowing about.
         </p>
 
         <h2>The shape of a song</h2>
@@ -99,14 +99,14 @@ export function ChordProGuide() {
         <p>
           <strong>Not <code>{'{section: ...}'}</code></strong> for the songbook division, even
           though it reads naturally — some ChordPro tools use <code>{'{section: chorus}'}</code> to
-          mark a block of the song, and Songbook would read it exactly that way: as an attempt to
+          mark a block of the song, and Strumfolio would read it exactly that way: as an attempt to
           file the song into a section literally named &quot;chorus&quot;. Use{' '}
           <code>{'{division: ...}'}</code> instead.
         </p>
         <p>
           Anything else — <code>{'{key: ...}'}</code>, <code>{'{tempo: ...}'}</code>,{' '}
           <code>{'{capo: ...}'}</code> — is read and silently ignored, never shown to whoever opens
-          the song. Songbook doesn&apos;t store a key or a capo position for a song: it works the key
+          the song. Strumfolio doesn&apos;t store a key or a capo position for a song: it works the key
           out live from the chords, and a capo is a suggestion made live to whoever&apos;s reading,
           not a fact about the song itself — so there&apos;s nothing for either directive to set.
         </p>

@@ -80,7 +80,7 @@ export default function HelpPage() {
             <Link href="/help/chordpro" className="underline underline-offset-2">
               The full ChordPro reference
             </Link>{' '}
-            covers every directive Songbook reads and writes, for converting a whole collection at
+            covers every directive Strumfolio reads and writes, for converting a whole collection at
             once or handing to an AI doing the converting instead.
           </p>
 

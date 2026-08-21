@@ -59,8 +59,8 @@ const DESCRIPTION =
     : `.`)
 
 /*
- * `title: 'Pricing'` through the root layout's `%s · Songbook` template, so a shared link
- * reads "Pricing · Songbook" and names the app without naming it twice. /login opts out of
+ * `title: 'Pricing'` through the root layout's `%s · Strumfolio` template, so a shared link
+ * reads "Pricing · Strumfolio" and names the app without naming it twice. /login opts out of
  * the template with `absolute` only because its own title already contains the name; this
  * page has no such reason.
  *
@@ -256,7 +256,7 @@ function bookletCell(tier: BookletTier): string | null {
     case 'no':
       return null
     case 'branded':
-      return 'With a «Printed with Songbook» line'
+      return 'With a «Printed with Strumfolio» line'
     case 'plain':
     case 'custom':
       return 'Without that line'
@@ -415,7 +415,7 @@ const ROWS: ComparisonRow[] = [
 ]
 
 /**
- * What Songbook costs — the one page a visitor reads while deciding whether to pay, and the
+ * What Strumfolio costs — the one page a visitor reads while deciding whether to pay, and the
  * only page in the app that has to be readable by somebody who has never signed in and by a
  * reader who signed in months ago, without knowing which of the two is looking.
  *
@@ -471,7 +471,7 @@ export default function PricingPage() {
           * hero rather than the smaller size every other internal screen's H1 uses. This is the
           * one other page that opens with a title page rather than a place to read from.
           */}
-        <h1 className="landing-title mt-5">What Songbook costs</h1>
+        <h1 className="landing-title mt-5">What Strumfolio costs</h1>
         <p className="mx-auto mt-4 max-w-[38rem] text-[1.03125rem] leading-[1.6] text-muted">
           {HERO_SUBTITLE}
         </p>

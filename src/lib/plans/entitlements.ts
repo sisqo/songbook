@@ -321,7 +321,7 @@ export function entitlementsFor(stored: StoredPlan, now: Date, counts: Repertoir
  *
  * Not `PLANS.premium`, and the single difference is `booklet: 'branded'` — which is not an
  * oversight and must never be "upgraded" to `'custom'`. Every booklet this app has ever
- * printed carries the «Printed with Songbook» line (`booklet/document.tsx`), so with the
+ * printed carries the «Printed with Strumfolio» line (`booklet/document.tsx`), so with the
  * switch off `bookletBrandLine` has to keep answering true. The switch promises exactly one
  * thing — absent the flag, behaviour is bit-for-bit what it is today — and "most generous"
  * would break that promise on the one field where today and the best plan disagree. This is
@@ -356,7 +356,7 @@ export const UNGATED: Entitlements = {
 }
 
 /**
- * Whether the printed booklet carries the «Printed with Songbook» footer line.
+ * Whether the printed booklet carries the «Printed with Strumfolio» footer line.
  *
  * The one thing anything reads off `BookletTier` in this run, and it travels to the browser
  * on `loadBooklet`'s result rather than being re-derived there: the PDF is rendered

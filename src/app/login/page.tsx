@@ -68,7 +68,7 @@ const HERO_PILLS: HeroPill[] = [
 ]
 
 export const metadata: Metadata = {
-  // `absolute`, not the root template: this page names itself, and "· Songbook" after
+  // `absolute`, not the root template: this page names itself, and "· Strumfolio" after
   // its own payoff would repeat the name in the same breath.
   title: { absolute: TITLE },
   description: DESCRIPTION,
@@ -123,7 +123,7 @@ interface FaqGroup {
 
 /**
  * The one hedge about whether the limits below are real, said once and read by the single FAQ
- * answer that carries it ("Is Songbook free to use?") — see that answer's own comment on why
+ * answer that carries it ("Is Strumfolio free to use?") — see that answer's own comment on why
  * it is not repeated five times. Reads `plansEnforced()` rather than assuming it is always
  * off, and for the same reason /pricing's `NO_CHECKOUT` does: the two public pages must flip
  * together the day this changes, never one of them left saying the limits aren't real.
@@ -142,11 +142,11 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'Do I need to create my songs from scratch, or can I import what I already have?',
-        a: "No catalog to start from — Songbook isn't a library you browse. You bring your own songs: import what you already have, and your collection is ready to go from day one.",
+        a: "No catalog to start from — Strumfolio isn't a library you browse. You bring your own songs: import what you already have, and your collection is ready to go from day one.",
       },
       {
         q: 'What file formats can I import and export?',
-        a: "Songbook uses ChordPro, the standard format for lyrics and chords. It's easy to import your existing files, edit them inside Songbook, and export them again whenever you need to.",
+        a: "Strumfolio uses ChordPro, the standard format for lyrics and chords. It's easy to import your existing files, edit them inside Strumfolio, and export them again whenever you need to.",
       },
       {
         q: "Can I edit a song after I've added it to my collection?",
@@ -158,7 +158,7 @@ const FAQ: FaqGroup[] = [
          * The counts are stated in the present tense on purpose: whether that is actually so is
          * `PLAN_HOLD`'s question to answer, not this one's — the qualifier is not repeated in
          * each of the five answers and features that name a plan, since five copies of one
-         * caveat is a page that reads as a disclaimer. It is said once, in "Is Songbook free to
+         * caveat is a page that reads as a disclaimer. It is said once, in "Is Strumfolio free to
          * use?", which is the answer every existing reader opens, and pointed to from here.
          */
         a: `The free plan holds ${count(PLANS.free.songbooks, 'songbook')} and ${count(PLANS.free.songs, 'song')}. Standard holds ${count(PLANS.standard.songbooks, 'songbook')} and ${count(PLANS.standard.songs, 'song')}, counted across the whole account rather than per songbook; Plus and above have no limit on either. The pricing page lists all four side by side.`,
@@ -192,7 +192,7 @@ const FAQ: FaqGroup[] = [
     items: [
       {
         q: 'Do I need to install an app, or does it work in the browser?',
-        a: 'Neither an app store nor an install step is required — just open Songbook on your phone like any regular app, straight from the browser.',
+        a: 'Neither an app store nor an install step is required — just open Strumfolio on your phone like any regular app, straight from the browser.',
       },
       {
         q: 'What happens if I lose internet connection while playing?',
@@ -256,7 +256,7 @@ const FAQ: FaqGroup[] = [
     title: 'General',
     items: [
       {
-        q: 'Is Songbook free to use?',
+        q: 'Is Strumfolio free to use?',
         /* It must not open with "Yes": a bare yes is now half true — see `PLAN_HOLD`. */
         a: `There is a free plan, and it does not run out: ${count(PLANS.free.songbooks, 'songbook')}, ${count(PLANS.free.songs, 'song')}, and everything needed to read and play them — no card, and no trial counting down. The paid plans lift those limits and add the printed booklet, the saved ukulele setting and starting a Sing Together session; the pricing page has all four. ${PLAN_HOLD}`,
       },
