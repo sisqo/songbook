@@ -29,16 +29,24 @@ const GIVEABLE = PLAN_VALUES.filter((plan) => plan !== 'free')
  * winner — is unreadable as a control panel. A live premium gift under a live premium
  * subscription reports `source: 'subscription'` (the tie goes to the subscription,
  * `planStateFor`), and a winner-only panel would tell the operator their gift was never saved.
+ *
+ * `line.plan`/`.status`/`.planExpiresOn` already come resolved (`listAccountPlans`, through
+ * `resolveSubscription`), so a scheduled downgrade whose date has passed reads here exactly
+ * as the account's own gate sees it — never the pre-change plan against a date already gone
+ * by. `pendingPlan` is therefore only ever non-null *ahead* of that date, which is exactly
+ * when the extra clause belongs.
  */
 function subscriptionLine(line: AccountPlanLine): string {
   if (line.status === 'expired') return `Subscription — ${line.plan}, expired`
   // `grace` deliberately says nothing about the date: a failing card is virtually always
   // already past period end, which is the whole reason `liveSubscription` ignores dates here.
   if (line.status === 'grace') return `Subscription — ${line.plan}, payment retrying`
+
+  const pendingClause = line.pendingPlan === null ? '' : `, then ${line.pendingPlan}`
   if (line.planExpiresOn === null) {
     return line.plan === 'free' ? 'Subscription — free' : `Subscription — ${line.plan}, no end`
   }
-  return `Subscription — ${line.plan}, until ${line.planExpiresOn}`
+  return `Subscription — ${line.plan}, until ${line.planExpiresOn}${pendingClause}`
 }
 
 /**

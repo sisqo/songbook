@@ -19,10 +19,12 @@
  * every caller passes the instant in. The clock is read at the edges, once per operation, and
  * every edge that does so is a caller of this file — today `entitlementsOf` (`resolve.ts`,
  * the gate), `listAccountPlans` (`accounts/read.ts`, one instant for the whole `/accounts`
- * list, so no two rows can disagree across an expiry boundary) and `setGrant`
- * (`accounts/actions.ts`, one instant shared by the validation and `grantedAt`). A reader
- * auditing "where does this feature read the clock" should grep `new Date()` and trust the
- * rule, not this list.
+ * list, so no two rows can disagree across an expiry boundary), `setGrant`
+ * (`accounts/actions.ts`, one instant shared by the validation and `grantedAt`), and now
+ * `checkout.ts`'s own reads and writes (`loadCheckoutStatus`, `mockPurchase`, `mockCancel`,
+ * `forceExpireNow`), each resolving a scheduled change through `resolveSubscription` at its
+ * own single instant. A reader auditing "where does this feature read the clock" should grep
+ * `new Date()` and trust the rule, not this list.
  *
  * Generosity between the subscription and the manual grant is evaluated **per instant**,
  * never blended: at a given `now` the entitlements are the limits of the higher-ranked side
@@ -38,11 +40,18 @@
  * its own comment.
  */
 
+import type { BillingPeriod } from './prices'
 import { PLANS, PLAN_RANK } from './types'
 import type { LimitReason, Plan, PlanLimits, PlanStatus, RepertoireCounts } from './types'
 
-/** The five plan facts as they come out of one `accounts` row. */
-export interface StoredPlan {
+/**
+ * The subscription half of an `accounts` row — everything `liveSubscription` and
+ * `resolveSubscription` need, and nothing a manual grant ever touches. Split out from
+ * `StoredPlan` so those two functions can be called with exactly this much, rather than with
+ * a full `StoredPlan` carrying two grant fields they would have to be handed as filler
+ * (`grantedPlan: null, grantedUntil: null`) to satisfy a wider type they never read.
+ */
+export interface SubscriptionColumns {
   /** What they bought, as stored — `accounts.plan`, through `readPlan`. */
   plan: Plan
   /**
@@ -52,6 +61,22 @@ export interface StoredPlan {
   expiresAt: Date | null
   /** `accounts.planStatus`, through `readPlanStatus`. */
   status: PlanStatus
+  /**
+   * `accounts.pendingPlan`, through `readPendingPlan` (`types.ts`) — never through `readPlan`,
+   * whose fallback to `'free'` would be read here as a scheduled cancellation. Null means
+   * nothing is scheduled: `expiresAt` will simply lapse the subscription to nothing, the
+   * behaviour this file always had before a pending change existed.
+   */
+  pendingPlan: Plan | null
+  /**
+   * `accounts.pendingCycle`, through `readPendingCycle` (`prices.ts`). Meaningless, and
+   * always null in practice, whenever `pendingPlan` is null or `'free'`.
+   */
+  pendingCycle: BillingPeriod | null
+}
+
+/** The whole of one `accounts` row that this feature reads: the subscription, plus the gift. */
+export interface StoredPlan extends SubscriptionColumns {
   /** A manual gift, in its own columns so a renewal webhook can never overwrite it. */
   grantedPlan: Plan | null
   /** `accounts.grantedUntil`. Null means the gift never runs out. */
@@ -109,6 +134,49 @@ function atCap(cap: number | null, held: number): boolean {
 }
 
 /**
+ * Collapses a scheduled downgrade or cancellation into the plain shape `liveSubscription`
+ * already knew how to read, once its date has actually passed — the one place that rule
+ * lives, so every reader of the row (the gate, `/accounts`, the checkout screen) sees the
+ * same answer instead of three that can drift apart. Pure, like everything else in this
+ * file: `now` is a parameter, nothing here is written back.
+ *
+ * Three ways `pendingPlan` never fires, all deliberate rather than incidental:
+ *
+ * Not `active`. `grace` ignores dates entirely for the same reason `liveSubscription` always
+ * has — a failing card is virtually always already past period end, and a pending change
+ * firing mid-retry would revoke or downgrade the exact customer `grace` exists to protect.
+ * `expired` is already the end of the road; a pending change on it would be resolving a
+ * subscription that is not live to resolve anything from.
+ *
+ * No `expiresAt`. `free` and `lifetime` both carry a null expiry, which means never — there
+ * is no date for a pending change to fire on, so one is never written for either (see
+ * `mockPurchase`/`mockCancel`, `checkout.ts`).
+ *
+ * `now` has not reached `expiresAt` yet. The row still reads exactly as it did before any
+ * change was scheduled — `plan`/`status`/`expiresAt` pass through untouched — with
+ * `pendingPlan`/`pendingCycle` carried alongside so a caller can still say "premium until 12
+ * June, then standard" ahead of the date, which is the whole reason they are returned here
+ * rather than only consumed.
+ *
+ * Once due, this resolves in **one step**, never a recursion: the returned row already has
+ * `pendingPlan: null`, so a second call sees nothing left to resolve. And `expiresAt: null`
+ * on the resolved side is deliberate, not a gap — the "new" plan does not get an invented
+ * next renewal date, because nothing in this mock models renewals for any plan; it simply
+ * stays in force until something else changes the row, the same as every plan `mockPurchase`
+ * has ever written.
+ */
+export function resolveSubscription(stored: SubscriptionColumns, now: Date): SubscriptionColumns {
+  if (stored.status !== 'active') {
+    return { plan: stored.plan, status: stored.status, expiresAt: stored.expiresAt, pendingPlan: null, pendingCycle: null }
+  }
+
+  if (stored.expiresAt === null || stored.pendingPlan === null) return stored
+  if (now.getTime() < stored.expiresAt.getTime()) return stored
+
+  return { plan: stored.pendingPlan, status: 'active', expiresAt: null, pendingPlan: null, pendingCycle: null }
+}
+
+/**
  * The subscription's plan if it is live at `now`, otherwise null.
  *
  * Two ways to be dead and they are not symmetric. `expired` is authoritative even against
@@ -126,12 +194,21 @@ function atCap(cap: number | null, held: number): boolean {
  * time a card has failed the paid period is virtually always already over, so requiring a
  * future date would make `grace` unreachable in practice and revoke the plan of the one
  * customer it was invented to protect.
+ *
+ * Reads through `resolveSubscription` first, so a downgrade or cancellation scheduled ahead
+ * of time applies itself the moment its date passes, with no separate write and no cron —
+ * see that function's own comment. Exported for `checkout.ts`'s `mockPurchase`/`mockCancel`,
+ * which need this exact "what is actually live right now" answer to decide whether a
+ * purchase is an upgrade (immediate) or a downgrade (scheduled), never `planStateFor`'s
+ * blended `effectivePlan` — a manual grant must never be mistaken for the subscription it
+ * sits beside.
  */
-function liveSubscription(stored: StoredPlan, now: Date): Plan | null {
-  if (stored.status === 'expired') return null
-  if (stored.status === 'grace') return stored.plan
-  if (stored.expiresAt === null) return stored.plan
-  return stored.expiresAt.getTime() > now.getTime() ? stored.plan : null
+export function liveSubscription(stored: SubscriptionColumns, now: Date): Plan | null {
+  const resolved = resolveSubscription(stored, now)
+  if (resolved.status === 'expired') return null
+  if (resolved.status === 'grace') return resolved.plan
+  if (resolved.expiresAt === null) return resolved.plan
+  return resolved.expiresAt.getTime() > now.getTime() ? resolved.plan : null
 }
 
 /**
@@ -172,6 +249,14 @@ function liveGrant(stored: StoredPlan, now: Date): Plan | null {
  * The screen's own clock is read once per request in `accounts/read.ts` and passed in.
  */
 export function planStateFor(stored: StoredPlan, now: Date): PlanState {
+  /*
+   * The subscription side's own facts, resolved once here — a scheduled downgrade that has
+   * already fired must report the plan it became and no invented date for it, never the
+   * pre-change plan against a `planExpiresAt` that has already gone by. `subscription` still
+   * calls `liveSubscription` directly rather than reading `resolved` back out, because that
+   * is a "is it live at all" question this resolved triple alone cannot answer any cheaper.
+   */
+  const resolved = resolveSubscription(stored, now)
   const subscription = liveSubscription(stored, now)
   const grant = liveGrant(stored, now)
 
@@ -184,13 +269,18 @@ export function planStateFor(stored: StoredPlan, now: Date): PlanState {
   const winner: Plan | null = grantWins ? grant : subscription
 
   return {
-    plan: stored.plan,
+    // `resolved.plan`, not `stored.plan`: identical to it whenever nothing is pending or
+    // nothing has fired yet, which is every case this field's own doc comment already
+    // covers ("still reported once it has lapsed") — and the *new* plan once a scheduled
+    // downgrade has actually taken effect, which is the one case that needed this fixed.
+    plan: resolved.plan,
     effectivePlan: winner ?? 'free',
-    status: stored.status,
+    status: resolved.status,
     source: winner === null ? 'none' : grantWins ? 'grant' : 'subscription',
     // The winning side's own column, never the later of the two — see the header's
-    // no-blending rule, of which this line is the other half.
-    until: winner === null ? null : grantWins ? stored.grantedUntil : stored.expiresAt,
+    // no-blending rule, of which this line is the other half. `resolved.expiresAt` on the
+    // subscription branch for the same reason as `plan` above.
+    until: winner === null ? null : grantWins ? stored.grantedUntil : resolved.expiresAt,
   }
 }
 

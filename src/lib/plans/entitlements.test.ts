@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { UNGATED, bookletBrandLine, entitlementsFor, planStateFor } from './entitlements'
+import { UNGATED, bookletBrandLine, entitlementsFor, liveSubscription, planStateFor, resolveSubscription } from './entitlements'
 import type { StoredPlan } from './entitlements'
 import { PLANS } from './types'
 import type { LimitReason, RepertoireCounts } from './types'
@@ -10,9 +10,18 @@ const NOW = new Date('2026-08-20T12:00:00Z')
 const PAST = new Date('2026-08-19T12:00:00Z')
 const FUTURE = new Date('2026-09-20T12:00:00Z')
 
-/** A free, active, never-expiring, never-gifted row: what every existing account holds. */
+/** A free, active, never-expiring, never-gifted, nothing-pending row: what every existing account holds. */
 function stored(overrides: Partial<StoredPlan> = {}): StoredPlan {
-  return { plan: 'free', expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null, ...overrides }
+  return {
+    plan: 'free',
+    expiresAt: null,
+    status: 'active',
+    pendingPlan: null,
+    pendingCycle: null,
+    grantedPlan: null,
+    grantedUntil: null,
+    ...overrides,
+  }
 }
 
 function counts(songbooks: number, songs: number): RepertoireCounts {
@@ -201,6 +210,82 @@ describe('grace', () => {
   it('grants the plan and not an upgrade', () => {
     const ent = entitlementsFor(stored({ plan: 'free', status: 'grace' }), NOW, EMPTY)
     assert.deepEqual(ent.limits, PLANS.free)
+  })
+})
+
+describe('a pending change', () => {
+  it('changes nothing before its date — the full current plan applies', () => {
+    const row = stored({ plan: 'premium', expiresAt: FUTURE, pendingPlan: 'standard', pendingCycle: 'year' })
+
+    const ent = entitlementsFor(row, NOW, EMPTY)
+    assert.deepEqual(ent.limits, PLANS.premium)
+    assert.equal(ent.state?.effectivePlan, 'premium')
+  })
+
+  it('carries the pending plan and cycle through untouched, ahead of the date', () => {
+    const row = stored({ plan: 'premium', expiresAt: FUTURE, pendingPlan: 'standard', pendingCycle: 'year' })
+    const resolved = resolveSubscription(row, NOW)
+
+    assert.equal(resolved.plan, 'premium')
+    assert.equal(resolved.expiresAt, FUTURE)
+    assert.equal(resolved.pendingPlan, 'standard')
+    assert.equal(resolved.pendingCycle, 'year')
+  })
+
+  it('becomes the pending plan the instant its date passes, with nothing left pending', () => {
+    const row = stored({ plan: 'premium', expiresAt: PAST, pendingPlan: 'standard', pendingCycle: 'year' })
+
+    const ent = entitlementsFor(row, NOW, EMPTY)
+    assert.deepEqual(ent.limits, PLANS.standard)
+    assert.equal(ent.state?.effectivePlan, 'standard')
+    assert.equal(ent.state?.until, null, 'no invented renewal date for the plan it became')
+
+    const resolved = resolveSubscription(row, NOW)
+    assert.equal(resolved.pendingPlan, null, 'resolved in one step, nothing left to resolve again')
+  })
+
+  it('lapses to free exactly like a plain expiry when the pending plan is free — a cancellation', () => {
+    const cancelled = stored({ plan: 'premium', expiresAt: PAST, pendingPlan: 'free', pendingCycle: null })
+    const neverScheduled = stored({ plan: 'premium', expiresAt: PAST })
+
+    assert.deepEqual(entitlementsFor(cancelled, NOW, EMPTY).limits, entitlementsFor(neverScheduled, NOW, EMPTY).limits)
+    assert.equal(liveSubscription(cancelled, NOW), 'free')
+  })
+
+  it('counts a date of exactly now as already due, same as a plain expiry', () => {
+    const row = stored({ plan: 'premium', expiresAt: NOW, pendingPlan: 'standard', pendingCycle: 'year' })
+    assert.equal(liveSubscription(row, NOW), 'standard')
+  })
+
+  it('never fires during grace, whatever the date says — a failed renewal is not the moment to downgrade', () => {
+    const row = stored({ plan: 'standard', expiresAt: PAST, status: 'grace', pendingPlan: 'free', pendingCycle: null })
+
+    assert.equal(liveSubscription(row, NOW), 'standard')
+    assert.equal(resolveSubscription(row, NOW).pendingPlan, null, 'not shown as pending either — grace never fires it')
+  })
+
+  it('never fires once already expired — nothing left live to resolve', () => {
+    const row = stored({ plan: 'standard', expiresAt: PAST, status: 'expired', pendingPlan: 'free', pendingCycle: null })
+    assert.equal(liveSubscription(row, NOW), null)
+  })
+
+  it('has nothing to fire on lifetime or a bare free row — both carry a null expiry', () => {
+    for (const plan of ['free', 'lifetime'] as const) {
+      const row = stored({ plan, pendingPlan: 'standard', pendingCycle: 'year' })
+      // No date to compare against, so the resolver can only pass the row through as-is.
+      assert.deepEqual(resolveSubscription(row, FUTURE), row)
+    }
+  })
+
+  it('resolves the same way twice and mutates neither the row nor its dates', () => {
+    const row = stored({ plan: 'premium', expiresAt: PAST, pendingPlan: 'standard', pendingCycle: 'year' })
+    const snapshot = { ...row }
+
+    const first = resolveSubscription(row, NOW)
+    const second = resolveSubscription(row, NOW)
+
+    assert.deepEqual(first, second)
+    assert.deepEqual(row, snapshot)
   })
 })
 

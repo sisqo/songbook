@@ -28,8 +28,16 @@ import { accounts, songbooks, songs } from '@/lib/db/schema'
 
 import { UNGATED, entitlementsFor, planStateFor } from './entitlements'
 import type { Entitlements, StoredPlan } from './entitlements'
-import { PLANS, readPlan, readPlanStatus } from './types'
+import { readPendingCycle } from './prices'
+import { PLANS, readPendingPlan, readPlan, readPlanStatus } from './types'
 import type { Plan, RepertoireCounts } from './types'
+
+/**
+ * `StoredPlan`'s pending fields for the `SONGBOOK_FORCE_PLAN` override below — always
+ * `null, null`: forcing a plan means "pretend the account has exactly and only this", which
+ * a scheduled change would contradict.
+ */
+const NOTHING_PENDING = { pendingPlan: null, pendingCycle: null } as const
 
 /**
  * Whether the plans are enforced at all in this deployment.
@@ -128,11 +136,11 @@ function forcedPlan(): Plan | null {
 }
 
 /**
- * The five plan facts for one account, or null when there is no row for that address.
+ * The seven plan facts for one account, or null when there is no row for that address.
  *
  * An explicit projection rather than `select()`: a star-expanded select names every column
  * drizzle's schema knows, so it is the one shape of read that a migration applied *after*
- * the deploy breaks. Naming the five columns this actually needs keeps that failure to the
+ * the deploy breaks. Naming the columns this actually needs keeps that failure to the
  * columns this feature owns, where the fail-open below can absorb it.
  */
 async function storedPlanOf(accountOwnerEmail: string): Promise<StoredPlan | null> {
@@ -141,6 +149,8 @@ async function storedPlanOf(accountOwnerEmail: string): Promise<StoredPlan | nul
       plan: accounts.plan,
       planStatus: accounts.planStatus,
       planExpiresAt: accounts.planExpiresAt,
+      pendingPlan: accounts.pendingPlan,
+      pendingCycle: accounts.pendingCycle,
       grantedPlan: accounts.grantedPlan,
       grantedUntil: accounts.grantedUntil,
     })
@@ -157,6 +167,12 @@ async function storedPlanOf(accountOwnerEmail: string): Promise<StoredPlan | nul
     // null here means never, which is what free, lifetime and an open-ended grant all carry.
     expiresAt: row.planExpiresAt,
     status: readPlanStatus(row.planStatus),
+    // `readPendingPlan`/`readPendingCycle`, never `readPlan`: see their own comments on why
+    // an unrecognised value here must mean "nothing scheduled", not `'free'`. This is also
+    // the single choke point behind `entitlementsOf`, `deviceCapOf` and `effectivePlanOf` —
+    // every one of the three inherits pending-awareness from this one query.
+    pendingPlan: readPendingPlan(row.pendingPlan),
+    pendingCycle: readPendingCycle(row.pendingCycle),
     // The grant is a second (plan, until) pair from the same row, and it contributes only
     // when `grantedPlan` is actually set — hence the null rather than a `readPlan` fallback,
     // which would turn every ungifted account into the holder of a free grant.
@@ -226,7 +242,7 @@ export async function entitlementsOf(accountOwnerEmail: string): Promise<Entitle
     const stored: StoredPlan | null =
       forced === null
         ? await storedPlanOf(accountOwnerEmail)
-        : { plan: forced, expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null }
+        : { plan: forced, expiresAt: null, status: 'active', ...NOTHING_PENDING, grantedPlan: null, grantedUntil: null }
 
     if (stored === null) {
       console.error(`entitlementsOf found no account row for ${accountOwnerEmail}`)
@@ -295,7 +311,7 @@ export async function deviceCapOf(accountOwnerEmail: string): Promise<{ max: num
     const stored: StoredPlan | null =
       forced === null
         ? await storedPlanOf(accountOwnerEmail)
-        : { plan: forced, expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null }
+        : { plan: forced, expiresAt: null, status: 'active', ...NOTHING_PENDING, grantedPlan: null, grantedUntil: null }
 
     if (stored === null) {
       console.error(`deviceCapOf found no account row for ${accountOwnerEmail}`)
@@ -328,7 +344,7 @@ export async function effectivePlanOf(accountOwnerEmail: string): Promise<Plan |
     const stored: StoredPlan | null =
       forced === null
         ? await storedPlanOf(accountOwnerEmail)
-        : { plan: forced, expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null }
+        : { plan: forced, expiresAt: null, status: 'active', ...NOTHING_PENDING, grantedPlan: null, grantedUntil: null }
 
     if (stored === null) {
       console.error(`effectivePlanOf found no account row for ${accountOwnerEmail}`)

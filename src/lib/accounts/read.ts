@@ -15,9 +15,10 @@ import { isOwner } from '@/lib/allowlist'
 import { listSignIns } from '@/lib/auth/signIns'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
-import { planStateFor } from '@/lib/plans/entitlements'
+import { planStateFor, resolveSubscription } from '@/lib/plans/entitlements'
 import type { StoredPlan } from '@/lib/plans/entitlements'
-import { readPlan, readPlanStatus } from '@/lib/plans/types'
+import { readPendingCycle } from '@/lib/plans/prices'
+import { readPendingPlan, readPlan, readPlanStatus } from '@/lib/plans/types'
 import type { Plan, PlanStatus } from '@/lib/plans/types'
 
 export interface AccountSummary {
@@ -94,11 +95,21 @@ export async function listAllAccounts(): Promise<AccountSummary[] | null> {
  * in it. `gclid` is absent because it is marketing data that nothing in this feature may read.
  */
 export interface AccountPlanLine {
-  /** `accounts.plan` through `readPlan` — what was bought, still reported once it has lapsed. */
+  /**
+   * `accounts.plan`, resolved through `resolveSubscription` — what was bought, still
+   * reported once it has lapsed, and already the *new* plan once a scheduled downgrade's
+   * date has passed. Never the raw column: this is the row an operator has to trust.
+   */
   plan: Plan
   status: PlanStatus
   /** null means never: what `free` and `lifetime` both carry. */
   planExpiresOn: string | null
+  /**
+   * A downgrade or cancellation (`'free'`) scheduled to take over on `planExpiresOn`. Null
+   * both when nothing is scheduled and once a scheduled change has already taken effect —
+   * `resolveSubscription` clears it the moment it resolves, so this is never stale.
+   */
+  pendingPlan: Plan | null
   /** null means no gift at all — the one field `liveGrant` keys on. */
   grantedPlan: Plan | null
   /** null means a gift with no end. Doubles as the date field's value, which is why it round-trips. */
@@ -138,11 +149,11 @@ function dayOf(value: Date | null): string | null {
  * answers. This is the third read on this screen to work that way: `listSignIns`' null is
  * already absorbed per row as «unknown for everyone».
  *
- * An explicit nine-column projection, never `select()`, for the reason `listAllAccounts`
- * states — but note the difference in what that buys here. An explicit projection protects
- * against the columns you do *not* name and can never protect against the ones you do, and
- * this query names 0024's columns on purpose. It is behind 0024 by construction; the null is
- * how that is survived, not avoided.
+ * An explicit projection, never `select()`, for the reason `listAllAccounts` states — but
+ * note the difference in what that buys here. An explicit projection protects against the
+ * columns you do *not* name and can never protect against the ones you do, and this query
+ * names 0024's columns, and now 0026's, on purpose. It is behind those migrations by
+ * construction; the null is how that is survived, not avoided.
  *
  * Gated with `isOwner` directly and not `asAdmin()`: an account's own owner resolves to
  * `admin` on that one account, which would hand every customer the plan of every other.
@@ -161,6 +172,8 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
         plan: accounts.plan,
         planStatus: accounts.planStatus,
         planExpiresAt: accounts.planExpiresAt,
+        pendingPlan: accounts.pendingPlan,
+        pendingCycle: accounts.pendingCycle,
         grantedPlan: accounts.grantedPlan,
         grantedUntil: accounts.grantedUntil,
         grantedBy: accounts.grantedBy,
@@ -192,15 +205,24 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
           plan: readPlan(row.plan),
           expiresAt: row.planExpiresAt,
           status: readPlanStatus(row.planStatus),
+          // `readPendingPlan`/`readPendingCycle`, not `readPlan` — see their own comments.
+          pendingPlan: readPendingPlan(row.pendingPlan),
+          pendingCycle: readPendingCycle(row.pendingCycle),
           grantedPlan: row.grantedPlan === null ? null : readPlan(row.grantedPlan),
           grantedUntil: row.grantedUntil,
         }
         const state = planStateFor(stored, now)
+        // The raw subscription columns resolved for display, the same rule the gate itself
+        // reads through `liveSubscription`/`planStateFor` — never `stored.plan`/`.status`/
+        // `.expiresAt` directly, which would still name the pre-change plan and a past date
+        // once a scheduled downgrade has actually taken effect.
+        const resolved = resolveSubscription(stored, now)
 
         const line: AccountPlanLine = {
-          plan: stored.plan,
-          status: stored.status,
-          planExpiresOn: dayOf(stored.expiresAt),
+          plan: resolved.plan,
+          status: resolved.status,
+          planExpiresOn: dayOf(resolved.expiresAt),
+          pendingPlan: resolved.pendingPlan,
           grantedPlan: stored.grantedPlan,
           grantedUntilOn: dayOf(stored.grantedUntil),
           grantedBy: row.grantedBy,

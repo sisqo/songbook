@@ -9,7 +9,7 @@ import type { Plan } from './types'
 /** A live subscription on `plan`, with an empty repertoire so no cap and no freeze is in play. */
 function subscribed(plan: Plan) {
   return entitlementsFor(
-    { plan, expiresAt: null, status: 'active', grantedPlan: null, grantedUntil: null },
+    { plan, expiresAt: null, status: 'active', pendingPlan: null, pendingCycle: null, grantedPlan: null, grantedUntil: null },
     new Date('2026-08-21T12:00:00Z'),
     { songbooks: 0, songs: 0 },
   )

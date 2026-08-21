@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { IconInfo } from '@/components/icons'
-import { loadCheckoutStatus, mockCancel, mockPurchase, type MockSubscriptionState } from '@/lib/plans/checkout'
+import { loadCheckoutStatus, mockPurchase, type MockSubscriptionState } from '@/lib/plans/checkout'
 import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
 import type { BillingPeriod, CheckoutPlan, PaidPlan } from '@/lib/plans/prices'
 import { PLAN_LABEL } from '@/lib/plans/types'
@@ -27,6 +27,11 @@ type Status =
  * is standing in for and why it is open to anybody signed in. Everything that depends on who
  * is asking is asked from here, on mount, the same `/password` and `/accounts` already do:
  * the page around this is a static shell with no idea who is looking.
+ *
+ * Buying only — no cancel button lives here any more. Managing a plan already bought
+ * (cancelling, undoing a scheduled change, the payment history) moved to `/billing`
+ * (`BillingScreen`), the once place for both; this screen's own job is narrower than that
+ * and stays narrow, with a link across for anyone who arrived here already holding a plan.
  */
 export function CheckoutScreen({
   plan,
@@ -43,7 +48,6 @@ export function CheckoutScreen({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
-  const [cancelBusy, setCancelBusy] = useState(false)
 
   const refresh = () => {
     void loadCheckoutStatus().then((result) => {
@@ -74,13 +78,19 @@ export function CheckoutScreen({
     try {
       const result = await mockPurchase(plan, cycle)
       if (!result.ok) {
-        setError("That didn't go through. Try again.")
+        setError(
+          result.reason === 'not-applicable'
+            ? 'This account is already on Lifetime — there is nothing left to buy.'
+            : "That didn't go through. Try again.",
+        )
         return
       }
       setDone(
-        plan === 'lifetime'
-          ? 'Done — this account is now on Lifetime (test), for good.'
-          : `Done — this account is now on ${PLAN_LABEL[plan]} (test), renewing ${cycle === 'year' ? 'yearly' : 'monthly'}.`,
+        result.effect === 'immediate'
+          ? plan === 'lifetime'
+            ? 'Done — this account is now on Lifetime (test), for good.'
+            : `Done — this account is now on ${PLAN_LABEL[plan]} (test), renewing ${cycle === 'year' ? 'yearly' : 'monthly'}.`
+          : `Scheduled — this account moves to ${PLAN_LABEL[plan]} (test) once the plan it already paid for ends.`,
       )
       refresh()
     } catch {
@@ -89,28 +99,6 @@ export function CheckoutScreen({
       setBusy(false)
     }
   }
-
-  const cancel = async () => {
-    setCancelBusy(true)
-    setError(null)
-    setDone(null)
-    try {
-      const result = await mockCancel()
-      if (!result.ok) {
-        setError("Couldn't cancel. Try again.")
-        return
-      }
-      setDone('Done — the test subscription is cancelled.')
-      refresh()
-    } catch {
-      setError("Couldn't cancel. Try again.")
-    } finally {
-      setCancelBusy(false)
-    }
-  }
-
-  const hasActiveMock =
-    status.state === 'ready' && status.current.plan !== 'free' && status.current.status !== 'expired'
 
   return (
     <>
@@ -154,18 +142,15 @@ export function CheckoutScreen({
                 : `${PLAN_LABEL[status.current.plan]}, ${status.current.status}` +
                   (status.current.expiresAt !== null
                     ? `, until ${status.current.expiresAt.toISOString().slice(0, 10)}`
-                    : '')}
+                    : '') +
+                  (status.current.pendingPlan !== null ? `, then ${PLAN_LABEL[status.current.pendingPlan]}` : '')}
             </p>
-
-            {hasActiveMock && (
-              <button
-                type="button"
-                className="btn btn-danger btn-sm mt-3"
-                disabled={cancelBusy}
-                onClick={() => void cancel()}
-              >
-                Cancel test subscription
-              </button>
+            {status.current.plan !== 'free' && (
+              <p className="mt-1.5 text-sm">
+                <Link href="/billing" className="text-accent hover:underline">
+                  Manage this plan, or see the payment history
+                </Link>
+              </p>
             )}
           </div>
 

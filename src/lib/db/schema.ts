@@ -162,6 +162,32 @@ export const accounts = pgTable(
      * about people reads as «devices signed in», which this never means.
      */
     singAlongPeakDevices: integer('sing_along_peak_devices').notNull().default(0),
+    /**
+     * What the subscription becomes once `planExpiresAt` passes — a downgrade to another
+     * paid plan, or a cancellation, stored as `'free'` rather than as a second boolean next
+     * to it (see `resolveSubscription` in `plans/entitlements.ts`). Null means nothing is
+     * scheduled, which is every row's state until a reader chooses to change or cancel a
+     * live paid plan through the mock checkout.
+     *
+     * Read with `readPendingPlan` (`plans/types.ts`), never with `readPlan`: `readPlan`
+     * degrades an unrecognised value to `'free'`, and in this column `'free'` means "cancel
+     * at period end" — degrading a corrupt or newer-deploy value here would silently
+     * schedule a revocation instead of the harmless no-op a `plan` column gets from the same
+     * degradation. The generous direction, matching every other fail-open rule this feature
+     * takes.
+     *
+     * Deliberately kept apart from `grantedPlan`/`grantedUntil`, for the same reason those
+     * are apart from `plan`/`planExpiresAt`: a scheduled downgrade is a fact about the
+     * subscription, resolved by `liveSubscription` alone, and must never be read as if it
+     * were a gift or blended with one.
+     */
+    pendingPlan: text('pending_plan'),
+    /**
+     * The billing period `pendingPlan` will renew on once it takes effect. Meaningless, and
+     * left null, whenever `pendingPlan` is null or `'free'` — a cancellation has no next
+     * cycle to carry.
+     */
+    pendingCycle: text('pending_cycle'),
   },
   (table) => [unique('accounts_paddle_subscription_id').on(table.paddleSubscriptionId)],
 )

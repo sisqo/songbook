@@ -44,6 +44,19 @@ export function readPlan(value: unknown): Plan {
 }
 
 /**
+ * Reads `accounts.pendingPlan` — never with `readPlan`, on purpose. `readPlan` degrades an
+ * unrecognised value to `'free'`, and in this column `'free'` means "cancel at period end"
+ * (`resolveSubscription`, `entitlements.ts`): degrading a corrupt or newer-deploy value here
+ * would silently *schedule a revocation*, the exact asymmetry `readPlan`'s own comment warns
+ * about — an unreadable plan must never grant, and here it must never revoke either. `null`
+ * is the generous, always-safe answer: nothing scheduled, the account simply keeps whatever
+ * it already has.
+ */
+export function readPendingPlan(value: unknown): Plan | null {
+  return typeof value === 'string' && PLAN_VALUES.includes(value as Plan) ? (value as Plan) : null
+}
+
+/**
  * The name a reader recognizes, for the one place today that names a plan back to the
  * person on it rather than to an operator: the account menu's own plan line. `/pricing`
  * spells the same five names out as literals in its own column data instead of reading

@@ -15,6 +15,8 @@ import { isEmailShape, isOwner, normalizeEmail } from '@/lib/allowlist'
 import { deletePasswordHash } from '@/lib/auth/credentials'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts, sections, singAlongSessions, songbooks, songs } from '@/lib/db/schema'
+import { paymentHistoryFor } from '@/lib/plans/history'
+import type { PaymentHistoryLine } from '@/lib/plans/history'
 import { isAdmitted } from '@/lib/roles'
 
 import { mayAccess, readAccountCookie, writeAccountCookie } from './current'
@@ -288,6 +290,34 @@ export async function setGrant(accountOwnerEmail: string, grant: GrantInput | nu
 
   revalidatePath('/accounts')
   return { ok: true }
+}
+
+/**
+ * One account's payment history, for the admin panel — the same rows
+ * `checkout.ts`'s `loadMyPaymentHistory` reads for the reader's own, gated the
+ * opposite way: `isOwner` here, a session-scoped read there, the same split every
+ * other query in this feature already draws (`listAccountPlans` versus `setGrant`
+ * being the account's own, `deleteAccount` versus `deleteMyAccount`).
+ *
+ * Answers `{ ok: false }` rather than `null` on refusal, matching this file's other
+ * results rather than `accounts/read.ts`'s bare-null idiom — a caller that only ever
+ * calls this from behind `isOwner` itself has one reason to see `false`: the query
+ * threw, not that the caller was refused twice.
+ */
+export async function loadAccountHistory(
+  accountOwnerEmail: string,
+): Promise<{ ok: true; history: PaymentHistoryLine[] } | { ok: false }> {
+  if (!hasDatabase) return { ok: false }
+
+  const session = await auth()
+  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) return { ok: false }
+
+  try {
+    return { ok: true, history: await paymentHistoryFor(normalizeEmail(accountOwnerEmail)) }
+  } catch (error) {
+    console.error('loadAccountHistory failed', error)
+    return { ok: false }
+  }
 }
 
 /**

@@ -65,6 +65,16 @@ export function isCheckoutPlan(value: string): value is CheckoutPlan {
 /** How a plan is billed. `year` is the default the pricing page opens on — see `PricingPlans`. */
 export type BillingPeriod = 'year' | 'month'
 
+/**
+ * Reads `accounts.pendingCycle` — a closed set of two literals, so membership is the whole
+ * check. An unrecognised value means the same as a missing one: no cycle to carry into the
+ * plan a downgrade is scheduled to become, the same generous direction `readPendingPlan`
+ * (`types.ts`) takes for its own column.
+ */
+export function readPendingCycle(value: unknown): BillingPeriod | null {
+  return value === 'year' || value === 'month' ? value : null
+}
+
 export interface PlanPrice {
   /** Euro, tax included, as it is printed: no thousands separator, `.` as the decimal point. */
   amount: string

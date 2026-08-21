@@ -8,7 +8,7 @@ import { InstrumentPicker } from '@/components/InstrumentPicker'
 import { NotationPicker } from '@/components/NotationPicker'
 import { useRole } from '@/components/RoleProvider'
 import { ThemePicker } from '@/components/ThemePicker'
-import { IconChevronLeft, IconChevronRight, IconKey, IconSettings, IconTrash } from '@/components/icons'
+import { IconChevronLeft, IconChevronRight, IconKey, IconReceipt, IconSettings, IconTrash } from '@/components/icons'
 import { deleteMyAccount } from '@/lib/accounts/actions'
 import { SELF_DELETE_MESSAGE } from '@/lib/accounts/types'
 import { avatarColorIndex, avatarInitials } from '@/lib/avatar'
@@ -22,8 +22,9 @@ import { PLAN_LABEL } from '@/lib/plans/types'
  * Settings screen. The hamburger (`NavMenu`) is left holding only navigation between
  * sections of the app; this holds identity (email, plan, owner status), signing
  * in/out, and now the reader's own preferences, with nothing duplicated between the
- * two. Delete account nests one level under Settings rather than sitting beside the
- * preference pickers: it is a consequence of leaving, not a preference to set.
+ * two. Billing and Delete account both nest one level under Settings rather than sitting
+ * beside the preference pickers: both are consequences of the account — what was bought,
+ * and leaving altogether — not preferences to set, and Billing is the lesser of the two.
  *
  * The avatar reads the email, not the Google profile, even though a Google sign-in
  * carries a name and a picture this app could ask for: a credentials account
@@ -165,6 +166,21 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                 <InstrumentPicker />
                 <ThemePicker />
                 <NotationPicker />
+
+                <div className="menu-divider" />
+
+                {/*
+                 * A plain link out, not a fourth picker: what it opens (the plan bought, its
+                 * history, cancelling it) is a screen's worth of content, the same reason
+                 * "Change password" already leaves this panel rather than trying to fit
+                 * inline. Between the pickers and Delete account because it is the same kind
+                 * of thing as the button below it — a consequence of the account, not a
+                 * reading preference — and the lesser of the two.
+                 */}
+                <Link href="/billing" className="menu-item" role="menuitem" onClick={close}>
+                  <IconReceipt size={17} />
+                  Billing
+                </Link>
 
                 <div className="menu-divider" />
 

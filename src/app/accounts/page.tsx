@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { AccountHistoryButton } from '@/components/AccountHistoryButton'
 import { AccountPasswordButton } from '@/components/AccountPasswordButton'
 import { AccountPlanButton } from '@/components/AccountPlanButton'
 import { Footer } from '@/components/Footer'
@@ -54,11 +55,15 @@ function planClause(line: AccountPlanLine): string {
   if (line.effectivePlan === 'free') return 'free'
 
   const side = line.source === 'grant' ? 'gift' : 'subscription'
+  // Only on the subscription side, and only ahead of its own date: a scheduled downgrade on
+  // the subscription while a grant currently wins would not even take effect the day it
+  // fires, and naming it here would suggest a change to what the row is showing right now.
+  const pendingClause = side === 'subscription' && line.pendingPlan !== null ? `, then ${line.pendingPlan}` : ''
   if (line.status === 'grace' && line.source === 'subscription') {
     return `${line.effectivePlan} · subscription, payment retrying`
   }
-  if (line.untilOn !== null) return `${line.effectivePlan} · ${side} until ${line.untilOn}`
-  return line.source === 'grant' ? `${line.effectivePlan} · gift, no end` : `${line.effectivePlan} · subscription`
+  if (line.untilOn !== null) return `${line.effectivePlan} · ${side} until ${line.untilOn}${pendingClause}`
+  return line.source === 'grant' ? `${line.effectivePlan} · gift, no end` : `${line.effectivePlan} · subscription${pendingClause}`
 }
 
 function EnterButton({ ownerEmail, isCurrent }: { ownerEmail: string; isCurrent: boolean }) {
@@ -208,6 +213,7 @@ export default async function AccountsPage() {
                       isCurrent={user?.accountOwnerEmail === account.ownerEmail}
                     />
                     {line !== null && <AccountPlanButton ownerEmail={account.ownerEmail} plan={line} />}
+                    <AccountHistoryButton ownerEmail={account.ownerEmail} />
                     <AccountPasswordButton ownerEmail={account.ownerEmail} />
                     <DeleteAccountButton ownerEmail={account.ownerEmail} />
                   </li>

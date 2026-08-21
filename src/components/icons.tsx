@@ -399,6 +399,16 @@ export function IconTrash(props: IconProps) {
   )
 }
 
+/** Billing: a receipt, its bottom edge torn, two lines of print. */
+export function IconReceipt(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 3h12v17l-2-1.3L14 20l-2-1.3L10 20l-2-1.3L6 20z" />
+      <path d="M9 8h6M9 12h6" />
+    </Icon>
+  )
+}
+
 export function IconCheck(props: IconProps) {
   return (
     <Icon {...props}>

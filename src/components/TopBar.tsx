@@ -6,7 +6,7 @@ import { UserMenu } from '@/components/UserMenu'
 import { IconChevronLeft, IconChevronRight, IconNote } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
-export type Section = 'songs' | 'songbooks' | 'export' | 'password' | 'accounts' | 'help' | 'checkout'
+export type Section = 'songs' | 'songbooks' | 'export' | 'password' | 'accounts' | 'help' | 'checkout' | 'billing'
 
 /**
  * The header, on every screen inside the app.
