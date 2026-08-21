@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { Footer } from '@/components/Footer'
-import { IconBroadcast } from '@/components/icons'
+import { IconCheck } from '@/components/icons'
 import { PricingPlans } from '@/components/PricingPlans'
 import type { PlanColumn } from '@/components/PricingPlans'
 import { APP_NAME } from '@/lib/brand'
@@ -86,10 +86,23 @@ export const metadata: Metadata = {
   twitter: { card: 'summary', title: SHARE_TITLE, description: DESCRIPTION },
 }
 
-/** The same words in all three paid columns and in the lifetime block: a state, not a control. */
-const NOT_ON_SALE = 'Not on sale yet'
+/*
+ * The v3.4 redesign's own hero line, replacing the longer disclosure-heavy `LEDE` this used
+ * to be — the tax/currency/no-trial facts it carried still matter and are not gone, only
+ * moved: see `BILLING_NOTE`, below, in the smaller print beside the prices themselves rather
+ * than in the first sentence a visitor reads.
+ */
+const HERO_SUBTITLE =
+  'One account, every device, nothing to install — your chords, in your key, with your capo — ' +
+  'even offline, and on every screen in the room.'
 
 /*
+ * The three facts `LEDE` used to open the page with, kept but demoted: a tax claim and a
+ * currency disclaimer are terms, not a pitch, and belong beside the prices they qualify
+ * rather than in the first sentence a visitor reads. Two sentences rather than three — «There
+ * is no free trial» folds into the second, since the free plan already earns that fact by
+ * having no end date rather than needing a separate claim about trials.
+ *
  * Tax-inclusive is a claim this page can make. Currency-invariant is not, and the rejected
  * wording — «the number you see is the number you pay, wherever you are» — asserted the
  * second while only the first was decided. A card issued in sterling or in francs is
@@ -99,18 +112,18 @@ const NOT_ON_SALE = 'Not on sale yet'
  * country the page is readable in; the alternative is a price claim that omits a charge we
  * know the reader will incur, which is the definition of a misleading one.
  */
-const LEDE =
-  'Every price on this page is in euro, tax included: nothing is added at checkout. If your card is ' +
-  'not in euro, your bank converts at its own rate. There is no free trial. The free plan is not a ' +
-  'countdown — it has no end date, and you can stay on it for as long as you like.'
+const BILLING_NOTE =
+  'Every price on this page is in euro, tax included: nothing is added at checkout. If your card ' +
+  'is not in euro, your bank converts at its own rate. There is no free trial — the free plan has ' +
+  'no end date, and you can stay on it for as long as you like.'
 
 /*
  * Two clauses, and it used to be three: «the prices on this page are final» is gone. Nothing
  * in this repository can make that promise — `prices.ts` says in its own header that its table
  * and Paddle's catalogue "are two things that must agree, and nothing in this repository can
  * check that they do", and every `paddleId` is still empty. It was also doing no work, since
- * the lede now says the tax is included and nothing is added at checkout, which is the only
- * thing a reader was reading "final" for.
+ * `BILLING_NOTE` already says the tax is included and nothing is added at checkout, which is
+ * the only thing a reader was reading "final" for.
  *
  * The second clause now reads `plansEnforced()` rather than assuming it is always off. This
  * page is prerendered at build time (see `PricingPage`'s own comment below on why it must stay
@@ -126,81 +139,29 @@ const NO_CHECKOUT = plansEnforced()
     'limits below until it opens.'
 
 /*
- * «in the same key», and deliberately not «on the same line»: `pollBroadcast` carries the song
- * and the transposition and nothing else — no scroll offset, no line number — and the whole of
- * what happens to a follower's viewport on a song change is `window.scrollTo(0, 0)` in
- * `FollowSession`. The old clause was inherited from /login's own Sing Together copy, where it
- * has now been corrected too: a capability this page charges for must not be described by a
- * sentence the protocol cannot keep.
+ * The v3.4 redesign's own line for the lifetime block, replacing `LIFETIME_WHAT` and
+ * `LIFETIME_WHEN` — the closing date moves out of this sentence entirely and into
+ * `LIFETIME_PILL` below, the small badge beside the price, which is where the mock puts it.
+ * What survives from the two constants this replaces: Lifetime is still Premium, exactly,
+ * with no renewal to ever come due, and it still inherits whatever Premium becomes later —
+ * both true regardless of how the sentence describing them is worded.
  */
-const GUEST_LINK =
-  'Following a Sing Together session is a property of the link, not of a plan. You send the link; ' +
-  'whoever opens it reads the same song, in the same key, on their own phone — with no account, ' +
-  'nothing installed and nothing to sign up for. That is true for every person who follows, on every ' +
-  'plan on this page, and none of them changes it. What a plan decides is two other things: who may ' +
-  'start a session, and how many devices may follow one at the same time.'
-
 const LIFETIME_WHAT =
-  `Premium with no renewal date. You pay once and the plan does not end: not next year, not when ` +
-  `these prices change. Lifetime is stored as its own plan and given exactly Premium's limits — ` +
-  `unlimited songbooks and songs, ${PLANS.lifetime.devices} other devices on a session, the booklet ` +
-  `without the «Printed with Songbook» line, feature requests read first — which means it also gets ` +
-  `whatever Premium becomes later.`
+  'Premium with no renewal date, ever — pay once and keep it, including everything Premium ' +
+  'becomes later.'
 
-const LIFETIME_WHEN =
-  `This one is in the catalogue until ${LIFETIME.closesOnLabel}. After that date it closes, and the ` +
-  `four plans above are what remain.`
+const LIFETIME_PILL = `Price valid until ${LIFETIME.closesOnLabel}`
 
 /*
- * The long form of the expiry rule, and the sentence that removes the fear of losing work.
- *
- * /login carries a short form of it — «If a paid plan lapses, nothing is deleted.», inside the
- * "Is Songbook free to use?" answer — and that is deliberate rather than a copy somebody forgot
- * to keep in step. An earlier version of this comment claimed the two were word for word
- * identical and pointed at a "What happens if I stop paying?" FAQ item on /login; no such item
- * exists, and the claim is corrected here rather than made true, because adding it would grow
- * the sign-in page every existing reader opens daily by an answer that only matters to somebody
- * who has already bought. This is the page where a reader is deciding whether to pay, so the
- * whole rule — including the read-only half, which is the part that needs the space — belongs
- * here.
- *
- * The invariant to keep if either is ever edited: /login may say less, and must never say
- * anything different. A softer *reassurance* is fine; a softer *rule* is not.
+ * What replaces the whole of "If a plan ends" — the section heading, the cancelling
+ * mechanics, and the fourteen-day refund promise that used to close it. This is the v3.4
+ * redesign's own call: the fuller rule is not written anywhere else on the site, and going
+ * with only this shorter reassurance is a deliberate trade of that explanatory prose for the
+ * lighter page the redesign asks for, made once and knowingly rather than lost by accident.
  */
-const IF_A_PLAN_ENDS =
-  'Nothing is ever deleted. Everything you have stays readable, playable and exportable as ChordPro, ' +
-  'and an account that is over its new limits goes read-only — deletions only — until it fits again ' +
-  'or pays again. What lapses is what the plan added: leading a session, the saved ukulele setting, ' +
-  'the printed booklet. Never your songs.'
-
-/*
- * What cancelling does, which is the half a renewal disclosure is incomplete without: a reader
- * told that a plan renews until they cancel has to be told what cancelling costs them, and the
- * answer — nothing that is already paid for — is reassuring enough that leaving it out would be
- * the expensive kind of silence. It also gives LIFETIME_WHAT's «no renewal date» something to
- * be a contrast with; before this sentence existed, the lifetime block was the only place on
- * the page where renewal was mentioned at all, by implication, three sections away from the
- * prices.
- */
-const CANCELLING =
-  'A subscription renews until you cancel it, and cancelling stops the next renewal rather than the ' +
-  'plan you are already holding: it keeps running to the end of the year or the month you have paid ' +
-  'for, and then becomes the free plan again. Lifetime has no renewal to stop.'
-
-/*
- * Fourteen days, said in the two places a reader is deciding whether they can get back out: the
- * lifetime block, which carries the largest number on the page and the least reassurance, and
- * "If a plan ends". One constant rather than two sentences, for the reason `limitSentence` gives
- * in `types.ts` — two copies of one commercial promise are two things that come to disagree.
- *
- * No link, and deliberately no announcement that the refund page does not exist yet: a 404 from
- * a price list is worse than prose, and "there is no policy yet" is not a fact a buyer can act
- * on. An address a person answers is. The link replaces the address the day that page exists,
- * in the same change as the checkout.
- */
-const REFUND =
-  `Fourteen days to change your mind, on any plan and on Lifetime, for any reason: write to ` +
-  `${CONTACT} and you get the money back.`
+const TRUST_NOTE =
+  'Nothing you put in here is ever deleted. If a subscription ends, your songs stay readable, ' +
+  'printable and exportable.'
 
 const FOOTNOTE =
   `Premium's ${PLANS.premium.devices} is a real technical ceiling rather than a figure of speech, ` +
@@ -215,13 +176,6 @@ const FOOTNOTE =
  * thing to keep saying the same way.
  */
 const CHECKOUT_LIVE = mockCheckoutEnabled()
-
-/*
- * Shown in place of `NOT_ON_SALE` whenever the mock checkout is live: it is not a real sale,
- * and this line is what keeps the page honest about that the moment a real "Choose" button
- * appears beside it — see `PricingPlans`' own `checkoutPlan` field for the button itself.
- */
-const TEST_CHECKOUT_OPEN = 'Test checkout — no real payment is taken.'
 
 /** A paid column, worded once for the three that differ only in their amounts and their audience. */
 function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn {
@@ -238,8 +192,9 @@ function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn 
        * was a comparison rather than a billing sentence, so tapping Monthly removed the word
        * "billed" from the page altogether. How long the contract runs, that it renews by
        * itself, and how to stop it are the three facts a subscription has to state before it
-       * takes money; the page had a section headed "If a plan ends" and still never said that a
-       * plan does not end on its own.
+       * takes money — and these two notes are now the only place any of the three is stated at
+       * all, since v3.4 folded the fuller "If a plan ends" section into `TRUST_NOTE`, which
+       * says none of them.
        */
       year: {
         amount: `${euro(year.amount)} per year`,
@@ -258,7 +213,6 @@ function paidColumn(name: string, plan: PaidPlan, audience: string): PlanColumn 
       },
     },
     audience,
-    action: CHECKOUT_LIVE ? TEST_CHECKOUT_OPEN : NOT_ON_SALE,
     checkoutPlan: CHECKOUT_LIVE ? plan : undefined,
   }
 }
@@ -278,22 +232,48 @@ const COLUMNS: PlanColumn[] = [
     /*
      * Not «to find out whether this is your app», which framed the free plan as an evaluation
      * period — the trial reading the lede spends a sentence denying and /login's own repair
-     * rejects by name. The counts are in the table two sections down; what this line has to say
-     * is that the plan does not run out.
+     * rejects by name. The numbers are named here now (they used to live only in the table two
+     * sections down) because the v3.4 cards say what living on the plan is actually like, not
+     * only that it does not run out.
      */
-    audience: 'Everything needed to read and play, with no end date.',
-    /* Free is not bought — it is what an account already is. */
-    action: 'Included with any account',
+    audience: `Just you and the instrument. ${PLANS.free.songbooks} songbook, ${PLANS.free.songs} songs — ` +
+      'no card, no end date, no trial to run out.',
+    /* Free is not sold through `checkout.ts` — it is what an account already is — so it gets
+       the one card button that is never conditional on `CHECKOUT_LIVE`. */
+    cta: { href: '/register', label: 'Start free' },
   },
-  paidColumn('Standard', 'standard', 'For one player and one other screen.'),
-  paidColumn('Plus', 'plus', `Unlimited songbooks and songs, and up to ${PLANS.plus.devices} other screens.`),
+  paidColumn(
+    'Standard',
+    'standard',
+    `You lead, one screen follows. ${PLANS.standard.songbooks} songbooks, ${PLANS.standard.songs} songs, ` +
+      'a printed booklet.',
+  ),
+  {
+    ...paidColumn(
+      'Plus',
+      'plus',
+      `Unlimited songbooks and songs, up to ${PLANS.plus.devices} other screens, printed booklet with no ` +
+        'credit line.',
+    ),
+    /*
+     * The one column raised above the rest — see `.plan-card.is-featured`'s own comment on
+     * why this is a reversal and not an oversight. Plus, and never more than one: two ribbons
+     * on the same row would each cancel the other's claim to be the one to pick.
+     */
+    featured: true,
+  },
   /*
-   * «feature requests read first» and not «a direct line»: the table three rows down says there
-   * is one shared address on every plan and that what Premium changes is the order things are
-   * read in. A direct line is a channel somebody else does not have, which is not what was
-   * decided and not what any code does.
+   * Not «with your name» — the phrase the mock uses for premium's booklet — because that
+   * claims a feature `bookletCell`'s own comment says does not exist yet: premium's `custom`
+   * tier behaves exactly like plus' `plain` today, credit line dropped and nothing more
+   * personalised than that. «No credit line», Plus' own phrase, is the sentence that stays
+   * true; what actually sets Premium apart in this card is the device count, not the booklet.
    */
-  paidColumn('Premium', 'premium', 'For a room full of screens, and feature requests read first.'),
+  paidColumn(
+    'Premium',
+    'premium',
+    'The whole room follows — unlimited devices, unlimited songs, printed booklet with no credit line.',
+  ),
 ]
 
 interface ComparisonRow {
@@ -368,9 +348,7 @@ function deviceCell(devices: number): string | null {
 const ROWS: ComparisonRow[] = [
   {
     label: 'Songbooks',
-    note:
-      'A songbook is one set of songs, with its own sections and its own printed booklet. With one, ' +
-      'every set shares a single list.',
+    note: 'The most songbooks one account may hold.',
     cells: [
       capCell(PLANS.free.songbooks),
       capCell(PLANS.standard.songbooks),
@@ -380,9 +358,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Songs',
-    note:
-      `Counted across the whole account, not per songbook. ${PLANS.free.songs} songs is a short set; ` +
-      `${PLANS.standard.songs} is most working repertoires.`,
+    note: 'The most songs across the whole account, not per songbook.',
     cells: [
       capCell(PLANS.free.songs),
       capCell(PLANS.standard.songs),
@@ -390,21 +366,19 @@ const ROWS: ComparisonRow[] = [
       capCell(PLANS.premium.songs),
     ],
   },
+  /*
+   * One row, where the previous design had three — "Import and export ChordPro", "Transpose,
+   * capo, auto-scroll, text size" and "Offline, and synced across your own devices" — because
+   * all three answered `[INCLUDED, INCLUDED, INCLUDED, INCLUDED]` and a table that says the
+   * same four-way tie three times in a row says it once too many. The v3.4 redesign's own
+   * "Reading, offline & sync" row folds the three claims into one sentence without dropping
+   * any of them.
+   */
   {
-    label: 'Import and export ChordPro',
+    label: 'Reading, offline & sync',
     note:
-      'Your songs leave in the same format they arrived in, on every plan, including the free one. ' +
-      'Nothing here holds your repertoire hostage.',
-    cells: [INCLUDED, INCLUDED, INCLUDED, INCLUDED],
-  },
-  {
-    label: 'Transpose, capo, auto-scroll, text size',
-    note: 'Reading and playing are never part of a plan.',
-    cells: [INCLUDED, INCLUDED, INCLUDED, INCLUDED],
-  },
-  {
-    label: 'Offline, and synced across your own devices',
-    note: 'Once saved, your repertoire opens with no signal. Every plan, including the free one.',
+      'Transpose, capo conversion, auto-scroll, and export as ChordPro — offline, and on every ' +
+      'plan including the free one.',
     cells: [INCLUDED, INCLUDED, INCLUDED, INCLUDED],
   },
   {
@@ -422,9 +396,7 @@ const ROWS: ComparisonRow[] = [
      * reload, and across their other devices. That is true today and stays true the day the
      * client-side half of the gate lands.
      */
-    note:
-      'Ukulele shapes are drawn in the app on every plan. From Standard up the choice is saved, so it ' +
-      'sticks across reloads and follows you to your other devices.',
+    note: 'Tap any chord for the fingering, on every plan. From Standard up, the choice sticks across reloads and other devices.',
     /*
      * All four cells name both instruments, and the free cell used to say just «Guitar» — which
      * was the same false gate the old note claimed, in the one place a reader comparing columns
@@ -439,9 +411,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Printed booklet',
-    note:
-      'A typeset PDF with a cover and an index, one song a page. Without it you can still export ' +
-      'ChordPro and print that.',
+    note: 'A PDF ready to print: a cover, an index, one song a page.',
     cells: [
       bookletCell(PLANS.free.booklet),
       bookletCell(PLANS.standard.booklet),
@@ -451,18 +421,21 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Starting a Sing Together session',
-    note:
-      'Leading is the part that needs a paid plan. Following one never does, on any plan — see the ' +
-      'row below and the band above.',
+    /*
+     * "Following one never does, on any plan" is the whole of `GUEST_LINK`'s own claim, kept
+     * here in one clause now that the feature-spotlight band that used to say it at length is
+     * gone (v3.4) — a guest reads the same song, in the same key, on their own phone, with no
+     * account and nothing installed, on every plan on this page. Leading is the part a plan
+     * decides.
+     */
+    note: 'Leading needs a paid plan. Following one never does, on any plan, with no account and nothing installed.',
     cells: (['free', 'standard', 'plus', 'premium'] as const).map((plan) =>
       PLANS[plan].mayLead ? INCLUDED : null,
     ),
   },
   {
     label: 'Other devices following at once',
-    note:
-      'The device you play from is never one of them, so Standard is you and one other screen, and ' +
-      'Plus is a quartet.',
+    note: 'The device you play from is never one of them — Standard is a duo, Plus a quartet.',
     cells: [
       deviceCell(PLANS.free.devices),
       deviceCell(PLANS.standard.devices),
@@ -472,9 +445,7 @@ const ROWS: ComparisonRow[] = [
   },
   {
     label: 'Feature requests',
-    note:
-      `Anybody can write to ${CONTACT}, on any plan. What Premium changes is the order they are ` +
-      `read in.`,
+    note: `Anybody can write to ${CONTACT}, on any plan — Premium's are read first.`,
     /*
      * "Read first" says what happens, and deliberately not how fast: a response time on a static
      * page is a promise made on one developer's behalf, and this page must not grow into an SLA.
@@ -513,10 +484,10 @@ const ROWS: ComparisonRow[] = [
  *
  * Not inside the `(legal)` route group, whose layout is documented as the shell shared by
  * the four legal pages and wraps its children in `legal-content` prose at `max-w-2xl` —
- * four price columns do not fit that box, and this is not a legal document. It renders its
- * own `<main>`, its own way back and its own `<Footer />`, which is the shape
- * `/help/chordpro` already uses; the Footer is also how the legal pages stay reachable from
- * here.
+ * four price columns do not fit that box, and this is not a legal document. It has its own
+ * `layout.tsx` instead (`PublicHeader` at 70rem, matching this page's own width), and
+ * renders its own `<main>` and its own `<Footer />`, which is the shape `/help/chordpro`
+ * already uses; the Footer is also how the legal pages stay reachable from here.
  *
  * Deliberately **not** in `scripts/precache-routes.ts`, and that list's own comment is why
  * somebody will want to add it: it says the public routes that need no session belong there.
@@ -533,9 +504,13 @@ const ROWS: ComparisonRow[] = [
 export default function PricingPage() {
   return (
     <main className="mx-auto w-full max-w-[70rem] px-5 pb-16 pt-8 sm:px-8 sm:pt-12">
-      <h1 className="screen-title mt-6">What Songbook costs</h1>
-
-      <p className="mt-3 max-w-[42rem] text-sm leading-[1.6] text-muted">{LEDE}</p>
+      <div className="text-center">
+        <span className="pricing-eyebrow">Pricing</span>
+        <h1 className="screen-title mt-5">What Songbook costs</h1>
+        <p className="mx-auto mt-4 max-w-[38rem] text-[1.03125rem] leading-[1.6] text-muted">
+          {HERO_SUBTITLE}
+        </p>
+      </div>
 
       <section className="mt-8">
         <PricingPlans columns={COLUMNS}>
@@ -551,53 +526,13 @@ export default function PricingPage() {
       </section>
 
       {/*
-        * Between the prices and the table rather than at the bottom: following a session needs
-        * no account and no install, which is both the best thing on this page and the fact most
-        * likely to be misread as something the free plan grants. It earns the position where the
-        * reader is still deciding.
+        * The tax/currency/no-trial disclosure `LEDE` used to open the page with, demoted here
+        * rather than dropped — see `BILLING_NOTE`'s own comment. Under the grid rather than
+        * above it: these are terms that qualify the prices just shown, not a claim to open on.
         */}
-      <section className="mt-12">
-        <div className="feature-spotlight">
-          {/*
-            * The same three arcs /login draws behind its own Sing Together panel, and the same
-            * `.feature-spotlight-mark` that near-erases them: decoration, not content. Copied as
-            * markup rather than extracted into a shared component because it is a drawing with no
-            * behaviour and no props, and a component would put a file between a reader and six
-            * lines of paths.
-            */}
-          <svg
-            className="feature-spotlight-mark"
-            width="300"
-            height="300"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={0.6}
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="19" r="1.3" fill="currentColor" stroke="none" />
-            <path d="M8.5 19a3.5 3.5 0 0 1 7 0" />
-            <path d="M5.5 19a6.5 6.5 0 0 1 13 0" />
-          </svg>
-
-          {/*
-            * Not `.feature-spotlight-inner`: that class becomes two columns above 1024px, which
-            * is right for /login's panel — a paragraph beside three points — and wrong here,
-            * where there is one paragraph and the second column would be an empty half of an
-            * accent-filled band. The paragraph is capped instead, so the line length stays
-            * readable without a column boundary to hold it.
-            */}
-          <div className="relative">
-            <span className="feature-spotlight-icon">
-              <IconBroadcast size={26} />
-            </span>
-
-            <h2 className="feature-spotlight-title">Anyone with the link can follow</h2>
-
-            <p className="feature-spotlight-text max-w-[46rem]">{GUEST_LINK}</p>
-          </div>
-        </div>
-      </section>
+      <p className="mx-auto mt-6 max-w-[42rem] text-center text-xs leading-[1.6] text-muted">
+        {BILLING_NOTE}
+      </p>
 
       <section className="mt-12">
         <h2 className="landing-feature-title">What each plan includes</h2>
@@ -661,40 +596,51 @@ export default function PricingPage() {
         */}
       {LIFETIME_OPEN && (
         <section className="mt-12">
-          <div className="card p-5 sm:p-7">
-            <h2 className="landing-feature-title">
-              Lifetime — {euro(LIFETIME.amount)}, once
-            </h2>
-
-            <p className="mt-3 max-w-[42rem] text-sm leading-[1.6] text-muted">{LIFETIME_WHAT}</p>
-            <p className="mt-2.5 max-w-[42rem] text-sm leading-[1.6] text-muted">{LIFETIME_WHEN}</p>
+          <div className="lifetime-panel">
             {/*
-              * The way out, beside the largest number on the page: a reader weighing a single
-              * €149 payment is the one who most needs to know it can be undone, and this block
-              * was the one place on the page with no such sentence.
+              * Text on the left, the price on the right — the v3.4 redesign's own layout,
+              * replacing the single stacked column this block used to be. `items-end` on
+              * `sm:flex-row` so the price block's own right edge lines up with its button
+              * underneath it rather than with the panel's own padding.
               */}
-            <p className="mt-2.5 max-w-[42rem] text-sm leading-[1.6] text-muted">{REFUND}</p>
+            <div className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-[32rem]">
+                <span className="lifetime-eyebrow">Pay once</span>
+                <h2 className="lifetime-title">Lifetime</h2>
+                <p className="lifetime-what">{LIFETIME_WHAT}</p>
+              </div>
 
-            <p className="plan-action">{CHECKOUT_LIVE ? TEST_CHECKOUT_OPEN : NOT_ON_SALE}</p>
-            {CHECKOUT_LIVE && (
-              <Link href="/checkout/lifetime" className="btn btn-primary btn-sm mt-2">
-                Choose Lifetime
-              </Link>
-            )}
+              <div className="flex-none sm:text-right">
+                <p className="lifetime-original">{euro(LIFETIME.originalAmount)}</p>
+                <p className="lifetime-price">{euro(LIFETIME.amount)}</p>
+                <p>
+                  <span className="lifetime-pill">{LIFETIME_PILL}</span>
+                </p>
+
+                {CHECKOUT_LIVE && (
+                  <Link href="/checkout/lifetime" className="btn btn-primary btn-sm mt-4 w-full sm:w-auto">
+                    Choose Lifetime
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         </section>
       )}
 
-      <section className="mt-12">
-        <h2 className="landing-feature-title">If a plan ends</h2>
-        {/*
-          * Cancelling first, then what is kept, then the refund window: the order a reader asks
-          * them in. The heading is about a plan ending, and the first thing they want to know is
-          * whether ending one costs them the time they have paid for.
-          */}
-        <p className="mt-3 max-w-[42rem] text-sm leading-[1.6] text-muted">{CANCELLING}</p>
-        <p className="mt-2.5 max-w-[42rem] text-sm leading-[1.6] text-muted">{IF_A_PLAN_ENDS}</p>
-        <p className="mt-2.5 max-w-[42rem] text-sm leading-[1.6] text-muted">{REFUND}</p>
+      {/*
+        * Replaces the whole of "If a plan ends" — see `TRUST_NOTE`'s own comment on what that
+        * traded away. The checkmark-in-a-circle is the smaller sibling of `.hero-badge-icon`'s
+        * own on /login, reused here rather than drawn again for the same reason `IconCheck`
+        * already exists: one glyph for "this is settled" everywhere it appears.
+        */}
+      <section className="mt-8">
+        <div className="card trust-note">
+          <span className="trust-note-icon">
+            <IconCheck size={18} />
+          </span>
+          <p className="text-sm leading-[1.5] text-ink">{TRUST_NOTE}</p>
+        </div>
       </section>
 
       {/*

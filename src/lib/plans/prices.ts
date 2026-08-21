@@ -98,7 +98,7 @@ export const PRICES: Record<PaidPlan, Record<BillingPeriod, PlanPrice>> = {
   },
   premium: {
     year: { amount: '99', paddleId: '' },
-    month: { amount: '9.99', paddleId: '' },
+    month: { amount: '9.49', paddleId: '' },
   },
 }
 
@@ -126,6 +126,13 @@ export const PRICES: Record<PaidPlan, Record<BillingPeriod, PlanPrice>> = {
  */
 export const LIFETIME = {
   amount: '149',
+  /**
+   * The struck-through anchor beside `amount` — never charged, never stored anywhere a
+   * purchase touches (`checkout.ts` writes only `plan`/`planStatus`/`planExpiresAt`, the same
+   * three columns every other plan writes, with no price of any kind among them). Its only
+   * job is the one line on `/pricing` that shows both numbers at once.
+   */
+  originalAmount: '249',
   paddleId: '',
   /** ISO, so a comparison is a comparison and not a parse of prose. */
   closesOn: '2026-12-31',

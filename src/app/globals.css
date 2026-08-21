@@ -1791,26 +1791,58 @@
   }
 
   /*
-   * A column, and every one of the four is the same column: no `.card-lead`, no accent
-   * border, no "most popular" ribbon. The page's job is to let somebody choose, and a
-   * raised column is a push — a deliberate departure from the convention every other
-   * pricing page follows, and not something to "fix" later.
+   * A column, raised above the other three when `featured` — the v3.4 redesign's reversal
+   * of a rule this rule used to state for itself ("no accent border, no ribbon... not
+   * something to fix later"). One column gets `.is-featured` (`Plus`), never more than one:
+   * two raised cards side by side would each cancel the other's claim to be the one to pick.
    *
-   * `flex-direction: column` exists for one line: `.plan-action` is pushed to the
-   * bottom by `margin-top: auto`, so the four action slots line up across a row whose
-   * cards hold sentences of different lengths. Without it the slot floats up under the
-   * shortest one and reads as part of the sentence above it.
+   * `position: relative` is for `.plan-badge`, which anchors to this card and not to the
+   * grid — a ribbon positioned against `.plan-columns` would drift the moment a column
+   * before it changed height.
    */
   .plan-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     padding: 1.25rem;
+  }
+
+  .plan-card.is-featured {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--accent) 78%, black);
+    box-shadow: 0 1.5rem 3rem -1.25rem color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+
+  /*
+   * The ribbon itself: pinned above the card's own top edge, the same instinct
+   * `.hero-badge` follows for the wordmark on /login — a claim this strong reads as
+   * standing apart from the card, not as one more line inside it.
+   */
+  .plan-badge {
+    position: absolute;
+    top: -0.8125rem;
+    left: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    height: 1.625rem;
+    padding: 0 0.875rem;
+    border-radius: var(--r-pill);
+    background: var(--on-accent);
+    color: color-mix(in srgb, var(--accent) 85%, black);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 
   .plan-name {
     color: var(--ink);
     font-size: 0.9375rem;
     font-weight: 600;
+  }
+
+  .plan-card.is-featured .plan-name {
+    color: color-mix(in srgb, var(--on-accent) 82%, transparent);
   }
 
   /* The number is the message on this page, so it is the largest thing in the card. */
@@ -1821,6 +1853,10 @@
     font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1.15;
+  }
+
+  .plan-card.is-featured .plan-price {
+    color: var(--on-accent);
   }
 
   /*
@@ -1835,6 +1871,10 @@
     font-size: 0.75rem;
   }
 
+  .plan-card.is-featured .plan-price-note {
+    color: color-mix(in srgb, var(--on-accent) 68%, transparent);
+  }
+
   .plan-audience {
     margin-top: 0.875rem;
     color: var(--muted);
@@ -1842,30 +1882,31 @@
     line-height: 1.5;
   }
 
+  .plan-card.is-featured .plan-audience {
+    color: color-mix(in srgb, var(--on-accent) 82%, transparent);
+  }
+
   /*
-   * Where a buy button would be, holding words instead. There is no checkout yet, and a
-   * disabled button reports a failure the reader caused, where a line of text reports a
-   * state of the world. `.btn:disabled` already exists and would have cost no CSS at all,
-   * which is exactly why this needs saying: the reason there is no button here is not that
-   * the disabled style was missing.
+   * The button, when a card has one, pushed to the card's own bottom edge — so the buttons
+   * line up across a row whose cards hold sentences of different lengths, the same job
+   * `.plan-action`'s state text used to do by always being the thing every card ended with.
+   * A class on the button itself rather than a `:last-child` rule: a paid column with no
+   * `checkoutPlan` yet has no button at all, and `.plan-audience` ending the card there
+   * should keep its ordinary small margin and simply leave the rest of the card's height
+   * empty, not be yanked to the floor because it happened to be last.
    */
-  /*
-   * --muted, not --faint, and this is the one slot on the page where that is not a
-   * matter of taste: --faint's own note in the token block says it measures under
-   * 4.5:1 against every surface and is reserved for decorative glyphs and disabled
-   * controls, never for real text. At 0.75rem this is real text — «Not on sale yet»,
-   * «Included with any account» — and it is the sentence that keeps a page of prices
-   * honest, so it is the last thing on the page that may be hard to read. It stays
-   * smaller and lighter in weight than the audience line above it, which is what
-   * makes it read as a state rather than as part of the pitch; the contrast does
-   * that work without dropping below AA.
-   */
-  .plan-action {
+  .plan-cta {
     margin-top: auto;
-    padding-top: 1rem;
-    color: var(--muted);
-    font-size: 0.75rem;
-    font-weight: 500;
+  }
+
+  /*
+   * The featured card's own button reads backwards from `.btn-primary` everywhere else:
+   * light on a card that is already the darkest thing in the grid, the same inversion
+   * `.feature-spotlight`'s own children take against its solid `--accent` fill.
+   */
+  .plan-card.is-featured .btn-primary {
+    background: var(--on-accent);
+    color: color-mix(in srgb, var(--accent) 85%, black);
   }
 
   /*
@@ -1884,7 +1925,7 @@
   /*
    * Not `.legal-content table`: those rules are scoped to that prose container and are
    * drawn as a bordered grid, which is right for a short definition table inside a legal
-   * document and wrong for eleven rows a reader scans down. Here the rows are separated by
+   * document and wrong for eight rows a reader scans down. Here the rows are separated by
    * a single line and nothing else, so the eye follows one row across four columns.
    *
    * `min-width` is what makes the scroll happen at all: without it the table would squeeze
@@ -1991,6 +2032,128 @@
   /* A row this plan simply has no part of. The dash is a glyph; the word is in `.sr-only`. */
   .plan-cell-none {
     color: var(--faint);
+  }
+
+  /* The small uppercase tag above the H1 — "Pricing" — the same recipe `.plan-badge` and
+     `.lifetime-eyebrow` below both vary rather than the wordmark treatment `.hero-badge`
+     already owns for /login: this page names a section, not the app. */
+  .pricing-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    height: 1.75rem;
+    padding: 0 1rem;
+    border-radius: var(--r-pill);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.78125rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /*
+   * The one-time offer, drawn darker than `.plan-card.is-featured` rather than in the same
+   * solid `--accent` — two blocks this dark on one page would read as the same claim said
+   * twice, where the whole point of Lifetime is that it is a different kind of purchase
+   * from the three recurring plans above it. Derived from `--accent` with `color-mix`
+   * rather than a second hard-coded colour, so it stays the same relationship to the brand
+   * colour in both themes without a second pair of light/dark values to keep in step.
+   */
+  .lifetime-panel {
+    position: relative;
+    padding: 2rem 1.5rem;
+    border-radius: var(--r-2xl);
+    background: color-mix(in srgb, var(--accent) 55%, black);
+    color: var(--on-accent);
+    overflow: hidden;
+  }
+
+  @media (min-width: 640px) {
+    .lifetime-panel {
+      padding: 2rem 3rem;
+    }
+  }
+
+  .lifetime-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: color-mix(in srgb, var(--on-accent) 60%, transparent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .lifetime-title {
+    margin-top: 0.625rem;
+    color: var(--on-accent);
+    font-size: 1.625rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .lifetime-what {
+    margin-top: 0.625rem;
+    max-width: 32rem;
+    color: color-mix(in srgb, var(--on-accent) 78%, transparent);
+    font-size: 0.90625rem;
+    line-height: 1.6;
+  }
+
+  /* The struck-through anchor beside the real price — never the other way around, so the
+     eye reads "was, now" in that order regardless of which number is visually larger. */
+  .lifetime-original {
+    color: color-mix(in srgb, var(--on-accent) 62%, transparent);
+    font-size: 1.375rem;
+    font-weight: 500;
+    text-decoration: line-through;
+  }
+
+  .lifetime-price {
+    margin-top: 0.125rem;
+    color: var(--on-accent);
+    font-size: 2.75rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .lifetime-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 1.5rem;
+    margin-top: 0.375rem;
+    padding: 0 0.75rem;
+    border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+    color: var(--on-accent);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* The trust note under the lifetime block — a checkmark in a circle, the smaller sibling
+     of `.hero-badge-icon`'s own, and a plain sentence beside it rather than a card's worth
+     of prose: this page already spent that explanation in "If a plan ends" above it. */
+  .trust-note {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1.125rem 1.5rem;
+  }
+
+  .trust-note-icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
   }
 
   /* ---- Top bar -------------------------------------------------------- */

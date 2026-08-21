@@ -75,6 +75,11 @@ describe('LIFETIME', () => {
     assert.equal(Number.isNaN(closes.getTime()), false, LIFETIME.closesOn)
     assert.match(LIFETIME.closesOnLabel, new RegExp(String(closes.getUTCFullYear())))
   })
+
+  it('prices the struck-through anchor above what is actually charged', () => {
+    assert.match(LIFETIME.originalAmount, /^\d+(\.\d{2})?$/)
+    assert.ok(Number(LIFETIME.originalAmount) > Number(LIFETIME.amount))
+  })
 })
 
 describe('yearlyTotalOfMonthly', () => {

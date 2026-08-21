@@ -23,8 +23,19 @@ export interface PlanColumn {
   price: Record<BillingPeriod, ColumnPrice>
   /** Who the plan is for, in one sentence. */
   audience: string
-  /** What stands where a buy button would: a state of the world, never a disabled control. */
-  action: string
+  /**
+   * Raised above the other three, with a "Most popular" ribbon — true for exactly one
+   * column, `Plus`. A reversal of what this file's CSS used to say on purpose ("no accent
+   * border, no ribbon... not something to fix later"): the v3.4 redesign decided a page
+   * that only lets somebody choose still benefits from naming the one most people pick.
+   */
+  featured?: boolean
+  /**
+   * A plain, always-on action — `Start free`, pointed wherever registering happens. Free is
+   * not something `checkout.ts` sells, so it has no `checkoutPlan` and needs this instead;
+   * every other column's button comes from `checkoutPlan` below, never from this.
+   */
+  cta?: { href: string; label: string }
   /**
    * The route slug for the mock checkout (`lib/plans/checkout.ts`'s `CheckoutPlan`), or
    * absent when there is nothing to buy yet. A bare string rather than that type imported
@@ -33,25 +44,30 @@ export interface PlanColumn {
    * exact bundle-size door this file exists to keep shut. The page decides whether this is
    * set at all — see `mockCheckoutEnabled()` in `pricing/page.tsx` — so its mere presence is
    * the only thing this component has to check.
+   *
+   * When it is absent on a paid column, the card simply ends after `audience` with no
+   * button at all — the state that used to be a line of text here ("Not on sale yet") moved
+   * to the one notice above the whole grid (`pricing/page.tsx`'s `NO_CHECKOUT`), said once
+   * for all three paid columns rather than repeated on each.
    */
   checkoutPlan?: string
 }
 
 const PERIODS: { value: BillingPeriod; label: string }[] = [
-  { value: 'year', label: 'Yearly' },
   { value: 'month', label: 'Monthly' },
+  { value: 'year', label: 'Yearly' },
 ]
 
 /**
  * The four price columns and the one control on the page that has state.
  *
  * The only client component /pricing loads, and deliberately the smallest thing that could
- * hold the toggle: the headline, the lede, the notice, the guest-link band, the comparison
- * table, the lifetime block and the closing block are all server-rendered by the page
- * itself. The page stays statically prerendered either way — a client child is rendered
- * into the HTML with `'year'` already chosen and merely hydrates — so what this boundary
- * costs is one small bundle, and what it buys is a toggle whose selected state a screen
- * reader can actually read.
+ * hold the toggle: the headline, the lede, the notice, the comparison table, the lifetime
+ * block and the closing block are all server-rendered by the page itself. The page stays
+ * statically prerendered either way — a client child is rendered into the HTML with
+ * `'month'` already chosen and merely hydrates — so what this boundary costs is one small
+ * bundle, and what it buys is a toggle whose selected state a screen reader can actually
+ * read.
  *
  * The words arrive as props and are not written here, `PlanColumn` by `PlanColumn`. Two
  * reasons, and the second is the one that would be missed: the page owns its own copy, so a
@@ -73,6 +89,11 @@ const PERIODS: { value: BillingPeriod; label: string }[] = [
  * semantics: there are two options, both always visible, and the pair reads as two toggles
  * that happen to be exclusive. A radiogroup would promise keyboard behaviour this does not
  * implement.
+ *
+ * Opens on `'month'`, the v3.4 redesign's own choice — a departure from the previous default
+ * of `'year'`, which `prices.test.ts`'s "makes a year cheaper than twelve months" test was
+ * the reason for. That invariant still holds and still matters: whichever tab opens first,
+ * the other one has to still read as the better deal once tapped.
  */
 export function PricingPlans({
   columns,
@@ -89,7 +110,7 @@ export function PricingPlans({
    */
   children?: React.ReactNode
 }) {
-  const [period, setPeriod] = useState<BillingPeriod>('year')
+  const [period, setPeriod] = useState<BillingPeriod>('month')
 
   return (
     <div>
@@ -115,18 +136,29 @@ export function PricingPlans({
 
       <div className="plan-columns mt-6">
         {columns.map((column) => (
-          <article key={column.name} className="card plan-card">
+          <article
+            key={column.name}
+            className={column.featured ? 'card plan-card is-featured' : 'card plan-card'}
+          >
+            {column.featured && <span className="plan-badge">Most popular</span>}
+
             <h3 className="plan-name">{column.name}</h3>
             <p className="plan-price">{column.price[period].amount}</p>
             <p className="plan-price-note">{column.price[period].note}</p>
             <p className="plan-audience">{column.audience}</p>
-            <p className="plan-action">{column.action}</p>
+
             {column.checkoutPlan !== undefined && (
               <Link
                 href={`/checkout/${column.checkoutPlan}?cycle=${period}`}
-                className="btn btn-primary btn-sm mt-2 w-full"
+                className="btn btn-primary btn-sm plan-cta w-full"
               >
                 Choose {column.name}
+              </Link>
+            )}
+
+            {column.cta !== undefined && (
+              <Link href={column.cta.href} className="btn btn-sm plan-cta w-full">
+                {column.cta.label}
               </Link>
             )}
           </article>
