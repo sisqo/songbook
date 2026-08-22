@@ -44,7 +44,7 @@ import type { SubscriptionColumns } from './entitlements'
 import { amountFor, logMockEvent, paymentHistoryFor } from './history'
 import type { PaymentHistoryLine } from './history'
 import { mockCheckoutEnabled } from './resolve'
-import { isCheckoutPlan, readPendingCycle } from './prices'
+import { euro, isCheckoutPlan, readPendingCycle } from './prices'
 import type { BillingPeriod } from './prices'
 import { PLAN_LABEL, PLAN_RANK, readPendingPlan, readPlan, readPlanStatus } from './types'
 import type { Plan, PlanStatus } from './types'
@@ -264,9 +264,20 @@ export async function mockPurchase(
     const isUpgradeOrSame = plan === 'lifetime' || currentLive === null || PLAN_RANK[plan] >= PLAN_RANK[currentLive]
 
     if (isUpgradeOrSame) {
-      /* Hoisted, so the row, the receipt and the screen all name one date rather than three
-       * `expiryFor(cycle, now)` calls that only happen to agree. */
-      const expiresAt = plan === 'lifetime' ? null : expiryFor(cycle, now)
+      /*
+       * The three facts this whole branch reports, derived once at the top.
+       *
+       * `lifetime` is the one plan with no cycle to bill and no date to renew on, and that
+       * single narrowing used to be rewritten as `plan === 'lifetime' ? … : …` at four separate
+       * points here — the column write, the ledger row, the Telegram line and the receipt — as
+       * if the four could legitimately disagree. `billedCycle` is that decision, made once;
+       * `expiresAt` and `amount` follow from it, so the row, the notification and the email
+       * cannot name different dates or different prices. `amount` in particular is `amountFor`,
+       * the same function `logMockEvent` uses for the `paddle_events` row it writes below.
+       */
+      const billedCycle = plan === 'lifetime' ? null : cycle
+      const expiresAt = billedCycle === null ? null : expiryFor(billedCycle, now)
+      const amount = amountFor(plan, billedCycle)
 
       const updated = await db()
         .update(accounts)
@@ -308,11 +319,17 @@ export async function mockPurchase(
         accountOwnerEmail: user.accountOwnerEmail,
         action: 'purchase',
         plan,
-        cycle: plan === 'lifetime' ? null : cycle,
+        cycle: billedCycle,
       })
-      const label = `${plan}${plan === 'lifetime' ? '' : `/${cycle}`}`
+
+      const label = `${plan}${billedCycle === null ? '' : `/${billedCycle}`}`
       console.warn(`mock checkout: ${user.accountOwnerEmail} => ${label}`)
-      await notifyTelegram(`💰 Acquisto: ${user.accountOwnerEmail} → ${label}`)
+      /* The amount is what makes this line worth reading on a phone: «premium/year» says what
+       * was bought, «€99» says what came in. `una tantum` for lifetime, which has no cycle to
+       * bill again. A plan with no price to name (none today — `free` is not sold here) simply
+       * omits the clause rather than printing an empty one. */
+      const paidClause = amount === null ? '' : ` · ${euro(amount)}${billedCycle === null ? ' una tantum' : ''}`
+      await notifyTelegram(`💰 Acquisto: ${user.accountOwnerEmail} → ${label}${paidClause}`)
 
       /*
        * The thank-you, sent only on this branch: a scheduled downgrade below is not a purchase
@@ -332,12 +349,7 @@ export async function mockPurchase(
           : expiresAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       await sendEmail({
         to: user.accountOwnerEmail,
-        ...purchaseEmail({
-          planLabel: PLAN_LABEL[plan],
-          amount: amountFor(plan, plan === 'lifetime' ? null : cycle),
-          cycle: plan === 'lifetime' ? null : cycle,
-          renewsOn,
-        }),
+        ...purchaseEmail({ planLabel: PLAN_LABEL[plan], amount, cycle: billedCycle, renewsOn }),
       })
 
       return { ok: true, effect: 'immediate' }
