@@ -18,7 +18,15 @@ import { APP_NAME, APP_PAYOFF, SITE_URL } from '@/lib/brand'
  * blocked by default — handles the same way, the latter falling back to `alt`.
  */
 const LOGO_URL = `https://${SITE_URL}/brand/email/logo.png`
-const LOGO_WIDTH = 160
+/*
+ * Both attributes are set, and their ratio has to be the lockup's own (2336:344 in
+ * the vector, hence 163:24 and not a rounder 160): a mail client that has images
+ * turned off draws the `alt` text in exactly this box, and one that shows them
+ * scales the file to it — a width and height picked independently stretch the logo
+ * by however much they disagree. The file itself is the 300px render, drawn at
+ * roughly 2× for retina inboxes.
+ */
+const LOGO_WIDTH = 163
 const LOGO_HEIGHT = 24
 
 const BG = '#f6f5f2'

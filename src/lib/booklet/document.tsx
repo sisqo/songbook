@@ -78,8 +78,17 @@ import { C_MAJOR } from '../music/notes'
 // should wrap at word boundaries, never split one open.
 Font.registerHyphenationCallback((word) => [word])
 
+/**
+ * The note glyph on the cover badge: the same path `IconNote` draws on screen,
+ * copied rather than imported because react-pdf's `<Path>` is not the DOM's.
+ * The viewBox travels with it as a constant, and both go together every time the
+ * logo is redrawn: a new path under the old box distorts the glyph silently —
+ * nothing type-errors, and the only place it shows is a generated PDF.
+ */
 const BRAND_ICON_PATH =
-  'M21.1 200.5C-3.3 193.6 -7.0 168.3 13.5 149.1C26.8 136.7 47.6 130.8 61.0 135.5C63.3 136.3 65.5 137.0 65.9 137.0C66.2 137.0 66.5 106.3 66.6 68.7L66.7 0.5L73.5 0.5L80.3 0.5L81.9 6.5C85.5 19.3 93.4 30.6 108.2 43.8C132.7 65.7 138.9 84.7 129.5 109.6C125.9 119.3 118.2 130.0 115.0 130.0C113.6 130.0 113.7 128.9 116.2 121.8C122.8 102.1 117.9 81.8 103.2 69.0C98.7 65.0 89.1 59.8 83.8 58.5L81.0 57.8L81.0 109.8C81.0 168.2 80.9 168.8 73.5 179.5C62.7 195.3 37.9 205.2 21.1 200.5Z'
+  'M21.9 178.0C8.0 175.6 -1.3 164.3 0.5 152.1C3.6 131.3 31.8 113.6 53.1 119.1L59.0 120.7L59.0 60.3L59.0 0.0L65.3 0.0L71.6 0.0L73.7 7.3C76.8 17.6 82.1 25.1 94.9 37.0C110.9 52.0 117.2 62.2 118.6 75.2C119.8 87.0 114.5 102.7 106.2 112.0C101.0 117.9 99.8 116.7 102.6 108.3C110.2 85.9 102.4 65.4 82.7 55.5C70.6 49.5 71.8 44.9 72.1 98.2C72.4 143.9 72.3 144.6 70.1 150.2C65.9 160.9 57.5 169.2 45.6 174.5C41.1 176.5 29.1 179.3 27.0 178.9C26.7 178.8 24.4 178.4 21.9 178.0Z'
+
+const BRAND_ICON_VIEWBOX = '0 0 119 179'
 
 const INK = '#16181d'
 const MUTED = '#5c626c'
@@ -416,7 +425,7 @@ function CoverPage({ booklet, brandLine }: { booklet: Booklet; brandLine: boolea
     <Page size="A4" style={styles.coverPage}>
       <View style={styles.badgeRow}>
         <View style={styles.badgeIcon}>
-          <Svg width={10.5} height={10.5} viewBox="0 0 134 202">
+          <Svg width={10.5} height={10.5} viewBox={BRAND_ICON_VIEWBOX}>
             <Path d={BRAND_ICON_PATH} fill={BADGE_TEXT} />
           </Svg>
         </View>

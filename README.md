@@ -205,7 +205,17 @@ a mano) è stato rimosso il 2026-08-21 quando sono arrivati gli asset reali. Il 
 inline usato da sé solo (senza wordmark) — `IconNote` in `src/components/icons.tsx`, il
 badge del booklet PDF in `src/lib/booklet/document.tsx`, il cerchio icona-soltanto delle
 pagine di autenticazione — è lo stesso tracciato vettoriale, così eredita
-`--accent`/`--on-accent` invece di portarsi un colore fisso.
+`--accent`/`--on-accent` invece di portarsi un colore fisso. Il path vive in due copie
+(react-pdf non disegna l'`<svg>` del DOM, gli serve il suo), e le due si aggiornano
+sempre insieme — **path e `viewBox`**, non uno solo: un tracciato nuovo dentro il box
+vecchio deforma il glifo senza che niente si rompa, e nel PDF non lo vedrebbe nessuno.
+
+Il 2026-08-22 il logo è stato ridisegnato — tile più arrotondato (raggio al 27,7% del
+lato) e nota nuova — e tutto è stato rigenerato dal drop aggiornato, che questa volta è
+**vettoriale**: i PNG sono render dell'SVG, non ritagli di un raster, quindi nitidi a
+qualsiasi taglia. Una sola eccezione: `icons/icon-maskable-192.png`, che il pacchetto non
+contiene più (ha solo il 512) e qui è un downscale di quello — il manifest dichiara
+entrambe le taglie per entrambi i purpose, per la ragione scritta in `manifest.ts`.
 
 Dove serve il logo per intero (header dell'app, badge sull'hero di `/login`, firma delle
 email), il file è il lockup orizzontale disegnato (`public/brand/lockup-horizontal-black.svg` /
@@ -214,8 +224,13 @@ entrambe le varianti sono nel markup, e CSS ne mostra una sola in base al tema
 (`img.lockup-light`/`.lockup-dark` in `globals.css`, stesso doppio blocco chiaro/scuro dei
 token colore — una pagina precachata e statica non può sapere a tempo di render quale
 tema sta guardando il lettore). Nell'email invece è un solo file (`public/brand/email/logo.png`)
-perché lì non c'è alcun tema da seguire. Per rigenerare o ridimensionare qualcosa serve il
-sorgente vettoriale originale, non questo repo.
+perché lì non c'è alcun tema da seguire: un PNG, non l'SVG, e con `width`/`height` scritti
+nel tag nel rapporto esatto del lockup (163×24) — un client con le immagini spente disegna
+l'`alt` dentro quella scatola, uno che le mostra ci scala il file, e due numeri scelti
+indipendentemente stirano il logo di quanto non tornano. Dal drop del 2026-08-22 esiste
+anche il lockup **verticale** (`lockup-vertical-black.svg` / `-white.svg`, mark sopra e
+wordmark sotto), per i posti dove il logo sta in colonna invece che in riga. Per rigenerare
+o ridimensionare qualcosa il sorgente è l'SVG del drop, non questo repo.
 
 Tutto quanto sopra vive sotto `public/brand/` (icone in `brand/icons/`, lockup e OG image
 alla radice di `brand/`, logo email in `brand/email/`) invece che sciolto nella radice di
