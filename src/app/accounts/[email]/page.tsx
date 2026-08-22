@@ -26,6 +26,36 @@ interface Props {
 }
 
 /**
+ * The address this page is about, read back out of the path segment.
+ *
+ * The App Router hands a dynamic segment through **still percent-encoded** — verified
+ * empirically against this very app, not inferred: `/accounts/a%40b.com` arrives as the
+ * literal `a%40b.com`, `%` and all. The first version of this page trusted `getRouteMatcher`
+ * (`next/dist/shared/lib/router/utils/route-matcher.js`), which does call
+ * `decodeURIComponent` — but that is the *Pages* Router's matcher and not the code path a
+ * server component's `params` travels. The result was a 404 on every single account, because
+ * no row's `owner_email` contains a `%`, so `getAccountDetail` found nothing and this page
+ * called `notFound()` on a perfectly real address.
+ *
+ * Exactly one decode, the inverse of the one `encodeURIComponent` the list's link applies.
+ * That is also what keeps an address holding a literal `%` intact — legal in an email's local
+ * part, if vanishingly rare — since the link writes it as `%25` and this reads it back as `%`.
+ * A second decode would corrupt precisely that address, which is why this is not written
+ * defensively as "decode until it stops changing".
+ *
+ * `decodeURIComponent` throws on a malformed sequence (`%zz`), which is a URL nothing in this
+ * app could have linked to: `null` here, and the caller answers `notFound()` — the same thing
+ * it already answers for an address that has no account.
+ */
+function readEmailParam(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Switching into this account — moved here from the list row (PLAN-accounts-admin.md), same
  * `switchAccount` and the same `redirect('/')` inside it once the cookie is written. Local to
  * this file rather than a shared component: it is used in exactly the one place now that the
@@ -60,7 +90,10 @@ function EnterAccountForm({ ownerEmail }: { ownerEmail: string }) {
  */
 export default async function AccountDetailPage({ params }: Props) {
   const { email } = await params
-  const [detail, user] = await Promise.all([getAccountDetail(email), currentUser()])
+  const address = readEmailParam(email)
+  if (address === null) notFound()
+
+  const [detail, user] = await Promise.all([getAccountDetail(address), currentUser()])
   if (detail === null) notFound()
 
   const history = await loadAccountHistory(detail.ownerEmail)

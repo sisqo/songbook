@@ -113,11 +113,28 @@ una copia propria.
 
 ## La rotta di dettaglio: `/accounts/[email]`
 
-- Il segmento è l'email stessa, con `encodeURIComponent(ownerEmail)` nel link dalla lista.
-  Verificato leggendo il codice sorgente di Next.js (`route-matcher.js`,
-  `getRouteMatcher`/`decode`): ogni valore di `params` passa già da `decodeURIComponent` prima di
-  arrivare alla pagina — `params.email` è già la stringa vera, `mario+test@esempio.it` e non
-  `mario%2Btest%40esempio.it`. Nessuna doppia decodifica da fare a mano.
+- Il segmento è l'email stessa, con `encodeURIComponent(ownerEmail)` nel link dalla lista, e
+  **un `decodeURIComponent` esplicito nella pagina** (`readEmailParam`).
+
+  Correzione rispetto alla prima stesura di questo documento, che affermava l'opposto: qui era
+  scritto che `params` arriva già decodificato, "verificato leggendo il codice sorgente di
+  Next.js (`route-matcher.js`, `getRouteMatcher`/`decode`)". Sbagliato — quello è il matcher del
+  **Pages** Router, non il percorso che i `params` di un server component dell'App Router
+  seguono. Verificato empiricamente (una rotta sonda temporanea sotto un prefisso pubblico al
+  middleware, interrogata con `curl`): `/accounts/a%40b.com` arriva alla pagina come la stringa
+  letterale `a%40b.com`, `%` compreso. Senza il decode, `getAccountDetail` cercava una riga il
+  cui `owner_email` contenesse `%40`, non la trovava mai, e la pagina rispondeva `notFound()` su
+  **ogni** account — il bug come si è manifestato in produzione.
+
+  Un solo decode, inverso dell'unico `encodeURIComponent` del link: è anche ciò che preserva un
+  indirizzo con un `%` letterale (legale nella parte locale di un'email, se rarissimo), perché
+  il link lo scrive `%25` e la pagina lo rilegge `%`. Un secondo decode corromperebbe proprio
+  quell'indirizzo. Su una sequenza malformata (`%zz`) `decodeURIComponent` lancia: `notFound()`,
+  come per un indirizzo senza account.
+
+  Lezione da tenere: leggere il sorgente di una libreria non è una verifica se non si è
+  controllato di stare leggendo il percorso di codice davvero in uso. Una richiesta reale lo
+  è.
 - Stessa guardia della lista in testa alla pagina: `isOwner(session?.user?.email, ALLOWED_EMAILS)`
   altrimenti `notFound()` — "non esiste" e "non è tuo" restano indistinguibili dall'esterno,
   come ovunque in questo repo.
@@ -202,8 +219,10 @@ Danger zone
 - **Le sei funzioni di formattazione del piano vivono in `lib/accounts/planText.ts`**, condivise
   fra lista e dettaglio — l'alternativa (due copie) è esattamente il rischio che il commento di
   `AccountPlanButton.tsx` su `subscriptionLine` avverte di evitare.
-- **`/accounts/[email]`, con `encodeURIComponent` sul link** — verificato nel sorgente di
-  Next.js che `params` arriva già decodificato, nessuna decodifica manuale necessaria.
+- **`/accounts/[email]`, con `encodeURIComponent` sul link e `decodeURIComponent` nella pagina**
+  — l'App Router consegna il segmento ancora percent-encoded (verificato con una richiesta
+  reale, non leggendo il sorgente della libreria: vedi sopra per il perché quella prima
+  "verifica" era invalida e per il 404 in produzione che ne è seguito).
 - **Pagina di dettaglio: tutto visibile, azioni raggruppate nella propria sezione** — l'unica
   eccezione è `DeleteAccountButton`, che tiene il proprio click-per-rivelare come rete di
   sicurezza deliberata, non come risparmio di spazio.
