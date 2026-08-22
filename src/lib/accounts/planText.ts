@@ -13,6 +13,7 @@
  */
 
 import type { AccountPlanLine } from './read'
+import { PLAN_LABEL } from '@/lib/plans/types'
 import type { Plan } from '@/lib/plans/types'
 
 /**
@@ -21,12 +22,53 @@ import type { Plan } from '@/lib/plans/types'
  * glance (PLAN-attivazione.md). Free carries no color of its own on purpose: see DESIGN.md's
  * "Plan Badges" section.
  */
-export const PLAN_BADGE_CLASS: Record<Plan, string> = {
+const PLAN_BADGE_CLASS: Record<Plan, string> = {
   free: 'plan-badge-free',
   standard: 'plan-badge-standard',
   plus: 'plan-badge-plus',
   premium: 'plan-badge-premium',
   lifetime: 'plan-badge-lifetime',
+}
+
+/**
+ * Whether this account has no plan at all — nothing chosen by the reader, nothing assigned by
+ * an operator.
+ *
+ * `plan` is `notNull().default('free')`, so the column says `'free'` from the instant the row
+ * is inserted, before anybody has decided anything. Reading that as "this account is on the
+ * Free plan" is the lie this predicate exists to stop: until the mandatory choice is made
+ * (PLAN-attivazione.md) there is no plan, which is also exactly why such an account cannot get
+ * into the app at all — it is sent to `/pricing` and kept there.
+ *
+ * Both halves are required, and the second is not redundant. A gift now stamps
+ * `plan_chosen_at` itself (`setGrant`), so from that change on a row with nothing chosen has
+ * nothing assigned either; but a row gifted in the window before it — or any future path that
+ * assigns a plan without stamping — genuinely *has* a plan, and must show that plan rather
+ * than "No plan". `stillAwaitingChoice` is what keeps that residual row from reading as a
+ * perfectly ordinary premium account.
+ */
+export function noPlanYet(line: AccountPlanLine): boolean {
+  return !line.planChosen && line.effectivePlan === 'free'
+}
+
+/**
+ * The one row where a plan *is* assigned and yet the gate has still not been passed — see
+ * `noPlanYet` on why that combination is now residual rather than ordinary. Worth a marker of
+ * its own because the account is locked out of the app while showing a paid badge, which is
+ * the kind of state an operator would otherwise have no way to explain.
+ */
+export function stillAwaitingChoice(line: AccountPlanLine): boolean {
+  return !line.planChosen && line.effectivePlan !== 'free'
+}
+
+/**
+ * The badge for one account: its plan's name and colour, or the "No plan" marker when there is
+ * no plan to name. One function rather than each screen deciding, so `/accounts` and
+ * `/accounts/[email]` cannot come to disagree about what a row *is*.
+ */
+export function planBadge(line: AccountPlanLine): { label: string; className: string } {
+  if (noPlanYet(line)) return { label: 'No plan', className: 'plan-badge-unchosen' }
+  return { label: PLAN_LABEL[line.effectivePlan], className: PLAN_BADGE_CLASS[line.effectivePlan] }
 }
 
 /**
@@ -63,6 +105,15 @@ export function planDetail(line: AccountPlanLine): string {
   if (line.untilOn !== null) return `${side} until ${line.untilOn}${pendingClause}`
   return line.source === 'grant' ? 'gift, no end' : `subscription${pendingClause}`
 }
+
+/**
+ * What the detail page says instead of the subscription/in-force pair when there is no plan.
+ * Both of those sentences would name `free` — the column's default, not a decision anybody
+ * made — and the second would go further and call it "in force", which is exactly backwards:
+ * nothing is in force, and the account cannot even get past `/pricing`.
+ */
+export const NO_PLAN_LINE =
+  'No plan chosen yet: this account is sent to the pricing page on sign-in and cannot use the app until it picks one.'
 
 /**
  * The subscription side as one sentence, for the detail page: what was bought and where it

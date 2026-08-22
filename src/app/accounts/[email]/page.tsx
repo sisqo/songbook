@@ -12,9 +12,17 @@ import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
 import { loadAccountHistory, switchAccount } from '@/lib/accounts/actions'
 import { getAccountDetail } from '@/lib/accounts/read'
-import { PLAN_BADGE_CLASS, auditLine, giftLine, inForceLine, subscriptionLine } from '@/lib/accounts/planText'
+import {
+  NO_PLAN_LINE,
+  auditLine,
+  giftLine,
+  inForceLine,
+  noPlanYet,
+  planBadge,
+  stillAwaitingChoice,
+  subscriptionLine,
+} from '@/lib/accounts/planText'
 import { currentUser } from '@/lib/auth/session'
-import { PLAN_LABEL } from '@/lib/plans/types'
 
 export const metadata: Metadata = { title: 'Account' }
 
@@ -139,18 +147,26 @@ export default async function AccountDetailPage({ params }: Props) {
           ) : (
             <>
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className={`badge ${PLAN_BADGE_CLASS[detail.plan.effectivePlan]}`}>
-                  {PLAN_LABEL[detail.plan.effectivePlan]}
-                </span>
-                {!detail.plan.planChosen && <span className="badge plan-badge-unchosen">Not activated</span>}
+                <span className={`badge ${planBadge(detail.plan).className}`}>{planBadge(detail.plan).label}</span>
+                {stillAwaitingChoice(detail.plan) && (
+                  <span className="badge plan-badge-unchosen">Awaiting choice</span>
+                )}
               </div>
 
               <div className="mb-3 text-sm text-muted">
-                <p>{subscriptionLine(detail.plan)}</p>
+                {/* With no plan at all, the subscription and in-force lines would both name
+                    `free` — the column's default rather than anybody's decision — so one honest
+                    sentence replaces the pair. The gift lines stay either way: a withdrawn gift's
+                    audit is worth reading on an account that never chose anything too. */}
+                {noPlanYet(detail.plan) ? (
+                  <p>{NO_PLAN_LINE}</p>
+                ) : (
+                  <p>{subscriptionLine(detail.plan)}</p>
+                )}
                 <p>{giftLine(detail.plan)}</p>
                 {audit !== null && <p>{audit}</p>}
                 {detail.plan.grantedNote !== null && <p>“{detail.plan.grantedNote}”</p>}
-                <p className="mt-1.5">{inForceLine(detail.plan)}</p>
+                {!noPlanYet(detail.plan) && <p className="mt-1.5">{inForceLine(detail.plan)}</p>}
               </div>
 
               <GiftForm ownerEmail={detail.ownerEmail} plan={detail.plan} />

@@ -7,7 +7,7 @@
  * provisioning on any first sign-in cover every real case it used to.
  */
 
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -235,6 +235,29 @@ export async function setGrant(accountOwnerEmail: string, grant: GrantInput | nu
         grantedBy: normalizeEmail(callerEmail),
         grantedAt: now,
         grantedNote: fields.note,
+        /*
+         * Giving a gift also satisfies the mandatory plan-choice gate (PLAN-attivazione.md):
+         * `plan_chosen_at` means "this account got a plan, one way or another", and an operator
+         * *assigning* one is that just as much as a reader *choosing* one. Without this, a
+         * customer handed premium by hand was still bounced to `/pricing` on every visit to
+         * `/` and could not use the plan they had just been given — `hasChosenPlan` reads this
+         * one column and nothing else, deliberately, because it runs on every home render.
+         *
+         * `coalesce`, so a later gift never rewrites the real first-activation date — the same
+         * expression `activatePlanChoice` and `mockPurchase` already write, for the same reason.
+         * `now.toISOString()` and never the `Date` itself: inside a raw `sql` template a `Date`
+         * becomes a bind parameter postgres.js refuses outright, throwing the whole UPDATE — see
+         * `mockPurchase`, where exactly that broke every purchase until it was fixed. The string
+         * also keeps this stamp on the same instant as `grantedAt` beside it.
+         *
+         * Only on this path, never on the clear: taking a gift away does not un-happen the fact
+         * that the account once had a plan, and re-locking somebody out of the app because
+         * their gift ended is not what withdrawing a gift is for. They keep free's limits,
+         * which is what `entitlementsFor` already resolves them to.
+         */
+        ...(fields.plan === null
+          ? {}
+          : { planChosenAt: sql`coalesce(${accounts.planChosenAt}, ${now.toISOString()})` }),
       })
       .where(eq(accounts.ownerEmail, normalizeEmail(accountOwnerEmail)))
       .returning({ ownerEmail: accounts.ownerEmail })

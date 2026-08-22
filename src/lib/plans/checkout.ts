@@ -236,11 +236,29 @@ export async function mockPurchase(
           planExpiresAt: plan === 'lifetime' ? null : expiryFor(cycle, now),
           pendingPlan: null,
           pendingCycle: null,
-          // See `activatePlanChoice`'s own comment on the `coalesce`: a plan bought directly,
-          // with no Free step first, still has to satisfy the mandatory-choice gate
-          // (PLAN-attivazione.md) on its own — but never by overwriting a real first-activation
-          // date already sitting on a later upgrade or re-purchase.
-          planChosenAt: sql`coalesce(${accounts.planChosenAt}, ${now})`,
+          /*
+           * See `activatePlanChoice`'s own comment on the `coalesce`: a plan bought directly,
+           * with no Free step first, still has to satisfy the mandatory-choice gate
+           * (PLAN-attivazione.md) on its own — but never by overwriting a real first-activation
+           * date already sitting on a later upgrade or re-purchase.
+           *
+           * `now.toISOString()`, never the `Date` itself. Interpolating a JS `Date` into a raw
+           * `sql` template makes it a bind parameter, and postgres.js refuses one: «The "string"
+           * argument must be of type string or an instance of Buffer or ArrayBuffer. Received an
+           * instance of Date». The whole UPDATE then throws, the `catch` below turns it into
+           * `failed`, and the checkout screen says «That didn't go through. Try again.» on every
+           * single purchase — which is exactly what shipped, and what this line is fixing.
+           * Verified against the real database, all three forms: the `Date` throws, `now()` and
+           * this one both work. (Drizzle converts a `Date` fine in a plain `.set({ col: date })`
+           * — as `planExpiresAt` two lines up does — because that path knows the column's type.
+           * Inside `sql` there is no column to infer from, so the driver sees a bare object.)
+           *
+           * A string rather than SQL's own `now()`: this way the stamp is the same instant as
+           * `planExpiresAt` above and as the logged event below, instead of the database's clock
+           * a few milliseconds later. `activatePlanChoice` uses `now()` because it has no JS
+           * clock of its own to share — don't "unify" the two into one form without that in mind.
+           */
+          planChosenAt: sql`coalesce(${accounts.planChosenAt}, ${now.toISOString()})`,
         })
         .where(eq(accounts.ownerEmail, user.accountOwnerEmail))
         .returning({ ownerEmail: accounts.ownerEmail })

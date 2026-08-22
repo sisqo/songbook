@@ -8,7 +8,7 @@ import { TopBar } from '@/components/TopBar'
 import { auth } from '@/auth'
 import { listAccountPlans, listAllAccounts } from '@/lib/accounts/read'
 import type { AccountSummary } from '@/lib/accounts/read'
-import { PLAN_BADGE_CLASS, planDetail } from '@/lib/accounts/planText'
+import { noPlanYet, planBadge, planDetail, stillAwaitingChoice } from '@/lib/accounts/planText'
 import { isOwner } from '@/lib/allowlist'
 import { forcedPlanNotice, plansEnforced } from '@/lib/plans/resolve'
 import { PLAN_LABEL, PLAN_VALUES } from '@/lib/plans/types'
@@ -121,6 +121,13 @@ export default async function AccountsPage({ searchParams }: Props) {
       const line = plans?.get(account.ownerEmail)
       if (line === undefined) return false
       if (query.plan !== null && line.effectivePlan !== query.plan) return false
+      /*
+       * An account with no plan is not a Free account, however the column reads — the badge
+       * says "No plan" for exactly that reason (`noPlanYet`), and handing it back under a
+       * Free filter would contradict the row the operator is looking at. Those accounts are
+       * what the checkbox below finds.
+       */
+      if (query.plan === 'free' && noPlanYet(line)) return false
       if (query.unactivated && line.planChosen) return false
     }
     return true
@@ -191,7 +198,7 @@ export default async function AccountsPage({ searchParams }: Props) {
 
           <label className="flex items-center gap-1.5 pb-2.5">
             <input type="checkbox" name="unactivated" value="1" defaultChecked={query.unactivated} />
-            <span className="text-[0.8125rem] text-muted">Not activated only</span>
+            <span className="text-[0.8125rem] text-muted">Without a plan only</span>
           </label>
 
           <label>
@@ -223,6 +230,7 @@ export default async function AccountsPage({ searchParams }: Props) {
             <ul className="card-stack mt-2.5">
               {pageRows.map((account: AccountSummary) => {
                 const line = plans?.get(account.ownerEmail) ?? null
+                const badge = line === null ? null : planBadge(line)
 
                 return (
                   <li key={account.ownerEmail} className="card flex flex-wrap items-center gap-3 px-4 py-3.5">
@@ -239,12 +247,14 @@ export default async function AccountsPage({ searchParams }: Props) {
                         >
                           {account.signInCount}
                         </span>
-                        {line !== null && (
+                        {line !== null && badge !== null && (
                           <>
-                            <span className={`badge ${PLAN_BADGE_CLASS[line.effectivePlan]}`}>
-                              {PLAN_LABEL[line.effectivePlan]}
-                            </span>
-                            {!line.planChosen && <span className="badge plan-badge-unchosen">Not activated</span>}
+                            <span className={`badge ${badge.className}`}>{badge.label}</span>
+                            {/* Only the residual row a plan was assigned to that still has not
+                                passed the gate — see `stillAwaitingChoice`. */}
+                            {stillAwaitingChoice(line) && (
+                              <span className="badge plan-badge-unchosen">Awaiting choice</span>
+                            )}
                             {planDetail(line) !== '' && (
                               <span className="text-[0.8125rem] text-muted">{planDetail(line)}</span>
                             )}
