@@ -11,7 +11,8 @@ import { PublicHeader } from '@/components/PublicHeader'
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader width="70rem" />
+      {/* No mark in the bar: the hero badge a few pixels below prints the same lockup. */}
+      <PublicHeader width="70rem" brand={false} />
       {children}
     </>
   )

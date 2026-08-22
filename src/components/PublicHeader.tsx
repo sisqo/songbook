@@ -25,19 +25,31 @@ import { APP_NAME } from '@/lib/brand'
  * «← Strumfolio» link `(legal)/layout.tsx` used to draw inline, and for `/pricing` the inline
  * one that sat above its own heading; a second way home directly under this bar would only
  * repeat what the header already says.
+ *
+ * `brand={false}` leaves it out, for the pages that print the logo themselves a few dozen
+ * pixels below: `/login`'s own hero badge, and the vertical lockup `AuthLockup` heads the
+ * four sign-in-adjacent pages with. The same drawing twice on one screen, once small in the
+ * corner and once large in the middle, reads as a mistake rather than as a masthead. The bar
+ * stays either way — it is what holds the light/dark/auto switch, and a page with its own
+ * lockup needs that control exactly as much as any other. Those pages also lose nothing by
+ * it: `/login` *is* home for a reader who is not signed in, and the other four each say
+ * "Sign in" in their own copy.
  */
-export function PublicHeader({ width }: { width: string }) {
+export function PublicHeader({ width, brand = true }: { width: string; brand?: boolean }) {
   return (
     <header className="top-bar">
       <div className="top-bar-inner" style={{ '--top-bar-width': width } as React.CSSProperties}>
-        {/* Both render; CSS shows one — see the same comment in TopBar.tsx. */}
-        <Link href="/" className="brand" aria-label={`${APP_NAME}, home`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-          <img src="/brand/lockup-horizontal-black.svg" alt="" className="lockup-light" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-          <img src="/brand/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
-        </Link>
+        {brand && (
+          /* Both render; CSS shows one — see the same comment in TopBar.tsx. */
+          <Link href="/" className="brand" aria-label={`${APP_NAME}, home`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+            <img src="/brand/lockup-horizontal-black.svg" alt="" className="lockup-light" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
+            <img src="/brand/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
+          </Link>
+        )}
 
+        {/* Holds the switch against the right edge with or without a mark on the left. */}
         <span className="flex-1" />
 
         <ThemeToggle />

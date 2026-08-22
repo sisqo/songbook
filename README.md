@@ -241,6 +241,17 @@ screen reader solo per `alt`, e senza quello quelle pagine resterebbero senza in
 lettering alto un sesto della larghezza, e le due larghezze scelte mettono "Strumfolio"
 alla stessa taglia del `.landing-title` che prima lo stampava come testo.
 
+Un logo per schermata, però: `PublicHeader` accetta `brand={false}` e lo passano i due
+layout delle pagine che il logo lo stampano da sé — `/login`, col lockup orizzontale nel
+badge dell'hero, e il gruppo `(auth)` con quello verticale. Lo stesso disegno due volte
+sulla stessa schermata, piccolo in un angolo e grande in mezzo, si legge come una
+sbadataggine e non come una carta intestata. La barra resta comunque, perché è lei a tenere
+il selettore chiaro/scuro/auto, e una pagina col proprio lockup ne ha bisogno quanto le
+altre; il ritorno a `/` non manca a nessuno — `/login` per chi non è autenticato *è* la
+home, e le altre quattro dicono "Sign in" nel loro testo. `/pricing` e le pagine legali non
+hanno logo in pagina e quindi tengono il mark nella barra, che lì è anche l'unica via
+d'uscita.
+
 Per rigenerare o ridimensionare qualcosa il sorgente è l'SVG del drop, non questo repo.
 
 Tutto quanto sopra vive sotto `public/brand/` (icone in `brand/icons/`, lockup e OG image

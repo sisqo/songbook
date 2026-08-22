@@ -10,7 +10,8 @@ import { PublicHeader } from '@/components/PublicHeader'
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader width="24rem" />
+      {/* No mark in the bar: every page under here opens with `AuthLockup`'s own. */}
+      <PublicHeader width="24rem" brand={false} />
       {children}
     </>
   )
