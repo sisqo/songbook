@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { IconBooks, IconCheck, IconReceipt } from '@/components/icons'
-import { loadPurchaseSummary, type MockSubscriptionState } from '@/lib/plans/checkout'
-import { PLAN_LABEL } from '@/lib/plans/types'
+import { loadPurchaseSummary, loadThanksPreview, type MockSubscriptionState } from '@/lib/plans/checkout'
+import { PLAN_LABEL, PLAN_VALUES, readPlan } from '@/lib/plans/types'
+import type { Plan } from '@/lib/plans/types'
 
 type Status =
   | { state: 'loading' }
@@ -33,11 +34,41 @@ function dayOf(value: Date): string {
  * as a thank-you, because "is on Premium" is the only question it asks. Pinning it to the
  * *moment* of purchase would mean reading `paddle_events` for a recent row, which is a lot of
  * machinery to stop a page from being warm twice.
+ *
+ * `?preview=<plan>` is the one exception, and it does not weaken the paragraph above: the query
+ * param never becomes account data by itself, it only picks *which* fabricated plan
+ * `loadThanksPreview` (`lib/plans/checkout.ts`) hands back, and that function re-checks
+ * `isOwner` on the server before handing back anything at all — the same gate `/emails` sits
+ * behind. Read with a plain `URLSearchParams(window.location.search)` rather than Next's
+ * `useSearchParams()`, which would force this page into a Suspense boundary to stay statically
+ * generated, for a query param this page's own real visitors never carry.
  */
 export function ThanksScreen() {
   const [status, setStatus] = useState<Status>({ state: 'loading' })
+  const [previewPlan, setPreviewPlan] = useState<Plan | null>(null)
+
+  const runPreview = (plan: Plan) => {
+    setPreviewPlan(plan)
+    setStatus({ state: 'loading' })
+    void loadThanksPreview(plan).then((result) => {
+      if (!result.ok) {
+        setStatus({
+          state: 'unavailable',
+          reason: result.reason === 'no-session' ? 'Sign in to see this.' : 'Only a global owner can preview this page.',
+        })
+        return
+      }
+      setStatus({ state: 'ready', current: result.current })
+    })
+  }
 
   useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('preview')
+    if (requested !== null) {
+      runPreview(readPlan(requested))
+      return
+    }
+
     void loadPurchaseSummary().then((result) => {
       if (!result.ok) {
         setStatus({
@@ -51,15 +82,46 @@ export function ThanksScreen() {
       }
       setStatus({ state: 'ready', current: result.current })
     })
+    // Read once, on mount, from whatever URL this page happened to load with — the same rule
+    // this effect followed before `?preview=` existed.
   }, [])
 
-  if (status.state === 'loading') return <p className="mt-4 text-sm text-muted">One moment…</p>
+  /** The plan switcher, shown only once a `?preview=` has put this screen into preview mode. */
+  const previewBar =
+    previewPlan === null ? null : (
+      <div className="segment mb-4 w-fit" role="tablist" aria-label="Preview plan">
+        {PLAN_VALUES.map((plan) => (
+          <button
+            key={plan}
+            type="button"
+            role="tab"
+            aria-selected={plan === previewPlan}
+            className={plan === previewPlan ? 'segment-button is-on px-3' : 'segment-button px-3'}
+            onClick={() => runPreview(plan)}
+          >
+            {PLAN_LABEL[plan]}
+          </button>
+        ))}
+      </div>
+    )
+
+  if (status.state === 'loading') {
+    return (
+      <>
+        {previewBar}
+        <p className="mt-4 text-sm text-muted">One moment…</p>
+      </>
+    )
+  }
 
   if (status.state === 'unavailable') {
     return (
-      <p className="notice notice-error mt-4" role="alert">
-        {status.reason}
-      </p>
+      <>
+        {previewBar}
+        <p className="notice notice-error mt-4" role="alert">
+          {status.reason}
+        </p>
+      </>
     )
   }
 
@@ -73,6 +135,7 @@ export function ThanksScreen() {
   if (current.plan === 'free') {
     return (
       <>
+        {previewBar}
         <header className="mb-[1.125rem]">
           <h1 className="screen-title">Nothing bought yet</h1>
           <p className="mt-2 text-sm leading-[1.45] text-muted">
@@ -91,6 +154,7 @@ export function ThanksScreen() {
 
   return (
     <>
+      {previewBar}
       <header className="mb-[1.125rem]">
         <p className="flex items-center gap-1.5 text-sm text-accent">
           <IconCheck size={15} />

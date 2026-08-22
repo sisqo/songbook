@@ -34,6 +34,8 @@
 
 import { and, eq, isNotNull, sql } from 'drizzle-orm'
 
+import { auth } from '@/auth'
+import { isOwner } from '@/lib/allowlist'
 import { currentUser } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
@@ -43,6 +45,7 @@ import { liveSubscription, resolveSubscription } from './entitlements'
 import type { SubscriptionColumns } from './entitlements'
 import { amountFor, logMockEvent, paymentHistoryFor } from './history'
 import type { PaymentHistoryLine } from './history'
+import { buildThanksPreview } from './preview'
 import { mockCheckoutEnabled } from './resolve'
 import { euro, isCheckoutPlan, readPendingCycle } from './prices'
 import type { BillingPeriod } from './prices'
@@ -159,6 +162,34 @@ export async function loadPurchaseSummary(): Promise<
       pendingPlan: resolved.pendingPlan,
     },
   }
+}
+
+/**
+ * What `/thanks?preview=<plan>` shows instead of `loadPurchaseSummary` above — a global owner
+ * looking at made-up data for a plan of their choosing, so the thank-you page can be checked
+ * for every plan (including `free`'s own "nothing bought yet" state) without running the mock
+ * checkout for real. Re-checks `isOwner` itself rather than trusting the page's own gate — the
+ * same discipline `sendTestEmail` (`lib/email/actions.ts`) already follows for `/emails`, and
+ * for the same reason: this is the one thing in this file that hands back a *fabricated*
+ * subscription state, so nobody who isn't already trusted to see fake numbers should reach it.
+ *
+ * `auth()` and not `currentUser()` — the signed-in identity, never whichever account the
+ * switcher currently points at, matching `sendTestEmail`'s own comment on why: owner-ness is a
+ * property of the person, not of whatever account they happen to be looking at.
+ *
+ * `planParam` arrives as `unknown` and is normalised with `readPlan` here rather than trusted
+ * from the caller, so a stale or hand-edited `?preview=` value falls back to `free`'s own state
+ * instead of rendering with an unrecognised plan.
+ */
+export async function loadThanksPreview(
+  planParam: unknown,
+): Promise<{ ok: true; current: MockSubscriptionState } | { ok: false; reason: 'no-session' | 'not-owner' }> {
+  const session = await auth()
+  const email = session?.user?.email
+  if (!email) return { ok: false, reason: 'no-session' }
+  if (!isOwner(email, process.env.ALLOWED_EMAILS)) return { ok: false, reason: 'not-owner' }
+
+  return { ok: true, current: buildThanksPreview(readPlan(planParam)) }
 }
 
 /**
