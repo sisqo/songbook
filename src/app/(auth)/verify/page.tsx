@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { AuthLockup } from '@/components/AuthLockup'
 import { Footer } from '@/components/Footer'
 import { ResendVerificationButton } from '@/components/ResendVerificationButton'
-import { IconNote } from '@/components/icons'
-import { APP_NAME } from '@/lib/brand'
 import { verifyEmail } from '@/lib/verify/actions'
 import { checkPendingRegistration } from '@/lib/verify/check'
 
@@ -21,7 +20,7 @@ interface Props {
  * (`verify/check.ts`), and shows a button rather than acting on its own. An email scanner
  * that "clicks" the link to see where it goes only ever exercises this render — the actual
  * write is `verifyEmail`, a real POST behind an explicit "Verify my email" tap that a
- * scanner never makes. Same shell as `/register`: the hero mark, `.login-card`, nothing
+ * scanner never makes. Same shell as `/register`: the lockup, `.login-card`, nothing
  * else on screen to distract from the one thing this page is for.
  */
 export default async function VerifyPage({ searchParams }: Props) {
@@ -32,16 +31,7 @@ export default async function VerifyPage({ searchParams }: Props) {
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
       <div className="login-glow" aria-hidden />
 
-      <div className="w-full max-w-sm text-center">
-        <span className="hero-mark">
-          <span className="hero-mark-fill">
-            <IconNote />
-          </span>
-        </span>
-
-        <h1 className="landing-title mt-[18px] sm:mt-[22px]">{APP_NAME}</h1>
-        <p className="landing-payoff mt-2 sm:mt-2.5">Verify your email.</p>
-      </div>
+      <AuthLockup payoff="Verify your email." />
 
       <div className="mt-7 w-full max-w-sm sm:mt-8">
         <div className="card card-lead login-card p-6 sm:p-7">

@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 
+import { AuthLockup } from '@/components/AuthLockup'
 import { Footer } from '@/components/Footer'
 import { ResetPasswordForm } from '@/components/ResetPasswordForm'
-import { IconNote } from '@/components/icons'
-import { APP_NAME } from '@/lib/brand'
 import { checkPasswordResetToken } from '@/lib/forgotPassword/check'
 
 export const metadata: Metadata = { title: 'Reset password' }
@@ -31,16 +30,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
     <main className="relative flex min-h-[100dvh] flex-col items-center px-5 py-10 sm:py-16">
       <div className="login-glow" aria-hidden />
 
-      <div className="w-full max-w-sm text-center">
-        <span className="hero-mark">
-          <span className="hero-mark-fill">
-            <IconNote />
-          </span>
-        </span>
-
-        <h1 className="landing-title mt-[18px] sm:mt-[22px]">{APP_NAME}</h1>
-        <p className="landing-payoff mt-2 sm:mt-2.5">Choose a new password.</p>
-      </div>
+      <AuthLockup payoff="Choose a new password." />
 
       <div className="mt-7 w-full max-w-sm sm:mt-8">
         <div className="card card-lead login-card p-6 sm:p-7">

@@ -871,60 +871,42 @@
   /* ---- Login ---------------------------------------------------------- */
 
   /*
-   * The mark on the register/verify/password pages: two circles, icon only — unlike
-   * `.brand`'s full horizontal lockup in the header, or `.hero-badge`'s own copy of
-   * it on /login, this one pairs with `.landing-title` printing the wordmark
-   * separately underneath, so only the icon half of the lockup belongs here. A ring
-   * around the fill is what makes a solid colour read as a badge — worth noticing —
-   * rather than a tile that happens to be round. Sized by hand at the same
-   * breakpoint as `.landing-title`, for the same reason that one is: a Tailwind size
-   * utility stacked on a custom class is a coin flip over which one the cascade
-   * actually keeps.
+   * The mark on the register/verify/password pages (`AuthLockup`): the drawn vertical
+   * lockup, tile above and wordmark below in one image — where until the 2026-08-22
+   * brand assets this was two circles holding `IconNote`, with `.landing-title`
+   * printing the wordmark separately underneath, because the vertical lockup those
+   * two were imitating did not exist yet as a file.
+   *
+   * Sized by width, not height: the drawing is 1688×804 with the lettering a sixth of
+   * the width tall, so these two widths put "Strumfolio" within a pixel of the
+   * 2.25rem/3rem `.landing-title` used to print here as live text — the wordmark is
+   * what the reader compares against the payoff under it, so the wordmark is what the
+   * size follows. Set by hand at `.landing-title`'s own breakpoint, and for the same
+   * reason it is: a Tailwind size utility stacked on a custom class is a coin flip
+   * over which one the cascade actually keeps.
+   *
+   * `flex`, so that the one image CSS leaves showing is a flex item: as an inline
+   * image it would sit on a text baseline and carry a few pixels of descender space
+   * under it that no margin here asked for. Blockifying it in the rule below instead
+   * would land at the very same specificity as `img.lockup-dark { display: none }`
+   * and turn the theme swap into a question of which rule the sheet happens to print
+   * last.
    */
-  .hero-mark {
-    display: inline-flex;
-    align-items: center;
+  .auth-lockup {
+    display: flex;
     justify-content: center;
-    width: 5rem;
-    height: 5rem;
-    border-radius: 50%;
-    background: var(--surface);
-    border: 1px solid var(--edge);
-    box-shadow: var(--shadow-1);
+    width: 11rem;
+    margin-inline: auto;
   }
 
-  .hero-mark-fill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 50%;
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-
-  /* The note itself, sized here rather than through the icon's own `size` prop, so
-   * one class carries both breakpoints instead of two rendered copies. */
-  .hero-mark-fill svg {
-    width: 28px;
-    height: 28px;
+  .auth-lockup img {
+    width: 100%;
+    height: auto;
   }
 
   @media (min-width: 640px) {
-    .hero-mark {
-      width: 5.75rem;
-      height: 5.75rem;
-    }
-
-    .hero-mark-fill {
-      width: 4.125rem;
-      height: 4.125rem;
-    }
-
-    .hero-mark-fill svg {
-      width: 32px;
-      height: 32px;
+    .auth-lockup {
+      width: 14rem;
     }
   }
 
@@ -1131,7 +1113,7 @@
   /*
    * The heading over the grid. Not `.section-title`: this page names it at 26px on
    * a desk and 19px on a phone, and a Tailwind size utility stacked on that shared
-   * class would lose the coin flip described above `.hero-mark`. A class of its own
+   * class would lose the coin flip described above `.auth-lockup`. A class of its own
    * costs a few duplicated lines and settles the question instead of risking it.
    */
   .landing-feature-title {
@@ -2251,9 +2233,10 @@
     text-transform: uppercase;
   }
 
-  /* The trust note under the lifetime block — a checkmark in a circle, the smaller sibling
-     of `.hero-mark-fill`'s own, and a plain sentence beside it rather than a card's worth
-     of prose: this page already spent that explanation in "If a plan ends" above it. */
+  /* The trust note under the lifetime block — a checkmark in a circle, on the accent's
+     soft tint rather than the accent itself, and a plain sentence beside it rather than a
+     card's worth of prose: this page already spent that explanation in "If a plan ends"
+     above it. */
   .trust-note {
     display: flex;
     align-items: center;

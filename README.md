@@ -202,9 +202,9 @@ vengono da un pacchetto di asset disegnati (nota su libro aperto, tile marrone/a
 `#97490F`/`#F1B369`, gli stessi valori di `--accent` chiaro/scuro in `globals.css`), non
 più generati da uno script: quello che c'era (`scripts/icons.ts`, un placeholder disegnato
 a mano) è stato rimosso il 2026-08-21 quando sono arrivati gli asset reali. Il glifo
-inline usato da sé solo (senza wordmark) — `IconNote` in `src/components/icons.tsx`, il
-badge del booklet PDF in `src/lib/booklet/document.tsx`, il cerchio icona-soltanto delle
-pagine di autenticazione — è lo stesso tracciato vettoriale, così eredita
+inline usato da sé solo (senza wordmark) — `IconNote` in `src/components/icons.tsx`, dove
+marca un brano nel menu e nella riga "sto suonando", e il badge di copertina del booklet
+PDF in `src/lib/booklet/document.tsx` — è lo stesso tracciato vettoriale, così eredita
 `--accent`/`--on-accent` invece di portarsi un colore fisso. Il path vive in due copie
 (react-pdf non disegna l'`<svg>` del DOM, gli serve il suo), e le due si aggiornano
 sempre insieme — **path e `viewBox`**, non uno solo: un tracciato nuovo dentro il box
@@ -227,10 +227,21 @@ tema sta guardando il lettore). Nell'email invece è un solo file (`public/brand
 perché lì non c'è alcun tema da seguire: un PNG, non l'SVG, e con `width`/`height` scritti
 nel tag nel rapporto esatto del lockup (163×24) — un client con le immagini spente disegna
 l'`alt` dentro quella scatola, uno che le mostra ci scala il file, e due numeri scelti
-indipendentemente stirano il logo di quanto non tornano. Dal drop del 2026-08-22 esiste
-anche il lockup **verticale** (`lockup-vertical-black.svg` / `-white.svg`, mark sopra e
-wordmark sotto), per i posti dove il logo sta in colonna invece che in riga. Per rigenerare
-o ridimensionare qualcosa il sorgente è l'SVG del drop, non questo repo.
+indipendentemente stirano il logo di quanto non tornano.
+
+Dove il logo sta in colonna invece che in riga c'è il lockup **verticale**, arrivato con il
+drop del 2026-08-22 (`lockup-vertical-black.svg` / `-white.svg`, mark sopra e wordmark
+sotto): lo usa `AuthLockup` in testa a tutte le pagine sotto `(auth)` — registrazione,
+verifica email, richiesta e scelta della nuova password. Prima lì c'era un badge circolare
+con `IconNote` e `{APP_NAME}` scritto sotto in un `<h1>`, cioè un lockup verticale composto
+a mano in mancanza del file, ripetuto identico in quattro pagine; ora è un componente solo,
+e il lockup **è** l'`<h1>` — il wordmark sta dentro l'immagine, quindi il nome arriva a uno
+screen reader solo per `alt`, e senza quello quelle pagine resterebbero senza intestazione.
+È dimensionato in larghezza (`.auth-lockup`), non in altezza: il disegno è 1688×804 col
+lettering alto un sesto della larghezza, e le due larghezze scelte mettono "Strumfolio"
+alla stessa taglia del `.landing-title` che prima lo stampava come testo.
+
+Per rigenerare o ridimensionare qualcosa il sorgente è l'SVG del drop, non questo repo.
 
 Tutto quanto sopra vive sotto `public/brand/` (icone in `brand/icons/`, lockup e OG image
 alla radice di `brand/`, logo email in `brand/email/`) invece che sciolto nella radice di

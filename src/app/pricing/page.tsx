@@ -533,9 +533,9 @@ export default function PricingPage() {
 
       {/*
         * Replaces the whole of "If a plan ends" — see `TRUST_NOTE_LEAD`'s own comment on what that
-        * traded away. The checkmark-in-a-circle is the smaller sibling of `.hero-mark-fill`'s
-        * own on the auth pages, reused here rather than drawn again for the same reason `IconCheck`
-        * already exists: one glyph for "this is settled" everywhere it appears.
+        * traded away. The checkmark-in-a-circle is `IconCheck` on the accent's soft tint — the
+        * glyph this app already means "settled" with, from a copied link to the plan you are on,
+        * rather than a second checkmark drawn for this note alone.
         */}
       <section className="mt-6">
         <div className="card trust-note">
