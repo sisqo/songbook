@@ -41,13 +41,15 @@ import { notifyTelegram } from '@/lib/telegram/notify'
 
 import { liveSubscription, resolveSubscription } from './entitlements'
 import type { SubscriptionColumns } from './entitlements'
-import { logMockEvent, paymentHistoryFor } from './history'
+import { amountFor, logMockEvent, paymentHistoryFor } from './history'
 import type { PaymentHistoryLine } from './history'
 import { mockCheckoutEnabled } from './resolve'
 import { isCheckoutPlan, readPendingCycle } from './prices'
 import type { BillingPeriod } from './prices'
-import { PLAN_RANK, readPendingPlan, readPlan, readPlanStatus } from './types'
+import { PLAN_LABEL, PLAN_RANK, readPendingPlan, readPlan, readPlanStatus } from './types'
 import type { Plan, PlanStatus } from './types'
+import { sendEmail } from '@/lib/email/send'
+import { purchaseEmail } from '@/lib/email/templates'
 
 export type MockCheckoutFailure =
   | 'disabled'
@@ -122,6 +124,40 @@ export async function loadCheckoutStatus(): Promise<
   return {
     ok: true,
     current: { plan: resolved.plan, status: resolved.status, expiresAt: resolved.expiresAt, pendingPlan: resolved.pendingPlan },
+  }
+}
+
+/**
+ * What the thank-you page needs: the plan this account holds right now, resolved.
+ *
+ * Its own read rather than `loadCheckoutStatus` above, for one reason that matters — it is
+ * deliberately **not** gated on `mockCheckoutEnabled()`. A thank-you is read *after* a purchase,
+ * so switching the mock off (or replacing it with a real processor, which is that flag's whole
+ * purpose) must not turn the page confirming a genuinely active plan into «the test checkout is
+ * not switched on right now». Everything else about it is `loadCheckoutStatus`'s own shape,
+ * including the `no-session` a missing row answers with — a reader with no account has no
+ * purchase to be thanked for either.
+ */
+export async function loadPurchaseSummary(): Promise<
+  { ok: true; current: MockSubscriptionState } | { ok: false; reason: 'no-session' | 'no-database' }
+> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const user = await currentUser()
+  if (user === null) return { ok: false, reason: 'no-session' }
+
+  const raw = await subscriptionColumnsOf(user.accountOwnerEmail)
+  if (raw === null) return { ok: false, reason: 'no-session' }
+
+  const resolved = resolveSubscription(raw, new Date())
+  return {
+    ok: true,
+    current: {
+      plan: resolved.plan,
+      status: resolved.status,
+      expiresAt: resolved.expiresAt,
+      pendingPlan: resolved.pendingPlan,
+    },
   }
 }
 
@@ -228,12 +264,16 @@ export async function mockPurchase(
     const isUpgradeOrSame = plan === 'lifetime' || currentLive === null || PLAN_RANK[plan] >= PLAN_RANK[currentLive]
 
     if (isUpgradeOrSame) {
+      /* Hoisted, so the row, the receipt and the screen all name one date rather than three
+       * `expiryFor(cycle, now)` calls that only happen to agree. */
+      const expiresAt = plan === 'lifetime' ? null : expiryFor(cycle, now)
+
       const updated = await db()
         .update(accounts)
         .set({
           plan,
           planStatus: 'active',
-          planExpiresAt: plan === 'lifetime' ? null : expiryFor(cycle, now),
+          planExpiresAt: expiresAt,
           pendingPlan: null,
           pendingCycle: null,
           /*
@@ -273,6 +313,33 @@ export async function mockPurchase(
       const label = `${plan}${plan === 'lifetime' ? '' : `/${cycle}`}`
       console.warn(`mock checkout: ${user.accountOwnerEmail} => ${label}`)
       await notifyTelegram(`💰 Acquisto: ${user.accountOwnerEmail} → ${label}`)
+
+      /*
+       * The thank-you, sent only on this branch: a scheduled downgrade below is not a purchase
+       * to thank anybody for, and `mockCancel` certainly is not. Last of the three side effects
+       * and after the write, like the other two — `sendEmail` never throws (see its own comment),
+       * so a mail that fails cannot undo a plan the account has already been given.
+       *
+       * To `accountOwnerEmail`, not `user.email`: the receipt belongs to the account whose plan
+       * just changed, which is the same address the ledger row and the Telegram line already
+       * name. Worth knowing while the mock is open, since the two come apart — a global owner
+       * switched into a customer's account to test a purchase sends that *customer* this email,
+       * not themselves.
+       */
+      const renewsOn =
+        expiresAt === null
+          ? null
+          : expiresAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      await sendEmail({
+        to: user.accountOwnerEmail,
+        ...purchaseEmail({
+          planLabel: PLAN_LABEL[plan],
+          amount: amountFor(plan, plan === 'lifetime' ? null : cycle),
+          cycle: plan === 'lifetime' ? null : cycle,
+          renewsOn,
+        }),
+      })
+
       return { ok: true, effect: 'immediate' }
     }
 

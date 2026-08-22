@@ -43,8 +43,16 @@ export interface PaymentHistoryLine {
   amount: string | null
 }
 
-/** The price this mock would have shown before the purchase this event records — never a real charge. */
-function amountFor(plan: Plan, cycle: BillingPeriod | null): string | null {
+/**
+ * The price this mock would have shown before the purchase this event records — never a real
+ * charge.
+ *
+ * Exported because the thank-you email names the same figure (`purchaseEmail`, sent from
+ * `mockPurchase`): two copies of "what does this plan cost for this cycle" are two copies that
+ * drift, and a receipt disagreeing with the ledger row written in the same breath is the exact
+ * kind of contradiction this feature keeps avoiding elsewhere.
+ */
+export function amountFor(plan: Plan, cycle: BillingPeriod | null): string | null {
   if (plan === 'lifetime') return LIFETIME.amount
   if (plan === 'free' || cycle === null) return null
   return PRICES[plan][cycle].amount

@@ -1,8 +1,9 @@
 /**
- * The three emails Resend sends (PLAN.md, v3.2 point 8): verification, welcome, and
- * password reset. Each returns `{ subject, html, text }` — plain data, no `sendEmail`
- * call inside — so the flows that own the actual send (registration, verification,
- * password recovery) decide the recipient themselves.
+ * The four emails Resend sends: verification, welcome and password reset (PLAN.md, v3.2
+ * point 8), and the purchase thank-you added with the checkout's own flow. Each returns
+ * `{ subject, html, text }` — plain data, no `sendEmail` call inside — so the flows that own
+ * the actual send (registration, verification, password recovery, `mockPurchase`) decide the
+ * recipient themselves.
  *
  * Colors are the light half of `globals.css`'s palette, copied as hex rather than
  * `var(--x)`: most webmail clients strip `<style>` blocks and custom properties along
@@ -10,6 +11,7 @@
  */
 
 import { APP_NAME, APP_PAYOFF, SITE_URL } from '@/lib/brand'
+import { euro } from '@/lib/plans/prices'
 
 /*
  * The header is a hosted PNG lockup, not `<IconNote />`: that's an inline SVG, which mail
@@ -113,6 +115,67 @@ export function welcomeEmail(): EmailTemplate {
   const text = `Welcome to ${APP_NAME}
 
 Your account is ready. Import the songs you already have, build your songbooks, and take them with you — on stage, in rehearsal, even offline.
+
+${APP_NAME} — ${APP_PAYOFF}`
+
+  return { subject, html, text }
+}
+
+/**
+ * The thank-you a purchase sends (`mockPurchase`), and the one email in this file that is
+ * about something the reader just *did* rather than a link they have to follow.
+ *
+ * **It never claims money changed hands**, and that is not squeamishness: the checkout behind
+ * it is a stand-in that charges nothing (`lib/plans/checkout.ts`, `FAKE_CARD`), so "we've
+ * received your payment" would be false in every message this currently sends. What it states
+ * instead is true either way — which plan is now active, what that plan costs, when it renews
+ * — plus the test disclosure below. That disclosure comes out the day a real processor lands,
+ * together with the mock itself; the rest of the template survives that change untouched,
+ * which is why the wording around it never leans on the purchase being fake.
+ *
+ * `amount` is `amountFor`'s own string (`plans/history.ts`), the same figure the ledger row
+ * written in the same breath records — never recomputed here.
+ */
+export function purchaseEmail(input: {
+  /** `PLAN_LABEL`'s spelling, resolved by the caller — this file names no plans of its own. */
+  planLabel: string
+  /** Euro, without the symbol; null when there is no price to name. */
+  amount: string | null
+  /** null for `lifetime`, which is bought once and has no cycle. */
+  cycle: 'month' | 'year' | null
+  /** The next renewal as a plain day, or null for a plan that never renews. */
+  renewsOn: string | null
+}): EmailTemplate {
+  const { planLabel, amount, cycle, renewsOn } = input
+  const subject = `You're on ${planLabel} — thanks`
+
+  /* «€9.49 per month», «€149, once», or nothing at all if there is no figure to name. */
+  const priceClause =
+    amount === null ? '' : cycle === null ? ` ${euro(amount)}, once.` : ` ${euro(amount)} per ${cycle}.`
+  const renewalClause =
+    renewsOn === null
+      ? ' There is nothing to renew — it stays yours.'
+      : ` It renews on ${renewsOn}, and you can change or cancel it any time before then.`
+
+  const startUrl = `https://${SITE_URL}/`
+
+  const html = layout(`
+    ${heading(`Thanks — you're on ${planLabel}`)}
+    ${paragraph(`${planLabel} is active on your account right now.${priceClause}${renewalClause}`)}
+    ${paragraph('Next: make a songbook, put your first songs in it, and take it with you — on stage, in rehearsal, even with no signal.')}
+    ${button('Start your songbook', startUrl)}
+    ${paragraph('This was a test checkout: no card was charged and no payment detail left the page. Your plan is genuinely active all the same.')}
+  `)
+
+  const text = `Thanks — you're on ${planLabel}
+
+${planLabel} is active on your account right now.${priceClause}${renewalClause}
+
+Next: make a songbook, put your first songs in it, and take it with you — on stage, in rehearsal, even with no signal.
+
+${startUrl}
+
+This was a test checkout: no card was charged and no payment detail left the page. Your plan is genuinely active all the same.
 
 ${APP_NAME} — ${APP_PAYOFF}`
 

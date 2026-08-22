@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { IconInfo } from '@/components/icons'
@@ -44,6 +45,7 @@ export function CheckoutScreen({
       does not land on Yearly here. */
   initialCycle?: BillingPeriod
 }) {
+  const router = useRouter()
   const [status, setStatus] = useState<Status>({ state: 'loading' })
   const [cycle, setCycle] = useState<BillingPeriod>(initialCycle)
   const [card, setCard] = useState(FAKE_CARD)
@@ -92,13 +94,22 @@ export function CheckoutScreen({
         )
         return
       }
-      setDone(
-        result.effect === 'immediate'
-          ? plan === 'lifetime'
-            ? 'Done — this account is now on Lifetime (test), for good.'
-            : `Done — this account is now on ${PLAN_LABEL[plan]} (test), renewing ${cycle === 'year' ? 'yearly' : 'monthly'}.`
-          : `Scheduled — this account moves to ${PLAN_LABEL[plan]} (test) once the plan it already paid for ends.`,
-      )
+      /*
+       * A purchase that took effect leaves this screen entirely, for `/thanks` — the plan is
+       * bought, and what a musician needs next is a songbook to put songs in, not a receipt line
+       * on the form they just submitted. `router.push`, so Back still returns here rather than
+       * replaying the purchase.
+       *
+       * A *scheduled* change deliberately stays put and keeps the inline sentence: nothing has
+       * happened to this account's plan yet, so a page thanking somebody for a purchase would be
+       * both premature and, on a downgrade, the wrong sentiment.
+       */
+      if (result.effect === 'immediate') {
+        router.push('/thanks')
+        return
+      }
+
+      setDone(`Scheduled — this account moves to ${PLAN_LABEL[plan]} (test) once the plan it already paid for ends.`)
       refresh()
     } catch {
       setError("That didn't go through. Try again.")
