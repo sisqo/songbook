@@ -58,8 +58,13 @@ export function CopyUrl({ url, name, label = false }: { url: string; name: strin
        * The name stays put and the live region below reports the outcome. Swapping the
        * label to "copied" as well would have the same button announced twice, once as a
        * renamed control and once as a status.
+       *
+       * "Copy URL" first, word for word, because that is what the button says when it
+       * says anything: a name that reads "Copy the URL of…" would not contain its own
+       * visible label, and somebody driving this page by voice would say "click Copy
+       * URL" and hit nothing (WCAG 2.5.3).
        */
-      aria-label={`Copy the URL of ${name}`}
+      aria-label={`Copy URL of ${name}`}
     >
       {state === 'copied' ? <IconCheck size={14} /> : <IconCopy size={14} />}
       {label ? <span>{copyLabel(state)}</span> : null}

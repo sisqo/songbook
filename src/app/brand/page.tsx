@@ -147,6 +147,8 @@ export default function BrandPage() {
           size={LOCKUP_H}
           cap="17rem"
           byPath={byPath}
+          /* The one specimen above the fold on every width, and this page's largest paint. */
+          eager
         />
 
         <p className="brand-text mt-9">
@@ -486,6 +488,10 @@ interface Size {
  *
  * `exact` is for the favicon row, which is the one place on this page where a pixel is
  * meant to be a pixel: no scaling, no upscaling, the file at its own size.
+ *
+ * Everything is lazy except what `eager` marks: the first specimen is above the fold on
+ * every screen size and is this page's largest paint, so deferring it would be deferring
+ * the thing the reader is waiting for.
  */
 function Shot({
   file,
@@ -494,6 +500,7 @@ function Shot({
   cap,
   exact = false,
   framed = false,
+  eager = false,
 }: {
   file: string
   alt: string
@@ -501,6 +508,7 @@ function Shot({
   cap: string
   exact?: boolean
   framed?: boolean
+  eager?: boolean
 }) {
   /*
    * A static file under `public/`, drawn at a size this page has already decided:
@@ -516,7 +524,8 @@ function Shot({
       alt={alt}
       width={size.w}
       height={size.h}
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={eager ? 'high' : undefined}
       decoding="async"
       className={`shot${exact ? ' is-exact' : ''}${framed ? ' is-framed' : ''}`}
       style={{ '--shot-cap': cap } as React.CSSProperties}
@@ -574,6 +583,7 @@ function SpecimenPair({
   size,
   cap,
   byPath,
+  eager = false,
 }: {
   light: string
   dark: string
@@ -581,16 +591,17 @@ function SpecimenPair({
   size: Size
   cap: string
   byPath: Map<string, KitFile>
+  eager?: boolean
 }) {
   return (
     <>
       <Specimen>
         <div className="specimen-grounds">
           <Ground tone="paper">
-            <Shot file={light} alt={`${alt}, in black`} size={size} cap={cap} />
+            <Shot file={light} alt={`${alt}, in black`} size={size} cap={cap} eager={eager} />
           </Ground>
           <Ground tone="night">
-            <Shot file={dark} alt={`${alt}, in white`} size={size} cap={cap} />
+            <Shot file={dark} alt={`${alt}, in white`} size={size} cap={cap} eager={eager} />
           </Ground>
         </div>
       </Specimen>
