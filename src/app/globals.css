@@ -742,12 +742,6 @@
     box-shadow: none;
   }
 
-  @media (hover: hover) {
-    .btn-ink:not(:disabled):hover {
-      background: color-mix(in srgb, var(--ink) 88%, var(--accent));
-    }
-  }
-
   .btn-danger {
     border-color: transparent;
     background: var(--danger-soft);
@@ -773,6 +767,15 @@
 
     .btn-danger:not(:disabled):hover {
       background: color-mix(in srgb, var(--danger-soft) 80%, var(--danger));
+    }
+
+    /*
+     * After the base `.btn` hover rule on purpose — same specificity, so source order
+     * is what decides, and this one has to win: `.btn`'s own hover fill (`--surface-2`)
+     * is light, and `.btn-ink`'s text stays `--bg` regardless, which is unreadable on it.
+     */
+    .btn-ink:not(:disabled):hover {
+      background: color-mix(in srgb, var(--ink) 88%, var(--accent));
     }
   }
 
