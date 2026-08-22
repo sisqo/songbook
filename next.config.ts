@@ -65,6 +65,13 @@ function publicEntries(): PrecacheEntry[] {
       .filter((relativePath) => !relativePath.split(path.sep).some((segment) => segment.startsWith('.')))
       .filter((relativePath) => !/^sw\.js(\.map)?$|^swe-worker-/.test(relativePath))
       .filter((relativePath) => !/^brand[\\/]kit[\\/]/.test(relativePath))
+      /*
+       * `public/brand/launch/` is skipped for a reason sharper than the kit's: iOS paints the
+       * launch screen *before* the service worker exists, so a precached copy could not be the
+       * one it uses even in principle. Precaching them would be half a megabyte downloaded on
+       * every install to sit unread — see `src/lib/launchScreens.ts` for what they are.
+       */
+      .filter((relativePath) => !/^brand[\\/]launch[\\/]/.test(relativePath))
       .filter((relativePath) => statSync(path.join(publicDir, relativePath)).isFile())
       .map((relativePath) => {
         const contents = readFileSync(path.join(publicDir, relativePath))

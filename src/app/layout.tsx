@@ -5,6 +5,7 @@ import { Geist_Mono, Outfit } from 'next/font/google'
 import { OfflineSync } from '@/components/OfflineSync'
 import { RoleProvider } from '@/components/RoleProvider'
 import { APP_NAME, APP_PAYOFF, SITE_URL } from '@/lib/brand'
+import { LAUNCH_SCREENS, launchMedia, launchUrl } from '@/lib/launchScreens'
 import { STATUS_BAR_ID, THEME_KEY } from '@/lib/theme'
 
 import './globals.css'
@@ -74,6 +75,26 @@ export const metadata: Metadata = {
       { url: '/brand/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
     ],
     apple: [{ url: '/brand/icons/apple-touch-icon.png', sizes: '180x180' }],
+  },
+
+  /**
+   * The launch screen iOS paints while the web view boots, once this app has been added to the
+   * Home Screen — the blank that `manifest.ts`' `background_color` fills on Android and cannot
+   * fill here. Not a splash added in front of the launch: it is shown during a boot that was
+   * happening anyway, so it costs nothing but the bytes.
+   *
+   * `capable` is what puts it in standalone in the first place, and `statusBarStyle` is
+   * `black-translucent` so the launch image runs under the status bar rather than stopping short
+   * of it with a bar of another colour above it.
+   *
+   * Generated from, and matched against, one list — see `src/lib/launchScreens.ts` on why the
+   * images and these tags must not be two lists, and on what portrait-only leaves uncovered.
+   */
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    statusBarStyle: 'black-translucent',
+    startupImage: LAUNCH_SCREENS.map((screen) => ({ url: launchUrl(screen), media: launchMedia(screen) })),
   },
 }
 
