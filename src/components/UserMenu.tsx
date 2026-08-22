@@ -20,9 +20,14 @@ import { PLAN_LABEL } from '@/lib/plans/types'
  * navigating the app: change password, sign out, and — since Settings moved here
  * too — the reading and app preferences that used to sit behind the hamburger's own
  * Settings screen. The hamburger (`NavMenu`) is left holding only navigation between
- * sections of the app; this holds identity (email, plan, owner status), signing
- * in/out, and now the reader's own preferences, with nothing duplicated between the
- * two. Delete account nests one level under Settings rather than sitting beside the
+ * sections of the app; this holds identity (email, plan), signing in/out, and now the
+ * reader's own preferences, with nothing duplicated between the two.
+ *
+ * **Identical for every reader, a global owner included.** This panel used to carry an
+ * "Owner" badge beside the plan, which made it the one place the user menu was a different
+ * shape for one person; running the installation is not a fact about being this reader, and
+ * it now lives behind `AdminMenu`'s own opener in the header instead. That an owner is an
+ * owner is still visible — they are the only one who sees that opener at all. Delete account nests one level under Settings rather than sitting beside the
  * preference pickers: it is a consequence of the account — leaving altogether — not a
  * preference to set.
  *
@@ -42,9 +47,9 @@ import { PLAN_LABEL } from '@/lib/plans/types'
  * monogram for others would read as two different features rather than one. The
  * email is the one identity fact every reader has, whichever way they signed in.
  *
- * Hidden entirely until the identity is known, same as the Accounts link in
- * `NavMenu`: a control that flashes in a moment late is a control that was simply
- * not there yet, not one that has already been reached for.
+ * Hidden entirely until the identity is known, the same rule `AdminMenu` follows for its
+ * own opener: a control that flashes in a moment late is a control that was simply not
+ * there yet, not one that has already been reached for.
  *
  * Sign-out arrives as `children`, not an import: it is a server component
  * wrapping an inline server action, and this is a client component — Next.js
@@ -52,7 +57,7 @@ import { PLAN_LABEL } from '@/lib/plans/types'
  * take it this way before sign-out moved here (see its own history).
  */
 export function UserMenu({ children }: { children: React.ReactNode }) {
-  const { email, known, isGlobalOwner, plan } = useRole()
+  const { email, known, plan } = useRole()
   const [open, setOpen] = useState(false)
   /**
    * A second screen inside this same panel, the same pattern this file already used
@@ -119,11 +124,10 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                     {/*
                       * `plan` is null while unknown and null forever with the plans switched
                       * off (see `RoleContextValue`'s own comment) — both read the same as
-                      * "nothing to say here", same as the Owner badge beside it being absent
-                      * for anybody who isn't one.
+                      * "nothing to say here", which is the whole of what this line says now
+                      * that the Owner badge that used to sit beside it has gone.
                       */}
                     {plan !== null && <span className="badge mt-1">{PLAN_LABEL[plan]}</span>}
-                    {isGlobalOwner && <span className="badge mt-1">Owner</span>}
                   </div>
                 </div>
 

@@ -14,10 +14,16 @@ interface RoleContextValue {
   known: boolean
   mayEdit: boolean
   /**
-   * A true, installation-wide owner (`isOwner`) — what decides whether to offer the
-   * account switcher in `NavMenu` (nobody else ever has more than their own account
-   * to switch to) and whether to show the user menu's "Owner" badge (v3.3, same
-   * question, different reader).
+   * A true, installation-wide owner (`isOwner`) — what decides whether the header offers
+   * `AdminMenu` at all, the one opener that is either present or absent rather than a panel
+   * with an entry missing from it. It used to answer for two readers instead: the Accounts
+   * entry inside `NavMenu` and the user menu's own "Owner" badge, both of which have gone,
+   * so the two menus every reader uses are now the same shape for everybody.
+   *
+   * `HomeScreen` reads it too, for a different kind of question: whether to offer copying a
+   * songbook *into another account*, which is a power over two accounts at once
+   * (`copySongbook`'s own comment) and belongs on the songbook's own row rather than in a
+   * menu, since it acts on that one songbook.
    */
   isGlobalOwner: boolean
   /**

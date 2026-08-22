@@ -13,12 +13,10 @@ import {
   IconChevronRight,
   IconDownload,
   IconExternal,
-  IconEye,
   IconInfo,
   IconMenu,
   IconNote,
   IconTuningFork,
-  IconSwitchAccount,
 } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 import { audienceIsFull, audienceSentence } from '@/lib/plans/types'
@@ -67,11 +65,12 @@ const AUDIENCE_MS = 10_000
  * the panel every entry carries its label, which the icon-only row on a phone
  * could not.
  *
- * One entry depends on who is asking, and it is absent until the answer arrives
- * rather than present and refusing: Accounts, offered only to a global owner, who
- * can enter more than their own. Nothing else here is conditional any more — with a
- * single grantable role (v3.1), every signed-in reader is already admin on their own
- * account.
+ * **Nothing in this panel depends on who is asking any more.** Accounts and Emails were the
+ * last two entries that did, offered only to a global owner, and they have moved out to
+ * `AdminMenu` — a third opener in the header that is either there or not, which is a plainer
+ * thing than a panel with holes in it for one reader. `mayEdit` still gates Export, and that
+ * is not the same kind of test: with a single grantable role (v3.1) every signed-in reader is
+ * admin on their own account, so it is false only before the answer arrives.
  *
  * Sing Together is a second screen inside this same panel rather than a page of its
  * own: it is reached mid-song, and a real navigation would cost the reader the page
@@ -87,7 +86,7 @@ const AUDIENCE_MS = 10_000
 export function NavMenu({ current }: { current: Section }) {
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'main' | 'sing-together'>('main')
-  const { mayEdit, isGlobalOwner } = useRole()
+  const { mayEdit } = useRole()
 
   /*
    * `undefined` until the read comes back, `null` once it has and there is nothing
@@ -539,27 +538,6 @@ export function NavMenu({ current }: { current: Section }) {
                   <IconInfo size={17} />
                   Help
                 </Link>
-
-                {/*
-                  * Hidden for everybody but a global owner (v3.1) — per
-                  * `isGlobalOwner`'s own comment, nobody else ever has more than their
-                  * own account to switch to.
-                  */}
-                {isGlobalOwner && (
-                  <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
-                    <IconSwitchAccount size={17} />
-                    Accounts
-                  </Link>
-                )}
-
-                {/* Same visibility as Accounts above: a preview of the emails this app
-                    sends, not tied to any one account. */}
-                {isGlobalOwner && (
-                  <Link href="/emails" className={item('emails')} role="menuitem" onClick={close}>
-                    <IconEye size={17} />
-                    Emails
-                  </Link>
-                )}
 
                 {/*
                   * Hidden until a role arrives that can actually use it, same reasoning

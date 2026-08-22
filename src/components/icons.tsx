@@ -587,6 +587,21 @@ export function IconNote({ size = 16, className }: IconProps) {
   )
 }
 
+/**
+ * A shield: the administration menu, and only that. Deliberately a new drawing rather than
+ * reusing one already in the bar — `IconSettings` and `IconKey` are spoken for inside the
+ * user menu, and `IconSliders` is the reading bar's own controls button, so borrowing either
+ * would give one glyph two meanings on the same screen. A shield over a narrower reading
+ * (`IconUsers`) because what sits behind it is not only accounts.
+ */
+export function IconShield(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3l7 3v5.6c0 4.2-2.9 7.4-7 8.4-4.1-1-7-4.2-7-8.4V6l7-3z" />
+    </Icon>
+  )
+}
+
 /** Two accounts, swapped: the account switcher. */
 export function IconSwitchAccount(props: IconProps) {
   return (

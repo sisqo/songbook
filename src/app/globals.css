@@ -3048,6 +3048,19 @@
     width: min(19rem, calc(100vw - 2rem));
   }
 
+  /*
+   * The other direction, and for the same `inset-inline-end: 0` reason `.is-wide` explains:
+   * the admin menu's trigger is the one panel opener that is *not* at the end of the bar —
+   * two buttons sit to its right — so its right edge starts that much further left, and the
+   * base `min-width: 13rem` put the panel's left edge at exactly 0 on a 320px screen
+   * (measured, not estimated). Nothing was clipped at that width, but nothing was spare
+   * either, and an overflow to the *left* is not scrollable the way one to the right is: it
+   * would simply be unreachable. A row of short links does not need 13rem anyway.
+   */
+  .menu-panel.is-compact {
+    min-width: 10.5rem;
+  }
+
   /* One step of Sing Together's "how it works", not a real ordered list: the
      numbering is said with a badge instead of a marker so it can sit beside
      the text rather than indenting it. */

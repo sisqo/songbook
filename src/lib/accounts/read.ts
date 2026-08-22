@@ -350,10 +350,14 @@ export async function getAccountDetail(ownerEmail: string): Promise<AccountDetai
 }
 
 /**
- * Whether the account switcher is worth showing at all: only a global owner, who can
- * enter every account in the installation. Nobody else ever has more than their own
- * account to switch to (v3.1) — a menu item offering to switch to the only place you can
- * already be is not a choice.
+ * Whether the caller is a global owner, who can enter every account in the installation.
+ * Nobody else ever has more than their own account to switch to (v3.1).
+ *
+ * The name is now narrower than what this answers, and is left alone deliberately: there is
+ * no account switcher in a menu any more — the way into another account is `/accounts`,
+ * reached from `AdminMenu`, whose opener this is what decides the existence of. Renaming it
+ * would touch `RoleProvider` and every reader of `isGlobalOwner` for no behavioural gain, so
+ * the comment carries the correction instead.
  */
 export async function mayShowAccountSwitcher(): Promise<boolean> {
   if (!hasDatabase) return false

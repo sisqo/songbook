@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { AdminMenu } from '@/components/AdminMenu'
 import { NavMenu } from '@/components/NavMenu'
 import { SignOutButton } from '@/components/SignOutButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -82,6 +83,13 @@ export function TopBar({
         )}
 
         <ThemeToggle />
+        {/*
+         * Between the theme switch and the avatar, so the hamburger keeps the end of the bar
+         * it has always had. Draws nothing at all for anybody who is not a global owner — see
+         * `AdminMenu`'s own comment on why the difference lives in whether this opener exists
+         * rather than in holes inside the other two panels.
+         */}
+        <AdminMenu current={current} />
         <UserMenu>
           <SignOutButton />
         </UserMenu>
