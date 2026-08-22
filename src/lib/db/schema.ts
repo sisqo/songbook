@@ -730,3 +730,36 @@ export const paddleEvents = pgTable('paddle_events', {
   payload: text('payload').notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/**
+ * Installation-wide settings an owner changes from `/app-settings` — today the four Telegram
+ * notification switches, and whatever joins them later.
+ *
+ * **Key/value rather than a column per setting**, which is a departure from `user_prefs` right
+ * above and a deliberate one: that table holds a fixed, small set of questions about a reader,
+ * while this one is expected to grow on a different clock — the whole point of the screen is
+ * that a knob can be turned without a deploy, and a column per knob puts a migration back in
+ * front of every new one. The cost is that the value is `text` and the meaning lives in code:
+ * `settings/types.ts` owns the vocabulary (`'on'`/`'off'`), the defaults and the parser, and
+ * `readBooleanSetting` is what keeps an unrecognised cell from meaning `false`.
+ *
+ * **Nothing in here may be a secret.** The tokens and API keys stay in the environment, where
+ * no code path can read them back out to a screen — see `/app-settings`' own comment. What
+ * lives here is policy: which events notify, not what to notify through.
+ *
+ * There is no row for a setting nobody has touched, and that is the normal state rather than
+ * an incomplete one: absent means "whatever the code default says", which is what makes this
+ * whole table optional — the app behaves exactly as it did before the migration that creates
+ * it, and exactly the same again if it ever becomes unreadable.
+ *
+ * `updatedBy` has **no foreign key**, for the reason `paddle_events.accountOwnerEmail` has
+ * none: the record of who last turned something off should survive that person's account being
+ * deleted, and a foreign key would either cascade it away or make the account undeletable.
+ * It is the last writer only — this table is not a ledger, and there is no history here.
+ */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: text('updated_by'),
+})

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { useRole } from '@/components/RoleProvider'
-import { IconEye, IconShield, IconSwitchAccount } from '@/components/icons'
+import { IconEye, IconSettings, IconShield, IconSwitchAccount } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 
 /**
@@ -32,10 +32,26 @@ import type { Section } from '@/components/TopBar'
  * `is-compact` on the panel is load-bearing rather than cosmetic — see that rule's own
  * comment in `globals.css`: this is the one panel in the bar whose trigger has other buttons
  * to its right, so at the base width its left edge landed exactly on the viewport's own.
- *
- * Two plain links rather than a table of entries to map over: there are two, and `PLAN.md`
- * will say when there is a third. A list of two is not a list yet.
  */
+const ENTRIES: { section: Section; href: string; label: string; icon: typeof IconShield }[] = [
+  { section: 'accounts', href: '/accounts', label: 'Accounts', icon: IconSwitchAccount },
+  { section: 'emails', href: '/emails', label: 'Emails', icon: IconEye },
+  /* A gear, the same glyph the user menu's own Settings carries — which is agreement rather
+     than collision: it means "settings" in both places, and which menu you opened is what says
+     whose. The route is `/app-settings` and not `/settings` for the same reason. */
+  { section: 'app-settings', href: '/app-settings', label: 'App settings', icon: IconSettings },
+]
+
+/**
+ * The sections that light the shield up.
+ *
+ * Derived from `ENTRIES` rather than written out again, and that is the whole reason `ENTRIES`
+ * is a list at all: with the two facts kept apart, adding a fourth screen meant remembering to
+ * extend a `current === 'a' || current === 'b'` chain somewhere else in this file, and
+ * forgetting it is invisible — the entry works, the shield just goes dark on the page it opened.
+ * The compiler cannot catch that one; deriving it means there is nothing left to forget.
+ */
+const ADMIN_SECTIONS: Section[] = ENTRIES.map((entry) => entry.section)
 export function AdminMenu({ current }: { current: Section }) {
   const { isGlobalOwner } = useRole()
   const [open, setOpen] = useState(false)
@@ -66,7 +82,7 @@ export function AdminMenu({ current }: { current: Section }) {
          * with Accounts and Emails out of the hamburger, nothing else in the bar says which
          * section an admin page belongs to any more.
          */
-        className={current === 'accounts' || current === 'emails' ? 'nav-link is-on' : 'nav-link'}
+        className={ADMIN_SECTIONS.includes(current) ? 'nav-link is-on' : 'nav-link'}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={open ? 'Close the admin menu' : 'Open the admin menu'}
@@ -81,15 +97,18 @@ export function AdminMenu({ current }: { current: Section }) {
           <div className="menu-overlay" onClick={close} aria-hidden />
 
           <div className="menu-panel is-compact" role="menu">
-            <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
-              <IconSwitchAccount size={17} />
-              Accounts
-            </Link>
-
-            <Link href="/emails" className={item('emails')} role="menuitem" onClick={close}>
-              <IconEye size={17} />
-              Emails
-            </Link>
+            {ENTRIES.map((entry) => (
+              <Link
+                key={entry.section}
+                href={entry.href}
+                className={item(entry.section)}
+                role="menuitem"
+                onClick={close}
+              >
+                <entry.icon size={17} />
+                {entry.label}
+              </Link>
+            ))}
           </div>
         </>
       )}

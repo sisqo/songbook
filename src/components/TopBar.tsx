@@ -8,7 +8,17 @@ import { UserMenu } from '@/components/UserMenu'
 import { IconChevronLeft, IconChevronRight } from '@/components/icons'
 import { APP_NAME } from '@/lib/brand'
 
-export type Section = 'songs' | 'songbooks' | 'export' | 'password' | 'accounts' | 'emails' | 'help' | 'checkout' | 'billing'
+export type Section =
+  | 'songs'
+  | 'songbooks'
+  | 'export'
+  | 'password'
+  | 'accounts'
+  | 'emails'
+  | 'app-settings'
+  | 'help'
+  | 'checkout'
+  | 'billing'
 
 /**
  * The header, on every screen inside the app.

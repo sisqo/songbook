@@ -329,7 +329,7 @@ export async function mockPurchase(
        * bill again. A plan with no price to name (none today — `free` is not sold here) simply
        * omits the clause rather than printing an empty one. */
       const paidClause = amount === null ? '' : ` · ${euro(amount)}${billedCycle === null ? ' una tantum' : ''}`
-      await notifyTelegram(`💰 Acquisto: ${user.accountOwnerEmail} → ${label}${paidClause}`)
+      await notifyTelegram('purchase', `💰 Acquisto: ${user.accountOwnerEmail} → ${label}${paidClause}`)
 
       /*
        * The thank-you, sent only on this branch: a scheduled downgrade below is not a purchase
@@ -365,7 +365,7 @@ export async function mockPurchase(
 
     await logMockEvent({ accountOwnerEmail: user.accountOwnerEmail, action: 'scheduled_change', plan, cycle })
     console.warn(`mock checkout: ${user.accountOwnerEmail} => ${plan}/${cycle} scheduled`)
-    await notifyTelegram(`📉 Downgrade programmato: ${user.accountOwnerEmail} → ${plan}/${cycle}`)
+    await notifyTelegram('downgrade', `📉 Downgrade programmato: ${user.accountOwnerEmail} → ${plan}/${cycle}`)
     return { ok: true, effect: 'scheduled' }
   } catch (error) {
     console.error('mockPurchase failed', error)
@@ -413,7 +413,7 @@ export async function mockCancel(): Promise<{ ok: true } | { ok: false; reason: 
 
     await logMockEvent({ accountOwnerEmail: user.accountOwnerEmail, action: 'scheduled_change', plan: 'free', cycle: null })
     console.warn(`mock checkout: ${user.accountOwnerEmail} => cancel scheduled`)
-    await notifyTelegram(`🚫 Cancellazione programmata: ${user.accountOwnerEmail} (era ${currentLive})`)
+    await notifyTelegram('cancellation', `🚫 Cancellazione programmata: ${user.accountOwnerEmail} (era ${currentLive})`)
   } catch (error) {
     console.error('mockCancel failed', error)
     return { ok: false, reason: 'failed' }
