@@ -26,6 +26,16 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
  * The service worker and the icons are here deliberately: if `/sw.js` needed a
  * session, a service worker update after the cookie expired would fail, and the
  * app would be stuck on an old worker with no way to recover.
+ *
+ * Every favicon, PWA icon, lockup and OG image lives under `/brand/`
+ * (`public/brand/`, see README's "Icone e brand mark") for exactly this reason —
+ * one prefix here instead of a line per file, which is what this used to be and
+ * which had already been forgotten twice (once for favicon.svg/og-image.png, once
+ * for the lockup SVGs) when a new brand asset showed up. `/brand/email/logo.png`
+ * is the same folder for the same reason: fetched by whoever opens the email, or
+ * by a link-preview bot reading OpenGraph tags — neither carries this app's
+ * session cookie, ever. Without this, all of them would silently get the
+ * `/login` redirect back instead of the image.
  */
 function isPublicAsset(pathname: string): boolean {
   return (
@@ -34,18 +44,7 @@ function isPublicAsset(pathname: string): boolean {
     pathname === '/sw.js.map' ||
     pathname.startsWith('/swe-worker-') ||
     pathname === '/manifest.webmanifest' ||
-    pathname === '/apple-touch-icon.png' ||
-    pathname === '/favicon.svg' ||
-    pathname === '/og-image.png' ||
-    pathname === '/lockup-horizontal-black.svg' ||
-    pathname === '/lockup-horizontal-white.svg' ||
-    pathname.startsWith('/icon-') ||
-    /*
-     * Fetched by whoever opens the email, or by a link-preview bot reading OpenGraph
-     * tags — neither carries this app's session cookie, ever. Without this, both
-     * would silently get the `/login` redirect back instead of the image.
-     */
-    pathname.startsWith('/email/')
+    pathname.startsWith('/brand/')
   )
 }
 

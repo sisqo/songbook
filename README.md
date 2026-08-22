@@ -197,7 +197,7 @@ salvataggio lo dice e il testo resta sullo schermo.
 
 ## Icone e brand mark
 
-Favicon, icone PWA/Apple touch e immagine OpenGraph (`public/`, `src/app/favicon.ico`)
+Favicon, icone PWA/Apple touch e immagine OpenGraph (`public/brand/`, `src/app/favicon.ico`)
 vengono da un pacchetto di asset disegnati (nota su libro aperto, tile marrone/arancio —
 `#97490F`/`#F1B369`, gli stessi valori di `--accent` chiaro/scuro in `globals.css`), non
 più generati da uno script: quello che c'era (`scripts/icons.ts`, un placeholder disegnato
@@ -208,14 +208,21 @@ pagine di autenticazione — è lo stesso tracciato vettoriale, così eredita
 `--accent`/`--on-accent` invece di portarsi un colore fisso.
 
 Dove serve il logo per intero (header dell'app, badge sull'hero di `/login`, firma delle
-email), il file è il lockup orizzontale disegnato (`public/lockup-horizontal-black.svg` /
+email), il file è il lockup orizzontale disegnato (`public/brand/lockup-horizontal-black.svg` /
 `-white.svg`, icona+wordmark in un'unica immagine) invece di icona+testo composti dal vivo:
 entrambe le varianti sono nel markup, e CSS ne mostra una sola in base al tema
 (`img.lockup-light`/`.lockup-dark` in `globals.css`, stesso doppio blocco chiaro/scuro dei
 token colore — una pagina precachata e statica non può sapere a tempo di render quale
-tema sta guardando il lettore). Nell'email invece è un solo file (`public/email/logo.png`)
+tema sta guardando il lettore). Nell'email invece è un solo file (`public/brand/email/logo.png`)
 perché lì non c'è alcun tema da seguire. Per rigenerare o ridimensionare qualcosa serve il
 sorgente vettoriale originale, non questo repo.
+
+Tutto quanto sopra vive sotto `public/brand/` (icone in `brand/icons/`, lockup e OG image
+alla radice di `brand/`, logo email in `brand/email/`) invece che sciolto nella radice di
+`public/`: un solo prefisso che `middleware.ts` lascia passare senza sessione
+(`isPublicAsset`), invece di una riga per file — la dimenticanza di aggiungere quella riga
+per un asset brand appena arrivato era già successa due volte prima di questa
+riorganizzazione (2026-08-22).
 
 ## Canzonieri
 

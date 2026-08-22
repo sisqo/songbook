@@ -11,6 +11,7 @@
 import { useState } from 'react'
 
 import { ControlBar } from '@/components/ControlBar'
+import { EditSongLink } from '@/components/EditSongLink'
 import { usePrefs } from '@/components/PrefsProvider'
 import { SongSheet } from '@/components/SongSheet'
 import { useSong } from '@/components/SongProvider'
@@ -44,9 +45,12 @@ export function SongHeading({ place }: { place: Place | null }) {
 
   return (
     <header className="mb-4">
-      <h1 className="text-[1.6875rem] font-medium leading-[1.12] tracking-[-0.03em]">
-        {song.title}
-      </h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="text-[1.6875rem] font-medium leading-[1.12] tracking-[-0.03em]">
+          {song.title}
+        </h1>
+        <EditSongLink slug={song.slug} placement="top" />
+      </div>
       <p className="mt-2.5 flex flex-wrap items-center gap-2 text-base text-muted">
         {song.artist !== null && <span>{song.artist}</span>}
         {place !== null && (

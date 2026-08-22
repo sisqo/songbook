@@ -33,9 +33,9 @@ export function PublicHeader({ width }: { width: string }) {
         {/* Both render; CSS shows one — see the same comment in TopBar.tsx. */}
         <Link href="/" className="brand" aria-label={`${APP_NAME}, home`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-          <img src="/lockup-horizontal-black.svg" alt="" className="lockup-light" />
+          <img src="/brand/lockup-horizontal-black.svg" alt="" className="lockup-light" />
           {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-          <img src="/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
+          <img src="/brand/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
         </Link>
 
         <span className="flex-1" />

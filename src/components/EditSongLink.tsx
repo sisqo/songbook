@@ -10,7 +10,10 @@ import { useOnline } from '@/lib/useOnline'
  * The way into the editor, for the people who have one.
  *
  * A client component for one link, because the page around it is generated at build time
- * and cannot know who is reading. It takes two rules at its foot with it.
+ * and cannot know who is reading. It takes two rules at its foot with it, in its `bottom`
+ * placement (below the sheet, its original and still its default) — but not in `top` (beside
+ * the title, level with it): that one has no rule to separate it from, sitting in the
+ * header rather than after the song.
  *
  * **A role that may edit.** Nothing at all for a reader with no account of their own on
  * this one, rather than a button that would refuse, and nothing until the role is known.
@@ -24,21 +27,34 @@ import { useOnline } from '@/lib/useOnline'
  * `useOnline` exists for: controls that would otherwise look available and quietly do
  * nothing. So the link comes back when the signal does.
  *
- * The rule above it goes too. It exists to separate the song from what you do to it, and
- * with nothing to do there is nothing to separate.
+ * The rule above the `bottom` placement goes too. It exists to separate the song from what
+ * you do to it, and with nothing to do there is nothing to separate.
  */
-export function EditSongLink({ slug }: { slug: string }) {
+export function EditSongLink({
+  slug,
+  placement = 'bottom',
+}: {
+  slug: string
+  /** `top` sits beside the title, level with it; `bottom` is the original, below the sheet. */
+  placement?: 'top' | 'bottom'
+}) {
   const { mayEdit } = useRole()
   const online = useOnline()
 
   if (!mayEdit || !online) return null
 
+  const link = (
+    <Link href={`/songs/${slug}/edit`} className={placement === 'top' ? 'btn btn-sm is-inset flex-none' : 'btn is-inset'}>
+      <IconPencil size={16} />
+      Edit
+    </Link>
+  )
+
+  if (placement === 'top') return link
+
   return (
     <div className="mt-10 border-t pt-4" style={{ borderColor: 'var(--surface-2)' }}>
-      <Link href={`/songs/${slug}/edit`} className="btn is-inset">
-        <IconPencil size={16} />
-        Edit
-      </Link>
+      {link}
     </div>
   )
 }

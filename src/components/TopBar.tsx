@@ -56,9 +56,9 @@ export function TopBar({
           */}
         <Link href="/" className="brand" aria-label={`${APP_NAME}, all songs`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see comment above */}
-          <img src="/lockup-horizontal-black.svg" alt="" className="lockup-light" />
+          <img src="/brand/lockup-horizontal-black.svg" alt="" className="lockup-light" />
           {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see comment above */}
-          <img src="/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
+          <img src="/brand/lockup-horizontal-white.svg" alt="" className="lockup-dark" />
         </Link>
 
         {back !== undefined && (

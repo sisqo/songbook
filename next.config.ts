@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import withSerwistInit from '@serwist/next'
@@ -33,23 +33,34 @@ function pageEntries(): PrecacheEntry[] {
 }
 
 /**
- * Files in `public/`, hashed.
+ * Files in `public/`, hashed — recursively, since `public/brand/` (favicons, PWA
+ * icons, lockups, OG image, the email logo) nests them in subfolders rather than
+ * leaving everything loose at the root.
  *
  * @serwist/next scans the public folder itself, but *only* when
  * additionalPrecacheEntries is absent — and an empty array is enough to skip it.
  * Since we always pass entries, the scan has to happen here or the icons quietly
- * stop being precached.
+ * stop being precached. `readdirSync`'s `recursive` option returns plain relative
+ * path strings in `encoding: 'utf8'` mode, not `Dirent`s — deliberately: a
+ * `Dirent`'s parent-directory field was `.path` before Node 20.12/18.20 and is
+ * `.parentPath` after, so reconstructing a nested path from it would silently
+ * differ by Node version. Dot-entries are skipped too, since a local build (unlike
+ * Vercel's, which builds from a clean git checkout) can have tool state such as
+ * `public/.impeccable/` sitting in the working tree, and nothing but a build
+ * artifact belongs in a shipped precache manifest.
  */
 function publicEntries(): PrecacheEntry[] {
   const publicDir = path.join(process.cwd(), 'public')
 
   try {
-    return readdirSync(publicDir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && !/^sw\.js(\.map)?$|^swe-worker-/.test(entry.name))
-      .map((entry) => {
-        const contents = readFileSync(path.join(publicDir, entry.name))
+    return readdirSync(publicDir, { recursive: true, encoding: 'utf8' })
+      .filter((relativePath) => !relativePath.split(path.sep).some((segment) => segment.startsWith('.')))
+      .filter((relativePath) => !/^sw\.js(\.map)?$|^swe-worker-/.test(relativePath))
+      .filter((relativePath) => statSync(path.join(publicDir, relativePath)).isFile())
+      .map((relativePath) => {
+        const contents = readFileSync(path.join(publicDir, relativePath))
         return {
-          url: `/${entry.name}`,
+          url: `/${relativePath.split(path.sep).join('/')}`,
           revision: createHash('md5').update(contents).digest('hex'),
         }
       })

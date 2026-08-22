@@ -47,32 +47,33 @@ export const metadata: Metadata = {
     description: APP_PAYOFF,
     locale: 'en_US',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/brand/og-image.png', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: APP_NAME,
     description: APP_PAYOFF,
-    images: ['/og-image.png'],
+    images: ['/brand/og-image.png'],
   },
   /**
    * Declared rather than left to convention.
    *
-   * `/favicon.ico` and `/apple-touch-icon.png` would be found by guesswork anyway,
-   * but only the tags say which size is which — and iOS picks the touch icon from
-   * the tag first. The SVG is listed first since browsers that support it prefer
-   * it over the `.ico` regardless of order, per the brand asset drop's own
-   * `head-snippet.html`. Every file here is named `icon-*`, `apple-touch-icon`, or
-   * `favicon.svg` so the middleware serves it without a session, which is what lets
-   * the install prompt show an icon on a locked app.
+   * `/favicon.ico` would be found by guesswork anyway, but only the tags say which
+   * size is which — and iOS picks the touch icon from the tag first, not from its
+   * own implicit `/apple-touch-icon.png` root probe, which is why that file can
+   * live under `/brand/icons/` instead of at the root without breaking iOS. The
+   * SVG is listed first since browsers that support it prefer it over the `.ico`
+   * regardless of order, per the brand asset drop's own `head-snippet.html`. All
+   * of `public/brand/` is exempted from the session guard in `middleware.ts`,
+   * which is what lets the install prompt show an icon on a locked app.
    */
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icon-32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/brand/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/icons/icon-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/brand/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    apple: [{ url: '/brand/icons/apple-touch-icon.png', sizes: '180x180' }],
   },
 }
 

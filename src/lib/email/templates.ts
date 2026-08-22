@@ -17,7 +17,7 @@ import { APP_NAME, APP_PAYOFF, SITE_URL } from '@/lib/brand'
  * A plain `<img>` pointed at a real URL is the one thing every client — including images
  * blocked by default — handles the same way, the latter falling back to `alt`.
  */
-const LOGO_URL = `https://${SITE_URL}/email/logo.png`
+const LOGO_URL = `https://${SITE_URL}/brand/email/logo.png`
 const LOGO_WIDTH = 160
 const LOGO_HEIGHT = 24
 

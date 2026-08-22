@@ -76,9 +76,9 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     locale: 'en_US',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/brand/og-image.png', width: 1200, height: 630 }],
   },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/og-image.png'] },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/brand/og-image.png'] },
 }
 
 interface Props {
@@ -393,9 +393,9 @@ export default async function LoginPage({ searchParams }: Props) {
           {/* Both render; CSS shows one — see the same comment in TopBar.tsx. */}
           <span className="hero-badge">
             {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-            <img src="/lockup-horizontal-black.svg" alt={APP_NAME} className="lockup-light" />
+            <img src="/brand/lockup-horizontal-black.svg" alt={APP_NAME} className="lockup-light" />
             {/* eslint-disable-next-line @next/next/no-img-element -- theme-swapped SVG lockup, see TopBar.tsx */}
-            <img src="/lockup-horizontal-white.svg" alt={APP_NAME} className="lockup-dark" />
+            <img src="/brand/lockup-horizontal-white.svg" alt={APP_NAME} className="lockup-dark" />
           </span>
 
           {/*
