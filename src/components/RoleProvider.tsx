@@ -35,6 +35,15 @@ interface RoleContextValue {
    * is cached defensively.
    */
   plan: Plan | null
+  /**
+   * Whether the account this reader is looking at has completed the mandatory plan-choice
+   * step (PLAN-attivazione.md) — `true` while unknown, the safe default that keeps
+   * `PricingPlans`' "Start free" button a plain link to `/register` until told otherwise,
+   * rather than briefly offering an action to someone who may turn out to be signed out.
+   * The actual gate is a server-side redirect in `(home)/page.tsx`; this only decides what
+   * one button on `/pricing` offers, same as everything else in this context.
+   */
+  planChosen: boolean
 }
 
 const RoleContext = createContext<RoleContextValue>({
@@ -44,6 +53,7 @@ const RoleContext = createContext<RoleContextValue>({
   mayEdit: false,
   isGlobalOwner: false,
   plan: null,
+  planChosen: true,
 })
 
 /**
@@ -74,6 +84,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [known, setKnown] = useState(false)
   const [switcher, setSwitcher] = useState(false)
   const [plan, setPlan] = useState<Plan | null>(null)
+  const [planChosen, setPlanChosen] = useState(true)
 
   useEffect(() => {
     let alive = true
@@ -86,6 +97,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           setRole(identity?.role ?? null)
           setSwitcher(showSwitcher)
           setPlan(identity?.plan ?? null)
+          setPlanChosen(identity?.planChosen ?? true)
           setKnown(true)
         }
       } catch {
@@ -119,8 +131,9 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       mayEdit: known && canEdit(role),
       isGlobalOwner: known && switcher,
       plan,
+      planChosen,
     }),
-    [email, role, known, switcher, plan],
+    [email, role, known, switcher, plan, planChosen],
   )
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>

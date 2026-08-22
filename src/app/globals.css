@@ -64,6 +64,21 @@
   --danger-soft: #fbe7e4;
   --success: #1a7a42;
   --success-soft: #e1f3e6;
+  /*
+   * Plan badges (PLAN-attivazione.md) — used only on `/accounts`, the operator screen, never
+   * anywhere a reader looks. A declared exception to the Chord-First Rule (DESIGN.md, "Plan
+   * Badges"): the one place besides `--danger`/`--success` where the app reaches for a color
+   * that is not `--accent`. Free carries no variable of its own — it stays on the neutral ink
+   * ramp, since there is nothing bought to name.
+   */
+  --plan-standard: #2f5f8f;
+  --plan-standard-soft: #e3edf6;
+  --plan-plus: #6b3fa0;
+  --plan-plus-soft: #efe6f7;
+  --plan-premium: #8a6d1f;
+  --plan-premium-soft: #f5eed7;
+  --plan-lifetime: #1f6f5c;
+  --plan-lifetime-soft: #dcf0ea;
 
   /*
    * The user menu's monogram avatar (v3.3): which of these six an address draws is
@@ -131,6 +146,14 @@
     --danger-soft: #2f1a18;
     --success: #6fd88f;
     --success-soft: #17281c;
+    --plan-standard: #8ec2f2;
+    --plan-standard-soft: #182430;
+    --plan-plus: #cba6ec;
+    --plan-plus-soft: #251b30;
+    --plan-premium: #e0c368;
+    --plan-premium-soft: #2c2515;
+    --plan-lifetime: #6bd6bd;
+    --plan-lifetime-soft: #162925;
 
     /*
      * Dark separates by border, not by shadow — so the two card shadows go, and
@@ -164,6 +187,14 @@
   --danger-soft: #2f1a18;
   --success: #6fd88f;
   --success-soft: #17281c;
+  --plan-standard: #8ec2f2;
+  --plan-standard-soft: #182430;
+  --plan-plus: #cba6ec;
+  --plan-plus-soft: #251b30;
+  --plan-premium: #e0c368;
+  --plan-premium-soft: #2c2515;
+  --plan-lifetime: #6bd6bd;
+  --plan-lifetime-soft: #162925;
 
   --shadow-1: none;
   --shadow-2: none;
@@ -2827,6 +2858,41 @@
     font-size: 0.8125rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Plan badges (PLAN-attivazione.md) — `/accounts` only, an operator screen with no song
+   * sheet and no chords to compete with. See DESIGN.md's "Plan Badges" section for why this is
+   * a declared exception to the Chord-First Rule rather than a drift from it: everywhere a
+   * *reader* sees a plan name (the account menu, `/pricing`, `/billing`) stays on `.badge`'s
+   * single `--accent` above, unchanged. Combined with `.badge` for shape, e.g.
+   * `"badge plan-badge-standard"` — these four only override color.
+   */
+  .plan-badge-free {
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .plan-badge-standard {
+    background: var(--plan-standard-soft);
+    color: var(--plan-standard);
+  }
+  .plan-badge-plus {
+    background: var(--plan-plus-soft);
+    color: var(--plan-plus);
+  }
+  .plan-badge-premium {
+    background: var(--plan-premium-soft);
+    color: var(--plan-premium);
+  }
+  .plan-badge-lifetime {
+    background: var(--plan-lifetime-soft);
+    color: var(--plan-lifetime);
+  }
+  /* The mandatory-choice gate's "stuck mid-onboarding" state — `--danger`, already used
+     app-wide for errors, reused rather than inventing a sixth plan-badge color for it. */
+  .plan-badge-unchosen {
+    background: var(--danger-soft);
+    color: var(--danger);
   }
 
   /*

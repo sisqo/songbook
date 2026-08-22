@@ -32,7 +32,7 @@
  * whole design.
  */
 
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 
 import { currentUser } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
@@ -140,6 +140,46 @@ export async function loadMyPaymentHistory(): Promise<
 }
 
 /**
+ * Marks the mandatory plan-choice step (PLAN-attivazione.md) complete when a reader picks
+ * Free — the one plan `mockPurchase` does not sell at all (`CHECKOUT_PLANS` is
+ * `PAID_PLANS + lifetime`; `isCheckoutPlan('free')` is false). Choosing Free is not a
+ * purchase: `plan`/`planStatus` are already `'free'`/`'active'` from the column defaults, so
+ * this writes nothing there, and it logs nothing to `paddle_events` either — that table is a
+ * list of real transactions, and a zero-euro row nobody actually bought does not belong in it.
+ *
+ * Deliberately does **not** check `mockCheckoutEnabled()`, unlike every other write in this
+ * file. That flag governs the *paid* checkout only; the Free exit from the mandatory-choice
+ * gate in `(home)/page.tsx` has to keep working even while the paid flow is switched off — the
+ * alternative is a deployment with `SONGBOOK_PLANS=on` and `SONGBOOK_MOCK_CHECKOUT=off` where a
+ * brand-new account has no way through the gate at all.
+ *
+ * `sql\`coalesce(...)\`` rather than a bare `now()`: calling this twice — a reader who taps
+ * "Start free" again, or lands back on `/pricing` after already choosing — must never overwrite
+ * a genuine first-activation date with a later one. `mockPurchase` writes the identical
+ * expression for the same reason, on the other exit from the same gate.
+ */
+export async function activatePlanChoice(): Promise<{ ok: true } | { ok: false; reason: 'no-session' | 'no-database' | 'failed' }> {
+  if (!hasDatabase) return { ok: false, reason: 'no-database' }
+
+  const user = await currentUser()
+  if (user === null) return { ok: false, reason: 'no-session' }
+
+  try {
+    const updated = await db()
+      .update(accounts)
+      .set({ planChosenAt: sql`coalesce(${accounts.planChosenAt}, now())` })
+      .where(eq(accounts.ownerEmail, user.accountOwnerEmail))
+      .returning({ ownerEmail: accounts.ownerEmail })
+    if (updated.length === 0) return { ok: false, reason: 'failed' }
+  } catch (error) {
+    console.error('activatePlanChoice failed', error)
+    return { ok: false, reason: 'failed' }
+  }
+
+  return { ok: true }
+}
+
+/**
  * "Buys" a plan for the account this session is on. An upgrade (or a first purchase, or
  * re-buying the plan already live) applies at once: `plan`, `planStatus: 'active'`, an expiry
  * one billing period out, and any previously scheduled downgrade/cancellation is dropped —
@@ -195,6 +235,11 @@ export async function mockPurchase(
           planExpiresAt: plan === 'lifetime' ? null : expiryFor(cycle, now),
           pendingPlan: null,
           pendingCycle: null,
+          // See `activatePlanChoice`'s own comment on the `coalesce`: a plan bought directly,
+          // with no Free step first, still has to satisfy the mandatory-choice gate
+          // (PLAN-attivazione.md) on its own — but never by overwriting a real first-activation
+          // date already sitting on a later upgrade or re-purchase.
+          planChosenAt: sql`coalesce(${accounts.planChosenAt}, ${now})`,
         })
         .where(eq(accounts.ownerEmail, user.accountOwnerEmail))
         .returning({ ownerEmail: accounts.ownerEmail })

@@ -21,25 +21,39 @@ import { hashPassword, isPasswordAcceptable, verifyPassword } from '@/lib/auth/p
 import { currentUser } from '@/lib/auth/session'
 import type { PasswordResult } from '@/lib/auth/types'
 import { hasDatabase } from '@/lib/db/client'
-import { effectivePlanOf } from '@/lib/plans/resolve'
+import { effectivePlanOf, hasChosenPlan } from '@/lib/plans/resolve'
 import type { Plan } from '@/lib/plans/types'
 import type { Role } from '@/lib/roles'
 
 /**
- * The signed-in reader's address, role and plan, or null when there is nobody or nobody
- * allowed — one `currentUser()` call for all three, for `RoleProvider`, which needs the
- * address too now (v3.3, the user menu) and would otherwise ask twice on every page.
+ * The signed-in reader's address, role, plan and plan-choice state, or null when there is
+ * nobody or nobody allowed — one `currentUser()` call for all four, for `RoleProvider`, which
+ * needs the address too now (v3.3, the user menu) and would otherwise ask twice on every page.
  *
- * `plan` is resolved for `accountOwnerEmail`, not for `email` itself, for the reason
- * `permit`/`permitOn` already read that column instead of the caller's own: a global owner
- * looking at an account they switched into sees *that* account's plan on their own menu,
- * because that is whose limits apply to what they are about to do next.
+ * `plan` and `planChosen` are both resolved for `accountOwnerEmail`, not for `email` itself,
+ * for the reason `permit`/`permitOn` already read that column instead of the caller's own: a
+ * global owner looking at an account they switched into sees *that* account's plan (and its
+ * choice state) on their own menu, because that is whose limits apply to what they are about
+ * to do next. `planChosen` exists only for `PricingPlans`' own "Start free" button
+ * (PLAN-attivazione.md) — the mandatory-choice gate itself lives server-side in
+ * `(home)/page.tsx`, not here; this is cosmetic, deciding which of two harmless things one
+ * button does, never what the server allows.
  */
-export async function loadIdentity(): Promise<{ email: string; role: Role; plan: Plan | null } | null> {
+export async function loadIdentity(): Promise<{
+  email: string
+  role: Role
+  plan: Plan | null
+  planChosen: boolean
+} | null> {
   const user = await currentUser()
   if (user === null) return null
 
-  return { email: user.email, role: user.role, plan: await effectivePlanOf(user.accountOwnerEmail) }
+  const [plan, planChosen] = await Promise.all([
+    effectivePlanOf(user.accountOwnerEmail),
+    hasChosenPlan(user.accountOwnerEmail),
+  ])
+
+  return { email: user.email, role: user.role, plan, planChosen }
 }
 
 /**

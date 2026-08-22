@@ -17,6 +17,8 @@ import type { AccountPlanLine } from '@/lib/accounts/read'
 import { isOwner } from '@/lib/allowlist'
 import { currentUser } from '@/lib/auth/session'
 import { forcedPlanNotice, plansEnforced } from '@/lib/plans/resolve'
+import { PLAN_LABEL } from '@/lib/plans/types'
+import type { Plan } from '@/lib/plans/types'
 
 export const metadata: Metadata = { title: 'Accounts' }
 
@@ -24,46 +26,57 @@ export const metadata: Metadata = { title: 'Accounts' }
 export const dynamic = 'force-dynamic'
 
 /**
- * The answer to «why is this account on premium», short enough to sit on the row.
+ * Which `.plan-badge-*` modifier (`globals.css`) names a given plan's own color, combined with
+ * `.badge` for shape — the badge itself, not this row's detail text, is now what answers «why
+ * is this account on premium» at a glance (PLAN-attivazione.md). Free carries no color of its
+ * own on purpose: see DESIGN.md's "Plan Badges" section.
+ */
+const PLAN_BADGE_CLASS: Record<Plan, string> = {
+  free: 'plan-badge-free',
+  standard: 'plan-badge-standard',
+  plus: 'plan-badge-plus',
+  premium: 'plan-badge-premium',
+  lifetime: 'plan-badge-lifetime',
+}
+
+/**
+ * The status detail that sits beside the plan badge: dates, which side is winning, a scheduled
+ * change — everything the badge's plain plan name does not already say. Split off from what
+ * used to be a single `planClause` string once the plan name itself moved into its own colored
+ * badge (PLAN-attivazione.md); the name is never repeated here.
  *
  * On the row and not behind the disclosure because the operator's commonest visit is a scan of
- * the whole list, and one panel per row is one click per row. It reuses the second muted line
- * the row already has, so it costs no structure and no class: `2 sign-ins · premium · gift
- * until 2026-12-31`.
+ * the whole list, and one panel per row is one click per row.
  *
- * `free` is printed bare, with no side named. A free row is a live subscription of `free`
- * (`planStateFor` reports `source: 'subscription'` for it), and «free · subscription» on the
- * vast majority of rows would be a wall of noise hiding the one row that matters. The date is
- * the winning side's own — never the later of the two — because that is what `untilOn` carries.
- * A gift with no end says so, where an open-ended subscription does not: `lifetime` already
- * means no end, whereas a gift that never runs out is the fact an operator would want to see
- * without opening anything.
+ * `free` carries no detail at all — a free row is a live subscription of `free` (`planStateFor`
+ * reports `source: 'subscription'` for it), and "subscription" on the vast majority of rows
+ * would be noise beside a badge that already says "Free". A gift with no end says so, where an
+ * open-ended subscription does not: `lifetime` already means no end, whereas a gift that never
+ * runs out is the fact an operator would want to see without opening anything.
  *
  * `grace` is the one state that names itself instead of a date, and the row has to agree with
  * `AccountPlanButton.subscriptionLine` about it because they are read one after the other —
  * the panel is opened *from* the row it contradicts. A failing card is virtually always
  * already past period end (which is the whole reason `liveSubscription` ignores dates for
  * `grace`), so `untilOn` here is a day that has gone by while the plan is genuinely still in
- * force: «premium · subscription until 2026-06-30» reads as lapsed and invites an operator to
- * re-gift a plan the customer already holds. Checked before the `untilOn` branch and not
- * inside it, which also covers the dateless `grace` row that would otherwise print a bare
- * «premium · subscription» and say nothing about the retry. Fixed here and not in
- * `planStateFor`: `state.until` being that past date is the deliberate answer to "when does
- * the paid period end", pinned by `entitlements.test.ts`, and only its rendering is wrong.
+ * force: "subscription until 2026-06-30" reads as lapsed and invites an operator to re-gift a
+ * plan the customer already holds. Checked before the `untilOn` branch and not inside it, which
+ * also covers the dateless `grace` row that would otherwise print a bare "subscription" and say
+ * nothing about the retry. Fixed here and not in `planStateFor`: `state.until` being that past
+ * date is the deliberate answer to "when does the paid period end", pinned by
+ * `entitlements.test.ts`, and only its rendering is wrong.
  */
-function planClause(line: AccountPlanLine): string {
-  if (line.effectivePlan === 'free') return 'free'
+function planDetail(line: AccountPlanLine): string {
+  if (line.effectivePlan === 'free') return ''
 
   const side = line.source === 'grant' ? 'gift' : 'subscription'
   // Only on the subscription side, and only ahead of its own date: a scheduled downgrade on
   // the subscription while a grant currently wins would not even take effect the day it
   // fires, and naming it here would suggest a change to what the row is showing right now.
   const pendingClause = side === 'subscription' && line.pendingPlan !== null ? `, then ${line.pendingPlan}` : ''
-  if (line.status === 'grace' && line.source === 'subscription') {
-    return `${line.effectivePlan} · subscription, payment retrying`
-  }
-  if (line.untilOn !== null) return `${line.effectivePlan} · ${side} until ${line.untilOn}${pendingClause}`
-  return line.source === 'grant' ? `${line.effectivePlan} · gift, no end` : `${line.effectivePlan} · subscription${pendingClause}`
+  if (line.status === 'grace' && line.source === 'subscription') return 'subscription, payment retrying'
+  if (line.untilOn !== null) return `${side} until ${line.untilOn}${pendingClause}`
+  return line.source === 'grant' ? 'gift, no end' : `subscription${pendingClause}`
 }
 
 function EnterButton({ ownerEmail, isCurrent }: { ownerEmail: string; isCurrent: boolean }) {
@@ -201,11 +214,26 @@ export default async function AccountsPage() {
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{account.ownerEmail}</span>
-                      <span className="mt-0.5 block truncate text-[0.8125rem] text-muted">
-                        {account.signInCount === 0
-                          ? 'Never signed in'
-                          : `${account.signInCount} sign-in${account.signInCount === 1 ? '' : 's'}`}
-                        {line !== null && ` · ${planClause(line)}`}
+                      <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <span className="truncate text-[0.8125rem] text-muted">
+                          {account.signInCount === 0
+                            ? 'Never signed in'
+                            : `${account.signInCount} sign-in${account.signInCount === 1 ? '' : 's'}`}
+                        </span>
+                        {line !== null && (
+                          <>
+                            <span className={`badge ${PLAN_BADGE_CLASS[line.effectivePlan]}`}>
+                              {PLAN_LABEL[line.effectivePlan]}
+                            </span>
+                            {/* Only on a row this query actually read — see `AccountPlanLine.planChosen`'s
+                                own comment on why an unreadable row (`line === null`, handled above) must
+                                never render this same word: the two nulls mean opposite things here. */}
+                            {!line.planChosen && <span className="badge plan-badge-unchosen">Not activated</span>}
+                            {planDetail(line) !== '' && (
+                              <span className="text-[0.8125rem] text-muted">{planDetail(line)}</span>
+                            )}
+                          </>
+                        )}
                       </span>
                     </span>
                     <EnterButton

@@ -1,8 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { useRole } from '@/components/RoleProvider'
+import { activatePlanChoice } from '@/lib/plans/checkout'
 import type { BillingPeriod } from '@/lib/plans/prices'
 
 /**
@@ -134,6 +137,35 @@ export function PricingPlans({
 }) {
   const [period, setPeriod] = useState<BillingPeriod>('month')
 
+  /*
+   * The "Start free" CTA (PLAN-attivazione.md): a plain link to `/register` for anyone
+   * unknown or signed out, exactly as it has always been, but a real action for a reader
+   * who is signed in and has not yet completed the mandatory plan-choice gate — the one
+   * button on this page that has to know who is looking. Everything else on this page stays
+   * static; this is the one place `useRole()` is read, and only to decide between two
+   * harmless things one button does, never to gate anything server-side (see `(home)/page.tsx`
+   * for the actual gate).
+   */
+  const router = useRouter()
+  const { known, email, planChosen } = useRole()
+  const [freeBusy, setFreeBusy] = useState(false)
+  const [freeError, setFreeError] = useState<string | null>(null)
+  const pending = known && email !== null && !planChosen
+
+  const startFree = async () => {
+    setFreeBusy(true)
+    setFreeError(null)
+
+    const result = await activatePlanChoice()
+    if (result.ok) {
+      router.push('/')
+      return
+    }
+
+    setFreeBusy(false)
+    setFreeError('Something went wrong. Try again.')
+  }
+
   return (
     <div>
       <div className="segment mx-auto w-fit" role="group" aria-label="Billing period">
@@ -184,7 +216,25 @@ export function PricingPlans({
                 </Link>
               )}
 
-              {column.cta !== undefined && (
+              {column.cta !== undefined && pending && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm plan-cta w-full"
+                    onClick={() => void startFree()}
+                    disabled={freeBusy}
+                  >
+                    {freeBusy ? 'Activating…' : 'Continue with Free'}
+                  </button>
+                  {freeError !== null && (
+                    <p className="notice notice-error mt-2 text-xs" role="alert">
+                      {freeError}
+                    </p>
+                  )}
+                </>
+              )}
+
+              {column.cta !== undefined && !pending && (
                 <Link href={column.cta.href} className="btn btn-sm plan-cta w-full">
                   {column.cta.label}
                 </Link>

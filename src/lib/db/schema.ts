@@ -188,6 +188,18 @@ export const accounts = pgTable(
      * cycle to carry.
      */
     pendingCycle: text('pending_cycle'),
+    /**
+     * When this account first completed the mandatory plan-choice step (PLAN-attivazione.md)
+     * — Free or paid, either counts. Null means "not yet chosen", the same idiom as
+     * `pendingPlan`/`grantedPlan`: a column nobody has written to yet already means the
+     * right thing, with no separate boolean needed.
+     *
+     * Backfilled to `createdAt` for every account that existed before this column did
+     * (migration 0027) — the gate only applies to accounts created afterwards, and every
+     * pre-existing account counts as already activated from the day it was actually created,
+     * not from the day this column was added.
+     */
+    planChosenAt: timestamp('plan_chosen_at', { withTimezone: true }),
   },
   (table) => [unique('accounts_paddle_subscription_id').on(table.paddleSubscriptionId)],
 )

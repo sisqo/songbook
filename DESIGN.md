@@ -30,6 +30,22 @@ colors:
   success-soft: "#e1f3e6"
   success-night: "#6fd88f"
   success-night-soft: "#17281c"
+  plan-standard: "#2f5f8f"
+  plan-standard-soft: "#e3edf6"
+  plan-standard-night: "#8ec2f2"
+  plan-standard-night-soft: "#182430"
+  plan-plus: "#6b3fa0"
+  plan-plus-soft: "#efe6f7"
+  plan-plus-night: "#cba6ec"
+  plan-plus-night-soft: "#251b30"
+  plan-premium: "#8a6d1f"
+  plan-premium-soft: "#f5eed7"
+  plan-premium-night: "#e0c368"
+  plan-premium-night-soft: "#2c2515"
+  plan-lifetime: "#1f6f5c"
+  plan-lifetime-soft: "#dcf0ea"
+  plan-lifetime-night: "#6bd6bd"
+  plan-lifetime-night-soft: "#162925"
 typography:
   screen-title:
     fontFamily: "Outfit, system-ui, sans-serif"
@@ -167,6 +183,21 @@ A warm, restrained palette: one reserved accent, everything else a step on a pap
 **The Chord-First Rule.** The accent color's primary job is marking chords. Any other use of it — a badge, an active nav pill, a status dot — must read as visibly quieter than a chord on the sheet. If a new UI element competes with the sheet's own chords for attention, it is using the accent wrong.
 
 **The Two Designed Themes Rule.** Dark mode is not `light mode, inverted`. Every color pair in the frontmatter was chosen independently for its own theme; changing one value in light does not imply a formulaic change in dark.
+
+### Plan Badges — a declared exception to the Chord-First Rule
+
+`/accounts` (the operator screen, PLAN-attivazione.md) is the one place in the app with five
+distinct, fully-saturated badge colors — one per plan (`plan-standard`, `plan-plus`,
+`plan-premium`, `plan-lifetime`, each with its own `-soft`/`-night`/`-night-soft` pair, Free
+left uncolored on the neutral ink ramp since there is nothing bought to name), plus the
+existing `danger`/`danger-soft` reused for the "Not activated" state. This is a **declared**
+exception to the Chord-First Rule above, not a drift from it: the rule exists to stop a UI
+element from competing with the chords on the song sheet for a reader's attention, and an
+operator's account list has no sheet and no chords on it to compete with — the letter of "one
+accent color" bends here, the substance it protects does not. Nowhere else in the app gains a
+second color family from this; a plan name shown anywhere a reader (rather than an operator)
+looks — the account menu's own badge, `/pricing`, `/billing` — stays on the single existing
+accent, exactly as before.
 
 ## 3. Typography
 

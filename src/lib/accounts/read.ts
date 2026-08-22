@@ -129,6 +129,17 @@ export interface AccountPlanLine {
   source: 'subscription' | 'grant' | 'none'
   /** The winning side's own column, never the later of the two. */
   untilOn: string | null
+  /**
+   * Whether this account has completed the mandatory plan-choice step (PLAN-attivazione.md) —
+   * `accounts.planChosenAt !== null`, read directly rather than through any pending-aware
+   * resolver, because there is nothing to resolve: a column that was ever written stays
+   * written, with no expiry and no scheduled change. This field exists on `AccountPlanLine`
+   * specifically, never inferred from the row simply being present in the map: a row this
+   * query could not read at all is absorbed a level up, as "unknown for this account", which
+   * must never be shown as "not activated" — the two null cases mean opposite things on the
+   * one screen whose whole purpose is to be believed.
+   */
+  planChosen: boolean
 }
 
 /** A timestamp as the day it falls on, in UTC — see `AccountPlanLine` on why days and not instants. */
@@ -179,6 +190,7 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
         grantedBy: accounts.grantedBy,
         grantedAt: accounts.grantedAt,
         grantedNote: accounts.grantedNote,
+        planChosenAt: accounts.planChosenAt,
       })
       .from(accounts)
       .orderBy(asc(accounts.ownerEmail))
@@ -235,6 +247,7 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
           effectivePlan: state.effectivePlan,
           source: state.source,
           untilOn: dayOf(state.until),
+          planChosen: row.planChosenAt !== null,
         }
         return [row.ownerEmail, line] as const
       }),

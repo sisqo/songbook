@@ -359,6 +359,50 @@ export async function effectivePlanOf(accountOwnerEmail: string): Promise<Plan |
 }
 
 /**
+ * Whether this account has completed the mandatory plan-choice step (PLAN-attivazione.md) —
+ * Free or paid, either counts, read straight off `accounts.planChosenAt` rather than through
+ * `storedPlanOf`: this asks a yes/no question `StoredPlan` has no field for, and the other
+ * three readers in this file would gain a field they never use.
+ *
+ * `true` when there is nothing to gate — enforcement is off, there is no database, or
+ * `SONGBOOK_FORCE_PLAN` is set — same fail-open direction as `entitlementsOf` and its
+ * neighbours, and for a sharper reason here: the caller of this function is a redirect, and
+ * failing shut would turn one unreadable row into a login-time lockout instead of a merely
+ * generous account, for a musician who is probably trying to get on stage. A forced plan
+ * bypasses this the same way it bypasses everything else in this file — its contract is "this
+ * account is exactly and only this plan", which a forced trip through the choice screen would
+ * contradict.
+ *
+ * `true` on a missing row, too, for the same reason `storedPlanOf`'s callers treat one as
+ * `UNGATED` rather than as a refusal — a row this cannot find is not evidence that a choice is
+ * outstanding.
+ */
+export async function hasChosenPlan(accountOwnerEmail: string): Promise<boolean> {
+  if (!plansEnforced()) return true
+  if (!hasDatabase) return true
+  if (forcedPlan() !== null) return true
+
+  try {
+    const rows = await db()
+      .select({ planChosenAt: accounts.planChosenAt })
+      .from(accounts)
+      .where(eq(accounts.ownerEmail, accountOwnerEmail))
+      .limit(1)
+
+    const row = rows[0]
+    if (row === undefined) {
+      console.error(`hasChosenPlan found no account row for ${accountOwnerEmail}`)
+      return true
+    }
+
+    return row.planChosenAt !== null
+  } catch (error) {
+    console.error('hasChosenPlan failed', error)
+    return true
+  }
+}
+
+/**
  * What every one of `deviceCapOf`'s four exits answers with.
  *
  * `UNGATED.limits.devices` rather than a literal 100, so the fail-open value cannot drift

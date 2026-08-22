@@ -5,6 +5,7 @@ import { SongbookProvider } from '@/components/SongbookProvider'
 import { HomeScreen } from '@/components/HomeScreen'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
+import { isOwner } from '@/lib/allowlist'
 import { currentUser } from '@/lib/auth/session'
 import {
   listRecentlyOpened,
@@ -15,6 +16,7 @@ import {
 import { snapshot } from '@/lib/songbooks/snapshot'
 import { repository } from '@/lib/data'
 import { hasDatabase } from '@/lib/db/client'
+import { hasChosenPlan } from '@/lib/plans/resolve'
 import { toIndexEntry } from '@/lib/search-index'
 
 /**
@@ -34,6 +36,26 @@ export default async function Home() {
    */
   const user = hasDatabase ? await currentUser() : null
   if (hasDatabase && user === null) redirect('/login')
+
+  /*
+   * The mandatory plan-choice gate (PLAN-attivazione.md): an account that has never chosen a
+   * plan — Free or paid — is sent to `/pricing` before it ever sees its own repertoire. This
+   * page is the one place to put it, not `middleware.ts` (edge runtime, deliberately kept free
+   * of database access — see `auth.config.ts`) and not a client-side redirect (it would have to
+   * know every route the choice screen and its checkout must stay reachable from). `/` is
+   * already the one page every sign-in path lands on — Google via `/login`/`/register`, and the
+   * password flow via `verifyEmail`'s own `redirect('/')` — and it already re-verifies the
+   * account server-side on every request, exactly like the redirect above.
+   *
+   * `isOwner` checked directly on `user.email`, not `user.role`: every account owner is
+   * `'admin'` *on their own account* (`roleOf`), so `role` cannot tell a global owner apart
+   * from an ordinary customer. Checked on the signed-in person, not on `accountOwnerEmail`,
+   * so a global owner switched into a customer's account for support is never bounced away by
+   * that customer's own unfinished onboarding.
+   */
+  if (hasDatabase && user !== null && !isOwner(user.email, process.env.ALLOWED_EMAILS)) {
+    if (!(await hasChosenPlan(user.accountOwnerEmail))) redirect('/pricing')
+  }
 
   const [songs, songbooks, sections] =
     user === null

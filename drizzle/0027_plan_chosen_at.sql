@@ -1,0 +1,21 @@
+-- One column, nullable, no default: "nobody has chosen a plan yet" is exactly the state of
+-- a row nobody has written here, the same idiom already used for `granted*` and for
+-- `pending_plan`/`pending_cycle`. See `db/schema.ts` (accounts.planChosenAt) and
+-- PLAN-attivazione.md for the whole design.
+--
+-- Every account that exists before this migration counts as already activated, backfilled
+-- to its own `created_at` rather than to `now()` — `now()` would mark every pre-existing
+-- account as activated "today", which is not true and is not what the mandatory-choice
+-- gate (PLAN-attivazione.md) is for: it only applies to accounts created from here on.
+--
+-- Single-shot, like every migration before it: no IF NOT EXISTS, run it once, record it.
+--
+-- Snapshot warning (PLAN.md, Domande aperte #19): every `drizzle-kit` snapshot from 0015
+-- on is a byte-for-byte copy of the v2.4 one, not a real incremental diff. The next
+-- `db:generate` run will propose recreating `accounts` from scratch, the columns v3.0+
+-- added to `songbooks`, and even the `members` table 0017 already dropped. Discard that
+-- diff — this file and its journal/snapshot entries were written by hand, the same way
+-- 0024, 0025 and 0026 were.
+ALTER TABLE "accounts" ADD COLUMN "plan_chosen_at" timestamp with time zone;
+--> statement-breakpoint
+UPDATE "accounts" SET "plan_chosen_at" = "created_at" WHERE "plan_chosen_at" IS NULL;
