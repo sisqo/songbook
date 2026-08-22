@@ -69,6 +69,40 @@ way or be ready to `rm -rf .next` and restart it afterward (`nohup npm run dev >
 disown`). This machine tends to accumulate orphaned `next dev` processes across sessions;
 clean up your own before leaving.
 
+## Migrating the production database: `vercel env pull --environment=production` looks like it works but doesn't
+
+Confirmed 2026-08-22, applying migration `0027`: this account's Vercel CLI token can read
+**Development** secrets fine (`vercel env pull --environment=development` returns real values),
+but pulling **Production** returns a real file with every real secret present as a literal
+empty string (`DATABASE_URL=""`, `AUTH_SECRET=""`, all of them) — only Vercel's own
+auto-populated system vars (`VERCEL_ENV`, `VERCEL_OIDC_TOKEN`, …) come through non-empty. The
+command exits 0 and looks identical to a successful pull; nothing in its output says access was
+refused. `vercel whoami` still shows the correct `sisqo` account, and `vercel env ls
+production` still lists every variable as present — this is a read-permission restriction on
+decrypting Production values specifically through this CLI session, not a missing variable, a
+wrong account, or a bug in the pull itself. Don't waste time re-authenticating or re-linking the
+project over this; nothing about the setup is broken.
+
+Practical effect: an agent cannot obtain a working `DATABASE_URL` for production this way, so it
+cannot run `npm run db:migrate` against production on its own. The person driving the CLI (who
+has whatever additional permission the token lacks) has to do it, with one care taken so it
+never touches the **development** config a local `npm run dev` still needs afterward:
+
+```bash
+vercel env pull --environment=production /tmp/strumfolio-prod.env   # never .env.local
+export DATABASE_URL_UNPOOLED=$(grep '^DATABASE_URL_UNPOOLED=' /tmp/strumfolio-prod.env | cut -d= -f2- | tr -d '"')
+npm run db:migrate
+unset DATABASE_URL_UNPOOLED
+rm /tmp/strumfolio-prod.env
+```
+
+This works without ever editing `.env.local` because of two things already in this repo:
+`scripts/load-env.ts` sets each variable with `??=`, so a value already exported in the shell
+always wins over whatever `.env.local` says; and `scripts/migrate.ts` itself promotes
+`DATABASE_URL_UNPOOLED` to `DATABASE_URL` right before connecting, unconditionally, if that
+variable is set. Exporting just `DATABASE_URL_UNPOOLED` for the one command is enough to point
+that single migration run at production while every other file on disk stays pointed at dev.
+
 ## Domain, email, CAPTCHA and OAuth: six independent places, six different access methods
 
 The production domain moved twice on 2026-08-21 (`songbook.sisqo.dev` →
