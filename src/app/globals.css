@@ -206,12 +206,24 @@
   html {
     /* The reader taps small controls; never zoom the whole viewport for them. */
     -webkit-text-size-adjust: 100%;
+    /*
+     * Never the whole page, only the elements that mean to (`.plan-table-scroll`,
+     * `.chip-row`, `.code-block`, every other nested `overflow-x: auto` in this file). A
+     * `position: sticky` cell nested inside one of those — `/pricing`'s comparison table,
+     * whose row-header column stays put while the value columns scroll under it — still
+     * leaks its own width into `documentElement.scrollWidth` in Chromium even though the
+     * table itself is correctly clipped by its own frame (confirmed by hiding it: the leak
+     * goes with it). Belongs here rather than only on `.plan-table-frame`, because the
+     * mechanism is a browser quirk about the *root* element, not about that one table.
+     */
+    overflow-x: hidden;
   }
 
   body {
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font-sans), system-ui, sans-serif;
+    overflow-x: hidden;
     /*
      * No bottom padding for the home indicator here any more.
      *
