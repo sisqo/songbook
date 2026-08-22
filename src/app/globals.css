@@ -2799,7 +2799,12 @@
     color: inherit;
   }
 
-  /* The fine print: Privacy, Terms, Cookies, Copyright — middle-dot separated, like the credit line above it. */
+  /*
+   * The fine print, middle-dot separated like the credit line above it, and wrapping onto a
+   * second line on a narrow phone rather than scrolling. Deliberately not a list of which links
+   * those are: the enumeration that used to be here named four of them and was already two
+   * behind by the time anyone read it. `Footer.tsx` is where they live.
+   */
   .app-footer-legal {
     display: flex;
     flex-wrap: wrap;

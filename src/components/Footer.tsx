@@ -4,15 +4,15 @@ import { SITE_URL } from '@/lib/brand'
 import { COPYRIGHT_YEAR, CURRENT_VERSION } from '@/lib/changelog'
 
 /**
- * The credit line at the foot of every internal page, styled after the one in
- * `easy-guitar-tuner` — same "by SisQo · commit hash" shape. The Ko-fi badge that
- * used to sit above it is gone site-wide: no design this app has shipped has ever
- * shown one, and it was never asked for.
+ * The identity line at the foot of every internal page: whose this is, which version of it, and
+ * which build. Three things on one line rather than three, because they answer one question
+ * between them — *what is this, and which one of it am I looking at* — and a footer that grows a
+ * row per fact ends up taller than the page it is under.
  *
- * It now opens with the copyright and the released version. Three things sit on one line
- * rather than three, because they answer one question between them — *what is this, and which
- * one of it am I looking at* — and a footer that grows a row per fact ends up taller than the
- * page it is under.
+ * It used to read "by SisQo · commit hash", borrowed from `easy-guitar-tuner`, and the
+ * attribution is gone at the owner's own request. Nothing replaced it: the copyright line names
+ * who this belongs to already, which is the fact the byline was carrying. (The Ko-fi badge that
+ * once sat above all this is long gone too — no design this app shipped ever showed one.)
  *
  * The version is a link to `/changelog`, which is the whole reason it is worth printing: a
  * number nobody can look up is decoration. It is deliberately still *also* reachable by the
@@ -35,11 +35,8 @@ export function Footer() {
     <footer className="app-footer">
       <p className="app-footer-credit">
         &copy; {COPYRIGHT_YEAR} {SITE_URL} &middot;{' '}
-        <Link href="/changelog">v{CURRENT_VERSION}</Link> &middot; by{' '}
-        <a href="https://www.sisqo.dev" target="_blank" rel="noopener noreferrer">
-          SisQo
-        </a>{' '}
-        &middot; <span className="font-mono">{process.env.COMMIT_HASH ?? 'dev'}</span>
+        <Link href="/changelog">v{CURRENT_VERSION}</Link> &middot;{' '}
+        <span className="font-mono">{process.env.COMMIT_HASH ?? 'dev'}</span>
       </p>
 
       {/*
@@ -59,7 +56,16 @@ export function Footer() {
         <span aria-hidden>&middot;</span>
         <Link href="/cookie-policy">Cookies</Link>
         <span aria-hidden>&middot;</span>
-        <Link href="/content-copyright-notice">Copyright</Link>
+        {/*
+          * «Content copyright», not «Copyright», since the credit line above now opens with a
+          * © of its own: that one is this site's, while this is the notice about the songs
+          * *readers* put in — whose they are, and what to do if one of them is yours. Two
+          * different questions that the single word answered ambiguously the moment the © was
+          * added. Two words rather than the destination's full «Content & Copyright Notice»:
+          * a footer label wants to be scannable, and an ampersand among middle dots reads as
+          * one more separator.
+          */}
+        <Link href="/content-copyright-notice">Content copyright</Link>
         <span aria-hidden>&middot;</span>
         <Link href="/brand">Brand</Link>
         <span aria-hidden>&middot;</span>
