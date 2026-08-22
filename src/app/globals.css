@@ -728,9 +728,12 @@
    * a red hairline reads as a rendering artifact rather than as a warning.
    */
   /*
-   * The one solid dark control in the app, and it only ever deletes something. Reads as
-   * heavier than a danger fill without shouting in red before anything has happened —
-   * the confirmation is what turns red.
+   * The one solid dark control in the app — reserved for the heaviest confirmations,
+   * whether or not the action itself is destructive: it read as heavier than a danger
+   * fill without shouting in red before anything has happened (the delete confirmation
+   * itself still turns red), and Sing Together's own Stop reuses the same weight for a
+   * different reason — ending a broadcast is final for whoever is watching it, even
+   * though nothing about the reader's own data is at stake.
    */
   .btn-ink {
     border-color: transparent;
@@ -3089,7 +3092,7 @@
     width: 1.4rem;
     height: 1.4rem;
     margin-top: 0.05rem;
-    border-radius: var(--r-xs);
+    border-radius: 50%;
     background: var(--accent-soft);
     color: var(--accent);
     font-size: 0.75rem;

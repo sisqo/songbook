@@ -20,6 +20,7 @@ export function InstrumentPicker() {
 
   return (
     <div className="px-1.5 pb-1 pt-2">
+      <p className="group-label mb-2">Instrument</p>
       <span className="segment w-full" role="group" aria-label="Instrument for chord shapes">
         {INSTRUMENTS.map((entry) => (
           <button

@@ -387,11 +387,25 @@ export function NavMenu({ current }: { current: Section }) {
                           1
                         </span>
                         <div className="sing-step-body">
-                          <p className="text-sm text-muted">
-                            Share the link or QR code below. Whoever opens it follows the song
-                            and the key you&apos;re reading it in, live — no account needed on
-                            their side.
-                          </p>
+                          {/*
+                            * Two readings of the same step, not one sentence softened for
+                            * the state that has nothing to show yet: before a broadcast
+                            * exists, the lead phrase names the tap that makes the link
+                            * appear; once it does, «below» is true and the phrase says so.
+                            */}
+                          {broadcast === null ? (
+                            <p className="text-sm text-muted">
+                              <b>Start broadcasting</b> and <b>share the link or QR code</b> in
+                              next page. Whoever opens it follows the song and the key
+                              you&apos;re reading it in, live — no account needed on their side.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted">
+                              <b>Share the link or QR code below</b>. Whoever opens it follows
+                              the song and the key you&apos;re reading it in, live — no account
+                              needed on their side.
+                            </p>
+                          )}
 
                           {broadcast !== null && broadcast !== undefined && (
                             <>
@@ -486,7 +500,7 @@ export function NavMenu({ current }: { current: Section }) {
                         </span>
                         <div className="sing-step-body">
                           <p className="text-sm text-muted">
-                            Press play on the song you want everyone to see. Whatever
+                            <b>Press play on the song</b> you want everyone to see. Whatever
                             you&apos;re reading becomes what shows up on their screens, in the
                             same key.
                           </p>
@@ -516,11 +530,12 @@ export function NavMenu({ current }: { current: Section }) {
                   {broadcast !== null && broadcast !== undefined && (
                     <button
                       type="button"
-                      className="btn btn-danger mt-3 w-full"
+                      className="btn btn-ink mt-3 w-full"
                       onClick={() => void stopSinging()}
                       disabled={busy}
                     >
-                      Stop
+                      <IconBroadcast size={16} />
+                      Stop broadcasting
                     </button>
                   )}
                 </div>
@@ -534,15 +549,33 @@ export function NavMenu({ current }: { current: Section }) {
                   Home
                 </Link>
 
-                <Link href="/help" className={item('help')} role="menuitem" onClick={close}>
-                  <IconInfo size={17} />
-                  Help
-                </Link>
+                {/*
+                  * Unconditional, like Home: any signed-in reader may open this screen —
+                  * whether starting a broadcast succeeds is a question `startBroadcast`
+                  * answers on the server, not one this menu asks first.
+                  * It sits with Home because it is about the repertoire being read — the
+                  * songs this reader is about to sing from, sent to whoever opened the
+                  * link — rather than about this reader's own account, which lives
+                  * entirely in `UserMenu`, not here. It opens a second screen rather than
+                  * navigating away because it is reached mid-song, and a real navigation
+                  * would cost the reader the page they were reading to get back to.
+                  */}
+                <button
+                  type="button"
+                  className="menu-item w-full"
+                  role="menuitem"
+                  aria-label="Sing together, opens the broadcast screen"
+                  onClick={() => setView('sing-together')}
+                >
+                  <IconBroadcast size={17} />
+                  Sing together
+                  <IconChevronRight size={15} className="ms-auto" />
+                </button>
 
                 {/*
-                  * Hidden until a role arrives that can actually use it, same reasoning
-                  * as Accounts above: the actions behind this page already refuse anyone
-                  * without edit rights, so there is nothing for a viewer to do here.
+                  * Hidden until a role arrives that can actually use it: the actions
+                  * behind this page already refuse anyone without edit rights, so there
+                  * is nothing for a viewer to do here.
                   */}
                 {mayEdit && (
                   <Link href="/export" className={item('export')} role="menuitem" onClick={close}>
@@ -551,14 +584,14 @@ export function NavMenu({ current }: { current: Section }) {
                   </Link>
                 )}
 
+                <div className="menu-divider" />
+
                 {/*
                   * The tuner, which is another app on another domain.
                   *
-                  * It sits with the sections rather than in a group of its own: from
-                  * here it is one more place to go, and a fourth divider would make the
-                  * menu look like four unrelated things. The arrow at the end is what
-                  * says it leaves — and, by saying that, that it needs a network, which
-                  * nothing else in this menu does.
+                  * A dedicated divider on each side rather than sitting flush with its
+                  * neighbours: the arrow at the end says it leaves — and, by saying that,
+                  * that it needs a network, which nothing else in this menu does.
                   *
                   * A plain anchor, in a new tab: the reader is in the middle of a song,
                   * and tuning should not cost them the page they were reading.
@@ -577,29 +610,12 @@ export function NavMenu({ current }: { current: Section }) {
                   <IconExternal size={13} className="ms-auto" />
                 </a>
 
-                {/*
-                  * Unconditional, like Home: any signed-in reader may open this screen —
-                  * whether starting a broadcast succeeds is a question `startBroadcast`
-                  * answers on the server, not one this menu asks first.
-                  * It sits with Home and the tuner because it is about the repertoire
-                  * being read — the songs this reader is about to sing from, sent to
-                  * whoever opened the link — rather than about this reader's own account,
-                  * which now lives entirely in `UserMenu`, not here. It opens a second
-                  * screen rather than navigating away because it is reached mid-song, and
-                  * a real navigation would cost the reader the page they were reading to
-                  * get back to.
-                  */}
-                <button
-                  type="button"
-                  className="menu-item w-full"
-                  role="menuitem"
-                  aria-label="Sing together, opens the broadcast screen"
-                  onClick={() => setView('sing-together')}
-                >
-                  <IconBroadcast size={17} />
-                  Sing together
-                  <IconChevronRight size={15} className="ms-auto" />
-                </button>
+                <div className="menu-divider" />
+
+                <Link href="/help" className={item('help')} role="menuitem" onClick={close}>
+                  <IconInfo size={17} />
+                  Help
+                </Link>
               </>
             )}
           </div>

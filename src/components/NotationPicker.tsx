@@ -25,17 +25,8 @@ export function NotationPicker() {
 
   return (
     <div className="px-1.5 pb-1 pt-2">
+      <p className="group-label mb-2">Notation</p>
       <span className="segment w-full" role="group" aria-label="Chord notation">
-        <button
-          type="button"
-          className={
-            global.notation === 'it' ? 'segment-button is-on flex-1' : 'segment-button flex-1'
-          }
-          aria-pressed={global.notation === 'it'}
-          onClick={() => setNotation('it')}
-        >
-          Do
-        </button>
         <button
           type="button"
           className={
@@ -44,7 +35,17 @@ export function NotationPicker() {
           aria-pressed={global.notation === 'int'}
           onClick={() => setNotation('int')}
         >
-          C
+          C D E
+        </button>
+        <button
+          type="button"
+          className={
+            global.notation === 'it' ? 'segment-button is-on flex-1' : 'segment-button flex-1'
+          }
+          aria-pressed={global.notation === 'it'}
+          onClick={() => setNotation('it')}
+        >
+          Do Re Mi
         </button>
       </span>
     </div>

@@ -72,6 +72,13 @@ export function AdminMenu({ current }: { current: Section }) {
 
   const item = (section: Section) => (section === current ? 'menu-item is-on' : 'menu-item')
 
+  const renderEntry = (entry: (typeof ENTRIES)[number]) => (
+    <Link key={entry.section} href={entry.href} className={item(entry.section)} role="menuitem" onClick={close}>
+      <entry.icon size={17} />
+      {entry.label}
+    </Link>
+  )
+
   return (
     <div className="menu">
       <button
@@ -97,18 +104,13 @@ export function AdminMenu({ current }: { current: Section }) {
           <div className="menu-overlay" onClick={close} aria-hidden />
 
           <div className="menu-panel is-compact" role="menu">
-            {ENTRIES.map((entry) => (
-              <Link
-                key={entry.section}
-                href={entry.href}
-                className={item(entry.section)}
-                role="menuitem"
-                onClick={close}
-              >
-                <entry.icon size={17} />
-                {entry.label}
-              </Link>
-            ))}
+            {ENTRIES.slice(0, -1).map(renderEntry)}
+
+            {/* App settings stands apart from Accounts and Emails — the other two
+                act on other people's data, this one on the installation itself. */}
+            <div className="menu-divider" />
+
+            {ENTRIES.slice(-1).map(renderEntry)}
           </div>
         </>
       )}

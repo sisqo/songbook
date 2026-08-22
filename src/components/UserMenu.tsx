@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react'
 import { InstrumentPicker } from '@/components/InstrumentPicker'
 import { NotationPicker } from '@/components/NotationPicker'
 import { useRole } from '@/components/RoleProvider'
-import { ThemePicker } from '@/components/ThemePicker'
 import { IconChevronLeft, IconChevronRight, IconKey, IconReceipt, IconSettings, IconTrash } from '@/components/icons'
 import { deleteMyAccount } from '@/lib/accounts/actions'
 import { SELF_DELETE_MESSAGE } from '@/lib/accounts/types'
@@ -133,6 +132,18 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
 
                 <div className="menu-divider" />
 
+                <button
+                  type="button"
+                  className="menu-item w-full"
+                  role="menuitem"
+                  aria-label="Settings, opens the settings list"
+                  onClick={() => setView('settings')}
+                >
+                  <IconSettings size={17} />
+                  Settings
+                  <IconChevronRight size={15} className="ms-auto" />
+                </button>
+
                 <Link href="/password" className="menu-item" role="menuitem" onClick={close}>
                   <IconKey size={17} />
                   Change password
@@ -148,21 +159,9 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                   Billing
                 </Link>
 
-                {children}
-
                 <div className="menu-divider" />
 
-                <button
-                  type="button"
-                  className="menu-item w-full"
-                  role="menuitem"
-                  aria-label="Settings, opens the settings list"
-                  onClick={() => setView('settings')}
-                >
-                  <IconSettings size={17} />
-                  Settings
-                  <IconChevronRight size={15} className="ms-auto" />
-                </button>
+                {children}
               </>
             )}
 
@@ -183,12 +182,13 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
 
                 {/*
                  * Grouped together because each of these is answered once for the whole
-                 * account rather than per song — instrument, notation and theme all read
-                 * the same way on every sheet until the reader changes them again, same
-                 * reasoning `InstrumentPicker` gives for itself.
+                 * account rather than per song — instrument and notation both read the
+                 * same way on every sheet until the reader changes them again, same
+                 * reasoning `InstrumentPicker` gives for itself. Theme lives only behind
+                 * the header's own cycling icon now, not here — a preference with just
+                 * one control, not two, is simpler read from wherever it already sits.
                  */}
                 <InstrumentPicker />
-                <ThemePicker />
                 <NotationPicker />
 
                 <div className="menu-divider" />
