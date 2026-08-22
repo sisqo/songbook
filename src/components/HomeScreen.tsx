@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useDeferredValue, useMemo, useState } from 'react'
 
 import { useSongbooks } from '@/components/SongbookProvider'
@@ -23,6 +24,7 @@ import { type AccountSummary, listAllAccounts } from '@/lib/accounts/read'
 import type { RecentSong } from '@/lib/data/db'
 import { useLiveIndex } from '@/lib/library/useLiveSongs'
 import { LIMIT_MESSAGE, type LimitReason } from '@/lib/plans/types'
+import { clearRecentlyOpened } from '@/lib/prefs/actions'
 import { copySongbook } from '@/lib/songbooks/actions'
 import { countBySlug, songbooksOf, writeMessage, type WriteResult } from '@/lib/songbooks/types'
 import type { SongIndexEntry } from '@/lib/search-index'
@@ -76,6 +78,32 @@ export function HomeScreen({
    * below, so a fifth `LimitReason` lands here automatically rather than in the notice.
    */
   const [planNotice, setPlanNotice] = useState<PlanNotice | null>(null)
+
+  /*
+   * Clearing "Recently played" keeps its own pair rather than borrowing the `busy`/`error`
+   * above: those belong to the songbook create/rename/remove flow, and sharing them would grey
+   * out those controls while a list of shortcuts was being forgotten, and report this failure
+   * inside their notice. `online` comes from `useSongbooks` above — one source for the whole
+   * screen — and `router.refresh()` is what re-reads `recentlyPlayed`, which arrives as a prop
+   * from the server and so cannot update itself.
+   */
+  const router = useRouter()
+  const [clearing, setClearing] = useState(false)
+  const [clearFailed, setClearFailed] = useState(false)
+
+  const clearRecent = async () => {
+    setClearing(true)
+    setClearFailed(false)
+    try {
+      const result = await clearRecentlyOpened()
+      if (result.ok) router.refresh()
+      else setClearFailed(true)
+    } catch {
+      setClearFailed(true)
+    } finally {
+      setClearing(false)
+    }
+  }
   const [newName, setNewName] = useState('')
   /** The create form is a reveal under the header's own "New songbook", not a
       fixture at the foot of the list — closed again once a songbook is made. */
@@ -771,7 +799,36 @@ export function HomeScreen({
             */}
           {recentlyPlayed.length > 0 && (
             <section className="mt-8">
-              <h2 className="section-title">Recently played</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="section-title">Recently played</h2>
+                {/*
+                  * No confirmation in front of it, on the same reasoning `GiftForm`'s "Remove
+                  * gift" states for having none: the retype net is for the cascades that destroy
+                  * songs. This forgets an ordering hint, and opening a song puts it back — see
+                  * `clearRecentlyOpened`, which nulls one column and never deletes the row the
+                  * reader's key, capo and note live on.
+                  *
+                  * Offline it is disabled rather than hidden: the list beside it is still there
+                  * to be read, so a control that vanished with the signal would read as a
+                  * feature that had been taken away.
+                  */}
+                <button
+                  type="button"
+                  className="btn btn-quiet btn-sm"
+                  disabled={!online || clearing}
+                  onClick={() => void clearRecent()}
+                >
+                  <IconTrash size={14} />
+                  {clearing ? 'Clearing…' : 'Clear'}
+                </button>
+              </div>
+
+              {clearFailed && (
+                <p className="notice notice-error mt-2" role="alert">
+                  Could not clear the list. Try again.
+                </p>
+              )}
+
               <ul className="row-list card mt-2">
                 {recentlyPlayed.map((song) => (
                   <li key={song.slug}>

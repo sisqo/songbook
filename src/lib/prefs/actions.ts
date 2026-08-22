@@ -6,11 +6,11 @@
  * app still remembers anything at all when offline.
  */
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 
 import { currentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db/client'
-import { userPrefs, userSongPrefs } from '@/lib/db/schema'
+import { songbooks, songs, userPrefs, userSongPrefs } from '@/lib/db/schema'
 import type { Instrument } from '@/lib/music/shapes'
 import { entitlementsOf } from '@/lib/plans/resolve'
 
@@ -207,5 +207,63 @@ export async function recordSongOpened(songSlug: string): Promise<void> {
       })
   } catch (error) {
     console.error('recordSongOpened failed', error)
+  }
+}
+
+/**
+ * Empties this reader's "Recently played" — the undo for `recordSongOpened` above.
+ *
+ * **An UPDATE that nulls one column, never a DELETE**, and that is the whole of what makes this
+ * safe rather than destructive: `lastOpenedAt` shares its row with `semitones`, `capo`,
+ * `scrollSpeed` and `note` (see `userSongPrefs` in `db/schema.ts`), so deleting the rows would
+ * throw away the key this reader sings each song in, the fret their capo sits on and the
+ * reminder they wrote themselves — to clear a list of shortcuts. One column is the only thing
+ * anybody is asking to forget.
+ *
+ * Scoped by `userEmail` **and** the account the songs belong to, matching `listRecentlyOpened`
+ * (`lib/data/db.ts`) clause for clause and for its own stated reason: a global owner's rows can
+ * point at songs in any account they have ever switched into, and a button that says it clears
+ * *this* list must not also clear entries that list never showed. Clearing while switched into
+ * somebody else's account leaves the reader's own account's history alone, and the other way
+ * round.
+ *
+ * `isNotNull` in the predicate is not decoration either: without it this would touch every
+ * preference row this reader owns in the account — every saved transposition, most of which were
+ * never "recently played" — writing them all for nothing.
+ *
+ * No confirmation step in front of it, deliberately, on the same reasoning `setGrant`'s "Remove
+ * gift" gives for having none: the retype-to-confirm net is for the irreversible cascades that
+ * destroy songs. This forgets an ordering hint, and reading a song puts it back.
+ */
+export async function clearRecentlyOpened(): Promise<
+  { ok: true } | { ok: false; reason: 'no-session' | 'failed' }
+> {
+  const user = await currentUser()
+  if (user === null) return { ok: false, reason: 'no-session' }
+
+  try {
+    /* The songs of the account being looked at, as a subquery rather than a first round trip:
+       the set is only ever used as the right-hand side of this one predicate. */
+    const songsInThisAccount = db()
+      .select({ slug: songs.slug })
+      .from(songs)
+      .innerJoin(songbooks, eq(songs.songbookSlug, songbooks.slug))
+      .where(eq(songbooks.accountOwnerEmail, user.accountOwnerEmail))
+
+    await db()
+      .update(userSongPrefs)
+      .set({ lastOpenedAt: null })
+      .where(
+        and(
+          eq(userSongPrefs.userEmail, user.email),
+          inArray(userSongPrefs.songSlug, songsInThisAccount),
+          isNotNull(userSongPrefs.lastOpenedAt),
+        ),
+      )
+
+    return { ok: true }
+  } catch (error) {
+    console.error('clearRecentlyOpened failed', error)
+    return { ok: false, reason: 'failed' }
   }
 }
