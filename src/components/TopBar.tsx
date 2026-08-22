@@ -15,6 +15,7 @@ export type Section =
   | 'password'
   | 'accounts'
   | 'emails'
+  | 'pages'
   | 'app-settings'
   | 'help'
   | 'checkout'

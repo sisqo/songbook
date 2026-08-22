@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { EmailPreview } from '@/components/EmailPreview'
@@ -38,13 +37,6 @@ export default async function EmailsPage() {
           <p className="mt-2 text-sm leading-[1.45] text-muted">
             Every email this app sends, rendered with sample data. Send yourself a real copy to check how it looks in an
             actual inbox.
-          </p>
-          <p className="mt-2 text-sm leading-[1.45] text-muted">
-            The page a purchase lands on has the same kind of preview, with sample data for every plan:{' '}
-            <Link href="/thanks?preview=premium" className="text-accent hover:underline">
-              see the thank-you page
-            </Link>
-            .
           </p>
         </header>
 

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { useRole } from '@/components/RoleProvider'
-import { IconEye, IconSettings, IconShield, IconSwitchAccount } from '@/components/icons'
+import { IconEye, IconLink, IconSettings, IconShield, IconSwitchAccount } from '@/components/icons'
 import type { Section } from '@/components/TopBar'
 
 /**
@@ -36,6 +36,9 @@ import type { Section } from '@/components/TopBar'
 const ENTRIES: { section: Section; href: string; label: string; icon: typeof IconShield }[] = [
   { section: 'accounts', href: '/accounts', label: 'Accounts', icon: IconSwitchAccount },
   { section: 'emails', href: '/emails', label: 'Emails', icon: IconEye },
+  /* Bookmarks to pages nothing else links to, `/thanks?preview=` among them — see that
+     page's own list and its own comment on what belongs there. */
+  { section: 'pages', href: '/pages', label: 'Pages', icon: IconLink },
   /* A gear, the same glyph the user menu's own Settings carries — which is agreement rather
      than collision: it means "settings" in both places, and which menu you opened is what says
      whose. The route is `/app-settings` and not `/settings` for the same reason. */
