@@ -29,6 +29,20 @@ export async function requestIp(): Promise<string | null> {
   return forwardedFor?.split(',')[0]?.trim() || null
 }
 
+/**
+ * The origin this request actually arrived on — the same `Host`-header derivation
+ * NextAuth's own `trustHost` uses (see CLAUDE.md on `AUTH_URL`), so a verification or
+ * password-reset link tracks whatever domain is live instead of going stale on the next
+ * domain move, which is exactly what happened when `AUTH_URL` was removed from
+ * Production on 2026-08-21 and these links silently fell back to `http://localhost:3000`.
+ */
+export async function requestOrigin(): Promise<string> {
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
+  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  return `${proto}://${host}`
+}
+
 /** True when the request is allowed to proceed; false once `limit` is reached within `windowMs`. */
 export async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
   if (!hasDatabase) return true

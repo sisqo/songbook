@@ -69,12 +69,15 @@ way or be ready to `rm -rf .next` and restart it afterward (`nohup npm run dev >
 disown`). This machine tends to accumulate orphaned `next dev` processes across sessions;
 clean up your own before leaving.
 
-## Domain, email and CAPTCHA: five independent places, five different access methods
+## Domain, email, CAPTCHA and OAuth: six independent places, six different access methods
 
 The production domain moved twice on 2026-08-21 (`songbook.sisqo.dev` →
 `strumfolio.sisqo.dev` → `strumfolio.com`, the last one a real purchased domain on the
-Vercel registrar). Each move touches five separate systems, each configured a different
-way — a future domain change needs all five again, not just the DNS/Vercel part:
+Vercel registrar). Each move touches six separate systems, each configured a different
+way — a future domain change needs all six again, not just the DNS/Vercel part. Google
+OAuth was the one missed during the 2026-08-21 move itself (caught and fixed 2026-08-22,
+a day later, once Google sign-in started failing on the new domain) — treat this list as
+the checklist next time, not just a record of what happened:
 
 - **Vercel** (project domains + DNS zone) — fully API/CLI-automatable: `vercel dns add`,
   and `POST`/`DELETE` on `/v9/projects/<id>/domains` for attaching/detaching a hostname to
@@ -109,6 +112,22 @@ way — a future domain change needs all five again, not just the DNS/Vercel par
   works because the domain is already Resend-verified for sending (see above) — no new DNS.
   The credential lives in Gmail's own account settings, not in this repo or any env var, so
   it has to be redone by hand on every domain move, same as Turnstile's allowlist.
+- **Google OAuth** (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`, the "Sign in with Google"
+  provider in `src/auth.ts`) — the client ID/secret themselves don't change with the
+  domain, but the OAuth 2.0 Client's **Authorized redirect URIs** (and Authorized
+  JavaScript origins) in Google Cloud Console → APIs & Services → Credentials do: they
+  must list `https://<domain>/api/auth/callback/google` for whichever domain is current,
+  or Google rejects the callback with `Error 400: redirect_uri_mismatch` — no code-side
+  symptom, no log in this repo, it fails entirely inside Google's own redirect. Dashboard-
+  only, same as Turnstile's allowlist; no credential in this repo automates it, and
+  `gcloud` has no command for editing a Web-application OAuth client's redirect URIs (that
+  API isn't exposed — Console UI only). To check without logging into Google: build the
+  real authorization URL NextAuth would send (`client_id` + `redirect_uri` from a
+  `POST /api/auth/signin/google` against the live site — see git history around
+  2026-08-22 for the exact curl sequence) and fetch it anonymously; Google returns a
+  normal sign-in page if the redirect URI is registered, and an immediate
+  `Error 400: redirect_uri_mismatch` page (no login required to see it) if not — this
+  distinguishes the two without needing real Google credentials.
 
 `AUTH_URL` is deliberately **not set** in Production (removed 2026-08-21, was pinned to
 the old domain and caused cross-domain login redirects). NextAuth v5 derives the origin

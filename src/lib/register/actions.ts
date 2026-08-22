@@ -22,7 +22,7 @@ import { db, hasDatabase } from '@/lib/db/client'
 import { accounts, pendingRegistrations } from '@/lib/db/schema'
 import { sendEmail } from '@/lib/email/send'
 import { verificationEmail } from '@/lib/email/templates'
-import { checkRateLimit, requestIp } from '@/lib/rateLimit'
+import { checkRateLimit, requestIp, requestOrigin } from '@/lib/rateLimit'
 
 import type { RegisterResult, ResendResult } from './types'
 
@@ -89,7 +89,7 @@ export async function register(formData: FormData): Promise<RegisterResult> {
         set: { passwordHash, verificationTokenHash: hash, expiresAt },
       })
 
-    const url = new URL('/verify', process.env.AUTH_URL ?? 'http://localhost:3000')
+    const url = new URL('/verify', await requestOrigin())
     url.searchParams.set('email', email)
     url.searchParams.set('token', raw)
 
@@ -153,7 +153,7 @@ export async function resendVerification(formData: FormData): Promise<ResendResu
       .set({ verificationTokenHash: hash, expiresAt })
       .where(eq(pendingRegistrations.email, email))
 
-    const url = new URL('/verify', process.env.AUTH_URL ?? 'http://localhost:3000')
+    const url = new URL('/verify', await requestOrigin())
     url.searchParams.set('email', email)
     url.searchParams.set('token', raw)
 

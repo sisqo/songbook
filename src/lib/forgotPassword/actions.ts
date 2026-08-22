@@ -18,7 +18,7 @@ import { db, hasDatabase } from '@/lib/db/client'
 import { accounts, passwordResetTokens } from '@/lib/db/schema'
 import { sendEmail } from '@/lib/email/send'
 import { passwordResetEmail } from '@/lib/email/templates'
-import { checkRateLimit, requestIp } from '@/lib/rateLimit'
+import { checkRateLimit, requestIp, requestOrigin } from '@/lib/rateLimit'
 
 import { checkPasswordResetToken } from './check'
 import type { RequestResetResult, ResetPasswordResult } from './types'
@@ -76,7 +76,7 @@ export async function requestPasswordReset(formData: FormData): Promise<RequestR
           set: { tokenHash: hash, expiresAt },
         })
 
-      const url = new URL('/reset-password', process.env.AUTH_URL ?? 'http://localhost:3000')
+      const url = new URL('/reset-password', await requestOrigin())
       url.searchParams.set('email', email)
       url.searchParams.set('token', raw)
 
