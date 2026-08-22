@@ -9,7 +9,7 @@ export default function TermsOfServicePage() {
   return (
     <>
       <h1>Terms of Service</h1>
-      <p className="legal-updated">Last updated: 21 August 2026</p>
+      <p className="legal-updated">Last updated: 22 August 2026</p>
 
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Strumfolio (&ldquo;the
@@ -22,7 +22,8 @@ export default function TermsOfServicePage() {
 
       <h2>1. The Service</h2>
       <p>
-        Strumfolio lets you import, organize, edit and export your own song lyrics and chords, and
+        Strumfolio lets you import, organize, edit and export your own collection of lyrics and
+        chords, and
         offers features such as key/capo transposition and Sing Together, a feature that syncs a song
         across multiple devices in real time.
       </p>
@@ -58,18 +59,25 @@ export default function TermsOfServicePage() {
         the limited technical permission to store, process and display Your Content as needed to
         operate the Service for you and for the participants you invite to a Sing Together session.
       </p>
-      <p>By using Strumfolio, you confirm that:</p>
+      <p>
+        Your Content can be any song you play, whoever wrote it. What the Service is for is personal
+        use — playing, rehearsing, singing — and by using Strumfolio you confirm that:
+      </p>
       <ul>
+        <li>you came by Your Content lawfully;</li>
         <li>
-          you have the right to import, store and use Your Content (for example, because it is your
-          own work, in the public domain, or you otherwise hold the necessary rights or license);
+          you keep it within that personal use, and do not use the Service to publish, sell or
+          otherwise distribute a work that is not yours to distribute.
         </li>
-        <li>Your Content does not infringe the intellectual property rights of any third party.</li>
       </ul>
       <p>
-        Strumfolio is a tool for managing your own content — we do not license, provide, or claim any
-        rights over song lyrics or chord charts, and none are included with the Service. You are
-        solely responsible for the legality of the content you import and use.
+        Strumfolio is a tool for keeping and reading your own collection — we do not license, provide,
+        or claim any rights over song lyrics or chord charts, none are included with the Service, and
+        nothing here grants you any right over a work you did not already have. You are solely
+        responsible for the legality of the content you import and of what you do with it. Our{' '}
+        <Link href="/content-copyright-notice">Content &amp; Copyright Notice</Link> sets out where
+        that line falls in each of the Service&apos;s own features, and what happens when a
+        rightsholder writes to us.
       </p>
 
       <h2>4. Sing Together</h2>
@@ -77,8 +85,10 @@ export default function TermsOfServicePage() {
         When you start a Sing Together session, you act as the session leader and control what is
         displayed on the devices of participants who join via your shared link.{' '}
         <strong>Anyone holding the link can join without an account</strong> and can view the shared
-        content for the duration of the session. You are responsible for who you share that link
-        with, and for having the right to display Your Content to those participants.
+        content for the duration of the session. A session is a private performance among people you
+        invited, not a broadcast: how many devices your plan allows changes how many people can be in
+        the room, not what the room is. You are responsible for who you share that link with, and for
+        keeping the session inside the personal use described in section 3.
       </p>
       <p>
         Participants who join a session are bound by these Terms for the duration of their

@@ -9,7 +9,7 @@ export default function ContentCopyrightNoticePage() {
   return (
     <>
       <h1>Content &amp; Copyright Notice</h1>
-      <p className="legal-updated">Last updated: 21 August 2026</p>
+      <p className="legal-updated">Last updated: 22 August 2026</p>
 
       <p>
         Strumfolio (strumfolio.com) is a tool for managing your own personal song collection, run by an
@@ -30,37 +30,47 @@ export default function ContentCopyrightNoticePage() {
         sources on your behalf. Nothing enters your collection unless you put it there.
       </p>
 
-      <h2>2. Your responsibility</h2>
+      <h2>2. What you may keep here</h2>
       <p>
-        You are solely responsible for ensuring that any lyrics, chords, or other material you import
-        into Strumfolio:
+        Strumfolio does not ask what a song is or where it came from. Your collection can hold any song
+        you play — your own, someone else&apos;s, one you have known for thirty years. What the Service
+        is built for, and all it supports, is <strong>personal use</strong>: playing, rehearsing,
+        singing.
       </p>
+      <p>Two things stay yours to answer for:</p>
       <ul>
-        <li>is your own original work, or</li>
-        <li>is in the public domain, or</li>
-        <li>you otherwise hold the rights, license, or permission necessary to store and use it.</li>
+        <li>that you came by the song lawfully, and</li>
+        <li>that it stays inside that personal use.</li>
       </ul>
+      <p>
+        Strumfolio neither grants nor can grant any right over the underlying work, and nothing here is
+        a licence to reproduce or distribute it. Whether a personal copy is yours to keep is between you
+        and the law where you live; making a work available to other people is what the law reserves to
+        the rightsholder, and that is the line this notice is about.
+      </p>
       <p>
         Strumfolio does not review, verify, index, or endorse the content you import, and does not make
         any user&apos;s content publicly searchable or browsable by other users.
       </p>
 
-      <h2>3. Sharing content</h2>
+      <h2>3. Where personal use ends</h2>
       <p>
-        Features like Sing Together let you share a live view of a song with other people via a link,
-        for personal, informal use (for example, playing and singing with friends). Participants can
-        open that link without an account, and see only what you display for the duration of the
-        session.
+        Three things this app can do touch that line — a live session, a backup, a printed booklet.
+        Here is where each of them falls.
       </p>
       <p>
-        This is not a publishing or distribution feature. It does not grant any rights over the
-        underlying copyrighted work to Strumfolio or to session participants, and participants should
-        not record or redistribute what is shown to them.
+        <strong>Sing Together</strong> shows a song, live, on the screens of people who opened your
+        link. That is a private performance among people you invited: nobody reaches a session without
+        the link you handed them, and what is shown ends when the session does. It is not a broadcast,
+        and it is not a publishing or distribution feature — it grants no rights over the underlying
+        work to Strumfolio or to anyone in the session, and participants should not record or
+        redistribute what they were shown. How many devices your plan allows changes how many people
+        can be in the room; it does not change what the room is.
       </p>
       <p>
-        Exporting works the same way. The backup and the printable booklet let you download or print
-        your collection for yourself — Strumfolio does not review what comes out of either, and using it
-        beyond personal, informal use is your responsibility, not something the Service authorizes.
+        <strong>The backup and the printable booklet</strong> hand you your own collection, as a file or
+        on paper, for yourself. Strumfolio does not review what comes out of either, and what you do
+        with it afterwards is yours to answer for rather than something the Service authorizes.
       </p>
 
       <h2>4. Copyright concerns</h2>
@@ -79,8 +89,8 @@ export default function ContentCopyrightNoticePage() {
       </p>
       <p>
         The account holder may reply with a counter-notice — for example, that the content is their
-        own work, is in the public domain, or is used under a license they hold — which we will pass
-        back to you. If the two of you cannot resolve it this way, the dispute remains between you and
+        own work, is in the public domain, is used under a license they hold, or is a personal copy
+        they keep for playing and do not distribute — which we will pass back to you. If the two of you cannot resolve it this way, the dispute remains between you and
         the account holder, to pursue through whatever legal channels apply.
       </p>
 
