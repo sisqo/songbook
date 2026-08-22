@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { AppSettingsForm } from '@/components/AppSettingsForm'
+import { DeviceLaunchCheck } from '@/components/DeviceLaunchCheck'
 import { Footer } from '@/components/Footer'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
@@ -72,6 +73,21 @@ export default async function AppSettingsPage() {
           </p>
 
           <AppSettingsForm initial={settings} available={available} />
+        </section>
+
+        {/*
+          * Not a setting — nothing here is stored or changed — but it belongs on this screen
+          * rather than a page of its own: it answers a question only the owner ever asks, about
+          * the device in their hand, and it exists because the iOS launch screens shipped
+          * correct and still showed a blank on a real phone. See `DeviceLaunchCheck` on why the
+          * answer has to be computed there and not here.
+          */}
+        <section className="card mb-5 p-4">
+          <h2 className="section-title mb-1">This device</h2>
+          <p className="mb-3 text-[0.8125rem] leading-[1.45] text-muted">
+            Whether iOS has a launch screen for the phone or tablet you are reading this on.
+          </p>
+          <DeviceLaunchCheck />
         </section>
 
         {touched.length > 0 && (
