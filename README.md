@@ -287,6 +287,40 @@ logo: è uno strumento, non un asset, e questo repo non tiene la generazione del
 (`scripts/icons.ts` è stato rimosso il 2026-08-21 per la stessa ragione). Per rigenerare o
 ridimensionare qualcosa si parte da `kit/svg/` con lo script nel drop, non da qui.
 
+### `/brand` — la pagina che indicizza il kit
+
+Una cartella di centoquaranta file non dice quale dei quattro lockup orizzontali prendere.
+`/brand` sì: ogni asset è mostrato **sul fondo per cui è stato disegnato** — un riquadro in
+due metà, paper a sinistra e night a destra, con la variante black sulla prima e la white
+sulla seconda — accanto alla riga che dice quando è quello giusto. Poi palette, regole d'uso
+e, in fondo, tutto il drop elencato senza commento per chi già sa cosa cerca. Su ogni riga un
+pulsante copia l'URL **assoluto**: quello che serve quando lo incolli fuori da qui, non il
+percorso relativo utile solo dentro il sito.
+
+Cose che vale la pena sapere prima di toccarla:
+
+- **L'elenco dei file lo legge dal disco**, non da un array scritto a mano (`lib/brandKit.ts`).
+  Centoquaranta righe battute a mano sono sbagliate di uno al primo drop che nessuno nota.
+  Leggere il filesystem lì è sicuro per il prerender esattamente come leggere `process.env`
+  — non è un'API dinamica, quindi risolve a **build time** e non c'è nessun `export const
+  dynamic`, per la stessa ragione spiegata per esteso in `pricing/page.tsx`.
+- **È pubblica e indicizzabile**, per scelta: `/brand` è nell'elenco di `middleware.ts` (ramo
+  condizionale, come `/pricing` e le legali) e non ha override di `robots`. Chi cerca "logo
+  Strumfolio" è esattamente il lettore per cui è scritta, e la voce **Brand** nel footer è la
+  via da cui un crawler la trova.
+- **Le due metà dei riquadri hanno colori fissati**, `#f6f5f2` e `#101216` scritti a mano in
+  `globals.css`: un campione deve continuare a mostrare il fondo per cui il file è stato
+  disegnato, anche a un lettore che sta in tema scuro. Ogni fondo ripubblica la terna
+  ink/muted/faint del *suo* tema come `--ground-*`, così un'etichetta dentro un fondo fissato
+  resta leggibile senza un secondo colore letterale da nessuna parte.
+- **I riquadri hanno un bordo visibile e nessuna ombra**, al contrario di ogni card dell'app:
+  in tema chiaro il colore della pagina *è* il fondo chiaro su cui va il lockup nero, quindi
+  un riquadro separato dalla sola elevazione non avrebbe alcun bordo sinistro.
+- **I tre file in `currentColor`** (glifo, nota, wordmark) e i lockup `mono` sono dipinti con
+  una `mask` CSS, non messi in un `<img>`: un `<img>` è un documento a sé, `currentColor` lì
+  dentro non eredita niente e il file arriverebbe nero su qualunque fondo. La pagina consiglia
+  la stessa tecnica che usa.
+
 ## Canzonieri
 
 Ogni brano appartiene a un canzoniere, e a una **sezione** di quel canzoniere — a una e

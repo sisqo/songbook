@@ -91,10 +91,20 @@ export default auth((request) => {
    * for up to a day, which is the residual staleness this accepts. A price is a fact with a
    * date on it — see the note about `precache-routes.ts` in `app/pricing/page.tsx` — so the
    * audience the page is written for is the one that must never see a cached one.
+   *
+   * `/brand` is here for the permanent reason too, and it is the plainest case of it:
+   * whoever came looking for the logo — a store, a designer, somebody writing about this
+   * app — has no session and never will. Note the difference from `/brand/kit/…` two
+   * functions up: the files are assets and skip this check entirely, while the page that
+   * indexes them is a page, and gets the same treatment as every other public one. It is
+   * on the conditional branch by default rather than by argument: the page's content is a
+   * constant baked at build time, so a signed-in reader's cached copy is no staler than a
+   * fresh one, and there is nothing here that has to be refused a cache.
    */
   if (
     pathname === '/login' ||
     pathname === '/pricing' ||
+    pathname === '/brand' ||
     pathname === '/register' ||
     pathname === '/verify' ||
     pathname === '/forgot-password' ||
