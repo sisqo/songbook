@@ -13,6 +13,7 @@ import {
   IconChevronRight,
   IconDownload,
   IconExternal,
+  IconEye,
   IconInfo,
   IconMenu,
   IconNote,
@@ -548,6 +549,15 @@ export function NavMenu({ current }: { current: Section }) {
                   <Link href="/accounts" className={item('accounts')} role="menuitem" onClick={close}>
                     <IconSwitchAccount size={17} />
                     Accounts
+                  </Link>
+                )}
+
+                {/* Same visibility as Accounts above: a preview of the emails this app
+                    sends, not tied to any one account. */}
+                {isGlobalOwner && (
+                  <Link href="/emails" className={item('emails')} role="menuitem" onClick={close}>
+                    <IconEye size={17} />
+                    Emails
                   </Link>
                 )}
 
