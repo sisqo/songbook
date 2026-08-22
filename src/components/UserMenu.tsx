@@ -22,9 +22,19 @@ import { PLAN_LABEL } from '@/lib/plans/types'
  * Settings screen. The hamburger (`NavMenu`) is left holding only navigation between
  * sections of the app; this holds identity (email, plan, owner status), signing
  * in/out, and now the reader's own preferences, with nothing duplicated between the
- * two. Billing and Delete account both nest one level under Settings rather than sitting
- * beside the preference pickers: both are consequences of the account — what was bought,
- * and leaving altogether — not preferences to set, and Billing is the lesser of the two.
+ * two. Delete account nests one level under Settings rather than sitting beside the
+ * preference pickers: it is a consequence of the account — leaving altogether — not a
+ * preference to set.
+ *
+ * **Billing sits on the main panel, beside Change password**, and used to nest under Settings
+ * with Delete account for the reasoning above. Moved deliberately: that placement was decided
+ * while billing was a marginal test screen, and it stopped being true once purchases became a
+ * real flow with a thank-you page and a confirmation email that links straight to `/billing`.
+ * A destination a customer is *sent to by email* cannot be two taps deep behind a submenu
+ * shared with the reading preferences — and the plan badge a few lines below, which says which
+ * plan they are on, now has the way to act on it in the same panel rather than one level away.
+ * It stays a link out rather than becoming an inline picker for the same reason Change password
+ * is one: what it opens is a screen's worth of content.
  *
  * The avatar reads the email, not the Google profile, even though a Google sign-in
  * carries a name and a picture this app could ask for: a credentials account
@@ -124,6 +134,16 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                   Change password
                 </Link>
 
+                {/*
+                 * Here rather than under Settings — see this file's own header on why it moved.
+                 * Beside Change password because the two are the same kind of thing: an account
+                 * question with a screen of its own, reached from this panel and leaving it.
+                 */}
+                <Link href="/billing" className="menu-item" role="menuitem" onClick={close}>
+                  <IconReceipt size={17} />
+                  Billing
+                </Link>
+
                 {children}
 
                 <div className="menu-divider" />
@@ -166,21 +186,6 @@ export function UserMenu({ children }: { children: React.ReactNode }) {
                 <InstrumentPicker />
                 <ThemePicker />
                 <NotationPicker />
-
-                <div className="menu-divider" />
-
-                {/*
-                 * A plain link out, not a fourth picker: what it opens (the plan bought, its
-                 * history, cancelling it) is a screen's worth of content, the same reason
-                 * "Change password" already leaves this panel rather than trying to fit
-                 * inline. Between the pickers and Delete account because it is the same kind
-                 * of thing as the button below it — a consequence of the account, not a
-                 * reading preference — and the lesser of the two.
-                 */}
-                <Link href="/billing" className="menu-item" role="menuitem" onClick={close}>
-                  <IconReceipt size={17} />
-                  Billing
-                </Link>
 
                 <div className="menu-divider" />
 
