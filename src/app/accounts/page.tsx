@@ -1,136 +1,144 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { AccountHistoryButton } from '@/components/AccountHistoryButton'
-import { AccountPasswordButton } from '@/components/AccountPasswordButton'
-import { AccountPlanButton } from '@/components/AccountPlanButton'
 import { Footer } from '@/components/Footer'
 import { PrefsProvider } from '@/components/PrefsProvider'
 import { TopBar } from '@/components/TopBar'
-import { CreateAccountForm } from '@/components/CreateAccountForm'
-import { DeleteAccountButton } from '@/components/DeleteAccountButton'
-import { IconCheck } from '@/components/icons'
 import { auth } from '@/auth'
-import { switchAccount } from '@/lib/accounts/actions'
 import { listAccountPlans, listAllAccounts } from '@/lib/accounts/read'
-import type { AccountPlanLine } from '@/lib/accounts/read'
+import type { AccountSummary } from '@/lib/accounts/read'
+import { PLAN_BADGE_CLASS, planDetail } from '@/lib/accounts/planText'
 import { isOwner } from '@/lib/allowlist'
-import { currentUser } from '@/lib/auth/session'
 import { forcedPlanNotice, plansEnforced } from '@/lib/plans/resolve'
-import { PLAN_LABEL } from '@/lib/plans/types'
+import { PLAN_LABEL, PLAN_VALUES } from '@/lib/plans/types'
 import type { Plan } from '@/lib/plans/types'
 
 export const metadata: Metadata = { title: 'Accounts' }
 
-/** Rendered per request: which accounts exist, and which is current, both depend on who is asking. */
+/** Rendered per request: which accounts exist, and the search/sort/page state, both depend on the request. */
 export const dynamic = 'force-dynamic'
 
-/**
- * Which `.plan-badge-*` modifier (`globals.css`) names a given plan's own color, combined with
- * `.badge` for shape — the badge itself, not this row's detail text, is now what answers «why
- * is this account on premium» at a glance (PLAN-attivazione.md). Free carries no color of its
- * own on purpose: see DESIGN.md's "Plan Badges" section.
- */
-const PLAN_BADGE_CLASS: Record<Plan, string> = {
-  free: 'plan-badge-free',
-  standard: 'plan-badge-standard',
-  plus: 'plan-badge-plus',
-  premium: 'plan-badge-premium',
-  lifetime: 'plan-badge-lifetime',
+const PAGE_SIZE = 25
+
+type SortKey = 'email' | 'createdAt' | 'lastSignInAt'
+
+interface Query {
+  q: string
+  plan: Plan | null
+  unactivated: boolean
+  sort: SortKey
+  dir: 'asc' | 'desc'
+  page: number
 }
 
-/**
- * The status detail that sits beside the plan badge: dates, which side is winning, a scheduled
- * change — everything the badge's plain plan name does not already say. Split off from what
- * used to be a single `planClause` string once the plan name itself moved into its own colored
- * badge (PLAN-attivazione.md); the name is never repeated here.
- *
- * On the row and not behind the disclosure because the operator's commonest visit is a scan of
- * the whole list, and one panel per row is one click per row.
- *
- * `free` carries no detail at all — a free row is a live subscription of `free` (`planStateFor`
- * reports `source: 'subscription'` for it), and "subscription" on the vast majority of rows
- * would be noise beside a badge that already says "Free". A gift with no end says so, where an
- * open-ended subscription does not: `lifetime` already means no end, whereas a gift that never
- * runs out is the fact an operator would want to see without opening anything.
- *
- * `grace` is the one state that names itself instead of a date, and the row has to agree with
- * `AccountPlanButton.subscriptionLine` about it because they are read one after the other —
- * the panel is opened *from* the row it contradicts. A failing card is virtually always
- * already past period end (which is the whole reason `liveSubscription` ignores dates for
- * `grace`), so `untilOn` here is a day that has gone by while the plan is genuinely still in
- * force: "subscription until 2026-06-30" reads as lapsed and invites an operator to re-gift a
- * plan the customer already holds. Checked before the `untilOn` branch and not inside it, which
- * also covers the dateless `grace` row that would otherwise print a bare "subscription" and say
- * nothing about the retry. Fixed here and not in `planStateFor`: `state.until` being that past
- * date is the deliberate answer to "when does the paid period end", pinned by
- * `entitlements.test.ts`, and only its rendering is wrong.
- */
-function planDetail(line: AccountPlanLine): string {
-  if (line.effectivePlan === 'free') return ''
+/** Reads the six URL params into a typed, defaulted shape — an unrecognised or absent value always falls back to the least surprising default, never to an error. */
+function readQuery(raw: { q?: string; plan?: string; unactivated?: string; sort?: string; dir?: string; page?: string }): Query {
+  const plan = PLAN_VALUES.includes(raw.plan as Plan) ? (raw.plan as Plan) : null
+  const sort: SortKey = raw.sort === 'createdAt' || raw.sort === 'lastSignInAt' ? raw.sort : 'email'
+  const page = Math.max(1, Number.parseInt(raw.page ?? '1', 10) || 1)
 
-  const side = line.source === 'grant' ? 'gift' : 'subscription'
-  // Only on the subscription side, and only ahead of its own date: a scheduled downgrade on
-  // the subscription while a grant currently wins would not even take effect the day it
-  // fires, and naming it here would suggest a change to what the row is showing right now.
-  const pendingClause = side === 'subscription' && line.pendingPlan !== null ? `, then ${line.pendingPlan}` : ''
-  if (line.status === 'grace' && line.source === 'subscription') return 'subscription, payment retrying'
-  if (line.untilOn !== null) return `${side} until ${line.untilOn}${pendingClause}`
-  return line.source === 'grant' ? 'gift, no end' : `subscription${pendingClause}`
-}
-
-function EnterButton({ ownerEmail, isCurrent }: { ownerEmail: string; isCurrent: boolean }) {
-  if (isCurrent) {
-    return (
-      <span className="meta-chip">
-        <IconCheck size={13} /> current
-      </span>
-    )
+  return {
+    q: (raw.q ?? '').trim(),
+    plan,
+    unactivated: raw.unactivated === '1',
+    sort,
+    dir: raw.dir === 'desc' ? 'desc' : 'asc',
+    page,
   }
+}
 
-  const enter = async () => {
-    'use server'
-    await switchAccount(ownerEmail)
-  }
+/** The query string for a link that keeps every current param except the ones named in `overrides` — how every sort/page/pagination link on this page is built, so none of them can drop a filter the operator already set. */
+function hrefFor(query: Query, overrides: Partial<Query>): string {
+  const merged = { ...query, ...overrides }
+  const params = new URLSearchParams()
+  if (merged.q !== '') params.set('q', merged.q)
+  if (merged.plan !== null) params.set('plan', merged.plan)
+  if (merged.unactivated) params.set('unactivated', '1')
+  if (merged.sort !== 'email') params.set('sort', merged.sort)
+  if (merged.dir !== 'asc') params.set('dir', merged.dir)
+  if (merged.page !== 1) params.set('page', String(merged.page))
 
-  return (
-    <form action={enter}>
-      <button type="submit" className="btn btn-sm">
-        Enter
-      </button>
-    </form>
-  )
+  const search = params.toString()
+  return search === '' ? '/accounts' : `/accounts?${search}`
+}
+
+interface Props {
+  searchParams: Promise<{ q?: string; plan?: string; unactivated?: string; sort?: string; dir?: string; page?: string }>
 }
 
 /**
- * Every account in the installation, and the only screen that can create or delete one —
- * a **global owner** question through and through, with a single public now (v3.1). The
- * old second audience, a collaborator switching between accounts they were invited into,
- * is gone along with collaboration itself: nobody has more than their own account to
- * switch to any more, so there is nothing left to show them here. `notFound()` rather
- * than a role notice, same reasoning as every other slug-reached page in this app —
- * "this does not exist" and "this is not yours" should look identical from outside.
+ * Every account in the installation, searchable, sortable and paginated — a **global owner**
+ * question through and through, with a single public now (v3.1). The old second audience, a
+ * collaborator switching between accounts they were invited into, is gone along with
+ * collaboration itself. `notFound()` rather than a role notice, same reasoning as every other
+ * slug-reached page in this app — "this does not exist" and "this is not yours" should look
+ * identical from outside.
+ *
+ * No longer offers creating an account (PLAN-accounts-admin.md, replacing the old "Create"
+ * section): self-service registration and automatic provisioning on any first sign-in — Google
+ * or password — cover every real case an admin-created account used to.
+ *
+ * Filtering by plan and sorting operate in memory, on the *resolved* plan `listAccountPlans`
+ * already computes — not a second copy of that rule expressed as SQL. Correct and simple at
+ * this installation's scale (a private, invite-only app); the place to revisit if the account
+ * count ever grew by orders of magnitude, not before.
  */
-export default async function AccountsPage() {
+export default async function AccountsPage({ searchParams }: Props) {
   const session = await auth()
   if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) notFound()
 
+  const query = readQuery(await searchParams)
+
   /*
-   * Three reads, not one widened query. `listAccountPlans` names migration 0024's columns and
-   * therefore fails until it has been applied — with its own null, which costs the plan clause
-   * and the `Plan` button and nothing else. Widening `listAllAccounts` instead would have put
-   * the whole screen behind that same migration, and the screen that has lost itself is the one
-   * an operator would open to find out why.
+   * Two reads, not one widened query — `listAccountPlans` names migration 0024's/0026's/0027's
+   * columns and therefore fails until they are applied, with its own null, which must cost the
+   * plan clause and nothing else. Widening `listAllAccounts` instead would put the whole screen
+   * behind those same migrations.
    */
-  const [user, all, plans] = await Promise.all([currentUser(), listAllAccounts(), listAccountPlans()])
+  const [all, plans] = await Promise.all([listAllAccounts(), listAccountPlans()])
 
   /*
    * Read once, here, for the two notices below. `plansEnforced()` first and not merely
    * alongside: `entitlementsOf` returns `UNGATED` before it ever reads the override, so with
-   * the switch off there is no forced plan to warn about — the notice about the switch itself
-   * is the whole truth then, and these two are mutually exclusive by construction.
+   * the switch off there is no forced plan to warn about.
    */
   const forced = plansEnforced() ? forcedPlanNotice() : null
+
+  const needle = query.q.toLowerCase()
+  /*
+   * When `plans` is null (an unapplied migration — the same case `listAccountPlans` already
+   * documents), the plan filter and the "Not activated" checkbox stay on screen but are
+   * silently ignored: every account passes, exactly as if neither had been set. Failing the
+   * whole search closed over a filter nobody can currently answer would be strictly worse than
+   * showing the unfiltered list `AccountsPage` already fell back to before this feature existed.
+   */
+  const filterByPlan = plans !== null && (query.plan !== null || query.unactivated)
+
+  const filtered = (all ?? []).filter((account) => {
+    if (needle !== '' && !account.ownerEmail.toLowerCase().includes(needle)) return false
+    if (filterByPlan) {
+      const line = plans?.get(account.ownerEmail)
+      if (line === undefined) return false
+      if (query.plan !== null && line.effectivePlan !== query.plan) return false
+      if (query.unactivated && line.planChosen) return false
+    }
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const cmp =
+      query.sort === 'email'
+        ? a.ownerEmail.localeCompare(b.ownerEmail)
+        : query.sort === 'createdAt'
+          ? a.createdAt.localeCompare(b.createdAt)
+          : (a.lastSignInAt ?? '').localeCompare(b.lastSignInAt ?? '')
+    return query.dir === 'asc' ? cmp : -cmp
+  })
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const page = Math.min(query.page, totalPages)
+  const pageRows = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <PrefsProvider songSlug={null}>
@@ -140,94 +148,102 @@ export default async function AccountsPage() {
         <header className="mb-[1.125rem]">
           <h1 className="screen-title">Accounts</h1>
           <p className="mt-2 text-sm leading-[1.45] text-muted">
-            Every account in the installation. Entering one changes what Home and Sing
-            Together show, until you switch again.
+            Every account in the installation. Open one to manage its plan, password or removal.
           </p>
         </header>
 
-        <section className="mb-7">
-          <h2 className="section-title">Create</h2>
-          <p className="mb-2.5 text-sm leading-[1.45] text-muted">
-            Gives an address its own empty account, before it has ever signed in.
+        {/* The only place `SONGBOOK_PLANS` reaches a screen anywhere in this app. Without it,
+            «I gifted premium and nothing changed» is a support call with no visible cause. */}
+        {!plansEnforced() && (
+          <p className="notice notice-accent mb-2.5" role="status">
+            Plans are off in this deployment: every account gets everything, whatever it says here.
           </p>
-          <CreateAccountForm />
-        </section>
+        )}
+        {forced !== null && (
+          <p className="notice notice-error mb-2.5" role="status">
+            SONGBOOK_PLANS is set: every account is being gated as <strong>{forced}</strong>, whatever it says here.
+          </p>
+        )}
 
-        <section>
-          <h2 className="section-title">Every account</h2>
+        <form method="get" className="card flex flex-wrap items-end gap-2.5 p-3.5">
+          <label className="min-w-0 flex-1 basis-40">
+            <span className="mb-1 block text-[0.8125rem] text-muted">Search</span>
+            <input
+              type="search"
+              name="q"
+              defaultValue={query.q}
+              placeholder="person@example.com"
+              className="form-field w-full"
+            />
+          </label>
 
-          {/*
-            The only place `SONGBOOK_PLANS` reaches a screen anywhere in this app. Without it,
-            «I gifted premium and nothing changed» is a support call with no visible cause:
-            `entitlementsOf` returns `UNGATED` before it touches the database, so every account is
-            ungated whatever these rows say. A notice and not a gate — setting the gifts up before
-            enforcement is turned on is a reasonable order to work in, and the rows keep showing
-            their real stored values so that preparation is possible at all.
-          */}
-          {!plansEnforced() && (
-            <p className="notice notice-accent mt-2.5" role="status">
-              Plans are off in this deployment: every account gets everything, whatever it says here.
-            </p>
-          )}
+          <label>
+            <span className="mb-1 block text-[0.8125rem] text-muted">Plan</span>
+            <select name="plan" defaultValue={query.plan ?? ''} className="form-field">
+              <option value="">All plans</option>
+              {PLAN_VALUES.map((plan) => (
+                <option key={plan} value={plan}>
+                  {PLAN_LABEL[plan]}
+                </option>
+              ))}
+            </select>
+          </label>
 
-          {/*
-            The second half of the same duty, for the other variable that makes every row on this
-            screen inert. With `SONGBOOK_FORCE_PLAN` set, `entitlementsOf` throws the stored row
-            away and gates *every* account as the forced plan, so this list can report a premium
-            gift the panel calls «In force: premium, from the gift.» while that customer's forty
-            songs are frozen to deletions-only — the screen naming the cause of the freeze and
-            stating its opposite. Until now the only trace was one `console.warn` per process,
-            which is not the screen the operator is looking at.
+          <label className="flex items-center gap-1.5 pb-2.5">
+            <input type="checkbox" name="unactivated" value="1" defaultChecked={query.unactivated} />
+            <span className="text-[0.8125rem] text-muted">Not activated only</span>
+          </label>
 
-            The plan is interpolated and not spelled out, because the override can name any of
-            the five and a notice reading 'free' while the gate says 'standard' is the same class
-            of bug this notice exists to prevent. `notice-error`, where the off switch above gets
-            `notice-accent`: preparing gifts before enforcement is turned on is normal working
-            order, whereas an override that silently freezes real accounts is something to undo.
-            `role="status"` all the same — it is a standing condition of the deployment, not a
-            response to anything the operator just did.
-          */}
-          {forced !== null && (
-            <p className="notice notice-error mt-2.5" role="status">
-              SONGBOOK_FORCE_PLAN is set: every account is being gated as <strong>{forced}</strong>,
-              whatever it says here.
-            </p>
-          )}
+          <label>
+            <span className="mb-1 block text-[0.8125rem] text-muted">Sort by</span>
+            <select name="sort" defaultValue={query.sort} className="form-field">
+              <option value="email">Email</option>
+              <option value="createdAt">Registered</option>
+              <option value="lastSignInAt">Last sign-in</option>
+            </select>
+          </label>
 
-          {all === null ? (
-            <p className="mt-2.5 text-sm text-muted">Could not read the accounts. Reload the page.</p>
-          ) : (
+          <label>
+            <span className="mb-1 block text-[0.8125rem] text-muted">Direction</span>
+            <select name="dir" defaultValue={query.dir} className="form-field">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </label>
+
+          <button type="submit" className="btn btn-primary">
+            Search
+          </button>
+        </form>
+
+        {all === null ? (
+          <p className="mt-2.5 text-sm text-muted">Could not read the accounts. Reload the page.</p>
+        ) : (
+          <>
             <ul className="card-stack mt-2.5">
-              {all.map((account) => {
-                /*
-                 * Absorbed per row, exactly as `listSignIns`' null already is: a plans map that
-                 * could not be read costs this row its plan clause and its `Plan` button, and
-                 * costs the rest of the row nothing. ` · ` is this codebase's in-line meta
-                 * separator (`SongRow`, `ImportIntoSongbook`).
-                 */
+              {pageRows.map((account: AccountSummary) => {
                 const line = plans?.get(account.ownerEmail) ?? null
 
                 return (
-                  <li
-                    key={account.ownerEmail}
-                    className="card flex flex-wrap items-center gap-3 px-4 py-3.5"
-                  >
+                  <li key={account.ownerEmail} className="card flex flex-wrap items-center gap-3 px-4 py-3.5">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{account.ownerEmail}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                        <span className="truncate text-[0.8125rem] text-muted">
-                          {account.signInCount === 0
-                            ? 'Never signed in'
-                            : `${account.signInCount} sign-in${account.signInCount === 1 ? '' : 's'}`}
+                        <span
+                          className="meta-chip"
+                          aria-label={
+                            account.signInCount === 0
+                              ? 'Never signed in'
+                              : `${account.signInCount} sign-in${account.signInCount === 1 ? '' : 's'}`
+                          }
+                        >
+                          {account.signInCount}
                         </span>
                         {line !== null && (
                           <>
                             <span className={`badge ${PLAN_BADGE_CLASS[line.effectivePlan]}`}>
                               {PLAN_LABEL[line.effectivePlan]}
                             </span>
-                            {/* Only on a row this query actually read — see `AccountPlanLine.planChosen`'s
-                                own comment on why an unreadable row (`line === null`, handled above) must
-                                never render this same word: the two nulls mean opposite things here. */}
                             {!line.planChosen && <span className="badge plan-badge-unchosen">Not activated</span>}
                             {planDetail(line) !== '' && (
                               <span className="text-[0.8125rem] text-muted">{planDetail(line)}</span>
@@ -236,20 +252,39 @@ export default async function AccountsPage() {
                         )}
                       </span>
                     </span>
-                    <EnterButton
-                      ownerEmail={account.ownerEmail}
-                      isCurrent={user?.accountOwnerEmail === account.ownerEmail}
-                    />
-                    {line !== null && <AccountPlanButton ownerEmail={account.ownerEmail} plan={line} />}
-                    <AccountHistoryButton ownerEmail={account.ownerEmail} />
-                    <AccountPasswordButton ownerEmail={account.ownerEmail} />
-                    <DeleteAccountButton ownerEmail={account.ownerEmail} />
+                    <Link href={`/accounts/${encodeURIComponent(account.ownerEmail)}`} className="btn btn-sm">
+                      View
+                    </Link>
                   </li>
                 )
               })}
             </ul>
-          )}
-        </section>
+
+            {pageRows.length === 0 && <p className="mt-2.5 text-sm text-muted">No account matches this search.</p>}
+
+            {totalPages > 1 && (
+              <nav className="mt-3 flex items-center justify-between text-sm" aria-label="Accounts pages">
+                {page > 1 ? (
+                  <Link href={hrefFor(query, { page: page - 1 })} className="btn btn-sm">
+                    Previous
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                <span className="text-muted">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Link href={hrefFor(query, { page: page + 1 })} className="btn btn-sm">
+                    Next
+                  </Link>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            )}
+          </>
+        )}
 
         <Footer />
       </main>

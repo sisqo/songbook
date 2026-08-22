@@ -13,6 +13,12 @@ import { useOnline } from '@/lib/useOnline'
  * *Niente più ospiti*, point 7): retyping the account's own address before the button
  * does anything. Enforced here for the same reason `deleteAccount` also checks it
  * server-side — a disabled button is a hint, not a guarantee, so both layers ask.
+ *
+ * This is the one control on `/accounts/[email]`'s detail page (PLAN-accounts-admin.md) that
+ * still hides behind a trigger rather than sitting always open like `GiftForm`/`PasswordForm`
+ * beside it — deliberately: the click-to-reveal here is a safety net, not a
+ * click-to-see-what-this-is convenience, and the two are not the same thing even though they
+ * look alike.
  */
 export function DeleteAccountButton({ ownerEmail }: { ownerEmail: string }) {
   const router = useRouter()
@@ -26,14 +32,9 @@ export function DeleteAccountButton({ ownerEmail }: { ownerEmail: string }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        className="icon-button"
-        disabled={!online}
-        onClick={() => setOpen(true)}
-        aria-label={`Delete ${ownerEmail}`}
-      >
-        <IconTrash size={17} />
+      <button type="button" className="btn btn-danger" disabled={!online} onClick={() => setOpen(true)}>
+        <IconTrash size={16} />
+        Delete account
       </button>
     )
   }
@@ -49,7 +50,10 @@ export function DeleteAccountButton({ ownerEmail }: { ownerEmail: string }) {
     setError(null)
     try {
       const result = await deleteAccount(ownerEmail, confirmEmail)
-      if (result.ok) router.refresh()
+      // `router.push`, not `router.refresh()`: on `/accounts/[email]` (PLAN-accounts-admin.md)
+      // a refresh would re-render the detail page of an account that no longer has a row —
+      // this button no longer lives on a list row a refresh could simply drop.
+      if (result.ok) router.push('/accounts')
       else setError(ACCOUNT_MESSAGE[result.reason])
     } catch {
       setError(ACCOUNT_MESSAGE.failed)
@@ -59,7 +63,7 @@ export function DeleteAccountButton({ ownerEmail }: { ownerEmail: string }) {
   }
 
   return (
-    <div className="panel mt-2 w-full basis-full p-3.5 text-sm">
+    <div className="panel p-3.5 text-sm">
       <p className="mb-2">
         This deletes every songbook, section and song in <strong>{ownerEmail}</strong> — not just
         the account, everything in it. Type the address to confirm.

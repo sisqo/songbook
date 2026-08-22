@@ -1,17 +1,18 @@
 'use server'
 
 /**
- * Reads about accounts as a whole, for the one screen that shows more than the reader's
- * own: `/accounts`, restricted to global owners now that nobody else has more than one
- * account to see — and for `mayShowAccountSwitcher`, called directly from the client
- * (`RoleProvider`), which is why this needs the directive: without it, that call could
- * not cross the server/client boundary as a server action.
+ * Reads about accounts as a whole, for the two screens that show more than the reader's
+ * own — `/accounts`'s search and `/accounts/[email]`'s detail (PLAN-accounts-admin.md),
+ * both restricted to global owners now that nobody else has more than one account to see
+ * — and for `mayShowAccountSwitcher`, called directly from the client (`RoleProvider`),
+ * which is why this needs the directive: without it, that call could not cross the
+ * server/client boundary as a server action.
  */
 
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
 import { auth } from '@/auth'
-import { isOwner } from '@/lib/allowlist'
+import { isOwner, normalizeEmail } from '@/lib/allowlist'
 import { listSignIns } from '@/lib/auth/signIns'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
@@ -170,6 +171,83 @@ function dayOf(value: Date | null): string | null {
  * `admin` on that one account, which would hand every customer the plan of every other.
  * Same distinction, same reason, as `listAllAccounts` and `deleteAccount`.
  */
+/** The exact column set both `listAccountPlans` and `getAccountDetail` select — one shape, so `planLineFrom` can resolve either a whole table's worth of rows or a single one with no second copy of the resolution logic. */
+const PLAN_COLUMNS = {
+  plan: accounts.plan,
+  planStatus: accounts.planStatus,
+  planExpiresAt: accounts.planExpiresAt,
+  pendingPlan: accounts.pendingPlan,
+  pendingCycle: accounts.pendingCycle,
+  grantedPlan: accounts.grantedPlan,
+  grantedUntil: accounts.grantedUntil,
+  grantedBy: accounts.grantedBy,
+  grantedAt: accounts.grantedAt,
+  grantedNote: accounts.grantedNote,
+  planChosenAt: accounts.planChosenAt,
+} as const
+
+interface PlanRow {
+  plan: string
+  planStatus: string
+  planExpiresAt: Date | null
+  pendingPlan: string | null
+  pendingCycle: string | null
+  grantedPlan: string | null
+  grantedUntil: Date | null
+  grantedBy: string | null
+  grantedAt: Date | null
+  grantedNote: string | null
+  planChosenAt: Date | null
+}
+
+/**
+ * Resolves one row's worth of `PLAN_COLUMNS` into the `AccountPlanLine` a screen renders —
+ * pulled out of `listAccountPlans`'s own `.map()` so `getAccountDetail` can resolve a single
+ * row the exact same way instead of re-deriving the rule (PLAN-accounts-admin.md).
+ *
+ * Built exactly as `storedPlanOf` (`plans/resolve.ts`) builds it, `readPlan`/`readPlanStatus`
+ * included — these values did come out of the database, which is the one place those readers
+ * are the right tool. The null rather than a `readPlan` fallback on `grantedPlan` matters for
+ * the same reason it does there: it would make every ungifted account the holder of a free
+ * grant, and this screen would print the gift.
+ */
+function planLineFrom(row: PlanRow, now: Date): AccountPlanLine {
+  const stored: StoredPlan = {
+    plan: readPlan(row.plan),
+    expiresAt: row.planExpiresAt,
+    status: readPlanStatus(row.planStatus),
+    // `readPendingPlan`/`readPendingCycle`, not `readPlan` — see their own comments.
+    pendingPlan: readPendingPlan(row.pendingPlan),
+    pendingCycle: readPendingCycle(row.pendingCycle),
+    grantedPlan: row.grantedPlan === null ? null : readPlan(row.grantedPlan),
+    grantedUntil: row.grantedUntil,
+  }
+  const state = planStateFor(stored, now)
+  // The raw subscription columns resolved for display, the same rule the gate itself reads
+  // through `liveSubscription`/`planStateFor` — never `stored.plan`/`.status`/`.expiresAt`
+  // directly, which would still name the pre-change plan and a past date once a scheduled
+  // downgrade has actually taken effect.
+  const resolved = resolveSubscription(stored, now)
+
+  return {
+    plan: resolved.plan,
+    status: resolved.status,
+    planExpiresOn: dayOf(resolved.expiresAt),
+    pendingPlan: resolved.pendingPlan,
+    grantedPlan: stored.grantedPlan,
+    grantedUntilOn: dayOf(stored.grantedUntil),
+    grantedBy: row.grantedBy,
+    grantedOn: dayOf(row.grantedAt),
+    grantedNote: row.grantedNote,
+    grantEnded:
+      stored.grantedPlan !== null && stored.grantedUntil !== null && stored.grantedUntil.getTime() <= now.getTime(),
+    effectivePlan: state.effectivePlan,
+    source: state.source,
+    untilOn: dayOf(state.until),
+    planChosen: row.planChosenAt !== null,
+  }
+}
+
 export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> | null> {
   if (!hasDatabase) return null
 
@@ -178,20 +256,7 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
 
   try {
     const rows = await db()
-      .select({
-        ownerEmail: accounts.ownerEmail,
-        plan: accounts.plan,
-        planStatus: accounts.planStatus,
-        planExpiresAt: accounts.planExpiresAt,
-        pendingPlan: accounts.pendingPlan,
-        pendingCycle: accounts.pendingCycle,
-        grantedPlan: accounts.grantedPlan,
-        grantedUntil: accounts.grantedUntil,
-        grantedBy: accounts.grantedBy,
-        grantedAt: accounts.grantedAt,
-        grantedNote: accounts.grantedNote,
-        planChosenAt: accounts.planChosenAt,
-      })
+      .select({ ownerEmail: accounts.ownerEmail, ...PLAN_COLUMNS })
       .from(accounts)
       .orderBy(asc(accounts.ownerEmail))
 
@@ -204,57 +269,83 @@ export async function listAccountPlans(): Promise<Map<string, AccountPlanLine> |
      */
     const now = new Date()
 
-    return new Map(
-      rows.map((row) => {
-        /*
-         * Built exactly as `storedPlanOf` builds it, `readPlan`/`readPlanStatus` included —
-         * these values did come out of the database, which is the one place those readers are
-         * the right tool. The null rather than a `readPlan` fallback on `grantedPlan` matters
-         * for the same reason it does there: it would make every ungifted account the holder
-         * of a free grant, and this screen would print the gift.
-         */
-        const stored: StoredPlan = {
-          plan: readPlan(row.plan),
-          expiresAt: row.planExpiresAt,
-          status: readPlanStatus(row.planStatus),
-          // `readPendingPlan`/`readPendingCycle`, not `readPlan` — see their own comments.
-          pendingPlan: readPendingPlan(row.pendingPlan),
-          pendingCycle: readPendingCycle(row.pendingCycle),
-          grantedPlan: row.grantedPlan === null ? null : readPlan(row.grantedPlan),
-          grantedUntil: row.grantedUntil,
-        }
-        const state = planStateFor(stored, now)
-        // The raw subscription columns resolved for display, the same rule the gate itself
-        // reads through `liveSubscription`/`planStateFor` — never `stored.plan`/`.status`/
-        // `.expiresAt` directly, which would still name the pre-change plan and a past date
-        // once a scheduled downgrade has actually taken effect.
-        const resolved = resolveSubscription(stored, now)
-
-        const line: AccountPlanLine = {
-          plan: resolved.plan,
-          status: resolved.status,
-          planExpiresOn: dayOf(resolved.expiresAt),
-          pendingPlan: resolved.pendingPlan,
-          grantedPlan: stored.grantedPlan,
-          grantedUntilOn: dayOf(stored.grantedUntil),
-          grantedBy: row.grantedBy,
-          grantedOn: dayOf(row.grantedAt),
-          grantedNote: row.grantedNote,
-          grantEnded:
-            stored.grantedPlan !== null &&
-            stored.grantedUntil !== null &&
-            stored.grantedUntil.getTime() <= now.getTime(),
-          effectivePlan: state.effectivePlan,
-          source: state.source,
-          untilOn: dayOf(state.until),
-          planChosen: row.planChosenAt !== null,
-        }
-        return [row.ownerEmail, line] as const
-      }),
-    )
+    return new Map(rows.map((row) => [row.ownerEmail, planLineFrom(row, now)] as const))
   } catch (error) {
     console.error('listAccountPlans failed', error)
     return null
+  }
+}
+
+/** Everything `/accounts/[email]` shows about one account — `AccountSummary`'s three facts plus its resolved `AccountPlanLine`, in one row. */
+export interface AccountDetail {
+  ownerEmail: string
+  createdAt: string
+  signInCount: number
+  lastSignInAt: string | null
+  /**
+   * Null when the plan columns can't be read — an unapplied migration, the same failure
+   * `listAccountPlans()` absorbs for the list, never a missing account: that case is `null`
+   * on the whole function instead, and the page answers `notFound()` for it.
+   */
+  plan: AccountPlanLine | null
+}
+
+/**
+ * One account's full detail row, for `/accounts/[email]` — a single-row read, not
+ * `listAllAccounts()`/`listAccountPlans()` filtered down to one entry afterwards. The list
+ * pays for every account in the installation because it has to show every one of them; a page
+ * about exactly one account has no reason to pay that cost too (PLAN-accounts-admin.md).
+ *
+ * Two queries, not one combined `select`, for the same reason `listAllAccounts` and
+ * `listAccountPlans` are two functions rather than one wider read: the base row
+ * (`ownerEmail`/`createdAt`) exists on every migration this app has ever shipped, while the
+ * plan columns do not. A page that named both in one query would go down with the plan
+ * columns the moment they are not there yet, instead of showing the account with its plan
+ * clause simply missing — a strictly worse version of what `AccountsPage` already avoids.
+ *
+ * Returns `null` when the caller is not a global owner, or when no account exists for this
+ * address — `notFound()` in the page renders the two identically, the same "does not exist and
+ * is not yours look the same from outside" rule `AccountsPage` itself already follows.
+ */
+export async function getAccountDetail(ownerEmail: string): Promise<AccountDetail | null> {
+  if (!hasDatabase) return null
+
+  const session = await auth()
+  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) return null
+
+  const target = normalizeEmail(ownerEmail)
+
+  const base = await db()
+    .select({ ownerEmail: accounts.ownerEmail, createdAt: accounts.createdAt })
+    .from(accounts)
+    .where(eq(accounts.ownerEmail, target))
+    .limit(1)
+
+  const row = base[0]
+  if (row === undefined) return null
+
+  const signIns = await listSignIns()
+  const stats = signIns?.get(row.ownerEmail) ?? null
+
+  let plan: AccountPlanLine | null = null
+  try {
+    const planRows = await db()
+      .select(PLAN_COLUMNS)
+      .from(accounts)
+      .where(eq(accounts.ownerEmail, target))
+      .limit(1)
+    const planRow = planRows[0]
+    if (planRow !== undefined) plan = planLineFrom(planRow, new Date())
+  } catch (error) {
+    console.error('getAccountDetail (plan columns) failed', error)
+  }
+
+  return {
+    ownerEmail: row.ownerEmail,
+    createdAt: row.createdAt.toISOString(),
+    signInCount: stats?.signInCount ?? 0,
+    lastSignInAt: stats?.lastSignInAt ?? null,
+    plan,
   }
 }
 

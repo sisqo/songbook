@@ -18,7 +18,7 @@ function subscribed(plan: Plan) {
 describe('PRICES', () => {
   /*
    * The catalogue's shape, asserted rather than trusted, for the reason `GIVEABLE` in
-   * `AccountPlanButton` derives its list instead of typing it: the day a sixth plan is added,
+   * `GiftForm` derives its list instead of typing it: the day a sixth plan is added,
    * this is what says whether it needs a price. A `Record<PaidPlan, …>` already makes a
    * *missing* row a type error — what it cannot notice is a new plan that nobody priced.
    */

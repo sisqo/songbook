@@ -2,8 +2,9 @@
 
 /**
  * Switching which account a signed-in reader is looking at, and — for a global owner
- * only — creating one, deleting one, or hand-assigning it a plan on another address's
- * behalf.
+ * only — deleting one, or hand-assigning it a plan on another address's behalf. Creating
+ * one by hand is gone (PLAN-accounts-admin.md): self-service registration and automatic
+ * provisioning on any first sign-in cover every real case it used to.
  */
 
 import { eq, inArray } from 'drizzle-orm'
@@ -11,7 +12,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { auth, signOut } from '@/auth'
-import { isEmailShape, isOwner, normalizeEmail } from '@/lib/allowlist'
+import { isOwner, normalizeEmail } from '@/lib/allowlist'
 import { deletePasswordHash } from '@/lib/auth/credentials'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts, sections, singAlongSessions, songbooks, songs } from '@/lib/db/schema'
@@ -21,7 +22,6 @@ import { isAdmitted } from '@/lib/roles'
 
 import { mayAccess, readAccountCookie, writeAccountCookie } from './current'
 import { validateGrant } from './grant'
-import { provisionAccount } from './provision'
 import type { AccountResult, GrantInput, GrantResult, SelfDeleteResult } from './types'
 
 /**
@@ -41,49 +41,6 @@ export async function switchAccount(accountOwnerEmail: string): Promise<{ ok: bo
 
   await writeAccountCookie(accountOwnerEmail)
   redirect('/')
-}
-
-/**
- * Gives an address its own account ahead of its first sign-in — the admission channel
- * `PLAN.md`'s *Niente più ospiti* opens in place of inviting a collaborator. Existence is
- * checked explicitly rather than trusted to `provisionAccount`'s own idempotency, so an
- * admin re-creating an address they forgot already has one gets an honest answer instead
- * of a silent no-op that looks like success either way.
- */
-export async function createAccount(email: string): Promise<AccountResult> {
-  if (!hasDatabase) return { ok: false, reason: 'no-database' }
-
-  const session = await auth()
-  if (!isOwner(session?.user?.email, process.env.ALLOWED_EMAILS)) {
-    return { ok: false, reason: 'not-allowed' }
-  }
-
-  const address = normalizeEmail(email)
-  if (!isEmailShape(address)) return { ok: false, reason: 'invalid-email' }
-
-  try {
-    const existing = await db()
-      .select({ ownerEmail: accounts.ownerEmail })
-      .from(accounts)
-      .where(eq(accounts.ownerEmail, address))
-      .limit(1)
-    if (existing.length > 0) return { ok: false, reason: 'already-exists' }
-
-    await provisionAccount(address)
-
-    const created = await db()
-      .select({ ownerEmail: accounts.ownerEmail })
-      .from(accounts)
-      .where(eq(accounts.ownerEmail, address))
-      .limit(1)
-    if (created.length === 0) return { ok: false, reason: 'failed' }
-
-    revalidatePath('/accounts')
-    return { ok: true }
-  } catch (error) {
-    console.error('createAccount failed', error)
-    return { ok: false, reason: 'failed' }
-  }
 }
 
 /**

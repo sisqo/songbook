@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 
-import { IconKey } from '@/components/icons'
 import { removePasswordFor, setPasswordFor } from '@/lib/auth/actions'
 import { MIN_PASSWORD, PASSWORD_MESSAGE, type PasswordResult } from '@/lib/auth/types'
 import { useOnline } from '@/lib/useOnline'
@@ -13,35 +12,17 @@ import { useOnline } from '@/lib/useOnline'
  * sends no invite email (see `setPasswordFor`'s own comment). No "current password"
  * field, unlike the self-service `PasswordScreen`: a global owner is not proving they
  * already know it, only that they may act on this account at all.
+ *
+ * Always visible on `/accounts/[email]` (PLAN-accounts-admin.md), unlike the old
+ * `AccountPasswordButton` this replaces: the detail page is already the explicit choice to
+ * act on this one account, so there is nothing left to reveal behind a trigger.
  */
-export function AccountPasswordButton({ ownerEmail }: { ownerEmail: string }) {
+export function PasswordForm({ ownerEmail }: { ownerEmail: string }) {
   const online = useOnline()
-  const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="icon-button"
-        disabled={!online}
-        onClick={() => setOpen(true)}
-        aria-label={`Set password for ${ownerEmail}`}
-      >
-        <IconKey size={17} />
-      </button>
-    )
-  }
-
-  const close = () => {
-    setOpen(false)
-    setPassword('')
-    setError(null)
-    setDone(null)
-  }
 
   const run = async (action: () => Promise<PasswordResult>, said: string) => {
     setBusy(true)
@@ -63,11 +44,7 @@ export function AccountPasswordButton({ ownerEmail }: { ownerEmail: string }) {
   }
 
   return (
-    <div className="panel mt-2 w-full basis-full p-3.5 text-sm">
-      <p className="mb-2">
-        Password for <strong>{ownerEmail}</strong>.
-      </p>
-
+    <div>
       {error && (
         <p className="notice notice-error mb-2.5" role="alert">
           {error}
@@ -110,9 +87,6 @@ export function AccountPasswordButton({ ownerEmail }: { ownerEmail: string }) {
           onClick={() => void run(() => removePasswordFor(ownerEmail), 'Password removed.')}
         >
           Remove
-        </button>
-        <button type="button" className="btn btn-quiet btn-sm" onClick={close}>
-          Close
         </button>
       </form>
     </div>
