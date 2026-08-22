@@ -11,6 +11,7 @@ import { recordSignIn } from './lib/auth/signIns'
 import { sendEmail } from './lib/email/send'
 import { welcomeEmail } from './lib/email/templates'
 import { checkRateLimit, requestIp } from './lib/rateLimit'
+import { notifyTelegram } from './lib/telegram/notify'
 
 const LOGIN_RATE_LIMIT = 10
 const LOGIN_RATE_WINDOW_MS = 10 * 60 * 1000
@@ -115,7 +116,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // successfully, false on every later sign-in that finds the row already there —
       // exactly when, and only when, the welcome email belongs.
       const created = await provisionAccount(email)
-      if (created) await sendEmail({ to: email, ...welcomeEmail() })
+      if (created) {
+        await sendEmail({ to: email, ...welcomeEmail() })
+        await notifyTelegram(`🆕 Nuova registrazione: ${email}`)
+      }
       return true
     },
   },

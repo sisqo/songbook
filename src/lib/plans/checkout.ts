@@ -37,6 +37,7 @@ import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import { currentUser } from '@/lib/auth/session'
 import { db, hasDatabase } from '@/lib/db/client'
 import { accounts } from '@/lib/db/schema'
+import { notifyTelegram } from '@/lib/telegram/notify'
 
 import { liveSubscription, resolveSubscription } from './entitlements'
 import type { SubscriptionColumns } from './entitlements'
@@ -251,7 +252,9 @@ export async function mockPurchase(
         plan,
         cycle: plan === 'lifetime' ? null : cycle,
       })
-      console.warn(`mock checkout: ${user.accountOwnerEmail} => ${plan}${plan === 'lifetime' ? '' : `/${cycle}`}`)
+      const label = `${plan}${plan === 'lifetime' ? '' : `/${cycle}`}`
+      console.warn(`mock checkout: ${user.accountOwnerEmail} => ${label}`)
+      await notifyTelegram(`💰 Acquisto: ${user.accountOwnerEmail} → ${label}`)
       return { ok: true, effect: 'immediate' }
     }
 
@@ -265,6 +268,7 @@ export async function mockPurchase(
 
     await logMockEvent({ accountOwnerEmail: user.accountOwnerEmail, action: 'scheduled_change', plan, cycle })
     console.warn(`mock checkout: ${user.accountOwnerEmail} => ${plan}/${cycle} scheduled`)
+    await notifyTelegram(`📉 Downgrade programmato: ${user.accountOwnerEmail} → ${plan}/${cycle}`)
     return { ok: true, effect: 'scheduled' }
   } catch (error) {
     console.error('mockPurchase failed', error)
@@ -312,6 +316,7 @@ export async function mockCancel(): Promise<{ ok: true } | { ok: false; reason: 
 
     await logMockEvent({ accountOwnerEmail: user.accountOwnerEmail, action: 'scheduled_change', plan: 'free', cycle: null })
     console.warn(`mock checkout: ${user.accountOwnerEmail} => cancel scheduled`)
+    await notifyTelegram(`🚫 Cancellazione programmata: ${user.accountOwnerEmail} (era ${currentLive})`)
   } catch (error) {
     console.error('mockCancel failed', error)
     return { ok: false, reason: 'failed' }
