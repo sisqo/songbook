@@ -30,7 +30,7 @@ export function Footer() {
        * of link: a page nobody needs while they are playing, which still has to be
        * findable from anywhere without a menu entry of its own.
        */}
-      <nav className="app-footer-legal" aria-label="Legal and brand">
+      <nav className="app-footer-legal" aria-label="Legal, brand and changelog">
         <Link href="/privacy-policy">Privacy</Link>
         <span aria-hidden>&middot;</span>
         <Link href="/terms-of-service">Terms</Link>
@@ -40,6 +40,11 @@ export function Footer() {
         <Link href="/content-copyright-notice">Copyright</Link>
         <span aria-hidden>&middot;</span>
         <Link href="/brand">Brand</Link>
+        <span aria-hidden>&middot;</span>
+        {/* Same reasoning as `/brand` beside it, and the label's own justification: a reader
+            looking for "what's new" has nowhere else to look, and a release note is worth
+            nothing if only the person who wrote it can find it. */}
+        <Link href="/changelog">Changelog</Link>
       </nav>
     </footer>
   )
