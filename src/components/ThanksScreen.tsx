@@ -94,7 +94,7 @@ export function ThanksScreen() {
       <header className="mb-[1.125rem]">
         <p className="flex items-center gap-1.5 text-sm text-accent">
           <IconCheck size={15} />
-          Payment complete
+          Payment received
         </p>
         <h1 className="screen-title mt-1.5">Thanks — you&apos;re on {label}</h1>
         <p className="mt-2 text-sm leading-[1.45] text-muted">
@@ -133,10 +133,7 @@ export function ThanksScreen() {
         </Link>
       </p>
 
-      <p className="mt-6 text-sm text-muted">
-        A confirmation is on its way to your inbox. This was a test checkout: no card was
-        charged, and nothing here talked to a real payment processor.
-      </p>
+      <p className="mt-6 text-sm text-muted">A confirmation is on its way to your inbox.</p>
     </>
   )
 }

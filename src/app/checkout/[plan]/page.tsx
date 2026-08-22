@@ -8,7 +8,7 @@ import { TopBar } from '@/components/TopBar'
 import { isCheckoutPlan } from '@/lib/plans/prices'
 import type { BillingPeriod } from '@/lib/plans/prices'
 
-export const metadata: Metadata = { title: 'Test checkout' }
+export const metadata: Metadata = { title: 'Checkout' }
 
 interface Props {
   params: Promise<{ plan: string }>

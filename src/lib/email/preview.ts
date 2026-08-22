@@ -1,5 +1,5 @@
 /**
- * The three emails `templates.ts` can build, rendered with placeholder data instead of a
+ * The four emails `templates.ts` can build, rendered with placeholder data instead of a
  * real link — what `/emails` (the global-owner-only preview page) shows.
  *
  * `origin` arrives as a parameter rather than read here with `requestOrigin()`
@@ -9,21 +9,38 @@
  * actually knows which request this is.
  */
 
-import { passwordResetEmail, verificationEmail, welcomeEmail } from './templates'
+import { passwordResetEmail, purchaseEmail, verificationEmail, welcomeEmail } from './templates'
 import type { EmailTemplate } from './templates'
 
-export type PreviewKey = 'verification' | 'welcome' | 'password-reset'
+export type PreviewKey = 'verification' | 'welcome' | 'password-reset' | 'purchase'
 
-export const PREVIEW_KEYS: PreviewKey[] = ['verification', 'welcome', 'password-reset']
+export const PREVIEW_KEYS: PreviewKey[] = ['verification', 'welcome', 'password-reset', 'purchase']
 
 export const PREVIEW_LABEL: Record<PreviewKey, string> = {
   verification: 'Verify email',
   welcome: 'Welcome',
   'password-reset': 'Reset password',
+  purchase: 'Purchase confirmation',
 }
 
 const SAMPLE_EMAIL = 'preview@strumfolio.com'
 const SAMPLE_TOKEN = 'preview-token'
+
+/**
+ * The purchase confirmation's own placeholders. A fixed date rather than one derived from
+ * today, for the reason this module's header gives about `origin`: `buildEmailPreviews` stays a
+ * plain function of its argument, with no clock of its own, so two previews of the same
+ * template are the same bytes. The plan and price are a literal pair and deliberately not read
+ * from `PRICES` — a preview showing yesterday's price beside today's copy is a preview nobody
+ * has to reconcile, whereas one wired to the live catalogue silently changes what it is
+ * demonstrating whenever a price moves.
+ */
+const SAMPLE_PURCHASE = {
+  planLabel: 'Premium',
+  amount: '99',
+  cycle: 'year' as const,
+  renewsOn: '22 September 2027',
+}
 
 /**
  * A link that looks exactly like a real one — same host, same two query params
@@ -43,5 +60,6 @@ export function buildEmailPreviews(origin: string): Record<PreviewKey, EmailTemp
     verification: verificationEmail(sampleUrl(origin, '/verify')),
     welcome: welcomeEmail(),
     'password-reset': passwordResetEmail(sampleUrl(origin, '/reset-password')),
+    purchase: purchaseEmail(SAMPLE_PURCHASE),
   }
 }

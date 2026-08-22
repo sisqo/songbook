@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { IconInfo } from '@/components/icons'
 import { loadCheckoutStatus, mockPurchase, type MockSubscriptionState } from '@/lib/plans/checkout'
 import { euro, LIFETIME, PRICES, yearlyTotalOfMonthly } from '@/lib/plans/prices'
 import type { BillingPeriod, CheckoutPlan, PaidPlan } from '@/lib/plans/prices'
@@ -60,9 +59,9 @@ export function CheckoutScreen({
           state: 'unavailable',
           reason:
             result.reason === 'disabled'
-              ? 'The test checkout is not switched on right now.'
+              ? 'Checkout is not available right now.'
               : result.reason === 'no-session'
-                ? 'Sign in to try the test checkout.'
+                ? 'Sign in to continue.'
                 : 'No database is configured, so there is nothing to write to.',
         })
         return
@@ -109,7 +108,7 @@ export function CheckoutScreen({
         return
       }
 
-      setDone(`Scheduled — this account moves to ${PLAN_LABEL[plan]} (test) once the plan it already paid for ends.`)
+      setDone(`Scheduled — this account moves to ${PLAN_LABEL[plan]} once the plan it already paid for ends.`)
       refresh()
     } catch {
       setError("That didn't go through. Try again.")
@@ -121,19 +120,11 @@ export function CheckoutScreen({
   return (
     <>
       <header className="mb-[1.125rem]">
-        <h1 className="screen-title">Test checkout — {PLAN_LABEL[plan]}</h1>
+        <h1 className="screen-title">Checkout — {PLAN_LABEL[plan]}</h1>
         <p className="mt-2 text-sm leading-[1.45] text-muted">
-          A stand-in for the real checkout, wired to this account for real: buying here sets
-          what this account&apos;s plan actually is — the same columns a real payment will one
-          day set.
+          One payment sets up your plan. You can change it or cancel any time from Billing.
         </p>
       </header>
-
-      <p className="notice notice-accent">
-        <IconInfo />
-        This is a test checkout. No card is charged, no payment detail leaves this page, and
-        nothing here talks to a real payment processor — that part is not built yet.
-      </p>
 
       {status.state === 'loading' && <p className="mt-4 text-sm text-muted">One moment…</p>}
 
@@ -173,7 +164,7 @@ export function CheckoutScreen({
           </div>
 
           <div className="card p-4 sm:p-5 mt-4">
-            <h2 className="section-title">Pay (test)</h2>
+            <h2 className="section-title">Pay</h2>
 
             {plan === 'lifetime' ? (
               <p className="mt-3 text-2xl font-medium">{euro(LIFETIME.amount)}, once</p>
@@ -192,7 +183,7 @@ export function CheckoutScreen({
                 <input
                   value={card.name}
                   onChange={(event) => setCard({ ...card, name: event.target.value })}
-                  placeholder="Not a real card"
+                  placeholder="As printed on the card"
                   className="form-field"
                 />
               </label>
@@ -232,7 +223,7 @@ export function CheckoutScreen({
               disabled={busy}
               onClick={() => void buy()}
             >
-              Complete purchase (test)
+              Complete purchase
             </button>
           </div>
         </>

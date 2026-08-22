@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 import { PaymentHistoryTable } from '@/components/PaymentHistoryTable'
-import { IconInfo } from '@/components/icons'
 import {
   clearPendingChange,
   forceExpireNow,
@@ -25,13 +24,13 @@ type Status =
 function statusLine(current: MockSubscriptionState): string {
   if (current.plan === 'free') return 'Free — nothing bought yet.'
   if (current.plan === 'lifetime') return 'Lifetime — bought once, nothing to renew or cancel.'
-  if (current.status === 'expired') return `${PLAN_LABEL[current.plan]} (test), expired.`
-  if (current.expiresAt === null) return `${PLAN_LABEL[current.plan]} (test), no end.`
+  if (current.status === 'expired') return `${PLAN_LABEL[current.plan]}, expired.`
+  if (current.expiresAt === null) return `${PLAN_LABEL[current.plan]}, no end.`
 
   const until = current.expiresAt.toISOString().slice(0, 10)
   return current.pendingPlan !== null
-    ? `${PLAN_LABEL[current.plan]} (test) until ${until}, then ${PLAN_LABEL[current.pendingPlan]}.`
-    : `${PLAN_LABEL[current.plan]} (test), active until ${until}.`
+    ? `${PLAN_LABEL[current.plan]} until ${until}, then ${PLAN_LABEL[current.pendingPlan]}.`
+    : `${PLAN_LABEL[current.plan]}, active until ${until}.`
 }
 
 function canCancel(current: MockSubscriptionState): boolean {
@@ -112,16 +111,9 @@ export function BillingScreen() {
       <header className="mb-[1.125rem]">
         <h1 className="screen-title">Billing</h1>
         <p className="mt-2 text-sm leading-[1.45] text-muted">
-          What this account has bought, and the history of it — in test, wired to this account
-          for real, the same way the checkout is.
+          What this account has bought, and the history of it.
         </p>
       </header>
-
-      <p className="notice notice-accent">
-        <IconInfo />
-        This is a test screen. No card was ever charged, and nothing here talks to a real
-        payment processor — that part is not built yet.
-      </p>
 
       {status.state === 'loading' && <p className="mt-4 text-sm text-muted">One moment…</p>}
       {status.state === 'unavailable' && (
@@ -178,7 +170,7 @@ export function BillingScreen() {
                   type="button"
                   className="text-accent hover:underline"
                   disabled={busy}
-                  onClick={() => void run(forceExpireNow, 'Expired now (test).')}
+                  onClick={() => void run(forceExpireNow, 'Expired now.')}
                 >
                   force this plan to expire right now
                 </button>

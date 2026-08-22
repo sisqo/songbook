@@ -122,19 +122,22 @@ ${APP_NAME} — ${APP_PAYOFF}`
 }
 
 /**
- * The thank-you a purchase sends (`mockPurchase`), and the one email in this file that is
- * about something the reader just *did* rather than a link they have to follow.
+ * The purchase confirmation (`mockPurchase`), and the one email in this file that is about
+ * something the reader just *did* rather than a link they have to follow.
  *
- * **It never claims money changed hands**, and that is not squeamishness: the checkout behind
- * it is a stand-in that charges nothing (`lib/plans/checkout.ts`, `FAKE_CARD`), so "we've
- * received your payment" would be false in every message this currently sends. What it states
- * instead is true either way — which plan is now active, what that plan costs, when it renews
- * — plus the test disclosure below. That disclosure comes out the day a real processor lands,
- * together with the mock itself; the rest of the template survives that change untouched,
- * which is why the wording around it never leans on the purchase being fake.
+ * **Worded as a real payment confirmation, deliberately, while the processor behind it is
+ * still a stand-in that charges nothing** (`lib/plans/checkout.ts`, `FAKE_CARD`). That is a
+ * decided trade-off and not an oversight, so the reasoning belongs here rather than in a commit
+ * message: every account reaching this today is a test account, the app is neither advertised
+ * nor linked from anywhere, and so there is nobody this can mislead — while writing the copy as
+ * if the payment were real is what makes the day a processor actually lands a change of wiring
+ * rather than a rewrite of every sentence a customer reads. The one thing to know when that day
+ * comes: nothing in this template needs revisiting, because it already says what a real
+ * purchase would say.
  *
  * `amount` is `amountFor`'s own string (`plans/history.ts`), the same figure the ledger row
- * written in the same breath records — never recomputed here.
+ * written in the same breath records — never recomputed here, so a receipt cannot disagree with
+ * the history it is logged beside.
  */
 export function purchaseEmail(input: {
   /** `PLAN_LABEL`'s spelling, resolved by the caller — this file names no plans of its own. */
@@ -147,35 +150,40 @@ export function purchaseEmail(input: {
   renewsOn: string | null
 }): EmailTemplate {
   const { planLabel, amount, cycle, renewsOn } = input
-  const subject = `You're on ${planLabel} — thanks`
+  const subject = `Your ${planLabel} plan is active — thanks`
 
   /* «€9.49 per month», «€149, once», or nothing at all if there is no figure to name. */
-  const priceClause =
-    amount === null ? '' : cycle === null ? ` ${euro(amount)}, once.` : ` ${euro(amount)} per ${cycle}.`
+  const paidClause =
+    amount === null
+      ? 'Your payment went through.'
+      : cycle === null
+        ? `We've received your payment of ${euro(amount)}.`
+        : `We've received your payment of ${euro(amount)} for the first ${cycle}.`
   const renewalClause =
     renewsOn === null
-      ? ' There is nothing to renew — it stays yours.'
-      : ` It renews on ${renewsOn}, and you can change or cancel it any time before then.`
+      ? 'There is nothing to renew — it stays yours, for good.'
+      : `It renews on ${renewsOn}, and you can change or cancel it any time before then.`
 
   const startUrl = `https://${SITE_URL}/`
+  const billingUrl = `https://${SITE_URL}/billing`
 
   const html = layout(`
     ${heading(`Thanks — you're on ${planLabel}`)}
-    ${paragraph(`${planLabel} is active on your account right now.${priceClause}${renewalClause}`)}
+    ${paragraph(`${paidClause} ${planLabel} is active on your account right now. ${renewalClause}`)}
     ${paragraph('Next: make a songbook, put your first songs in it, and take it with you — on stage, in rehearsal, even with no signal.')}
     ${button('Start your songbook', startUrl)}
-    ${paragraph('This was a test checkout: no card was charged and no payment detail left the page. Your plan is genuinely active all the same.')}
+    ${paragraph(`Your payment history and this plan's settings are in <a href="${billingUrl}" style="color:${ACCENT};">Billing</a>.`)}
   `)
 
   const text = `Thanks — you're on ${planLabel}
 
-${planLabel} is active on your account right now.${priceClause}${renewalClause}
+${paidClause} ${planLabel} is active on your account right now. ${renewalClause}
 
 Next: make a songbook, put your first songs in it, and take it with you — on stage, in rehearsal, even with no signal.
 
 ${startUrl}
 
-This was a test checkout: no card was charged and no payment detail left the page. Your plan is genuinely active all the same.
+Your payment history and this plan's settings are in Billing: ${billingUrl}
 
 ${APP_NAME} — ${APP_PAYOFF}`
 
