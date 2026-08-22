@@ -1966,6 +1966,25 @@
     background: var(--surface);
     border: 1px solid var(--edge);
     overflow: hidden;
+    /*
+     * `overflow: hidden` above clips what the table *paints*, but on a phone it does not stop
+     * the table's 56rem `min-width` from reaching the top of the document as scrollable
+     * overflow — the layout viewport then widens to the content instead of the screen, and
+     * the whole page pans sideways, footer and all. Measured on /pricing at a 390px viewport:
+     * `window.innerWidth` read 599 against a `clientWidth` of 390, while /login on the same
+     * layout read 390 for both. `contain: paint` is what actually confines it (599 → 390),
+     * and it is the only remedy tried here that does so without cost: `overflow: clip` on
+     * this box changed nothing, and dropping the table's `min-width` fixed the number by
+     * squeezing the table instead of scrolling it — the exact failure `.plan-table`'s own
+     * comment says that `min-width` exists to prevent.
+     *
+     * Deliberately here and not on `html`/`body`: `overflow-x: hidden` there was tried,
+     * fixed nothing, and made `html` a scroll container, which silently broke
+     * `position: sticky` on `.top-bar` across every page in the app.
+     *
+     * Verified in Chromium only — a real iOS Safari pan could not be reproduced from here.
+     */
+    contain: paint;
   }
 
   .plan-table-scroll {
