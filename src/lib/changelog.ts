@@ -49,6 +49,31 @@ export const RELEASES: Release[] = [
 ]
 
 /**
+ * What the footer prints, both derived from the newest release rather than kept as their own
+ * constants — which is the point: the version in the corner of every page and the top entry on
+ * `/changelog` are the same fact, and two hand-maintained copies of one fact drift. Shipping a
+ * release is editing `RELEASES`, and the footer follows.
+ *
+ * Guarded against an empty `RELEASES` even though `changelog.test.ts` asserts it never is:
+ * `Footer` renders on every page in the app, so an exception thrown reading `[0]` would not be
+ * a blank footer, it would be a blank site.
+ */
+const LATEST: Release | undefined = RELEASES[0]
+
+export const CURRENT_VERSION = LATEST?.version ?? '—'
+
+/**
+ * The year for the copyright line: the newest release's, not `new Date()`'s.
+ *
+ * `new Date()` in a server component is evaluated when the page is *built*, so on a statically
+ * prerendered footer it freezes at the build year and then quietly lies every January until
+ * something happens to trigger a redeploy — the same build-time trap `/pricing`'s own
+ * `LIFETIME_OPEN` documents. The newest release's year needs no clock at all, and it is the
+ * year copyright convention actually asks for: when the work was last published.
+ */
+export const COPYRIGHT_YEAR = LATEST?.date.slice(0, 4) ?? ''
+
+/**
  * `'2026-08-22'` → `'August 2026'`.
  *
  * Parsed by hand rather than through `new Date(...).toLocaleDateString()`: a bare `YYYY-MM-DD`

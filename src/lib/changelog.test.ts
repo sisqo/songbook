@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { RELEASES, releaseMonth } from './changelog'
+import { COPYRIGHT_YEAR, CURRENT_VERSION, RELEASES, releaseMonth } from './changelog'
 
 describe('releaseMonth', () => {
   it('renders a month and a year', () => {
@@ -49,5 +49,22 @@ describe('RELEASES', () => {
   it('is newest first, by date', () => {
     const dates = RELEASES.map((release) => release.date)
     assert.deepEqual(dates, [...dates].sort().reverse())
+  })
+})
+
+/*
+ * What the footer prints, on every page. These exist so that "ship a release" stays a single
+ * edit to `RELEASES`: if either of these ever had to be bumped by hand alongside it, the number
+ * in the corner of the site would eventually disagree with the top of the changelog, and nobody
+ * would notice until a customer quoted one of them back.
+ */
+describe('what the footer prints', () => {
+  it('shows the newest release as the current version', () => {
+    assert.equal(CURRENT_VERSION, RELEASES[0].version)
+  })
+
+  it('takes the copyright year from the newest release, not from a clock', () => {
+    assert.equal(COPYRIGHT_YEAR, RELEASES[0].date.slice(0, 4))
+    assert.match(COPYRIGHT_YEAR, /^\d{4}$/)
   })
 })
