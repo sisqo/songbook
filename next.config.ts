@@ -48,6 +48,14 @@ function pageEntries(): PrecacheEntry[] {
  * Vercel's, which builds from a clean git checkout) can have tool state such as
  * `public/.impeccable/` sitting in the working tree, and nothing but a build
  * artifact belongs in a shipped precache manifest.
+ *
+ * `public/brand/kit/` is skipped for a different reason: it is the brand asset drop
+ * hosted whole, every size of every lockup, so a logo can be fetched by URL when one
+ * is needed outside this app. Nothing in the app renders any of it, and it is over ten
+ * times the weight of everything else in `public/` put together — precaching it would
+ * make every install of the PWA download megabytes of PNGs nobody asked for. The files
+ * the app *does* draw live at `brand/` and `brand/icons/` and are still precached, some
+ * of them byte-identical to a copy inside the kit.
  */
 function publicEntries(): PrecacheEntry[] {
   const publicDir = path.join(process.cwd(), 'public')
@@ -56,6 +64,7 @@ function publicEntries(): PrecacheEntry[] {
     return readdirSync(publicDir, { recursive: true, encoding: 'utf8' })
       .filter((relativePath) => !relativePath.split(path.sep).some((segment) => segment.startsWith('.')))
       .filter((relativePath) => !/^sw\.js(\.map)?$|^swe-worker-/.test(relativePath))
+      .filter((relativePath) => !/^brand[\\/]kit[\\/]/.test(relativePath))
       .filter((relativePath) => statSync(path.join(publicDir, relativePath)).isFile())
       .map((relativePath) => {
         const contents = readFileSync(path.join(publicDir, relativePath))

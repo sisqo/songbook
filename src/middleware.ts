@@ -36,6 +36,11 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365
  * by a link-preview bot reading OpenGraph tags — neither carries this app's
  * session cookie, ever. Without this, all of them would silently get the
  * `/login` redirect back instead of the image.
+ *
+ * `/brand/kit/` is under the same prefix and public on purpose, not by accident of
+ * nesting: it is the brand asset drop hosted whole, so a logo at the size some
+ * outside thing wants can be linked to by URL. Nothing there is secret and nothing
+ * there is drawn by this app — treat what goes into that folder as published.
  */
 function isPublicAsset(pathname: string): boolean {
   return (

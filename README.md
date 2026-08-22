@@ -252,14 +252,40 @@ home, e le altre quattro dicono "Sign in" nel loro testo. `/pricing` e le pagine
 hanno logo in pagina e quindi tengono il mark nella barra, che lì è anche l'unica via
 d'uscita.
 
-Per rigenerare o ridimensionare qualcosa il sorgente è l'SVG del drop, non questo repo.
-
 Tutto quanto sopra vive sotto `public/brand/` (icone in `brand/icons/`, lockup e OG image
 alla radice di `brand/`, logo email in `brand/email/`) invece che sciolto nella radice di
 `public/`: un solo prefisso che `middleware.ts` lascia passare senza sessione
 (`isPublicAsset`), invece di una riga per file — la dimenticanza di aggiungere quella riga
 per un asset brand appena arrivato era già successa due volte prima di questa
 riorganizzazione (2026-08-22).
+
+### `public/brand/kit/` — il drop intero, servito
+
+Quelli sopra sono i pochi file che l'app disegna. Il pacchetto completo sta in
+`public/brand/kit/`, così com'è arrivato: `svg/` (sorgenti vettoriali, lockup orizzontale e
+verticale nelle varianti black/white/adaptive/mono, mark, glifo, nota, wordmark, icone,
+favicon), `logo/` (lockup, mark e wordmark in PNG a più larghezze), `icons/` (icone quadrate
+da 16 a 1024), `web/` (favicon, icone PWA, OG image, quadrati 1200×1200 per i social),
+`ios/AppIcon.appiconset` (set completo con `Contents.json`, da trascinare in Xcode),
+`preview/` (contact sheet e diff di verifica) e il `README.md` del drop, che è l'indice: dice
+file per file a cosa serve. Serve per prendere un logo alla taglia giusta con un URL quando
+lo chiede qualcosa fuori da qui — uno store, una slide, una firma, un profilo social.
+
+Due conseguenze da tenere a mente:
+
+- **È pubblico**, come tutto ciò che sta sotto `/brand/`: `middleware.ts` non chiede la
+  sessione a quel prefisso. Quello che finisce lì dentro è pubblicato.
+- **Non è precachato.** `publicEntries()` in `next.config.ts` mette nel manifest del service
+  worker ogni file di `public/`, e questa cartella pesa dieci volte tutto il resto messo
+  insieme: senza il filtro che la esclude, ogni installazione della PWA si scaricherebbe
+  megabyte di PNG che nessuna schermata disegna. I file che l'app disegna stanno fuori dal
+  kit e restano precachati, anche quando sono la copia identica di un file lì dentro — la
+  duplicazione è voluta, il kit vale come pacchetto integro.
+
+Fuori dal kit è rimasto solo `build-assets.py` del drop, che rigenera tutto da due PNG del
+logo: è uno strumento, non un asset, e questo repo non tiene la generazione delle icone
+(`scripts/icons.ts` è stato rimosso il 2026-08-21 per la stessa ragione). Per rigenerare o
+ridimensionare qualcosa si parte da `kit/svg/` con lo script nel drop, non da qui.
 
 ## Canzonieri
 
